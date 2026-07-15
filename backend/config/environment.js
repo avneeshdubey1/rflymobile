@@ -1,0 +1,121 @@
+const LOCAL_DEVELOPMENT_ORIGINS = Object.freeze([
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+  'http://localhost:4173',
+  'http://127.0.0.1:4173',
+  'http://localhost:5180',
+  'http://127.0.0.1:5180',
+]);
+
+class ConfigurationError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = 'ConfigurationError';
+  }
+}
+
+function integer(value, fallback, name, { min = 1, max = Number.MAX_SAFE_INTEGER } = {}) {
+  if (value === undefined || value === null || String(value).trim() === '') return fallback;
+  const parsed = Number(value);
+  if (!Number.isSafeInteger(parsed) || parsed < min || parsed > max) {
+    throw new ConfigurationError(`${name} must be an integer between ${min} and ${max}`);
+  }
+  return parsed;
+}
+
+function boolean(value, fallback, name) {
+  if (value === undefined || value === null || String(value).trim() === '') return fallback;
+  const normalized = String(value).trim().toLowerCase();
+  if (['true', '1', 'yes', 'on'].includes(normalized)) return true;
+  if (['false', '0', 'no', 'off'].includes(normalized)) return false;
+  throw new ConfigurationError(`${name} must be true or false`);
+}
+
+function origins(value, nodeEnv, { name = 'CORS_ALLOWED_ORIGINS', developmentDefaults = LOCAL_DEVELOPMENT_ORIGINS, requiredInProduction = true } = {}) {
+  const configured = String(value || '')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+  const values = configured.length ? configured : (nodeEnv === 'production' ? [] : [...developmentDefaults]);
+  if (values.some((origin) => origin === '*')) throw new ConfigurationError(`${name} cannot contain a wildcard`);
+  for (const origin of values) {
+    let parsed;
+    try { parsed = new URL(origin); } catch { throw new ConfigurationError(`${name} contains an invalid origin: ${origin}`); }
+    if (!['http:', 'https:'].includes(parsed.protocol) || parsed.origin !== origin) {
+      throw new ConfigurationError(`${name} must contain origins only, without paths: ${origin}`);
+    }
+    if (nodeEnv === 'production' && parsed.protocol !== 'https:') {
+      throw new ConfigurationError(`${name} must contain HTTPS origins in production`);
+    }
+  }
+  if (nodeEnv === 'production' && requiredInProduction && !values.length) {
+    throw new ConfigurationError(`${name} is required in production`);
+  }
+  return Object.freeze([...new Set(values)]);
+}
+
+function loadEnvironment(env = process.env) {
+  const nodeEnv = String(env.NODE_ENV || 'development').trim().toLowerCase();
+  if (!['development', 'test', 'production'].includes(nodeEnv)) {
+    throw new ConfigurationError('NODE_ENV must be development, test, or production');
+  }
+
+  const trustProxyHops = integer(env.TRUST_PROXY_HOPS, nodeEnv === 'production' ? null : 0, 'TRUST_PROXY_HOPS', { min: 0, max: 10 });
+  if (nodeEnv === 'production' && (!Number.isInteger(trustProxyHops) || trustProxyHops < 1)) {
+    throw new ConfigurationError('TRUST_PROXY_HOPS must be at least 1 in production so HTTPS can be verified behind the deployment proxy');
+  }
+
+  const enforceHttps = boolean(env.ENFORCE_HTTPS, nodeEnv === 'production', 'ENFORCE_HTTPS');
+  if (nodeEnv === 'production' && !enforceHttps) {
+    throw new ConfigurationError('ENFORCE_HTTPS cannot be disabled in production');
+  }
+
+  const rateLimitsEnabled = boolean(env.RATE_LIMITS_ENABLED, nodeEnv !== 'test', 'RATE_LIMITS_ENABLED');
+  if (nodeEnv === 'production' && !rateLimitsEnabled) {
+    throw new ConfigurationError('RATE_LIMITS_ENABLED cannot be disabled in production');
+  }
+  const formWebhookSecret = String(env.FORM_WEBHOOK_SECRET || '').trim();
+  const upiWebhookSecret = String(env.UPI_WEBHOOK_SECRET || '').trim();
+  if (nodeEnv === 'production' && formWebhookSecret && formWebhookSecret.length < 32) {
+    throw new ConfigurationError('FORM_WEBHOOK_SECRET must contain at least 32 characters in production');
+  }
+  if (nodeEnv === 'production' && upiWebhookSecret && upiWebhookSecret.length < 32) {
+    throw new ConfigurationError('UPI_WEBHOOK_SECRET must contain at least 32 characters in production');
+  }
+
+  return Object.freeze({
+    nodeEnv,
+    isProduction: nodeEnv === 'production',
+    port: integer(env.PORT, 5000, 'PORT', { min: 1, max: 65535 }),
+    allowedOrigins: origins(env.CORS_ALLOWED_ORIGINS, nodeEnv),
+    mapFrameOrigins: origins(env.MAP_FRAME_ORIGINS, nodeEnv, {
+      name: 'MAP_FRAME_ORIGINS',
+      developmentDefaults: ['https://www.openstreetmap.org'],
+      requiredInProduction: false,
+    }),
+    trustProxyHops,
+    enforceHttps,
+    jsonBodyLimitBytes: integer(env.JSON_BODY_LIMIT_BYTES, 128 * 1024, 'JSON_BODY_LIMIT_BYTES', { min: 1024, max: 10 * 1024 * 1024 }),
+    rateLimits: Object.freeze({
+      enabled: rateLimitsEnabled,
+      windowMs: integer(env.RATE_LIMIT_WINDOW_MS, 15 * 60_000, 'RATE_LIMIT_WINDOW_MS', { min: 1000, max: 24 * 60 * 60_000 }),
+      generalMax: integer(env.RATE_LIMIT_GENERAL_MAX, 300, 'RATE_LIMIT_GENERAL_MAX', { min: 1, max: 100_000 }),
+      loginMax: integer(env.RATE_LIMIT_LOGIN_MAX, 10, 'RATE_LIMIT_LOGIN_MAX', { min: 1, max: 10_000 }),
+      publicIntakeMax: integer(env.RATE_LIMIT_PUBLIC_INTAKE_MAX, 30, 'RATE_LIMIT_PUBLIC_INTAKE_MAX', { min: 1, max: 10_000 }),
+      webhookMax: integer(env.RATE_LIMIT_WEBHOOK_MAX, 60, 'RATE_LIMIT_WEBHOOK_MAX', { min: 1, max: 100_000 }),
+    }),
+    socket: Object.freeze({
+      maxPayloadBytes: integer(env.SOCKET_MAX_PAYLOAD_BYTES, 64 * 1024, 'SOCKET_MAX_PAYLOAD_BYTES', { min: 1024, max: 1024 * 1024 }),
+      eventWindowMs: integer(env.SOCKET_EVENT_WINDOW_MS, 60_000, 'SOCKET_EVENT_WINDOW_MS', { min: 1000, max: 60 * 60_000 }),
+      eventMax: integer(env.SOCKET_EVENT_MAX, 120, 'SOCKET_EVENT_MAX', { min: 1, max: 10_000 }),
+      connectionMax: integer(env.SOCKET_CONNECTION_MAX, 30, 'SOCKET_CONNECTION_MAX', { min: 1, max: 10_000 }),
+    }),
+    webhooks: Object.freeze({
+      formSecret: formWebhookSecret,
+      upiSecret: upiWebhookSecret,
+      replayWindowMs: integer(env.WEBHOOK_REPLAY_WINDOW_MS, 5 * 60_000, 'WEBHOOK_REPLAY_WINDOW_MS', { min: 1000, max: 24 * 60 * 60_000 }),
+    }),
+  });
+}
+
+module.exports = { ConfigurationError, LOCAL_DEVELOPMENT_ORIGINS, loadEnvironment };

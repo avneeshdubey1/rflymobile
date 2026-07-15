@@ -1,0 +1,139 @@
+name: application-and-container-gates
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: operations_ci
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d operations_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://postgres@127.0.0.1:5432/operations_ci?schema=public
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - name: Generate process-local test secrets
+        shell: bash
+        run: |
+          echo "JWT_SECRET=$(openssl rand -hex 48)" >> "$GITHUB_ENV"
+          echo "DEMO_USER_PASSWORD=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
+      - run: npm ci
+      - run: npm audit --audit-level=high
+      - run: npm run prisma:validate
+      - run: node node_modules/prisma/build/index.js migrate deploy
+      - run: node prisma/seed.js
+      - name: Backend tests
+        run: node --test --test-concurrency=1 --test-force-exit tests/*.test.js
+
+  frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm audit --audit-level=high
+      - run: npm run lint
+      - name: Production same-origin build
+        env:
+          VITE_API_URL: /
+        run: npm run build
+
+  isolated-container-stack:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    needs: [backend, frontend]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create ephemeral file-mounted secrets and deployment environment
+        shell: bash
+        run: |
+          set -euo pipefail
+          secret_dir="$RUNNER_TEMP/operations-secrets"
+          mkdir -p "$secret_dir"
+          chmod 700 "$secret_dir"
+          umask 077
+          openssl rand -base64 36 > "$secret_dir/db_password"
+          openssl rand -base64 48 > "$secret_dir/jwt_secret"
+          cat > "$RUNNER_TEMP/operations-ci.env" <<EOF
+          DEPLOYMENT_NAME=operations-ci-${GITHUB_RUN_ID}
+          IMAGE_TAG=ci-${GITHUB_SHA}
+          APP_BIND_ADDRESS=127.0.0.1
+          APP_PORT=18080
+          CORS_ALLOWED_ORIGINS=https://ci.example.invalid
+          MAP_FRAME_ORIGINS=https://www.openstreetmap.org
+          TRUST_PROXY_HOPS=2
+          POSTGRES_USER=operations
+          POSTGRES_DB=operations
+          DB_PASSWORD_FILE=$secret_dir/db_password
+          JWT_SECRET_FILE=$secret_dir/jwt_secret
+          EOF
+          echo "DEPLOY_ENV=$RUNNER_TEMP/operations-ci.env" >> "$GITHUB_ENV"
+      - name: Validate rendered Compose configuration
+        run: docker compose --env-file "$DEPLOY_ENV" -f compose.production.yml config --quiet
+      - name: Build and start isolated stack
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker compose --env-file "$DEPLOY_ENV" -f compose.production.yml up --detach --build --wait --wait-timeout 180
+
+          curl --fail --silent --show-error http://127.0.0.1:18080/healthz | grep -q '"status":"ok"'
+          curl --fail --silent --show-error \
+            -H 'Host: ci.example.invalid' \
+            -H 'X-Forwarded-Proto: https' \
+            http://127.0.0.1:18080/api/health | grep -q '"status":"ok"'
+
+          test -z "$(docker compose --env-file "$DEPLOY_ENV" -f compose.production.yml port db 5432)"
+          test -z "$(docker compose --env-file "$DEPLOY_ENV" -f compose.production.yml port backend 5000)"
+
+          backend_user="$(docker image inspect "field-operations-backend:ci-${GITHUB_SHA}" --format '{{.Config.User}}')"
+          frontend_user="$(docker image inspect "field-operations-frontend:ci-${GITHUB_SHA}" --format '{{.Config.User}}')"
+          migration_user="$(docker image inspect "field-operations-migration:ci-${GITHUB_SHA}" --format '{{.Config.User}}')"
+          test "$backend_user" = node
+          test "$frontend_user" = nginx
+          test "$migration_user" = node
+      - name: Print container diagnostics after failure
+        if: failure()
+        run: |
+          docker compose --env-file "$DEPLOY_ENV" -f compose.production.yml ps --all || true
+          docker compose --env-file "$DEPLOY_ENV" -f compose.production.yml logs --no-color --tail=200 || true
+      - name: Remove ephemeral stack
+        if: always()
+        run: docker compose --env-file "$DEPLOY_ENV" -f compose.production.yml down --volumes --remove-orphans || true

@@ -1,0 +1,55 @@
+# syntax=docker/dockerfile:1.7
+
+ARG NODE_IMAGE=node:24-bookworm-slim
+
+FROM ${NODE_IMAGE} AS production-dependencies
+WORKDIR /workspace
+COPY package.json package-lock.json ./
+COPY prisma ./prisma
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --omit=dev && npm cache clean --force
+
+FROM ${NODE_IMAGE} AS migration-dependencies
+WORKDIR /workspace
+COPY package.json package-lock.json ./
+COPY prisma ./prisma
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci && npm cache clean --force
+
+FROM ${NODE_IMAGE} AS runtime-base
+ENV NODE_ENV=production \
+    PORT=5000
+WORKDIR /app
+RUN apt-get update \
+    && apt-get install --yes --no-install-recommends ca-certificates openssl tini \
+    && rm -rf /var/lib/apt/lists/*
+COPY docker/entrypoint.sh /usr/local/bin/operations-entrypoint
+RUN chmod 0555 /usr/local/bin/operations-entrypoint \
+    && chown node:node /app
+ENTRYPOINT ["/usr/bin/tini", "--", "/usr/local/bin/operations-entrypoint"]
+
+FROM runtime-base AS runtime
+COPY --from=production-dependencies --chown=node:node /workspace/node_modules ./node_modules
+COPY --chown=node:node package.json package-lock.json app.js server.js ./
+COPY --chown=node:node config ./config
+COPY --chown=node:node controllers ./controllers
+COPY --chown=node:node jobs ./jobs
+COPY --chown=node:node middleware ./middleware
+COPY --chown=node:node prisma ./prisma
+COPY --chown=node:node routes ./routes
+COPY --chown=node:node services ./services
+COPY --chown=node:node sockets ./sockets
+COPY --chown=node:node src ./src
+USER node
+EXPOSE 5000
+HEALTHCHECK --interval=20s --timeout=5s --start-period=20s --retries=5 \
+  CMD ["node", "-e", "fetch('http://127.0.0.1:5000/api/health',{headers:{'X-Forwarded-Proto':'https'}}).then(r=>{if(!r.ok)throw new Error(String(r.status))}).catch(()=>process.exit(1))"]
+CMD ["node", "server.js"]
+
+FROM runtime-base AS migration
+ENV APP_RUNTIME_MODE=migration
+COPY --from=migration-dependencies --chown=node:node /workspace/node_modules ./node_modules
+COPY --chown=node:node package.json package-lock.json ./
+COPY --chown=node:node prisma ./prisma
+USER node
+CMD ["node", "node_modules/prisma/build/index.js", "migrate", "deploy"]

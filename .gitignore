@@ -1,0 +1,14 @@
+# Local secrets and machine-specific environment files
+**/.env
+**/.env.*
+!**/.env.example
+backend/scripts/resetLocalAdminPassword.local.js
+
+# Generated output
+**/dist/
+**/.cache/
+*.log
+
+# Exclude docs
+docs/
+docs

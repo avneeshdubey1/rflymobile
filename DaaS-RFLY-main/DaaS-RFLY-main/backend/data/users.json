@@ -1,0 +1,90 @@
+[
+  {
+    "id": "10001",
+    "password": "password123",
+    "role": "admin",
+    "name": "System Admin"
+  },
+  {
+    "id": "40001",
+    "password": "password123",
+    "role": "sales",
+    "name": "Sales Rep 1"
+  },
+  {
+    "id": "40002",
+    "password": "password123",
+    "role": "sales",
+    "name": "Sales Rep 2"
+  },
+  {
+    "id": "60001",
+    "password": "password123",
+    "role": "fleet-manager",
+    "name": "Fleet Manager",
+    "isActive": true
+  },
+  {
+    "id": "60002",
+    "password": "password123",
+    "role": "pilot",
+    "name": "Suresh Reddy (Pilot)",
+    "isActive": true
+  },
+  {
+    "id": "60003",
+    "password": "password123",
+    "role": "pilot",
+    "name": "Amit Singh (Pilot)",
+    "isActive": true
+  },
+  {
+    "id": "60004",
+    "password": "password123",
+    "role": "pilot",
+    "name": "Vijay Varma (Pilot)",
+    "isActive": true
+  },
+  {
+    "id": "60005",
+    "password": "password123",
+    "role": "pilot",
+    "name": "Rahul Sharma (Pilot)",
+    "isActive": true
+  },
+  {
+    "id": "60006",
+    "password": "password123",
+    "role": "pilot",
+    "name": "Kiran Patel (Pilot)",
+    "isActive": true
+  },
+  {
+    "id": "60007",
+    "password": "password123",
+    "role": "pilot",
+    "name": "Deepak Rao (Pilot)",
+    "isActive": true
+  },
+  {
+    "id": "60008",
+    "password": "password123",
+    "role": "pilot",
+    "name": "Manoj Tiwari (Pilot)",
+    "isActive": true
+  },
+  {
+    "id": "60009",
+    "password": "password123",
+    "role": "pilot",
+    "name": "Vikram Rathore (Pilot)",
+    "isActive": true
+  },
+  {
+    "id": "600010",
+    "password": "password123",
+    "role": "pilot",
+    "name": "Prakash Jha (Pilot)",
+    "isActive": true
+  }
+]

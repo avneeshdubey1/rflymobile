@@ -1,0 +1,349 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  SALES
+  FLEET_MANAGER
+  PILOT
+}
+
+enum LeadStatus {
+  NEW                     // raw submission, not yet geofence-checked
+  OUT_OF_RANGE            // failed geofence check
+  APPEAL_PENDING          // farmer requested to pay extra / be reconsidered
+  PROCESSED               // verified, inside range, ready for auto-assignment
+  NEEDS_MANUAL_SCHEDULING // auto-assignment found no valid candidates
+  SCHEDULED               // pilot+drone assigned, awaiting pilot acceptance
+  PILOT_ACCEPTED
+  IN_PROGRESS
+  COMPLETED
+  FLAGGED                 // discrepancy, decommission, or admin flag
+  CANCELLED
+  REJECTED                // appeal denied, or lead otherwise rejected
+}
+
+enum DroneStatus {
+  AVAILABLE
+  ASSIGNED
+  MAINTENANCE
+  OUT_OF_SERVICE
+}
+
+enum IntakeChannel {
+  WEBSITE
+  GOOGLE_FORM
+  MANUAL_SALES
+}
+
+enum NotificationType {
+  PILOT_ASSIGNMENT
+  PILOT_SMS
+  DISPATCH_CALL_TASK
+  RESCHEDULE
+  DRONE_DECOMMISSIONED
+  MISSION_FLAGGED
+  MISSION_COMPLETED
+  LEAD_PROCESSED
+  OUT_OF_RANGE_APPEAL
+  NEEDS_MANUAL_SCHEDULING
+  WEATHER_RISK
+  PAYMENT_PENDING
+}
+
+enum PaymentMethod {
+  UPI
+  CASH
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+model OperatingCenter {
+  id        String   @id @default(uuid())
+  name      String                          // "Tenkasi HQ", "Kanyakumari Branch"
+  latitude  Float
+  longitude Float
+  radiusKm  Float    @default(50)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  drones    Drone[]
+  pilots    User[]
+  leads     Lead[]
+}
+
+model User {
+  id                   String    @id @default(uuid())
+  name                 String
+  email                String    @unique
+  phone                String?
+  passwordHash         String
+  role                 Role
+  preferredLanguage    String    @default("ta")   // ISO-ish code, see §10
+  active               Boolean   @default(true)
+  authVersion          Int       @default(1)
+  emailVerifiedAt      DateTime?
+  phoneVerifiedAt      DateTime?
+  archivedAt           DateTime?
+  createdAt            DateTime  @default(now())
+
+  // Pilot-specific
+  homeCenter           OperatingCenter? @relation(fields: [homeCenterId], references: [id])
+  homeCenterId         String?
+  pilotLicenseExpiry   DateTime?        // DGCA placeholder, see §9
+  assignments          Assignment[]     @relation("PilotAssignments")
+  chatSessionsAsPilot  ChatSession[]    @relation("PilotChats")
+  chatSessionsAsAdmin  ChatSession[]    @relation("AdminChats")
+  notifications        Notification[]
+  authSessions         AuthSession[]
+  recoveryChallenges   PasswordRecoveryChallenge[]
+}
+
+model AuthSession {
+  id                String   @id @default(uuid())
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId            String
+  tokenHash         String   @unique
+  csrfTokenHash     String
+  authVersion       Int
+  createdAt         DateTime @default(now())
+  lastSeenAt        DateTime @default(now())
+  idleExpiresAt     DateTime
+  absoluteExpiresAt DateTime
+  revokedAt         DateTime?
+  revokeReason      String?
+
+  @@index([userId, revokedAt])
+  @@index([idleExpiresAt])
+}
+
+model PasswordRecoveryChallenge {
+  id              String   @id
+  user            User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userId          String?
+  identifierHash  String
+  channel         String
+  deliveryStatus  String
+  codeHash        String
+  attempts        Int      @default(0)
+  maxAttempts     Int      @default(5)
+  expiresAt       DateTime
+  usedAt          DateTime?
+  revokedAt       DateTime?
+  createdAt       DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([expiresAt])
+}
+
+model Drone {
+  id                  String       @id @default(uuid())
+  model               String
+  serialNumber        String       @unique
+  status              DroneStatus  @default(AVAILABLE)
+  homeCenter          OperatingCenter @relation(fields: [homeCenterId], references: [id])
+  homeCenterId        String
+  airworthinessExpiry DateTime?    // DGCA placeholder, see §9
+  lastMaintained       DateTime?
+  createdAt           DateTime     @default(now())
+
+  assignments         Assignment[]
+}
+
+model Lead {
+  id               String        @id @default(uuid())
+  farmerName       String
+  farmerPhone      String
+  farmerAddress    String?
+  latitude         Float?
+  longitude        Float?
+  acreage          Float
+  cropType         String?
+  notes            String?
+  preferredLanguage String       @default("ta")
+  status           LeadStatus    @default(NEW)
+  intakeChannel    IntakeChannel
+  formResponseId   String?       @unique   // idempotency key for Google Form webhook
+  surveyorName     String?                 // set when channel = GOOGLE_FORM
+  matchedCenter    OperatingCenter? @relation(fields: [matchedCenterId], references: [id])
+  matchedCenterId  String?
+  distanceFromCenterKm Float?
+  createdAt        DateTime      @default(now())
+  processedAt      DateTime?
+
+  assignment       Assignment?
+  appeal           OutOfRangeAppeal?
+  notifications    Notification[]
+  payments         PaymentRecord[]
+}
+
+model OutOfRangeAppeal {
+  id            String   @id @default(uuid())
+  lead          Lead     @relation(fields: [leadId], references: [id])
+  leadId        String   @unique
+  distanceKm    Float
+  excessKm      Float
+  farmerMessage String?
+  suggestedFee  Float?               // auto-calculated: excessKm * PricingConfig rate
+  finalFee      Float?               // admin/sales-overridable, since customers negotiate
+  status        String   @default("PENDING")  // PENDING, APPROVED, REJECTED
+  reviewedBy    String?
+  createdAt     DateTime @default(now())
+  resolvedAt    DateTime?
+}
+
+model PricingConfig {
+  id        String   @id @default(uuid())
+  key       String   @unique   // e.g. "OUT_OF_RANGE_RATE_PER_KM", "DISCREPANCY_THRESHOLD_PCT"
+  value     Float               // placeholder values
+  updatedBy String?
+  updatedAt DateTime @updatedAt
+}
+
+model Assignment {
+  id                String    @id @default(uuid())
+  lead              Lead      @relation(fields: [leadId], references: [id])
+  leadId            String    @unique
+  pilot             User      @relation("PilotAssignments", fields: [pilotId], references: [id])
+  pilotId           String
+  drone             Drone     @relation(fields: [droneId], references: [id])
+  droneId           String
+
+  scheduledDate     DateTime
+  autoAssigned      Boolean   @default(true)   // false if a Fleet Manager manually created/overrode it
+  acceptedAt        DateTime?
+  startedAt         DateTime?
+  completedAt       DateTime?
+
+  weatherCheckedAt  DateTime?
+  weatherSuitable   Boolean?
+  weatherNote       String?
+
+  expectedAcreage   Float
+  actualAcreage     Float?
+  cost              Float?
+  hasDiscrepancy    Boolean   @default(false)
+  discrepancyNote   String?
+
+  decommissionedMidMission Boolean @default(false)
+  decommissionReason       String?
+
+  lastKnownLat      Float?          // live GPS, most recent ping only
+  lastKnownLng      Float?
+  lastPingAt        DateTime?
+
+  rescheduleHistory ScheduleChangeLog[]
+  payments          PaymentRecord[]
+  notificationEscalation NotificationEscalation?
+  createdAt         DateTime  @default(now())
+}
+
+// Persists the notification-cascade clock so a server restart never loses a pilot follow-up.
+model NotificationEscalation {
+  id            String     @id @default(uuid())
+  assignment    Assignment @relation(fields: [assignmentId], references: [id])
+  assignmentId  String     @unique
+  stage         String     @default("PUSH_SENT") // PUSH_SENT, SMS_SENT, CALL_TASK_CREATED
+  nextActionAt  DateTime
+  reassignCount Int        @default(0)
+  closedAt      DateTime?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  @@index([nextActionAt])
+}
+
+model ScheduleChangeLog {
+  id           String     @id @default(uuid())
+  assignment   Assignment @relation(fields: [assignmentId], references: [id])
+  assignmentId String
+  oldDate      DateTime
+  newDate      DateTime
+  changedBy    String
+  reason       String?
+  createdAt    DateTime   @default(now())
+}
+
+model ChatSession {
+  id                  String    @id @default(uuid())
+  admin               User      @relation("AdminChats", fields: [adminId], references: [id])
+  adminId             String
+  pilot                User      @relation("PilotChats", fields: [pilotId], references: [id])
+  pilotId             String
+  status              String    @default("OPEN")
+  firstResponseReadAt DateTime?
+  lastActivityAt      DateTime  @default(now())
+  closedAt            DateTime?
+  createdAt           DateTime  @default(now())
+
+  messages            ChatMessage[]
+}
+
+model ChatMessage {
+  id          String      @id @default(uuid())
+  session     ChatSession @relation(fields: [sessionId], references: [id])
+  sessionId   String
+  senderId    String
+  content     String
+  sentAt      DateTime    @default(now())
+  readAt      DateTime?
+}
+
+model Notification {
+  id          String            @id @default(uuid())
+  type        NotificationType
+  recipient   User              @relation(fields: [recipientId], references: [id])
+  recipientId String
+  lead        Lead?             @relation(fields: [leadId], references: [id])
+  leadId      String?
+  message     String
+  readAt      DateTime?
+  createdAt   DateTime          @default(now())
+}
+
+model PaymentRecord {
+  id            String        @id @default(uuid())
+  lead          Lead          @relation(fields: [leadId], references: [id])
+  leadId        String
+  assignment    Assignment    @relation(fields: [assignmentId], references: [id])
+  assignmentId  String
+  amount        Float
+  method        PaymentMethod
+  status        PaymentStatus @default(PENDING)
+  upiLink       String?
+  upiTransactionId String?
+  markedCashBy  String?               // userId if manually marked collected
+  createdAt     DateTime      @default(now())
+  resolvedAt    DateTime?
+}
+
+// Append-only. Never updated or deleted — this is the source for the
+// Logbook/CRM job-lifecycle timeline view
+model AuditLog {
+  id         String   @id @default(uuid())
+  entityType String              // "Lead" | "Assignment" | "Drone" | ...
+  entityId   String
+  action     String              // "STATUS_CHANGE" | "ADMIN_OVERRIDE" | "RESCHEDULE" | ...
+  actorId    String?             // null for system/automated actions
+  beforeState Json?
+  afterState  Json?
+  reason      String?
+  createdAt  DateTime @default(now())
+}
+
+model BhumeetFlight {
+  id        String   @id @default(uuid())
+  flightId  String   @unique
+  data      Json
+  fetchedAt DateTime @default(now())
+}

@@ -1,0 +1,157 @@
+name: ${DEPLOYMENT_NAME:?Set DEPLOYMENT_NAME to a unique customer deployment identifier}
+
+x-backend-environment: &backend-environment
+  NODE_ENV: production
+  PORT: 5000
+  DATABASE_HOST: db
+  DATABASE_PORT: 5432
+  DATABASE_USER: ${POSTGRES_USER:?Set POSTGRES_USER}
+  DATABASE_NAME: ${POSTGRES_DB:?Set POSTGRES_DB}
+  DATABASE_PASSWORD_FILE: /run/secrets/db_password
+
+x-service-security: &service-security
+  security_opt:
+    - no-new-privileges:true
+  cap_drop:
+    - ALL
+
+x-logging: &service-logging
+  driver: json-file
+  options:
+    max-size: ${LOG_MAX_SIZE:-10m}
+    max-file: ${LOG_MAX_FILES:-5}
+
+services:
+  db:
+    image: ${POSTGRES_IMAGE:-postgres:16-alpine}
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER}
+      POSTGRES_DB: ${POSTGRES_DB:?Set POSTGRES_DB}
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+    secrets:
+      - db_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    stop_grace_period: 60s
+    shm_size: ${POSTGRES_SHM_SIZE:-256m}
+    logging: *service-logging
+
+  migrate:
+    image: ${MIGRATION_IMAGE:-field-operations-migration}:${IMAGE_TAG:-local}
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: migration
+    environment:
+      <<: *backend-environment
+      APP_RUNTIME_MODE: migration
+    secrets:
+      - db_password
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - data
+    restart: "no"
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    <<: *service-security
+    logging: *service-logging
+
+  backend:
+    image: ${BACKEND_IMAGE:-field-operations-backend}:${IMAGE_TAG:-local}
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: runtime
+    restart: unless-stopped
+    environment:
+      <<: *backend-environment
+      APP_RUNTIME_MODE: server
+      JWT_SECRET_FILE: /run/secrets/jwt_secret
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?Set the approved HTTPS browser origin or origins}
+      MAP_FRAME_ORIGINS: ${MAP_FRAME_ORIGINS:-}
+      TRUST_PROXY_HOPS: ${TRUST_PROXY_HOPS:-2}
+      ENFORCE_HTTPS: "true"
+      JSON_BODY_LIMIT_BYTES: ${JSON_BODY_LIMIT_BYTES:-131072}
+      RATE_LIMITS_ENABLED: "true"
+      RATE_LIMIT_WINDOW_MS: ${RATE_LIMIT_WINDOW_MS:-900000}
+      RATE_LIMIT_GENERAL_MAX: ${RATE_LIMIT_GENERAL_MAX:-300}
+      RATE_LIMIT_LOGIN_MAX: ${RATE_LIMIT_LOGIN_MAX:-10}
+      RATE_LIMIT_PUBLIC_INTAKE_MAX: ${RATE_LIMIT_PUBLIC_INTAKE_MAX:-30}
+      RATE_LIMIT_WEBHOOK_MAX: ${RATE_LIMIT_WEBHOOK_MAX:-60}
+      SOCKET_MAX_PAYLOAD_BYTES: ${SOCKET_MAX_PAYLOAD_BYTES:-65536}
+      SOCKET_EVENT_WINDOW_MS: ${SOCKET_EVENT_WINDOW_MS:-60000}
+      SOCKET_EVENT_MAX: ${SOCKET_EVENT_MAX:-120}
+      SOCKET_CONNECTION_MAX: ${SOCKET_CONNECTION_MAX:-30}
+      WEBHOOK_REPLAY_WINDOW_MS: ${WEBHOOK_REPLAY_WINDOW_MS:-300000}
+    secrets:
+      - db_password
+      - jwt_secret
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    expose:
+      - "5000"
+    networks:
+      - edge
+      - data
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=128m
+    <<: *service-security
+    stop_grace_period: 30s
+    mem_limit: ${BACKEND_MEMORY_LIMIT:-768m}
+    cpus: ${BACKEND_CPU_LIMIT:-1.0}
+    logging: *service-logging
+
+  frontend:
+    image: ${FRONTEND_IMAGE:-field-operations-frontend}:${IMAGE_TAG:-local}
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: runtime
+      args:
+        VITE_API_URL: /
+    restart: unless-stopped
+    environment:
+      MAP_FRAME_ORIGINS: ${MAP_FRAME_ORIGINS:-}
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "${APP_BIND_ADDRESS:-127.0.0.1}:${APP_PORT:-8080}:8080"
+    networks:
+      - edge
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=128m
+    <<: *service-security
+    stop_grace_period: 20s
+    mem_limit: ${FRONTEND_MEMORY_LIMIT:-256m}
+    cpus: ${FRONTEND_CPU_LIMIT:-0.5}
+    logging: *service-logging
+
+volumes:
+  postgres_data:
+
+networks:
+  edge:
+  data:
+    internal: true
+
+secrets:
+  db_password:
+    file: ${DB_PASSWORD_FILE:?Set DB_PASSWORD_FILE to an absolute host path outside the repository}
+  jwt_secret:
+    file: ${JWT_SECRET_FILE:?Set JWT_SECRET_FILE to an absolute host path outside the repository}
