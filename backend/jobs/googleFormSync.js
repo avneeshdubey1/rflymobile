@@ -21,6 +21,10 @@ function startGoogleFormSyncJob() {
 }
 
 async function syncOnce() {
+  if (!process.env.GOOGLE_FORM_SCRIPT_URL) {
+    console.warn('Google Form sync disabled: GOOGLE_FORM_SCRIPT_URL not set in environment.');
+    return;
+  }
   try {
     let response;
     for (let i = 0; i < 3; i++) {

@@ -7,9 +7,10 @@
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "express-rate-limit": "^8.5.2",
+    "firebase-admin": "^14.1.0",
     "helmet": "^8.3.0",
-    "socket.io": "^4.8.3",
-    "node-fetch": "^2.6.7"
+    "node-fetch": "^2.6.7",
+    "socket.io": "^4.8.3"
   },
   "name": "backend",
   "version": "1.0.0",
@@ -23,7 +24,8 @@
     "prisma:seed": "node prisma/seed.js",
     "security:migrate-passwords": "node scripts/hashDevelopmentPasswords.js",
     "demo:prepare": "node scripts/prepareDevelopmentDemo.js",
-    "test": "node scripts/runBackendTests.js"
+    "test": "node scripts/runBackendTests.js",
+    "flush-test-user": "node flush-test-user.js"
   },
   "keywords": [],
   "author": "",

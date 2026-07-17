@@ -13,6 +13,7 @@ const ProtectedRoute = ({ allowedRoles }) => {
     if (user.role === 'admin') return <Navigate to="/admin" replace />;
     if (user.role === 'sales') return <Navigate to="/marketing" replace />;
     if (user.role === 'pilot') return <Navigate to="/pilot" replace />;
+    if (user.role === 'farmer') return <Navigate to="/farmer/dashboard" replace />;
     return <Navigate to="/" replace />;
   }
 

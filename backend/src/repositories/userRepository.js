@@ -15,6 +15,8 @@ const safeSelect = {
   emailVerifiedAt: true,
   phoneVerifiedAt: true,
   archivedAt: true,
+  village: true,
+  district: true,
 };
 
 async function updateSecuritySensitive(id, data, revokeReason) {
@@ -37,6 +39,7 @@ module.exports = {
   findAll: (where = {}) => prisma.user.findMany({ where, select: safeSelect, orderBy: { createdAt: 'desc' } }),
   findById: (id) => prisma.user.findUnique({ where: { id }, select: safeSelect }),
   findByEmail: (email) => prisma.user.findUnique({ where: { email }, select: safeSelect }),
+  findByPhone: (phone) => prisma.user.findFirst({ where: { phone }, select: safeSelect }),
   findByEmailForAuthentication: (email) => prisma.user.findUnique({
     where: { email },
     select: { ...safeSelect, passwordHash: true, authVersion: true },

@@ -22,7 +22,7 @@ An internal drone-service operations platform for lead intake, geofencing, autom
    docker run --name rfly-postgres -e POSTGRES_PASSWORD=devpass -e POSTGRES_DB=rfly_daas -p 5432:5432 -d postgres:16
    ```
 
-2. In `backend/`, create a local `.env` with `DATABASE_URL` and `JWT_SECRET`. For a fresh seed, choose the local demo password directly in your terminal, then run:
+2. In `backend/`, create a local `.env` with `DATABASE_URL`, `JWT_SECRET`, and your `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, and `FIREBASE_PRIVATE_KEY` (if you are testing the Farmer Login). For a fresh seed, choose the local demo password directly in your terminal, then run:
 
    ```powershell
    npm install
@@ -37,7 +37,7 @@ An internal drone-service operations platform for lead intake, geofencing, autom
 
    If you are locked out of the local demo Admin account, run `node scripts/resetLocalAdminPassword.local.js` from `backend/`. This ignored, local-only script securely prompts for a replacement password, changes only the Admin account, records a credential-free audit event, and refuses to run in production.
 
-3. In `frontend/`, run:
+3. In `frontend/`, create a local `.env` and copy the Firebase credentials from `.env.example` into it. Then run:
 
    ```powershell
    npm install

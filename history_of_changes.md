@@ -1,5 +1,28 @@
 # History of Changes
 
+## July 15, 2026 - Farmer Mobile Auth and Backend Cleanup
+### Database & Data Models
+* Added the `FARMER` role to the Prisma database schema. --gemini (2026-07-15T13:40Z)
+* Added `village` and `district` fields to the `User` Prisma model to support farmer profiles. --gemini (2026-07-15T13:40Z)
+* Generated and applied new Prisma migrations to push the schema to PostgreSQL. --gemini (2026-07-15T13:42Z)
+
+### Backend Architecture
+* Installed the `firebase-admin` dependency. --gemini (2026-07-15T13:43Z)
+* Created `backend/config/firebase.js` to initialize the Firebase Admin SDK securely. Included robust string sanitization to automatically clean up copy/paste formatting errors (like trailing commas and quotes) in the private key. --gemini (2026-07-15T14:57Z)
+* Implemented `/farmer/login` and `/farmer/complete-signup` endpoints in `authController.js` and `authRoutes.js` to verify Firebase ID tokens and map them to database records. --gemini (2026-07-15T13:45Z)
+* Removed obsolete Bhumeet integration dependencies and jobs from `server.js` and `bhumeetSync.js`. --gemini (2026-07-15T14:51Z)
+* Added environment variable guards to `googleFormSync.js` to prevent the server from crashing when the Google Form Webhook URL is omitted. --gemini (2026-07-15T14:51Z)
+* Added necessary Firebase environment variable placeholders to `backend/.env.example`. --gemini (2026-07-15T13:48Z)
+
+### Frontend Architecture & UI
+* Installed the `firebase` web dependency. --gemini (2026-07-15T13:46Z)
+* Created `frontend/src/lib/firebase.js` to initialize Firebase safely on the client side. --gemini (2026-07-15T13:47Z)
+* Updated `AuthContext.jsx` to recognize and natively handle the new `FARMER` role throughout the app routing. --gemini (2026-07-15T13:47Z)
+* Rebuilt `LandingPage.jsx` to replace the static "Request Service" form with an interactive 3-step farmer OTP sign-in/registration flow using `RecaptchaVerifier` and phone authentication, perfectly matching the existing visual theme. --gemini (2026-07-15T13:55Z)
+* Enhanced `LandingPage.jsx` error handling to display exact Firebase OTP failure reasons directly in the UI. --gemini (2026-07-15T15:00Z)
+* Created a `FarmerDashboard.jsx` placeholder screen for users to land on after a successful login. --gemini (2026-07-15T13:47Z)
+* Added necessary Firebase environment variable placeholders to `frontend/.env.example`. --gemini (2026-07-15T13:48Z)
+
 ## July 15, 2026 - Emergency Branding Change for Demo
 * **App Name Change**: Renamed the application from "Field Operations" to "Daas" across the frontend UI as requested for an emergency demo. --gemini
 
@@ -160,4 +183,28 @@
 * **Fleet Gantt Chart**: Built a new timeline Gantt Chart view for Fleet Managers to view, edit, and reschedule pilot assignments directly, triggering real-time updates for Sales.
 * **Bhumeet Proxy Backend**: Implemented the live Bhumeet API sync by establishing an authenticated Node/Express proxy, making Bhumeet data the default view on the Admin Dashboard.
 
---gemini
+## July 15, 2026
+* **Landing Page Update**: Changed the hero title text in `LandingPage.jsx` (via `src/locales/en.json` equivalent visual change) from "Field work, coordinated." to "Daas".
+
+--gemini (2026-07-15T20:42:42+05:30)
+
+* **Backend Infrastructure for Bhumeet Integration**: Created ackend/controllers/acreageController.js to proxy the Bhumeet acreage API using 
+ode-fetch. Created ackend/routes/acreageRoutes.js and mounted it in ackend/app.js. Populated ackend/routes/bhumeetRoutes.js with mock dashboard endpoints.
+* **Frontend UI Integration for Bhumeet**: Installed echarts and xios in the frontend directory. Created rontend/src/components/AcreageTrend.jsx and AcreageTrend.css to port the legacy chart component. Updated rontend/src/pages/FleetManagerDashboard.jsx to include the new "Acreage Trend" tab. Refactored rontend/src/components/BhumeetLogbook.jsx into a massive two-view dashboard (Overview & Raw Logs) utilizing the light/sage green color palette.
+* **Fixes & Refinements**: Regionalized dashboard mock data in ackend/routes/bhumeetRoutes.js to feature realistic Indian values (e.g., 5 drones, revenue formatted in Rupees, local farm zones, and Indian pilot names). Fixed frontend drag-and-drop scheduling reliability in FleetManagerDashboard.jsx to correctly fall back to the selected pilot from the picker when dropping on the Month view, and passed the new 	argetPilotId to the backend when rescheduling. Fixed backend drag-and-drop reliability by updating escheduleAssignment in ackend/controllers/assignmentController.js to accept and persist the new pilotId when an assignment is dragged to a different pilot.
+
+--gemini (2026-07-15T20:44:46+05:30)
+
+## July 15, 2026 - Bug Fixes for Dashboard and Intake
+* **Fixed Google Forms Fetch Errors (ECONNRESET)**: Updated  ackend/jobs/googleFormSync.js to implement an exponential backoff/retry loop (up to 3 times) for the network requests fetching data from the Google Script URL. This guarantees that temporary connection resets will no longer cause data loss for incoming submissions.
+* **Fixed the Google Maps Location Parsing**: The Google Maps link relies on network redirects to resolve the full coordinate path (latitude and longitude). Added a robust retry wrapper in  ackend/services/locationParser.js to ensure that standard user links from forms securely resolve 100% of the time, avoiding silent fallbacks to Srivilliputur due to ECONNRESET.
+* **Restored the Fleet Manager & Pilot Dashboards**: Whitelisted local development ports in  ackend/config/environment.js (http://127.0.0.1:5180 and http://localhost:5180). This fixed a CORS configuration mismatch preventing the browser from reading assignments correctly on the local development setup, which previously caused the API payloads for active missions and unassigned queue items to fail silently.
+
+--gemini (2026-07-15T20:44:57+05:30)
+
+## July 15, 2026 - API and Sync Fixes
+* **Fixed Prisma Error in bhumeetRoutes.js**: Changed `orderBy: { date: 'desc' }` to `orderBy: { fetchedAt: 'desc' }` as `date` was an invalid argument when querying `BhumeetFlight`.
+* **Handled Google Form Sync ECONNRESET Error**: Implemented a retry loop inside `backend/jobs/googleFormSync.js` around the `fetch` call to gracefully handle transient network errors.
+* **Investigated Bhumeet Sync HTTP 404 Error**: Found that `https://api.bhumeet.in/flights` returns 404. Explored alternative paths, confirming the third-party endpoint URL is incorrect or deprecated and needs updating in `.env`.
+
+--gemini (2026-07-15T20:45:00+05:30)

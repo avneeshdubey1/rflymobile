@@ -9,6 +9,8 @@ import MarketingDashboard from "./pages/MarketingDashboard";
 import PilotDashboard from "./pages/PilotDashboard";
 import FleetManagerDashboard from "./pages/FleetManagerDashboard";
 import NotFound from "./pages/NotFound";
+import FarmerDashboard from "./pages/FarmerDashboard";
+import FarmerLogin from "./pages/FarmerLogin";
 
 function App() {
   return (
@@ -18,6 +20,7 @@ function App() {
           {/* Public Routes */}
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/farmer/login" element={<FarmerLogin />} />
           
           {/* Protected Admin Routes */}
           <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
@@ -37,6 +40,11 @@ function App() {
           {/* Protected Fleet Manager Routes */}
           <Route element={<ProtectedRoute allowedRoles={['admin', 'fleet-manager']} />}>
             <Route path="/fleet-manager" element={<FleetManagerDashboard />} />
+          </Route>
+
+          {/* Protected Farmer Routes */}
+          <Route element={<ProtectedRoute allowedRoles={['farmer']} />}>
+            <Route path="/farmer/dashboard" element={<FarmerDashboard />} />
           </Route>
 
           <Route path="*" element={<NotFound />} />

@@ -12,6 +12,7 @@ enum Role {
   SALES
   FLEET_MANAGER
   PILOT
+  FARMER
 }
 
 enum LeadStatus {
@@ -101,6 +102,11 @@ model User {
   homeCenter           OperatingCenter? @relation(fields: [homeCenterId], references: [id])
   homeCenterId         String?
   pilotLicenseExpiry   DateTime?        // DGCA placeholder, see §9
+
+  // Farmer-specific
+  village              String?
+  district             String?
+
   assignments          Assignment[]     @relation("PilotAssignments")
   chatSessionsAsPilot  ChatSession[]    @relation("PilotChats")
   chatSessionsAsAdmin  ChatSession[]    @relation("AdminChats")

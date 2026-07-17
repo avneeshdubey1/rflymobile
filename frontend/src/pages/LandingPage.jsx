@@ -1,59 +1,83 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
+import { signInWithPhoneNumber } from 'firebase/auth';
 import { supportedLanguages } from '../i18n';
-import { API_URL as API } from '../config';
-import LocationLink from '../components/LocationLink';
+import { API_URL } from '../config';
+import { auth } from '../lib/firebase';
+import { clearPhoneRecaptcha, getPhoneRecaptcha, normalizeIndianPhone } from '../lib/firebasePhone';
+import OtpInput from '../components/OtpInput';
 
-function LandingPage() {
+export default function LandingPage() {
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
-  const [formData, setFormData] = useState({ farmerName: '', phone: '', village: '', cropType: '', acres: '', preferredLanguage: i18n.language });
-  const [status, setStatus] = useState('');
-  const [locationLocked, setLocationLocked] = useState(false);
-  const [appealOffer, setAppealOffer] = useState(null);
+  const [preferredLanguage, setPreferredLanguage] = useState(i18n.language);
+  const [form, setForm] = useState({ name: '', phone: '', village: '', district: '' });
+  const [otp, setOtp] = useState('');
+  const [confirmation, setConfirmation] = useState(null);
+  const [step, setStep] = useState('register');
+  const [countdown, setCountdown] = useState(5);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleChange = (event) => setFormData({ ...formData, [event.target.name]: event.target.value });
+  useEffect(() => () => clearPhoneRecaptcha(), []);
+  useEffect(() => {
+    if (step !== 'success') return undefined;
+    if (countdown <= 0) {
+      navigate('/farmer/login', { replace: true });
+      return undefined;
+    }
+    const timer = window.setTimeout(() => setCountdown((value) => value - 1), 1000);
+    return () => window.clearTimeout(timer);
+  }, [countdown, navigate, step]);
 
-  const getGPSLocation = () => {
-    if (!navigator.geolocation) { alert(t('gps_unsupported')); return; }
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setFormData((current) => ({ ...current, village: t('gps_fetched'), latitude: position.coords.latitude, longitude: position.coords.longitude }));
-        setLocationLocked(true);
-      },
-      () => alert(t('gps_error')),
-    );
-  };
-
-  const handleSubmit = async (event) => {
-    event.preventDefault();
-    setStatus('submitting');
-    try {
-      const response = await fetch(`${API}/api/leads/ingest/website`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(formData) });
-      const data = await response.json();
-      if (!response.ok) { setStatus('error'); return; }
-      if (!data.inRange) { setAppealOffer({ leadId: data.lead.id, ...data.appealOffer }); setStatus('out-of-range'); return; }
-      setStatus('success');
-      setFormData({ farmerName: '', phone: '', village: '', cropType: '', acres: '', preferredLanguage: i18n.language });
-      setLocationLocked(false);
-    } catch { setStatus('error'); }
-  };
-
-  const requestAppeal = async () => {
-    try {
-      const response = await fetch(`${API}/api/leads/${appealOffer.leadId}/appeal`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ farmerMessage: 'Requested from the website' }) });
-      if (!response.ok) throw new Error('Appeal request failed');
-      setStatus('appeal-pending');
-    } catch { setStatus('error'); }
-  };
+  const update = (field) => (event) => setForm((current) => ({ ...current, [field]: event.target.value }));
 
   const changeLanguage = (event) => {
     const language = event.target.value;
     localStorage.setItem('field-operations-language', language);
     void i18n.changeLanguage(language);
-    setFormData((current) => ({ ...current, preferredLanguage: language }));
+    setPreferredLanguage(language);
+  };
+
+  const sendRegistrationOtp = async (event) => {
+    event.preventDefault();
+    setBusy(true);
+    setError('');
+    try {
+      const result = await signInWithPhoneNumber(auth, normalizeIndianPhone(form.phone), getPhoneRecaptcha());
+      setConfirmation(result);
+      setStep('otp');
+    } catch (failure) {
+      clearPhoneRecaptcha();
+      setError(failure?.message || 'Unable to send OTP.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const completeRegistration = async (event) => {
+    event.preventDefault();
+    setBusy(true);
+    setError('');
+    try {
+      const credential = await confirmation.confirm(otp.trim());
+      const idToken = await credential.user.getIdToken();
+      const response = await fetch(`${API_URL}/api/auth/farmer/complete-signup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken, name: form.name, village: form.village, district: form.district }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Registration failed.');
+      clearPhoneRecaptcha();
+      setStep('success');
+    } catch (failure) {
+      setError(failure?.message || 'OTP verification failed.');
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -61,9 +85,10 @@ function LandingPage() {
       <nav className="navbar">
         <div className="logo">Daas</div>
         <div className="navbar__actions">
-          <select aria-label={t('preferred_language')} value={formData.preferredLanguage} onChange={changeLanguage}>
+          <select aria-label={t('preferred_language')} value={preferredLanguage} onChange={changeLanguage}>
             {supportedLanguages.map((language) => <option key={language.code} value={language.code}>{language.label}</option>)}
           </select>
+          <button className="login-btn" onClick={() => navigate('/farmer/login')}>Farmer login</button>
           <button className="login-btn" onClick={() => navigate('/login')}>{t('employee_login')}</button>
         </div>
       </nav>
@@ -73,7 +98,7 @@ function LandingPage() {
           <div className="hero-content">
             <span className="hero-kicker">{t('hero_kicker')}</span>
             <h1 className="hero-title">Daas</h1>
-            <p className="hero-subtitle">{t('request_subtitle')}</p>
+            <p className="hero-subtitle">Create your Farmer account and request drone services.</p>
             <div className="hero-points">
               <div className="hero-point"><strong>{t('hero_location_title')}</strong><span>{t('hero_location_copy')}</span></div>
               <div className="hero-point"><strong>{t('hero_operations_title')}</strong><span>{t('hero_operations_copy')}</span></div>
@@ -84,50 +109,56 @@ function LandingPage() {
 
         <section className="request-pane">
           <div className="panel form-container">
-            <div className="form-heading">
-              <p className="eyebrow eyebrow--accent">{t('request_kicker')}</p>
-              <h2>{t('request_service')}</h2>
-              <p>{t('request_subtitle')}</p>
-            </div>
+            {error && <div className="alert error" role="alert">{error}</div>}
 
-            {status === 'success' && <div role="status" className="alert success">{t('request_success')}</div>}
-            {status === 'error' && <div role="alert" className="alert error">{t('request_error')}</div>}
-            {status === 'out-of-range' && appealOffer && (
-              <div className="alert error appeal-notice">
-                <span>{t('out_of_range', { excessKm: appealOffer.excessKm.toFixed(1), fee: appealOffer.suggestedFee ?? '—' })}</span>
-                <button type="button" className="action-btn" onClick={requestAppeal}>{t('cover_transport')}</button>
+            {step === 'register' && (
+              <>
+                <div className="form-heading">
+                  <p className="eyebrow eyebrow--accent">FARMER REGISTRATION</p>
+                  <h2>Create your account</h2>
+                  <p>Already registered? <Link to="/farmer/login">Login using OTP</Link></p>
+                </div>
+                <form onSubmit={sendRegistrationOtp} className="lead-form">
+                  <div className="input-group"><label htmlFor="farmer-name">{t('full_name')}</label><input id="farmer-name" value={form.name} onChange={update('name')} minLength="2" maxLength="120" autoComplete="name" required disabled={busy} /></div>
+                  <div className="input-group"><label htmlFor="farmer-phone">Mobile number</label><input id="farmer-phone" value={form.phone} onChange={update('phone')} inputMode="numeric" autoComplete="tel" placeholder="9876543210" maxLength="16" required disabled={busy} /></div>
+                  <div className="input-group"><label htmlFor="farmer-village">Village / approximate location</label><input id="farmer-village" value={form.village} onChange={update('village')} maxLength="120" required disabled={busy} /></div>
+                  <div className="input-group"><label htmlFor="farmer-district">District</label><input id="farmer-district" value={form.district} onChange={update('district')} maxLength="120" required disabled={busy} /></div>
+                  <div id="recaptcha-container" />
+                  <button className="submit-btn" disabled={busy}>{busy ? 'Sending…' : 'Verify mobile number'}</button>
+                </form>
+                <p>Business registration will be added in the next module.</p>
+              </>
+            )}
+
+            {step === 'otp' && (
+              <form onSubmit={completeRegistration} className="lead-form">
+                <div className="form-heading"><p className="eyebrow eyebrow--accent">VERIFY MOBILE</p><h2>Enter the OTP</h2><p>We sent a six-digit code to your mobile number.</p></div>
+                <div className="input-group">
+                  <label>6-digit OTP</label>
+                  <OtpInput length={6} onComplete={(val) => { setOtp(val); }} disabled={busy} />
+                </div>
+                <button className="submit-btn" disabled={busy || otp.length !== 6}>{busy ? 'Creating account…' : 'Complete registration'}</button>
+                <button type="button" className="login-btn" onClick={() => { setStep('register'); setOtp(''); setConfirmation(null); clearPhoneRecaptcha(); }} disabled={busy}>Change details</button>
+              </form>
+            )}
+
+            {step === 'success' && (
+              <div className="form-heading form-heading--center" role="status" style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem' }}>
+                  <motion.svg width="86" height="86" viewBox="0 0 50 50" initial="hidden" animate="visible">
+                    <motion.circle cx="25" cy="25" r="22" fill="none" stroke="var(--success)" strokeWidth="2.5" variants={{ hidden: { pathLength: 0 }, visible: { pathLength: 1, transition: { duration: 0.6 } } }} />
+                    <motion.path d="M15 26 L22 32 L35 17" fill="none" stroke="var(--success)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" variants={{ hidden: { pathLength: 0 }, visible: { pathLength: 1, transition: { delay: 0.3, duration: 0.4 } } }} />
+                  </motion.svg>
+                </div>
+                <p className="eyebrow eyebrow--accent">REGISTRATION SUCCESSFUL</p>
+                <h2 style={{ marginTop: '0.5rem', marginBottom: '0.25rem' }}>Your Farmer account is ready</h2>
+                <p style={{ marginBottom: '1.5rem' }}>You will be redirected to login in <strong>{countdown}</strong> seconds.</p>
+                <button className="submit-btn button-wide" onClick={() => navigate('/farmer/login', { replace: true })}>Continue to login</button>
               </div>
             )}
-            {status === 'appeal-pending' && <div role="status" className="alert success">{t('appeal_pending')}</div>}
-
-            <form onSubmit={handleSubmit} className="lead-form">
-              <div className="input-group">
-                <label htmlFor="farmer-name">{t('full_name')}</label>
-                <input id="farmer-name" type="text" name="farmerName" value={formData.farmerName} onChange={handleChange} required minLength={2} maxLength={120} placeholder={t('name_placeholder')} />
-              </div>
-              <div className="input-group">
-                <label htmlFor="farmer-phone">{t('phone_number')}</label>
-                <input id="farmer-phone" type="tel" name="phone" value={formData.phone} onChange={(event) => setFormData({ ...formData, phone: event.target.value.replace(/[^\d+\s().-]/g, '') })} required minLength={7} maxLength={20} inputMode="tel" placeholder={t('phone_placeholder')} />
-              </div>
-              <div className="input-group">
-                <label htmlFor="farm-location">{t('village_location')}</label>
-                <div className="gps-field">
-                  <input id="farm-location" type="text" name="village" value={locationLocked ? t('gps_fetched') : formData.village} onChange={handleChange} required placeholder={t('location_placeholder')} disabled={locationLocked} />
-                  {!locationLocked && <button type="button" className="action-btn" onClick={getGPSLocation}>{t('fetch_gps')}</button>}
-                </div>
-                {locationLocked && <LocationLink latitude={formData.latitude} longitude={formData.longitude} label={t('gps_fetched')} fallback={t('gps_fetched')} />}
-              </div>
-              <div className="row-group">
-                <div className="input-group"><label htmlFor="crop-type">{t('crop_type')}</label><input id="crop-type" type="text" name="cropType" value={formData.cropType} onChange={handleChange} required maxLength={120} placeholder={t('crop_placeholder')} /></div>
-                <div className="input-group"><label htmlFor="total-acres">{t('total_acres')}</label><input id="total-acres" type="number" name="acres" value={formData.acres} onChange={handleChange} required min="0.01" step="0.01" placeholder={t('acres_placeholder')} /></div>
-              </div>
-              <button type="submit" className="submit-btn" disabled={status === 'submitting'}>{status === 'submitting' ? t('submitting') : t('book_drone')}</button>
-            </form>
           </div>
         </section>
       </motion.main>
     </div>
   );
 }
-
-export default LandingPage;

@@ -6,7 +6,6 @@ const app = require('./app');
 const { startNotificationEscalationJob } = require('./jobs/notificationEscalationJob');
 const { startChatAutoCloseJob } = require('./jobs/chatAutoCloseJob');
 const { startGoogleFormSyncJob } = require('./jobs/googleFormSync');
-const { startBhumeetSyncJob } = require('./jobs/bhumeetSync');
 const { installChatSocket } = require('./sockets/chatSocket');
 const { installLocationSocket } = require('./sockets/locationSocket');
 const { assertAuthConfiguration } = require('./middleware/auth');
@@ -30,7 +29,6 @@ server.listen(config.port, () => {
 const notificationEscalationJob = startNotificationEscalationJob();
 const chatAutoCloseJob = startChatAutoCloseJob();
 const googleFormSyncJob = startGoogleFormSyncJob();
-const bhumeetSyncJob = startBhumeetSyncJob();
 process.on('SIGTERM', () => {
   clearInterval(notificationEscalationJob);
   clearInterval(chatAutoCloseJob);
