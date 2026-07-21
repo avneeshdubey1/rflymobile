@@ -1,6 +1,7 @@
 const chatRepository = require('../src/repositories/chatRepository');
 const userRepository = require('../src/repositories/userRepository');
 const auditLogService = require('./auditLogService');
+const prisma = require('../src/lib/prisma');
 
 const CHAT_AUTO_CLOSE_MS = 24 * 60 * 60_000;
 
@@ -10,43 +11,74 @@ function autoCloseAfterMs() {
 }
 
 function isParticipant(session, userId) {
-  return session.adminId === userId || session.pilotId === userId;
+  return session.participants.some(p => p.id === userId);
 }
 
 async function requireParticipant(sessionId, actor) {
   const session = await chatRepository.findSessionById(sessionId);
   if (!session) throw new Error('Chat session not found');
-  if (!isParticipant(session, actor.userId)) throw new Error('You are not a participant in this chat');
+  if (!isParticipant(session, actor.userId) && actor.role !== 'ADMIN') throw new Error('You are not a participant in this chat');
   return session;
 }
 
-async function createOrFindSession(actor, participantId) {
-  if (!['ADMIN', 'PILOT'].includes(actor.role)) throw new Error('Only Admins and Pilots can use chat');
-  const participant = await userRepository.findById(participantId);
+async function createOrFindDirectSession(actor, targetUserId) {
+  const participant = await userRepository.findById(targetUserId);
   if (!participant) throw new Error('Chat participant not found');
-  const isAdminInitiated = actor.role === 'ADMIN' && participant.role === 'PILOT';
-  const isPilotInitiated = actor.role === 'PILOT' && participant.role === 'ADMIN';
-  if (!isAdminInitiated && !isPilotInitiated) throw new Error('Chat sessions must be between one Admin and one Pilot');
 
-  const adminId = actor.role === 'ADMIN' ? actor.userId : participant.id;
-  const pilotId = actor.role === 'PILOT' ? actor.userId : participant.id;
-  const existing = await chatRepository.findOpenByParticipants(adminId, pilotId);
+  if (actor.role === 'ADMIN' || (actor.role === 'FLEET_MANAGER' && participant.role === 'PILOT') || (actor.role === 'PILOT' && participant.role === 'ADMIN')) {
+      // Allowed
+  } else {
+      throw new Error('You do not have permission to start a direct chat with this user.');
+  }
+
+  const existing = await chatRepository.findOpenDirect(actor.userId, targetUserId);
   if (existing) return { session: existing, created: false };
 
-  const session = await chatRepository.createSession({ adminId, pilotId });
-  await auditLogService.record({ entityType: 'ChatSession', entityId: session.id, action: 'CHAT_SESSION_OPENED', actorId: actor.userId, afterState: { adminId, pilotId, status: session.status } });
+  const session = await chatRepository.createSession({}, [actor.userId, targetUserId]);
+  await auditLogService.record({ entityType: 'ChatSession', entityId: session.id, action: 'CHAT_SESSION_OPENED', actorId: actor.userId, afterState: { type: 'DIRECT', participants: [actor.userId, targetUserId], status: session.status } });
+  return { session, created: true };
+}
+
+async function createOrFindLeadSession(actor, leadId) {
+  if (actor.role !== 'FARMER' && actor.role !== 'ADMIN') {
+      throw new Error('Only Farmers (or Admins) can initiate a lead context chat.');
+  }
+  
+  const lead = await prisma.lead.findUnique({ where: { id: leadId }, include: { assignment: true } });
+  if (!lead) throw new Error('Lead not found');
+  
+  const participantIds = [actor.userId];
+  if (lead.assignment) {
+      participantIds.push(lead.assignment.pilotId);
+  }
+  
+  const existing = await chatRepository.findOpenByLead(leadId);
+  if (existing) {
+     if (!isParticipant(existing, actor.userId) && actor.role !== 'ADMIN') {
+         throw new Error('Not authorized for this chat.');
+     }
+     return { session: existing, created: false };
+  }
+
+  const session = await chatRepository.createSession({ leadId }, participantIds);
+  await auditLogService.record({ entityType: 'ChatSession', entityId: session.id, action: 'CHAT_SESSION_OPENED', actorId: actor.userId, afterState: { type: 'LEAD', leadId, participants: participantIds, status: session.status } });
   return { session, created: true };
 }
 
 async function listSessions(actor) {
-  if (!['ADMIN', 'PILOT'].includes(actor.role)) throw new Error('Only Admins and Pilots can use chat');
-  return chatRepository.findForParticipant(actor.userId);
+  const sessions = await chatRepository.findForParticipant(actor.userId);
+  if (actor.role === 'FARMER') {
+      // Filter out archived ones for farmers
+      return sessions.filter(s => !s.archivedAt);
+  }
+  return sessions;
 }
 
 async function listParticipants(actor) {
-  if (actor.role === 'ADMIN') return userRepository.findAll({ role: 'PILOT' });
+  if (actor.role === 'ADMIN') return userRepository.findAll({}); // Admin sees everyone
+  if (actor.role === 'FLEET_MANAGER') return userRepository.findAll({ role: 'PILOT' });
   if (actor.role === 'PILOT') return userRepository.findAll({ role: 'ADMIN' });
-  throw new Error('Only Admins and Pilots can use chat');
+  return [];
 }
 
 async function listMessages(sessionId, actor) {
@@ -100,6 +132,13 @@ async function closeSession(sessionId, actor, closedAt = new Date()) {
     beforeState: { status: 'OPEN' },
     afterState: { status: 'CLOSED', closedAt },
   });
+  
+  // If it's a lead chat, schedule it for archiving (auto-hide for farmer in 1 week)
+  if (session.leadId) {
+     const archiveDate = new Date(closedAt.getTime() + 7 * 24 * 60 * 60_1000);
+     await chatRepository.archiveSession(session.id, archiveDate);
+  }
+
   return { sessionId: session.id, status: 'CLOSED', closedAt, alreadyClosed: false };
 }
 
@@ -111,9 +150,15 @@ async function closeInactiveSessions(now = new Date()) {
     const result = await chatRepository.closeIfOpen(session.id, now);
     if (!result.count) continue;
     await auditLogService.record({ entityType: 'ChatSession', entityId: session.id, action: 'CHAT_SESSION_AUTO_CLOSED', beforeState: { status: 'OPEN', lastActivityAt: session.lastActivityAt }, afterState: { status: 'CLOSED', closedAt: now } });
+    
+    if (session.leadId) {
+        const archiveDate = new Date(now.getTime() + 7 * 24 * 60 * 60_1000);
+        await chatRepository.archiveSession(session.id, archiveDate);
+    }
+    
     closed.push(session);
   }
   return closed;
 }
 
-module.exports = { autoCloseAfterMs, createOrFindSession, listSessions, listParticipants, listMessages, sendMessage, markMessagesRead, closeSession, closeInactiveSessions, requireParticipant };
+module.exports = { autoCloseAfterMs, createOrFindDirectSession, createOrFindLeadSession, listSessions, listParticipants, listMessages, sendMessage, markMessagesRead, closeSession, closeInactiveSessions, requireParticipant };

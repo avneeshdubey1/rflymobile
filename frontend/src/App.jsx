@@ -1,4 +1,5 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { Toaster } from "react-hot-toast";
 import { AuthProvider } from "./context/AuthContext.jsx";
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -11,16 +12,35 @@ import FleetManagerDashboard from "./pages/FleetManagerDashboard";
 import NotFound from "./pages/NotFound";
 import FarmerDashboard from "./pages/FarmerDashboard";
 import FarmerLogin from "./pages/FarmerLogin";
+import FarmerRegister from "./pages/FarmerRegister";
+import RegistrationSuccess from "./pages/RegistrationSuccess";
+import Settings from "./pages/Settings";
+
+import B2BLogin from "./pages/B2BLogin";
+import B2BRegister from "./pages/B2BRegister";
+import B2BForgotPassword from "./pages/B2BForgotPassword";
+import BusinessRegistrationSuccess from "./pages/BusinessRegistrationSuccess";
+
+import BusinessDashboard from "./pages/BusinessDashboard";
 
 function App() {
   return (
     <AuthProvider>
+      <Toaster position="top-right" />
       <BrowserRouter>
         <Routes>
           {/* Public Routes */}
-          <Route path="/" element={<LandingPage />} />
+          <Route path="/" element={<Navigate to="/farmer/login" replace />} />
           <Route path="/login" element={<Login />} />
           <Route path="/farmer/login" element={<FarmerLogin />} />
+          <Route path="/farmer/register" element={<FarmerRegister />} />
+          <Route path="/success" element={<RegistrationSuccess />} />
+          
+          {/* Business Routes */}
+          <Route path="/business/login" element={<B2BLogin />} />
+          <Route path="/business/register" element={<B2BRegister />} />
+          <Route path="/business/forgot-password" element={<B2BForgotPassword />} />
+          <Route path="/business/success" element={<BusinessRegistrationSuccess />} />
           
           {/* Protected Admin Routes */}
           <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
@@ -45,6 +65,16 @@ function App() {
           {/* Protected Farmer Routes */}
           <Route element={<ProtectedRoute allowedRoles={['farmer']} />}>
             <Route path="/farmer/dashboard" element={<FarmerDashboard />} />
+          </Route>
+
+          {/* Protected Business Routes */}
+          <Route element={<ProtectedRoute allowedRoles={['business']} />}>
+            <Route path="/business/dashboard" element={<BusinessDashboard />} />
+          </Route>
+
+          {/* Shared Protected Settings Route */}
+          <Route element={<ProtectedRoute allowedRoles={['admin', 'sales', 'fleet-manager', 'pilot', 'farmer', 'business']} />}>
+            <Route path="/settings" element={<Settings />} />
           </Route>
 
           <Route path="*" element={<NotFound />} />

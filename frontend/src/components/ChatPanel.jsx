@@ -1,11 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { io } from 'socket.io-client';
+import toast from 'react-hot-toast';
 import { useAuth } from '../context/useAuth';
 import OpsIcon from './OpsIcon';
 import { API_URL as API } from '../config';
 
-function otherParticipant(session, userId) {
-  return session.adminId === userId ? session.pilot : session.admin;
+function getChatTitle(session, userId) {
+  if (session.lead) {
+      return `Request from ${session.lead.farmerName}`;
+  }
+  const others = (session.participants || []).filter(p => p.id !== userId);
+  return others.map(p => p.name).join(', ') || 'Chat';
 }
 
 function ChatPanel() {
@@ -19,7 +24,6 @@ function ChatPanel() {
   const [draft, setDraft] = useState('');
   const [participantId, setParticipantId] = useState('');
   const [connection, setConnection] = useState('Connecting…');
-  const [notice, setNotice] = useState(null);
 
   const request = useCallback(async (path, options = {}) => {
     const headers = new Headers(options.headers);
@@ -32,12 +36,12 @@ function ChatPanel() {
 
   const loadSessions = useCallback(async () => {
     try { const data = await request('/api/chat/sessions'); setSessions(data.sessions || []); }
-    catch (error) { setNotice({ kind: 'error', message: error.message }); }
+    catch (error) { toast.error(error.message); }
   }, [request]);
 
   const loadParticipants = useCallback(async () => {
     try { const data = await request('/api/chat/participants'); setParticipants(data.participants || []); }
-    catch (error) { setNotice({ kind: 'error', message: error.message }); }
+    catch (error) { toast.error(error.message); }
   }, [request]);
 
   const updateReadState = useCallback((payload) => {
@@ -68,7 +72,7 @@ function ChatPanel() {
     socket.on('chat:read', updateReadState);
     socket.on('chat:closed', (payload) => {
       updateClosedState(payload);
-      setNotice({ kind: 'success', message: 'This chat was closed by an administrator.' });
+      toast.success('This chat was closed by an administrator.');
     });
     return () => socket.disconnect();
   }, [loadSessions, token, updateClosedState, updateReadState]);
@@ -90,7 +94,7 @@ function ChatPanel() {
       try {
         const result = await request(`/api/chat/sessions/${sessionId}/read`, { method: 'POST' });
         updateReadState({ sessionId, ...result });
-      } catch (fallbackError) { setNotice({ kind: 'error', message: fallbackError.message || error.message }); }
+      } catch (fallbackError) { toast.error(fallbackError.message || error.message); }
     }
   }, [request, socketRequest, updateReadState]);
 
@@ -102,26 +106,26 @@ function ChatPanel() {
       setMessages(data.messages || []);
       if (socketRef.current?.connected) await socketRequest('chat:join', { sessionId: session.id });
       await markRead(session.id);
-    } catch (error) { setNotice({ kind: 'error', message: error.message }); }
+    } catch (error) { toast.error(error.message); }
   }, [markRead, request, socketRequest]);
 
   const createSession = async (event) => {
     event.preventDefault();
     if (!participantId) return;
     try {
-      const data = await request('/api/chat/sessions', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ participantId }) });
+      const data = await request('/api/chat/sessions', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'DIRECT', participantId }) });
       await loadSessions();
       await selectSession(data.session);
       setParticipantId('');
-      setNotice({ kind: 'success', message: data.created ? 'New chat opened.' : 'Opened the existing chat.' });
-    } catch (error) { setNotice({ kind: 'error', message: error.message }); }
+      toast.success(data.created ? 'New chat opened.' : 'Opened the existing chat.');
+    } catch (error) { toast.error(error.message); }
   };
 
   const sendMessage = async (event) => {
     event.preventDefault();
     if (!selectedSession || !draft.trim()) return;
     try { await socketRequest('chat:send', { sessionId: selectedSession.id, content: draft }); setDraft(''); }
-    catch (error) { setNotice({ kind: 'error', message: error.message }); }
+    catch (error) { toast.error(error.message); }
   };
 
   const closeSelectedSession = async () => {
@@ -134,8 +138,8 @@ function ChatPanel() {
         if (!result) throw socketError;
       }
       updateClosedState(result);
-      setNotice({ kind: 'success', message: 'Chat closed for both participants.' });
-    } catch (error) { setNotice({ kind: 'error', message: error.message }); }
+      toast.success('Chat closed for both participants.');
+    } catch (error) { toast.error(error.message); }
   };
 
   return (
@@ -144,8 +148,6 @@ function ChatPanel() {
         <div className="panel-header__title"><div className="panel-title-row"><span className="panel-title-icon"><OpsIcon name="chat" /></span><h2>Admin–Pilot support chat</h2></div><p>Unread chats stay open. Fully read inactive chats close after 24 hours.</p></div>
         <span className={`connection-state ${connection === 'Live' ? 'connection-state--live' : ''}`}>{connection}</span>
       </div>
-
-      {notice && <div role="alert" className={`notice notice--${notice.kind}`}><span>{notice.message}</span><button type="button" className="notice__close" onClick={() => setNotice(null)} aria-label="Dismiss message">×</button></div>}
 
       <div className="chat-layout">
         <aside className="chat-sidebar">
@@ -158,9 +160,9 @@ function ChatPanel() {
           <div className="chat-session-list section-gap">
             {!sessions.length && <div className="empty-state"><strong>No chats yet</strong><span>Choose a participant to start one.</span></div>}
             {sessions.map((session) => {
-              const participant = otherParticipant(session, user?.id);
+              const title = getChatTitle(session, user?.id);
               const latest = session.messages?.[0];
-              return <button className="chat-session" key={session.id} type="button" aria-pressed={selectedSession?.id === session.id} onClick={() => void selectSession(session)}><strong>{participant?.name || 'Chat participant'}</strong><span className={session.status === 'OPEN' ? 'chat-session__open' : ''}>{session.status === 'OPEN' ? 'Open' : 'Closed'}{latest ? ` · ${latest.content.slice(0, 35)}` : ''}</span></button>;
+              return <button className="chat-session" key={session.id} type="button" aria-pressed={selectedSession?.id === session.id} onClick={() => void selectSession(session)}><strong>{title}</strong><span className={session.status === 'OPEN' ? 'chat-session__open' : ''}>{session.status === 'OPEN' ? 'Open' : 'Closed'}{latest ? ` · ${latest.content.slice(0, 35)}` : ''}</span></button>;
             })}
           </div>
         </aside>
@@ -168,7 +170,7 @@ function ChatPanel() {
         <div className="chat-conversation">
           {!selectedSession && <div className="empty-state empty-state--center"><span className="panel-title-icon"><OpsIcon name="chat" /></span><strong>Choose or start a chat</strong><span>The conversation will open in this workspace.</span></div>}
           {selectedSession && <>
-            <div className="chat-conversation__header"><div><strong>{otherParticipant(selectedSession, user?.id)?.name}</strong> <span className={`status-badge ${selectedSession.status === 'OPEN' ? 'status-badge--success' : ''}`}>{selectedSession.status.toLowerCase()}</span></div>{user?.role === 'admin' && selectedSession.status === 'OPEN' && <button className="action-btn" type="button" onClick={() => void closeSelectedSession()}>Close chat</button>}</div>
+            <div className="chat-conversation__header"><div><strong>{getChatTitle(selectedSession, user?.id)}</strong> <span className={`status-badge ${selectedSession.status === 'OPEN' ? 'status-badge--success' : ''}`}>{selectedSession.status.toLowerCase()}</span></div>{user?.role === 'admin' && selectedSession.status === 'OPEN' && <button className="action-btn" type="button" onClick={() => void closeSelectedSession()}>Close chat</button>}</div>
             <div className="chat-messages">
               {!messages.length && <div className="empty-state empty-state--center"><strong>No messages yet</strong><span>Send the first operational update below.</span></div>}
               {messages.map((message) => {

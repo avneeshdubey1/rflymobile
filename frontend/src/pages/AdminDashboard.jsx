@@ -7,6 +7,31 @@ import PendingPaymentsPanel from '../components/PendingPaymentsPanel';
 import LiveLocationPanel from '../components/LiveLocationPanel';
 import LogbookTimelinePanel from '../components/LogbookTimelinePanel';
 import { API_URL as API } from '../config';
+import { MapContainer, TileLayer, Marker, Circle, useMapEvents } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+
+import icon from 'leaflet/dist/images/marker-icon.png';
+import iconShadow from 'leaflet/dist/images/marker-shadow.png';
+
+let DefaultIcon = L.icon({
+  iconUrl: icon,
+  shadowUrl: iconShadow,
+  iconAnchor: [12, 41]
+});
+L.Marker.prototype.options.icon = DefaultIcon;
+
+function LocationMarker({ position, setPosition }) {
+  useMapEvents({
+    click(e) {
+      setPosition(e.latlng);
+    }
+  });
+
+  return position === null ? null : (
+    <Marker position={position} />
+  );
+}
 
 const statusLabel = (status) => String(status || 'UNKNOWN').replaceAll('_', ' ').toLowerCase();
 const statusTone = (status) => {
@@ -18,24 +43,32 @@ const statusTone = (status) => {
 function AdminDashboard() {
   const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState('fleet');
+  const [activeUserTab, setActiveUserTab] = useState('employees');
   const [users, setUsers] = useState([]);
   const [drones, setDrones] = useState([]);
   const [adminNotice, setAdminNotice] = useState(null);
   const [newUser, setNewUser] = useState({ name: '', email: '', password: '', role: 'PILOT' });
   const [passwordTarget, setPasswordTarget] = useState(null);
-  const [replacementPassword, setReplacementPassword] = useState('');
+  const [replacementPassword, setPassword] = useState('');
   const [deleteTarget, setDeleteTarget] = useState(null);
+  
+  // Centers
+  const [centers, setCenters] = useState([]);
+  const [newCenter, setNewCenter] = useState({ name: '', radiusKm: 30 });
+  const [centerPosition, setCenterPosition] = useState(null);
 
   const fetchData = useCallback(async (signal) => {
     try {
-      const [userResponse, droneResponse] = await Promise.all([
+      const [userResponse, droneResponse, centerResponse] = await Promise.all([
         fetch(`${API}/api/users/all`, { signal }),
         fetch(`${API}/api/drones/all`, { signal }),
+        fetch(`${API}/api/centers/all`, { signal }),
       ]);
-      const [userData, droneData] = await Promise.all([userResponse.json(), droneResponse.json()]);
+      const [userData, droneData, centerData] = await Promise.all([userResponse.json(), droneResponse.json(), centerResponse.json()]);
       if (userData.success) setUsers(userData.users);
       if (droneData.success) setDrones(droneData.drones);
-      if (!userResponse.ok || !droneResponse.ok) setAdminNotice({ kind: 'error', message: userData.error || droneData.error || 'Could not load administration data.' });
+      if (centerData.success) setCenters(centerData.centers);
+      if (!userResponse.ok || !droneResponse.ok || !centerResponse.ok) setAdminNotice({ kind: 'error', message: userData.error || droneData.error || centerData.error || 'Could not load administration data.' });
     } catch (error) {
       if (error.name !== 'AbortError' && !signal?.aborted) setAdminNotice({ kind: 'error', message: 'Could not load administration data.' });
     }
@@ -127,12 +160,64 @@ function AdminDashboard() {
     } catch (error) { setAdminNotice({ kind: 'error', message: error.message }); }
   };
 
+  const handleAddCenter = async (event) => {
+    event.preventDefault();
+    if (!centerPosition) {
+      setAdminNotice({ kind: 'error', message: 'Please click on the map to set the HQ location.' });
+      return;
+    }
+    setAdminNotice(null);
+    try {
+      const response = await fetch(`${API}/api/centers/add`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newCenter.name, radiusKm: newCenter.radiusKm, latitude: centerPosition.lat, longitude: centerPosition.lng }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) { setAdminNotice({ kind: 'error', message: data.error || 'Failed to add center.' }); return; }
+      setNewCenter({ name: '', radiusKm: 30 });
+      setCenterPosition(null);
+      setAdminNotice({ kind: 'success', message: `Operating center added.` });
+      await fetchData();
+    } catch {
+      setAdminNotice({ kind: 'error', message: 'Failed to add operating center.' });
+    }
+  };
+
+  const confirmDeleteCenter = async (id) => {
+    try {
+      const response = await fetch(`${API}/api/centers/delete/${id}`, { method: 'DELETE' });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) { setAdminNotice({ kind: 'error', message: data.error || 'Center could not be deleted.' }); return; }
+      setAdminNotice({ kind: 'success', message: `Operating center deleted.` });
+      await fetchData();
+    } catch {
+      setAdminNotice({ kind: 'error', message: 'Center could not be deleted.' });
+    }
+  };
+
+  const toggleUserActive = async (userId) => {
+    try {
+      const response = await fetch(`${API}/api/users/toggle-active`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId }),
+      });
+      const data = await response.json();
+      if (response.ok) await fetchData();
+      else setAdminNotice({ kind: 'error', message: data.error });
+    } catch (err) {
+      setAdminNotice({ kind: 'error', message: 'Failed to toggle active status.' });
+    }
+  };
+
   const activeDrones = useMemo(() => drones.filter((drone) => ['AVAILABLE', 'ASSIGNED'].includes(drone.status)), [drones]);
   const standbyDrones = useMemo(() => drones.filter((drone) => ['MAINTENANCE', 'OUT_OF_SERVICE'].includes(drone.status)), [drones]);
   const maintenanceRequests = useMemo(() => drones.filter((drone) => drone.maintenanceRequest), [drones]);
   const navItems = [
     { id: 'fleet', label: 'Fleet Overview', icon: 'overview', badge: maintenanceRequests.length || null },
     { id: 'users', label: 'User Management', icon: 'users' },
+    { id: 'centers', label: 'Operating Centers', icon: 'location' },
     { id: 'logbook', label: 'CRM Logbook', icon: 'book' },
     { id: 'chat', label: 'Pilot Support Chat', icon: 'chat' },
     { id: 'payments', label: 'Payment Collection', icon: 'wallet' },
@@ -142,6 +227,7 @@ function AdminDashboard() {
   const pageCopy = {
     fleet: ['Operations overview', 'Fleet readiness', 'Monitor availability, active allocations, and maintenance exceptions.'],
     users: ['Access administration', 'User management', 'Create and maintain secure operational accounts.'],
+    centers: ['Geo-fencing', 'Operating Centers (HQ)', 'Configure geographic areas of operation.'],
     logbook: ['Operational history', 'CRM logbook', 'Review each lead’s complete recorded lifecycle.'],
     chat: ['Support desk', 'Pilot support chat', 'Coordinate directly with field teams and retain the conversation state.'],
     payments: ['Revenue operations', 'Payment collection', 'Resolve completed missions waiting for settlement.'],
@@ -186,19 +272,83 @@ function AdminDashboard() {
       {activeTab === 'users' && (
         <section className="user-admin-grid">
           <div className="panel panel--raised">
-            <div className="panel-header"><div className="panel-header__title"><div className="panel-title-row"><span className="panel-title-icon"><OpsIcon name="users" /></span><h2>Registered employees</h2></div><p>{users.length} operational account{users.length === 1 ? '' : 's'}.</p></div></div>
-            <div className="data-stack">{users.map((account) => <div className="data-row" key={account.id}><div className="data-row__main"><span className="data-row__title">{account.name}</span><span className="data-row__meta">{account.email}</span><span className="status-badge">{statusLabel(account.role)}</span></div>{account.role !== 'ADMIN' && account.id !== user?.id && <div className="data-row__actions"><button className="action-btn" type="button" onClick={() => { setPasswordTarget(account); setReplacementPassword(''); }}>Reset password</button><button className="danger-btn" type="button" onClick={() => setDeleteTarget(account)}>Delete</button></div>}</div>)}</div>
+            <div className="panel-header">
+              <div className="panel-header__title">
+                <div className="panel-title-row">
+                  <span className="panel-title-icon"><OpsIcon name="users" /></span>
+                  <h2>User Management</h2>
+                </div>
+                <p>Manage operational accounts and end-user profiles.</p>
+              </div>
+              <div className="flex gap-4 mt-4 border-b border-gray-200">
+                <button type="button" className={`pb-2 font-medium ${activeUserTab === 'employees' ? 'border-b-2 border-forest text-forest' : 'text-gray-500'}`} onClick={() => setActiveUserTab('employees')}>Employees</button>
+                <button type="button" className={`pb-2 font-medium ${activeUserTab === 'farmers' ? 'border-b-2 border-forest text-forest' : 'text-gray-500'}`} onClick={() => setActiveUserTab('farmers')}>Farmers</button>
+              </div>
+            </div>
+            <div className="data-stack">
+              {users.filter(u => activeUserTab === 'employees' ? u.role !== 'FARMER' : u.role === 'FARMER').map((account) => (
+                <div className="data-row" key={account.id}>
+                  <div className="data-row__main">
+                    <span className="data-row__title">{account.name}</span>
+                    <span className="data-row__meta">{account.email || account.phone}</span>
+                    <span className="status-badge">{statusLabel(account.role)}</span>
+                    <span className={`status-badge status-badge--${account.active ? 'success' : 'danger'}`} style={{marginLeft: '0.5rem'}}>{account.active ? 'Active' : 'Disabled'}</span>
+                  </div>
+                  {account.role !== 'ADMIN' && account.id !== user?.id && (
+                    <div className="data-row__actions">
+                      <button className="action-btn" type="button" onClick={() => toggleUserActive(account.id)}>{account.active ? 'Disable' : 'Enable'}</button>
+                      {account.role !== 'FARMER' && (
+                        <button className="action-btn" type="button" onClick={() => { setPasswordTarget(account); setPassword(''); }}>Reset password</button>
+                      )}
+                      <button className="danger-btn" type="button" onClick={() => setDeleteTarget(account)}>Delete</button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {activeUserTab === 'employees' && (
+            <div className="panel panel--raised">
+              <div className="panel-header"><div className="panel-header__title"><div className="panel-title-row"><span className="panel-title-icon"><OpsIcon name="plus" /></span><h2>Add new employee</h2></div><p>Create a role-scoped work account.</p></div></div>
+              <form className="panel-body form-stack" onSubmit={handleAddUser}>
+                <div className="input-group"><label htmlFor="new-user-name">Full Name</label><input id="new-user-name" type="text" value={newUser.name} onChange={(event) => setNewUser({ ...newUser, name: event.target.value })} required minLength={2} maxLength={120} /></div>
+                <div className="input-group"><label htmlFor="new-user-email">Work Email</label><input id="new-user-email" type="email" value={newUser.email} onChange={(event) => setNewUser({ ...newUser, email: event.target.value })} required autoComplete="off" /></div>
+                <div className="input-group"><label htmlFor="new-user-password">Temporary Password</label><input id="new-user-password" type="password" value={newUser.password} onChange={(event) => setNewUser({ ...newUser, password: event.target.value })} required minLength={12} maxLength={128} autoComplete="new-password" /><span className="field-hint">Use 12–128 characters and share it through an approved channel.</span></div>
+                <div className="input-group"><label htmlFor="new-user-role">Role</label><select id="new-user-role" value={newUser.role} onChange={(event) => setNewUser({ ...newUser, role: event.target.value })}><option value="PILOT">Pilot</option><option value="SALES">Sales Rep</option><option value="FLEET_MANAGER">Fleet Manager</option></select></div>
+                <div className="form-actions"><button type="submit" className="submit-btn">Create Account</button></div>
+              </form>
+            </div>
+          )}
+        </section>
+      )}
+
+      {activeTab === 'centers' && (
+        <section className="user-admin-grid">
+          <div className="panel panel--raised">
+            <div className="panel-header"><div className="panel-header__title"><div className="panel-title-row"><span className="panel-title-icon"><OpsIcon name="location" /></span><h2>Active Operating Centers</h2></div><p>{centers.length} center{centers.length === 1 ? '' : 's'} configured.</p></div></div>
+            <div className="data-stack">{centers.map((center) => <div className="data-row" key={center.id}><div className="data-row__main"><span className="data-row__title">{center.name}</span><span className="data-row__meta">Radius: {center.radiusKm} km | {center.latitude.toFixed(4)}, {center.longitude.toFixed(4)}</span></div><div className="data-row__actions"><button className="danger-btn" type="button" onClick={() => confirmDeleteCenter(center.id)}>Remove</button></div></div>)}</div>
           </div>
 
           <div className="panel panel--raised">
-            <div className="panel-header"><div className="panel-header__title"><div className="panel-title-row"><span className="panel-title-icon"><OpsIcon name="plus" /></span><h2>Add new employee</h2></div><p>Create a role-scoped work account.</p></div></div>
-            <form className="panel-body form-stack" onSubmit={handleAddUser}>
-              <div className="input-group"><label htmlFor="new-user-name">Full Name</label><input id="new-user-name" type="text" value={newUser.name} onChange={(event) => setNewUser({ ...newUser, name: event.target.value })} required minLength={2} maxLength={120} /></div>
-              <div className="input-group"><label htmlFor="new-user-email">Work Email</label><input id="new-user-email" type="email" value={newUser.email} onChange={(event) => setNewUser({ ...newUser, email: event.target.value })} required autoComplete="off" /></div>
-              <div className="input-group"><label htmlFor="new-user-password">Temporary Password</label><input id="new-user-password" type="password" value={newUser.password} onChange={(event) => setNewUser({ ...newUser, password: event.target.value })} required minLength={12} maxLength={128} autoComplete="new-password" /><span className="field-hint">Use 12–128 characters and share it through an approved channel.</span></div>
-              <div className="input-group"><label htmlFor="new-user-role">Role</label><select id="new-user-role" value={newUser.role} onChange={(event) => setNewUser({ ...newUser, role: event.target.value })}><option value="PILOT">Pilot</option><option value="SALES">Sales Rep</option><option value="FLEET_MANAGER">Fleet Manager</option></select></div>
-              <div className="form-actions"><button type="submit" className="submit-btn">Create Account</button></div>
-            </form>
+            <div className="panel-header"><div className="panel-header__title"><div className="panel-title-row"><span className="panel-title-icon"><OpsIcon name="plus" /></span><h2>Add New Center</h2></div><p>Click on the map to set HQ location.</p></div></div>
+            <div className="panel-body">
+              <div style={{ height: '300px', width: '100%', marginBottom: '1rem', border: '1px solid #ccc', borderRadius: '4px', overflow: 'hidden' }}>
+                <MapContainer center={[20.5937, 78.9629]} zoom={4} style={{ height: '100%', width: '100%' }}>
+                  <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="© OpenStreetMap" />
+                  <LocationMarker position={centerPosition} setPosition={setCenterPosition} />
+                  {centers.map(c => (
+                    <Circle key={c.id} center={[c.latitude, c.longitude]} radius={c.radiusKm * 1000} color="blue" fillColor="blue" fillOpacity={0.2} />
+                  ))}
+                  {centerPosition && <Circle center={centerPosition} radius={newCenter.radiusKm * 1000} color="green" fillColor="green" fillOpacity={0.4} />}
+                </MapContainer>
+              </div>
+              <form className="form-stack" onSubmit={handleAddCenter}>
+                <div className="input-group"><label>Center Name</label><input type="text" value={newCenter.name} onChange={(e) => setNewCenter({ ...newCenter, name: e.target.value })} required /></div>
+                <div className="input-group"><label>Radius (km)</label><input type="number" min="1" max="1000" value={newCenter.radiusKm} onChange={(e) => setNewCenter({ ...newCenter, radiusKm: Number(e.target.value) })} required /></div>
+                <div className="form-actions"><button type="submit" className="submit-btn" disabled={!centerPosition}>Add Center</button></div>
+              </form>
+            </div>
           </div>
         </section>
       )}
@@ -208,7 +358,7 @@ function AdminDashboard() {
       {activeTab === 'payments' && <PendingPaymentsPanel />}
       {activeTab === 'location' && <LiveLocationPanel />}
 
-      {passwordTarget && <div className="modal-backdrop" role="presentation"><section className="modal-card" role="dialog" aria-modal="true" aria-labelledby="password-dialog-title"><div className="modal-card__header"><div><p className="eyebrow">Credential reset</p><h2 id="password-dialog-title">Reset {passwordTarget.name}’s password</h2></div><button className="icon-button" type="button" aria-label="Close password reset" onClick={() => setPasswordTarget(null)}>×</button></div><form className="form-stack" onSubmit={submitPasswordReset}><div className="input-group"><label htmlFor="replacement-password">New temporary password</label><input id="replacement-password" type="password" value={replacementPassword} onChange={(event) => setReplacementPassword(event.target.value)} minLength={12} maxLength={128} autoComplete="new-password" required /><span className="field-hint">The application stores only a bcrypt hash.</span></div><div className="button-row button-row--end"><button type="button" className="action-btn" onClick={() => setPasswordTarget(null)}>Cancel</button><button type="submit" className="submit-btn">Update password</button></div></form></section></div>}
+      {passwordTarget && <div className="modal-backdrop" role="presentation"><section className="modal-card" role="dialog" aria-modal="true" aria-labelledby="password-dialog-title"><div className="modal-card__header"><div><p className="eyebrow">Credential reset</p><h2 id="password-dialog-title">Reset {passwordTarget.name}’s password</h2></div><button className="icon-button" type="button" aria-label="Close password reset" onClick={() => setPasswordTarget(null)}>×</button></div><form className="form-stack" onSubmit={submitPasswordReset}><div className="input-group"><label htmlFor="replacement-password">New temporary password</label><input id="replacement-password" type="password" value={replacementPassword} onChange={(event) => setPassword(event.target.value)} minLength={12} maxLength={128} autoComplete="new-password" required /><span className="field-hint">The application stores only a bcrypt hash.</span></div><div className="button-row button-row--end"><button type="button" className="action-btn" onClick={() => setPasswordTarget(null)}>Cancel</button><button type="submit" className="submit-btn">Update password</button></div></form></section></div>}
 
       {deleteTarget && <div className="modal-backdrop" role="presentation"><section className="modal-card" role="alertdialog" aria-modal="true" aria-labelledby="delete-dialog-title"><div className="modal-card__header"><div><p className="eyebrow">Confirm deletion</p><h2 id="delete-dialog-title">Delete {deleteTarget.name}?</h2></div></div><p className="muted">This account will be removed only if it is not linked to protected operational records.</p><div className="button-row button-row--end"><button type="button" className="action-btn" onClick={() => setDeleteTarget(null)}>Cancel</button><button type="button" className="danger-btn" onClick={() => void confirmDeleteUser()}>Delete account</button></div></section></div>}
     </OperationsShell>

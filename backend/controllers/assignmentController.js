@@ -99,6 +99,20 @@ exports.rescheduleAssignment = async (req, res) => {
     await assignmentRepository.createScheduleChange({ assignmentId: assignment.id, oldDate: before.scheduledDate, newDate: scheduledDate, changedBy: req.auth.userId, reason: req.body.reason });
     await auditLogRepository.create({ entityType: 'Assignment', entityId: assignment.id, action: 'RESCHEDULE', actorId: req.auth.userId, beforeState: before, afterState: assignment, reason: req.body.reason });
     await notificationCascadeService.createSalesNotifications('RESCHEDULE', before.leadId, `Assignment for ${before.lead.farmerName} was rescheduled from ${before.scheduledDate.toISOString()} to ${scheduledDate.toISOString()}.`);
+    
+    // Notify Farmer and Pilot of Reschedule
+    try {
+      await whatsappService.sendMissionScheduled(lead, assignment.scheduledDate);
+      if (newPilotId !== before.pilotId) {
+        // Stop old pilot notifications? We should ideally stop it, but for now we just start new ones.
+        await notificationCascadeService.start(assignment);
+      } else {
+        await notificationCascadeService.start(assignment);
+      }
+    } catch(err) {
+      console.error("Reschedule notifications failed:", err);
+    }
+
     res.json({ success: true, mission: assignment, lead });
   } catch (error) { res.status(400).json({ error: error.message || 'Failed to reschedule assignment' }); }
 };

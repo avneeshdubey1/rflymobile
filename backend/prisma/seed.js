@@ -32,6 +32,9 @@ async function main() {
   const kanyakumari = await prisma.operatingCenter.create({
     data: { name: 'Kanyakumari Branch', latitude: 8.088, longitude: 77.538, radiusKm: 50 },
   });
+  const srivilliputur = await prisma.operatingCenter.create({
+    data: { name: 'Srivilliputur Branch', latitude: 9.5167, longitude: 77.6333, radiusKm: 50 },
+  });
 
   const userPasswordHashes = await Promise.all(Array.from({ length: 8 }, () => hashPassword(demoPassword)));
   const admin = await prisma.user.create({

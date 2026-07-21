@@ -13,6 +13,7 @@ enum Role {
   FLEET_MANAGER
   PILOT
   FARMER
+  BUSINESS
 }
 
 enum LeadStatus {
@@ -21,6 +22,7 @@ enum LeadStatus {
   APPEAL_PENDING          // farmer requested to pay extra / be reconsidered
   PROCESSED               // verified, inside range, ready for auto-assignment
   NEEDS_MANUAL_SCHEDULING // auto-assignment found no valid candidates
+  MANUAL_CALL_REQUIRED    // farmer claims to have chemicals but no proof attached
   SCHEDULED               // pilot+drone assigned, awaiting pilot acceptance
   PILOT_ACCEPTED
   IN_PROGRESS
@@ -91,6 +93,7 @@ model User {
   passwordHash         String
   role                 Role
   preferredLanguage    String    @default("ta")   // ISO-ish code, see §10
+  preferences          Json      @default("{}")
   active               Boolean   @default(true)
   authVersion          Int       @default(1)
   emailVerifiedAt      DateTime?
@@ -107,9 +110,14 @@ model User {
   village              String?
   district             String?
 
+  // Business-specific
+  businessName         String?
+  gstNo                String?
+  contactPerson        String?
+  address              String?
+
   assignments          Assignment[]     @relation("PilotAssignments")
-  chatSessionsAsPilot  ChatSession[]    @relation("PilotChats")
-  chatSessionsAsAdmin  ChatSession[]    @relation("AdminChats")
+  chatSessions         ChatSession[]    @relation("ChatParticipants")
   notifications        Notification[]
   authSessions         AuthSession[]
   recoveryChallenges   PasswordRecoveryChallenge[]
@@ -184,6 +192,19 @@ model Lead {
   matchedCenter    OperatingCenter? @relation(fields: [matchedCenterId], references: [id])
   matchedCenterId  String?
   distanceFromCenterKm Float?
+  
+  // Comprehensive form fields
+  soilType         String?
+  cropAgeWeeks     Int?
+  chemicalBrand    String?
+  sprayPurpose     String?
+  hasChemical      Boolean       @default(true)
+  chemicalProofUrl String?
+  expectedDate     DateTime?
+  expectedTime     String?
+  waterBodyNearby  Boolean       @default(false)
+  terrainType      String?
+
   createdAt        DateTime      @default(now())
   processedAt      DateTime?
 
@@ -191,6 +212,7 @@ model Lead {
   appeal           OutOfRangeAppeal?
   notifications    Notification[]
   payments         PaymentRecord[]
+  chatSessions     ChatSession[]
 }
 
 model OutOfRangeAppeal {
@@ -282,13 +304,13 @@ model ScheduleChangeLog {
 
 model ChatSession {
   id                  String    @id @default(uuid())
-  admin               User      @relation("AdminChats", fields: [adminId], references: [id])
-  adminId             String
-  pilot                User      @relation("PilotChats", fields: [pilotId], references: [id])
-  pilotId             String
+  lead                Lead?     @relation(fields: [leadId], references: [id])
+  leadId              String?
+  participants        User[]    @relation("ChatParticipants")
   status              String    @default("OPEN")
   firstResponseReadAt DateTime?
   lastActivityAt      DateTime  @default(now())
+  archivedAt          DateTime?
   closedAt            DateTime?
   createdAt           DateTime  @default(now())
 

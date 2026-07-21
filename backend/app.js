@@ -46,6 +46,7 @@ function createApp({ config = loadEnvironment() } = {}) {
   app.use('/api/system', require('./routes/systemRoutes'));
   app.use('/api/bhumeet', require('./routes/bhumeetRoutes'));
   app.use('/api/acreage', require('./routes/acreageRoutes'));
+  app.use('/api/centers', require('./routes/centerRoutes'));
   app.use(notFound);
   app.use(errorHandler);
   return app;

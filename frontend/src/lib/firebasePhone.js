@@ -11,7 +11,13 @@ export function normalizeIndianPhone(value) {
 }
 
 export function clearPhoneRecaptcha() {
-  if (window.recaptchaVerifier) window.recaptchaVerifier.clear();
+  if (window.recaptchaVerifier) {
+    try {
+      window.recaptchaVerifier.clear();
+    } catch (err) {
+      console.warn('Recaptcha clear error:', err);
+    }
+  }
   window.recaptchaVerifier = null;
   const container = document.getElementById('recaptcha-container');
   if (container) container.replaceChildren();
@@ -19,6 +25,13 @@ export function clearPhoneRecaptcha() {
 
 export function getPhoneRecaptcha() {
   if (!auth) throw new Error('Firebase phone authentication is not configured.');
+  
+  const container = document.getElementById('recaptcha-container');
+  // If the container is empty, the old verifier's iframe was destroyed.
+  if (window.recaptchaVerifier && container && !container.hasChildNodes()) {
+    window.recaptchaVerifier = null;
+  }
+
   if (!window.recaptchaVerifier) {
     window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', { size: 'invisible' });
   }

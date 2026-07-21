@@ -17,7 +17,13 @@ exports.getSessions = async (req, res) => {
 
 exports.createSession = async (req, res) => {
   try {
-    const result = await chatLifecycleService.createOrFindSession(req.auth, req.body.participantId);
+    const { type, participantId, leadId } = req.body;
+    let result;
+    if (type === 'LEAD') {
+        result = await chatLifecycleService.createOrFindLeadSession(req.auth, leadId);
+    } else {
+        result = await chatLifecycleService.createOrFindDirectSession(req.auth, participantId);
+    }
     return res.status(result.created ? 201 : 200).json({ success: true, ...result });
   } catch (error) { return respondError(res, error); }
 };

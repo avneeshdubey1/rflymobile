@@ -5,8 +5,12 @@ import { clearQueuedActions } from '../services/offlineActionQueue';
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(() => {
-    const savedUser = sessionStorage.getItem('user');
-    return savedUser ? JSON.parse(savedUser) : null;
+    try {
+      const savedUser = sessionStorage.getItem('user');
+      return savedUser && savedUser !== 'undefined' ? JSON.parse(savedUser) : null;
+    } catch {
+      return null;
+    }
   });
   const [token, setToken] = useState(() => sessionStorage.getItem('token'));
 
@@ -15,6 +19,19 @@ export const AuthProvider = ({ children }) => {
     setToken(accessToken);
     sessionStorage.setItem('user', JSON.stringify(userData));
     sessionStorage.setItem('token', accessToken);
+    
+    // Sync language from backend
+    fetch(`${API_URL}/api/users/preferences`, {
+      headers: { 'Authorization': `Bearer ${accessToken}` }
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && data.preferences?.language) {
+          localStorage.setItem('preferredLanguage', data.preferences.language);
+          window.dispatchEvent(new Event('storage')); // trigger updates if necessary
+        }
+      })
+      .catch(console.error);
   };
 
   const logout = () => {

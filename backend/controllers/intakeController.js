@@ -18,9 +18,16 @@ exports.website = async (req, res) => {
       farmerName: req.body.farmerName, farmerPhone: req.body.farmerPhone || req.body.phone,
       acreage: req.body.acreage ?? req.body.acres, cropType: req.body.cropType, farmerAddress: req.body.village,
       preferredLanguage: req.body.preferredLanguage || 'ta', intakeChannel: 'WEBSITE', ...coordinates,
+      ...req.body
     });
+    
+    let assignment = null;
+    if (result.lead.status === 'PROCESSED') {
+      assignment = await intakeService.triggerAutoAssignment(result.lead.id);
+    }
+    
     logger.info('intake.website.created', { leadId: result.lead.id, intakeChannel: 'WEBSITE' });
-    res.status(201).json({ success: true, lead: result.lead, inRange: Boolean(result.geofence.matchedCenter), appealOffer: result.appealOffer });
+    res.status(201).json({ success: true, lead: result.lead, assignment, inRange: Boolean(result.geofence.matchedCenter), appealOffer: result.appealOffer });
   } catch (error) { res.status(400).json({ error: error.message || 'Failed to submit service request' }); }
 };
 

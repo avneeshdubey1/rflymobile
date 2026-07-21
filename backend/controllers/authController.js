@@ -95,7 +95,8 @@ exports.completeFarmerSignup = async (req, res) => {
       phoneVerifiedAt: new Date(),
     });
 
-    return res.status(201).json({ success: true, registered: true });
+    const token = issueToken(user);
+    return res.status(201).json(farmerResponse(user, token));
   } catch (error) {
     console.error('Farmer signup error:', error);
     return res.status(error.status || 500).json({ error: error.status ? error.message : 'Signup failed' });

@@ -4,6 +4,8 @@ const geofenceService = require('./geofenceService');
 const whatsappService = require('./whatsappService');
 const i18nService = require('./i18nService');
 const pricingConfigRepository = require('../src/repositories/pricingConfigRepository');
+const autoAssignmentService = require('./autoAssignmentService');
+const logger = require('./loggerService');
 
 function isCoordinate(value, minimum, maximum) {
   return typeof value === 'number' && Number.isFinite(value) && value >= minimum && value <= maximum;
@@ -35,22 +37,63 @@ async function createLead(input) {
   if (!['WEBSITE', 'GOOGLE_FORM', 'MANUAL_SALES'].includes(intakeChannel)) throw new Error('A valid intake channel is required');
   if (!isCoordinate(latitude, -90, 90) || !isCoordinate(longitude, -180, 180)) throw new Error('A valid latitude and longitude are required for geofencing');
 
+  let status = 'NEW';
+  let addedNotes = [];
+
+  if (optional.waterBodyNearby === true) {
+    status = 'FLAGGED';
+    addedNotes.push('REQUIRES BUFFER ZONE REVIEW');
+  }
+
+  if (optional.terrainType === 'Mountainous') {
+    status = 'FLAGGED';
+    addedNotes.push('HIGH TERRAIN RISK');
+  }
+
+  if (optional.hasChemical === false) {
+    addedNotes.push(`COMPANY PROCUREMENT NEEDED: ${optional.chemicalBrand || 'Unknown brand'}`);
+  } else if (optional.hasChemical === true && !optional.chemicalProofUrl) {
+    status = 'MANUAL_CALL_REQUIRED';
+  }
+
+  if (optional.expectedDate) {
+    const sprayDate = new Date(optional.expectedDate);
+    const maxDate = new Date();
+    maxDate.setMonth(maxDate.getMonth() + 3);
+    if (sprayDate > maxDate) {
+      throw new Error('Expected date cannot be more than 3 months in advance');
+    }
+    optional.expectedDate = sprayDate;
+  }
+
   const geofence = await geofenceService.evaluate(latitude, longitude);
-  let status = 'OUT_OF_RANGE';
+  
   if (intakeChannel === 'MANUAL_SALES') {
     status = 'PROCESSED';
   } else if (geofence.matchedCenter) {
-    status = intakeChannel === 'GOOGLE_FORM' ? 'PROCESSED' : 'NEW';
+    if (status === 'NEW') status = 'PROCESSED';
+  } else {
+    status = 'OUT_OF_RANGE';
+    addedNotes.push(`Geofence failed. Distance from nearest center: ${geofence.distanceKm ? geofence.distanceKm.toFixed(2) : 'N/A'}km`);
   }
+
+  const newNotes = [optional.notes, ...addedNotes].filter(Boolean).join('\n');
   
   delete optional.status;
   delete optional.processedAt;
+  delete optional.notes;
+  delete optional.mapsLink;
+  delete optional.phone;
+  delete optional.acres;
+  delete optional.village;
 
   const lead = await leadRepository.create({
     farmerName: normalizedName, farmerPhone: normalizedPhone, acreage: normalizedAcreage, intakeChannel, latitude, longitude,
     status, matchedCenterId: geofence.matchedCenter?.id || null, distanceFromCenterKm: geofence.distanceKm,
+    notes: newNotes,
     processedAt: status === 'PROCESSED' ? new Date() : null, preferredLanguage: i18nService.normalizeLanguage(preferredLanguage), ...optional,
   });
+  
   await auditLogRepository.create({ entityType: 'Lead', entityId: lead.id, action: 'CREATED', afterState: lead });
   await auditLogRepository.create({ entityType: 'Lead', entityId: lead.id, action: 'GEOFENCE_CHECKED', afterState: { status, matchedCenterId: lead.matchedCenterId, distanceFromCenterKm: lead.distanceFromCenterKm } });
   if (status === 'PROCESSED') await whatsappService.sendForStatus(lead, 'PROCESSED');
@@ -59,4 +102,13 @@ async function createLead(input) {
   return { lead, geofence, appealOffer };
 }
 
-module.exports = { createLead };
+async function triggerAutoAssignment(leadId) {
+  try {
+    return await autoAssignmentService.autoAssignProcessedLead(leadId);
+  } catch (err) {
+    logger.error('Failed to trigger auto assignment from intake', err);
+    return null;
+  }
+}
+
+module.exports = { createLead, triggerAutoAssignment };

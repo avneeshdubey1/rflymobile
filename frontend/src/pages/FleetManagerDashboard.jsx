@@ -31,6 +31,9 @@ function FleetManagerDashboard() {
   const [selectedPilotId, setSelectedPilotId] = useState('');
   const [notice, setNotice] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [centers, setCenters] = useState([]);
+  const [newPilot, setNewPilot] = useState({ name: '', email: '', password: '', homeCenterId: '' });
+  const [newDrone, setNewDrone] = useState({ model: '', serialNumber: '', homeCenterId: '' });
 
   const showNotice = useCallback((kind, message) => setNotice({ kind, message }), []);
   const request = useCallback(async (url, options) => {
@@ -42,13 +45,14 @@ function FleetManagerDashboard() {
 
   const fetchData = useCallback(async () => {
     try {
-      const [leadData, pilotData, droneData, assignmentData] = await Promise.all([
-        request('/api/leads/pending'), request('/api/users/pilots'), request('/api/drones/all'), request('/api/assignments/all'),
+      const [leadData, pilotData, droneData, assignmentData, centerData] = await Promise.all([
+        request('/api/leads/pending'), request('/api/users/pilots'), request('/api/drones/all'), request('/api/assignments/all'), request('/api/centers/all')
       ]);
       setLeads(leadData.leads || []);
       setPilots(pilotData.pilots || []);
       setDrones(droneData.drones || []);
       setAssignments(assignmentData.missions || []);
+      setCenters(centerData.centers || []);
     } catch (error) { showNotice('error', error.message); }
     finally { setLoading(false); }
   }, [request, showNotice]);
@@ -113,8 +117,47 @@ function FleetManagerDashboard() {
     setActiveSection(id);
     window.setTimeout(() => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0);
   };
+  
+  const handleAddPilot = async (e) => {
+    e.preventDefault();
+    try {
+      await request('/api/users/add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...newPilot, role: 'PILOT' }) });
+      setNewPilot({ name: '', email: '', password: '', homeCenterId: '' });
+      showNotice('success', 'Pilot added. Requires admin approval to activate.');
+      await fetchData();
+    } catch (error) { showNotice('error', error.message); }
+  };
+
+  const handleAddDrone = async (e) => {
+    e.preventDefault();
+    try {
+      await request('/api/drones/add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newDrone) });
+      setNewDrone({ model: '', serialNumber: '', homeCenterId: '' });
+      showNotice('success', 'Drone registered.');
+      await fetchData();
+    } catch (error) { showNotice('error', error.message); }
+  };
+
+  const handleResolveMaintenance = async (droneId, action) => {
+    try {
+      await request('/api/drones/resolve-maintenance', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ droneId, action }) });
+      showNotice('success', action === 'approve' ? 'Maintenance approved.' : 'Maintenance rejected.');
+      await fetchData();
+    } catch (error) { showNotice('error', error.message); }
+  };
+  
+  const requestMaintenance = async (droneId) => {
+    try {
+      await request('/api/drones/request-maintenance', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ droneId, reason: 'Fleet manager request' }) });
+      showNotice('success', 'Maintenance requested.');
+      await fetchData();
+    } catch (error) { showNotice('error', error.message); }
+  };
+
   const navItems = [
     { id: 'schedule', label: 'Scheduling board', icon: 'calendar', badge: manualQueue.length || null },
+    { id: 'pilots', label: 'Pilots', icon: 'users' },
+    { id: 'drones', label: 'Drones', icon: 'drone' },
     { id: 'location', label: 'Live Pilot GPS', icon: 'location' },
     { id: 'bhumeet', label: 'Bhumeet Logs', icon: 'list' },
     { id: 'acreage', label: 'Acreage Trend', icon: 'database' },
@@ -122,6 +165,7 @@ function FleetManagerDashboard() {
 
   return (
     <OperationsShell roleLabel="Fleet operations" navItems={navItems} activeTab={activeSection} onTabChange={selectSection} user={user} logout={logout}>
+      {activeSection === 'schedule' && (
       <section id="schedule">
         <header className="page-header">
           <div className="page-header__copy"><p className="eyebrow">Fleet manager</p><h1>Exception scheduling calendar</h1><p>Resolve requests that need a human scheduling decision and monitor current allocations.</p></div>
@@ -145,7 +189,7 @@ function FleetManagerDashboard() {
               <div className="section-gap">
                 {loading && <div className="empty-state"><strong>Loading scheduling data…</strong><span>Checking people, aircraft, and assignments.</span></div>}
                 {!loading && !manualQueue.length && <div className="empty-state"><strong>No scheduling exceptions</strong><span>All verified requests have an assignment path.</span></div>}
-                {manualQueue.map((lead) => <article key={lead.id} className="queue-card" draggable onDragStart={() => setDraggedLead({ ...lead, title: lead.farmerName })} onDragEnd={() => setDraggedLead(null)}><strong>{lead.farmerName}</strong><p className="caption">{lead.village || 'Location pending'} · {lead.acreage} acres</p><p className="queue-card__warning">{lead.notes || 'No automatic match was available.'}</p><button type="button" className="submit-btn button-wide" onClick={() => scheduleSelectedLead(lead)}>Schedule on selected date</button></article>)}
+                {manualQueue.map((lead) => <article key={lead.id} className="queue-card" draggable onDragStart={() => setDraggedLead({ ...lead, title: lead.farmerName })}><strong>{lead.farmerName}</strong><p className="caption">{lead.village || 'Location pending'} · {lead.acreage} acres</p><p className="queue-card__warning">{lead.notes || 'No automatic match was available.'}</p><button type="button" className="submit-btn button-wide" onClick={() => scheduleSelectedLead(lead)}>Schedule on selected date</button></article>)}
               </div>
             </div>
           </aside>
@@ -156,9 +200,50 @@ function FleetManagerDashboard() {
           </section>
         </section>
       </section>
+      )}
 
-      <section id="location" className="section-gap"><LiveLocationPanel /></section>
-      <section id="bhumeet" className="section-gap"><BhumeetLogbook /></section>
+      {activeSection === 'pilots' && (
+        <section className="user-admin-grid">
+          {notice && <div role="alert" className={`notice notice--${notice.kind}`}><span>{notice.message}</span><button type="button" className="notice__close" onClick={() => setNotice(null)} aria-label="Dismiss message">×</button></div>}
+          <div className="panel panel--raised">
+            <div className="panel-header"><div className="panel-header__title"><div className="panel-title-row"><span className="panel-title-icon"><OpsIcon name="users" /></span><h2>Registered Pilots</h2></div><p>{pilots.length} pilot(s).</p></div></div>
+            <div className="data-stack">{pilots.map((pilot) => <div className="data-row" key={pilot.id}><div className="data-row__main"><span className="data-row__title">{pilot.name}</span><span className="data-row__meta">{pilot.email} | Center: {pilot.homeCenter?.name || 'N/A'}</span><span className={`status-badge status-badge--${pilot.active ? 'success' : 'danger'}`}>{pilot.active ? 'Active' : 'Pending Admin Approval'}</span></div></div>)}</div>
+          </div>
+          <div className="panel panel--raised">
+            <div className="panel-header"><div className="panel-header__title"><div className="panel-title-row"><span className="panel-title-icon"><OpsIcon name="plus" /></span><h2>Add Pilot</h2></div><p>Register a new pilot. Requires admin activation.</p></div></div>
+            <form className="panel-body form-stack" onSubmit={handleAddPilot}>
+              <div className="input-group"><label>Full Name</label><input type="text" value={newPilot.name} onChange={(e) => setNewPilot({ ...newPilot, name: e.target.value })} required /></div>
+              <div className="input-group"><label>Email</label><input type="email" value={newPilot.email} onChange={(e) => setNewPilot({ ...newPilot, email: e.target.value })} required /></div>
+              <div className="input-group"><label>Temporary Password</label><input type="password" value={newPilot.password} onChange={(e) => setNewPilot({ ...newPilot, password: e.target.value })} minLength={12} required /></div>
+              <div className="input-group"><label>Home Center</label><select value={newPilot.homeCenterId} onChange={(e) => setNewPilot({ ...newPilot, homeCenterId: e.target.value })} required><option value="">Select Center</option>{centers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
+              <div className="form-actions"><button type="submit" className="submit-btn">Add Pilot</button></div>
+            </form>
+          </div>
+        </section>
+      )}
+
+      {activeSection === 'drones' && (
+        <section className="user-admin-grid">
+          {notice && <div role="alert" className={`notice notice--${notice.kind}`}><span>{notice.message}</span><button type="button" className="notice__close" onClick={() => setNotice(null)} aria-label="Dismiss message">×</button></div>}
+          <div className="panel panel--raised">
+            <div className="panel-header"><div className="panel-header__title"><div className="panel-title-row"><span className="panel-title-icon"><OpsIcon name="drone" /></span><h2>Fleet Aircraft</h2></div><p>{drones.length} drone(s).</p></div></div>
+            <div className="data-stack">{drones.map((drone) => <div className="data-row" key={drone.id}><div className="data-row__main"><span className="data-row__title">{drone.model} - {drone.serialNumber}</span><span className="data-row__meta">Center: {drone.homeCenter?.name || 'N/A'}</span><span className="status-badge">{readableStatus(drone.status)}</span></div><div className="data-row__actions">{drone.status === 'AVAILABLE' && <button className="action-btn" type="button" onClick={() => requestMaintenance(drone.id)}>Request Maintenance</button>}{drone.status === 'MAINTENANCE' && drone.maintenanceRequest && <button className="action-btn" type="button" onClick={() => handleResolveMaintenance(drone.id, 'approve')}>Approve Maintenance</button>}</div></div>)}</div>
+          </div>
+          <div className="panel panel--raised">
+            <div className="panel-header"><div className="panel-header__title"><div className="panel-title-row"><span className="panel-title-icon"><OpsIcon name="plus" /></span><h2>Add Drone</h2></div><p>Register new aircraft.</p></div></div>
+            <form className="panel-body form-stack" onSubmit={handleAddDrone}>
+              <div className="input-group"><label>Model Name</label><input type="text" value={newDrone.model} onChange={(e) => setNewDrone({ ...newDrone, model: e.target.value })} required /></div>
+              <div className="input-group"><label>Serial Number</label><input type="text" value={newDrone.serialNumber} onChange={(e) => setNewDrone({ ...newDrone, serialNumber: e.target.value })} required /></div>
+              <div className="input-group"><label>Home Center</label><select value={newDrone.homeCenterId} onChange={(e) => setNewDrone({ ...newDrone, homeCenterId: e.target.value })} required><option value="">Select Center</option>{centers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
+              <div className="form-actions"><button type="submit" className="submit-btn">Register Drone</button></div>
+            </form>
+          </div>
+        </section>
+      )}
+
+      {activeSection === 'location' && <section id="location" className="section-gap"><LiveLocationPanel /></section>}
+      {activeSection === 'bhumeet' && <section id="bhumeet" className="section-gap"><BhumeetLogbook /></section>}
+      {activeSection === 'acreage' && <section id="acreage" className="section-gap"><AcreageTrend /></section>}
     </OperationsShell>
   );
 }

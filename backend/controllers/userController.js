@@ -23,6 +23,11 @@ exports.addUser = async (req, res) => {
     const email = normalizeEmail(req.body.email);
     validatePassword(req.body.password);
     const passwordHash = await hashPassword(req.body.password);
+    if (req.auth.role === 'FLEET_MANAGER' && role !== 'PILOT') {
+      return res.status(403).json({ error: 'Fleet Managers can only add pilots' });
+    }
+    const isActive = req.auth.role === 'ADMIN';
+
     const user = await userRepository.create({
       email,
       name,
@@ -30,6 +35,7 @@ exports.addUser = async (req, res) => {
       homeCenterId: req.body.homeCenterId || null,
       role,
       passwordHash,
+      active: isActive
     });
     await auditLogRepository.create({ entityType: 'User', entityId: user.id, action: 'CREATED', actorId: req.auth.userId, afterState: user });
     res.status(201).json({ success: true, user });
@@ -60,4 +66,52 @@ exports.editPassword = async (req, res) => {
     res.status(validationError ? 400 : 404).json({ error: validationError ? error.message : 'User not found' });
   }
 };
-exports.toggleActive = async (_req, res) => res.status(501).json({ error: 'User activation is not in the approved schema' });
+exports.toggleActive = async (req, res) => {
+  try {
+    const prisma = require('../src/lib/prisma');
+    const user = await prisma.user.findUnique({ where: { id: req.body.userId } });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    const updatedUser = await prisma.user.update({
+      where: { id: user.id },
+      data: { active: !user.active }
+    });
+    await auditLogRepository.create({ entityType: 'User', entityId: user.id, action: 'TOGGLE_ACTIVE', actorId: req.auth.userId, beforeState: user, afterState: updatedUser });
+    res.json({ success: true, user: updatedUser });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to toggle user active status' });
+  }
+};
+
+exports.getPreferences = async (req, res) => {
+  try {
+    const prisma = require('../src/lib/prisma');
+    const user = await prisma.user.findUnique({ where: { id: req.auth.userId } });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    res.json({ success: true, preferences: user.preferences });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch preferences' });
+  }
+};
+
+exports.updatePreferences = async (req, res) => {
+  try {
+    const prisma = require('../src/lib/prisma');
+    const user = await prisma.user.findUnique({ where: { id: req.auth.userId } });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    
+    const updatedPreferences = {
+      ...(typeof user.preferences === 'object' && user.preferences ? user.preferences : {}),
+      ...req.body
+    };
+
+    const updatedUser = await prisma.user.update({
+      where: { id: user.id },
+      data: { preferences: updatedPreferences }
+    });
+    
+    await auditLogRepository.create({ entityType: 'User', entityId: user.id, action: 'UPDATE_PREFERENCES', actorId: req.auth.userId, beforeState: user.preferences, afterState: updatedPreferences });
+    res.json({ success: true, preferences: updatedUser.preferences });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to update preferences' });
+  }
+};

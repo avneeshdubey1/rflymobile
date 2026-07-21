@@ -17,6 +17,10 @@ const safeSelect = {
   archivedAt: true,
   village: true,
   district: true,
+  businessName: true,
+  gstNo: true,
+  contactPerson: true,
+  address: true,
 };
 
 async function updateSecuritySensitive(id, data, revokeReason) {

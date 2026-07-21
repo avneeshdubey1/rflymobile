@@ -2,7 +2,9 @@ import { useState } from 'react';
 import { useAuth } from '../context/useAuth';
 import OperationsShell from '../components/OperationsShell';
 import OpsIcon from '../components/OpsIcon';
+import TerrainMap from '../components/TerrainMap';
 import { API_URL as API } from '../config';
+import { useTranslation } from 'react-i18next';
 
 const statusLabel = (status) => String(status || 'UNKNOWN').replaceAll('_', ' ').toLowerCase();
 const statusTone = (status) => {
@@ -14,6 +16,7 @@ const statusTone = (status) => {
 
 export default function FarmerDashboard() {
   const { user, logout } = useAuth();
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState('services');
   const [leads, setLeads] = useState([]);
   const [busy, setBusy] = useState(false);
@@ -24,7 +27,17 @@ export default function FarmerDashboard() {
     cropType: '', 
     village: user?.village || '', 
     district: user?.district || '', 
-    mapsLink: '' 
+    mapsLink: '',
+    soilType: '',
+    cropAgeWeeks: '',
+    chemicalBrand: '',
+    sprayPurpose: [],
+    hasChemical: true,
+    chemicalProofUrl: '',
+    expectedDate: '',
+    expectedTime: '',
+    waterBodyNearby: false,
+    terrainType: ''
   });
   
   const submitRequest = async (e) => {
@@ -38,7 +51,17 @@ export default function FarmerDashboard() {
         acreage: parseFloat(form.acreage),
         cropType: form.cropType,
         village: `${form.village}, ${form.district}`,
-        mapsLink: form.mapsLink
+        mapsLink: form.mapsLink,
+        soilType: form.soilType,
+        cropAgeWeeks: form.cropAgeWeeks ? parseInt(form.cropAgeWeeks) : undefined,
+        chemicalBrand: form.chemicalBrand,
+        sprayPurpose: Array.isArray(form.sprayPurpose) ? form.sprayPurpose.join(', ') : form.sprayPurpose,
+        hasChemical: form.hasChemical,
+        chemicalProofUrl: form.chemicalProofUrl,
+        expectedDate: form.expectedDate,
+        expectedTime: form.expectedTime,
+        waterBodyNearby: form.waterBodyNearby,
+        terrainType: form.terrainType
       };
       
       const response = await fetch(`${API}/api/leads/new`, {
@@ -62,17 +85,17 @@ export default function FarmerDashboard() {
   };
 
   const navItems = [
-    { id: 'services', label: 'My Services', icon: 'location' },
-    { id: 'new-request', label: 'Request Drone', icon: 'plus' },
+    { id: 'services', label: t('My Services'), icon: 'location' },
+    { id: 'new-request', label: t('Request Drone'), icon: 'plus' },
   ];
 
   return (
-    <OperationsShell roleLabel="Farmer Workspace" navItems={navItems} activeTab={activeTab} onTabChange={setActiveTab} user={user} logout={logout}>
+    <OperationsShell roleLabel={t("Farmer Workspace")} navItems={navItems} activeTab={activeTab} onTabChange={setActiveTab} user={user} logout={logout}>
       <header className="page-header">
         <div className="page-header__copy">
           <p className="eyebrow">FARMER PORTAL</p>
-          <h1>{activeTab === 'services' ? 'My Services' : 'Request Drone Service'}</h1>
-          <p>{activeTab === 'services' ? 'Track your active and past drone service requests.' : 'Provide details about your farm to request a drone spraying service.'}</p>
+          <h1>{activeTab === 'services' ? t('My Services') : t('Request Drone Service')}</h1>
+          <p>{activeTab === 'services' ? t('Track your active and past drone service requests.') : t('Provide details about your farm to request a drone spraying service.')}</p>
         </div>
       </header>
 
@@ -89,9 +112,9 @@ export default function FarmerDashboard() {
             <div className="panel-header__title">
               <div className="panel-title-row">
                 <span className="panel-title-icon"><OpsIcon name="drone" /></span>
-                <h2>Recent Requests</h2>
+                <h2>{t('Recent Requests')}</h2>
               </div>
-              <p>Your requested services will appear here.</p>
+              <p>{t('Your requested services will appear here.')}</p>
             </div>
           </div>
           {leads.length > 0 ? (
@@ -99,7 +122,7 @@ export default function FarmerDashboard() {
               {leads.map(lead => (
                 <div className="data-row" key={lead.id}>
                   <div className="data-row__main">
-                    <span className="data-row__title">{lead.acreage} Acres - {lead.cropType || 'Crop'}</span>
+                    <span className="data-row__title">{lead.acreage} {t('Acres')} - {lead.cropType || t('Crop')}</span>
                     <span className="data-row__meta">{new Date(lead.createdAt).toLocaleDateString()} • {lead.farmerAddress}</span>
                     <span className={`status-badge status-badge--${statusTone(lead.status)}`}>{statusLabel(lead.status)}</span>
                   </div>
@@ -109,8 +132,8 @@ export default function FarmerDashboard() {
           ) : (
             <div className="panel-body">
               <div className="empty-state empty-state--center">
-                <strong>No active requests found</strong>
-                <span>Click on 'Request Drone' to book your first service.</span>
+                <strong>{t('No active requests found')}</strong>
+                <span>{t("Click on 'Request Drone' to book your first service.")}</span>
               </div>
             </div>
           )}
@@ -123,42 +146,175 @@ export default function FarmerDashboard() {
             <div className="panel-header__title">
               <div className="panel-title-row">
                 <span className="panel-title-icon"><OpsIcon name="plus" /></span>
-                <h2>Service Details</h2>
+                <h2>{t('Service Details')}</h2>
               </div>
-              <p>Fill in the form to book a flight.</p>
+              <p>{t('Fill in the form to book a flight.')}</p>
             </div>
           </div>
-          <form className="panel-body form-stack" onSubmit={submitRequest}>
-            <div className="row-group">
-              <div className="input-group">
-                <label>Farm Size (Acres)</label>
-                <input type="number" step="0.1" min="0.1" required disabled={busy} value={form.acreage} onChange={e => setForm({...form, acreage: e.target.value})} placeholder="e.g. 2.5" />
+          <form className="panel-body" style={{ padding: '1.5rem', background: 'var(--canvas)' }} onSubmit={submitRequest}>
+            
+            {/* Section 1: Farm Details */}
+            <div style={{ background: 'var(--surface-raised)', padding: '1.25rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', marginBottom: '1.25rem', boxShadow: 'var(--shadow-sm)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.1rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.6rem' }}>
+                <OpsIcon name="leaf" size={20} style={{ color: 'var(--primary)' }} />
+                <h3 style={{ margin: 0, color: 'var(--text-primary)', fontSize: '1.15rem', fontWeight: 750 }}>{t('Farm Details')}</h3>
               </div>
-              <div className="input-group">
-                <label>Crop Type</label>
-                <input type="text" required disabled={busy} value={form.cropType} onChange={e => setForm({...form, cropType: e.target.value})} placeholder="e.g. Paddy, Cotton" />
+              <div className="form-stack">
+                <div className="row-group">
+                  <div className="input-group">
+                    <label>{t('Farm Size (Acres)')}</label>
+                    <input type="number" step="0.1" min="0.1" required disabled={busy} value={form.acreage} onChange={e => setForm({...form, acreage: e.target.value})} placeholder={t('e.g. 2.5')} />
+                  </div>
+                  <div className="input-group">
+                    <label>{t('Crop Type')}</label>
+                    <input type="text" required disabled={busy} value={form.cropType} onChange={e => setForm({...form, cropType: e.target.value})} placeholder={t('e.g. Paddy, Cotton')} />
+                  </div>
+                </div>
+                <div className="row-group">
+                  <div className="input-group">
+                    <label>{t('Soil Type')}</label>
+                    <input type="text" disabled={busy} value={form.soilType} onChange={e => setForm({...form, soilType: e.target.value})} placeholder={t('e.g. Black soil, Red soil')} />
+                  </div>
+                  <div className="input-group">
+                    <label>{t('Crop Age (Weeks)')}</label>
+                    <input type="number" disabled={busy} value={form.cropAgeWeeks} onChange={e => setForm({...form, cropAgeWeeks: e.target.value})} placeholder={t('e.g. 4')} />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Section 2: Spraying Requirements */}
+            <div style={{ background: 'var(--surface-raised)', padding: '1.25rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', marginBottom: '1.25rem', boxShadow: 'var(--shadow-sm)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.1rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.6rem' }}>
+                <OpsIcon name="drone" size={20} style={{ color: 'var(--primary)' }} />
+                <h3 style={{ margin: 0, color: 'var(--text-primary)', fontSize: '1.15rem', fontWeight: 750 }}>{t('Spraying Requirements')}</h3>
+              </div>
+              <div className="form-stack">
+                <div className="row-group">
+                  <div className="input-group">
+                    <label>{t('Expected Spraying Date')}</label>
+                    <input type="date" disabled={busy} value={form.expectedDate} onChange={e => setForm({...form, expectedDate: e.target.value})} />
+                  </div>
+                  <div className="input-group">
+                    <label>{t('Expected Time')}</label>
+                    <select disabled={busy} value={form.expectedTime} onChange={e => setForm({...form, expectedTime: e.target.value})}>
+                      <option value="">{t('Any time')}</option>
+                      <option value="Morning">{t('Morning (6 AM - 11 AM)')}</option>
+                      <option value="Afternoon">{t('Afternoon (11 AM - 4 PM)')}</option>
+                      <option value="Evening">{t('Evening (4 PM - 7 PM)')}</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="input-group">
+                  <label style={{ marginBottom: '0.2rem' }}>{t('Spray Purpose')}</label>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '0.65rem' }}>
+                    {['Pest Control', 'Nutrient Spray', 'Weed Control', 'Disease Control'].map(purpose => {
+                      const isChecked = Array.isArray(form.sprayPurpose) && form.sprayPurpose.includes(purpose);
+                      return (
+                        <label key={purpose} style={{ 
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', 
+                          padding: '0.85rem 0.5rem', 
+                          border: `2px solid ${isChecked ? 'var(--primary)' : 'var(--border)'}`, 
+                          borderRadius: 'var(--radius-sm)', 
+                          background: isChecked ? 'var(--primary-soft)' : 'var(--surface)',
+                          cursor: busy ? 'not-allowed' : 'pointer',
+                          transition: 'all 0.2s ease',
+                          textAlign: 'center',
+                          fontWeight: isChecked ? '700' : '500',
+                          color: isChecked ? 'var(--primary-hover)' : 'var(--text-primary)',
+                          userSelect: 'none',
+                          lineHeight: '1.2'
+                        }}>
+                          <input 
+                            type="checkbox" 
+                            style={{ display: 'none' }}
+                            disabled={busy}
+                            checked={isChecked}
+                            onChange={(e) => {
+                              const current = Array.isArray(form.sprayPurpose) ? form.sprayPurpose : [];
+                              const newPurposes = e.target.checked 
+                                ? [...current, purpose]
+                                : current.filter(p => p !== purpose);
+                              setForm({...form, sprayPurpose: newPurposes});
+                            }}
+                          />
+                          {t(purpose)}
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem 1.15rem', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', background: 'var(--surface)', cursor: busy ? 'not-allowed' : 'pointer', marginTop: '0.2rem' }}>
+                  <span style={{ fontWeight: 650, color: 'var(--text-primary)' }}>{t('Is there a water body nearby?')}</span>
+                  <input type="checkbox" disabled={busy} checked={form.waterBodyNearby} onChange={e => setForm({...form, waterBodyNearby: e.target.checked})} style={{ width: '22px', height: '22px', margin: 0, cursor: 'pointer' }} />
+                </label>
+
+                <div className="row-group">
+                  <div className="input-group">
+                    <label>{t('Chemical/Fertilizer Availability')}</label>
+                    <select required disabled={busy} value={form.hasChemical ? 'yes' : 'no'} onChange={e => setForm({...form, hasChemical: e.target.value === 'yes'})}>
+                      <option value="yes">{t('Yes, I have it')}</option>
+                      <option value="no">{t('No, Daas should procure it')}</option>
+                    </select>
+                  </div>
+                  <div className="input-group">
+                    <label>{t('Chemical Brand (if known)')}</label>
+                    <input type="text" disabled={busy} value={form.chemicalBrand} onChange={e => setForm({...form, chemicalBrand: e.target.value})} placeholder={t('e.g. Coragen, Urea')} />
+                  </div>
+                </div>
+
+                {form.hasChemical && (
+                  <div className="input-group" style={{ padding: '0.85rem', background: 'var(--surface-muted)', borderRadius: 'var(--radius-sm)', border: '1px dashed var(--border-strong)' }}>
+                    <label>{t('Upload proof of chemical (Optional)')}</label>
+                    <input type="file" disabled={busy} style={{ background: 'transparent', border: 'none', padding: '0.5rem 0' }} onChange={e => {
+                      if (e.target.files.length) {
+                        setForm({...form, chemicalProofUrl: 'https://example.com/dummy-proof.jpg'});
+                      } else {
+                        setForm({...form, chemicalProofUrl: ''});
+                      }
+                    }} />
+                    <span className="field-hint" style={{ marginTop: '0.25rem', display: 'block' }}>{t('Uploading proof avoids manual confirmation calls.')}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Section 3: Location */}
+            <div style={{ background: 'var(--surface-raised)', padding: '1.25rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', marginBottom: '1.5rem', boxShadow: 'var(--shadow-sm)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.1rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.6rem' }}>
+                <OpsIcon name="location" size={20} style={{ color: 'var(--primary)' }} />
+                <h3 style={{ margin: 0, color: 'var(--text-primary)', fontSize: '1.15rem', fontWeight: 750 }}>{t('Location')}</h3>
+              </div>
+              <div className="form-stack">
+                <div className="row-group">
+                  <div className="input-group">
+                    <label>{t('Village Location')}</label>
+                    <input type="text" required disabled={busy} value={form.village} onChange={e => setForm({...form, village: e.target.value})} placeholder={t('Village name')} />
+                  </div>
+                  <div className="input-group">
+                    <label>{t('District')}</label>
+                    <input type="text" required disabled={busy} value={form.district} onChange={e => setForm({...form, district: e.target.value})} placeholder={t('District name')} />
+                  </div>
+                </div>
+
+                <div className="input-group">
+                  <label>{t('Precise Farm Location')}</label>
+                  <span className="field-hint" style={{ marginBottom: '0.8rem', display: 'block' }}>{t('Search your area, fetch GPS, or drag the pin. The terrain will be analyzed automatically.')}</span>
+                  <div style={{ borderRadius: 'var(--radius-sm)', overflow: 'hidden', border: '1px solid var(--border)' }}>
+                    <TerrainMap 
+                      onLocationChange={(coords) => setForm(prev => ({...prev, mapsLink: coords}))}
+                      onTerrainCalculated={(terrain) => setForm(prev => ({...prev, terrainType: terrain}))}
+                    />
+                  </div>
+                </div>
               </div>
             </div>
             
-            <div className="input-group">
-              <label>Village Location</label>
-              <input type="text" required disabled={busy} value={form.village} onChange={e => setForm({...form, village: e.target.value})} placeholder="Village name" />
-            </div>
-
-            <div className="input-group">
-              <label>District</label>
-              <input type="text" required disabled={busy} value={form.district} onChange={e => setForm({...form, district: e.target.value})} placeholder="District name" />
-            </div>
-
-            <div className="input-group">
-              <label>Google Maps Link (Optional but highly recommended)</label>
-              <input type="url" disabled={busy} value={form.mapsLink} onChange={e => setForm({...form, mapsLink: e.target.value})} placeholder="https://maps.google.com/..." />
-              <span className="field-hint">Providing a precise map link helps us assign the right pilot faster.</span>
-            </div>
-            
-            <div className="form-actions" style={{ marginTop: '1rem' }}>
-              <button type="submit" className="submit-btn" disabled={busy}>
-                {busy ? 'Submitting...' : 'Submit Request'}
+            <div className="form-actions">
+              <button type="submit" className="submit-btn" disabled={busy} style={{ width: '100%', padding: '1rem', fontSize: '1.15rem', borderRadius: 'var(--radius-md)', boxShadow: '0 8px 20px rgba(46, 107, 77, 0.25)' }}>
+                {busy ? t('Submitting...') : t('Submit Request')}
               </button>
             </div>
           </form>
