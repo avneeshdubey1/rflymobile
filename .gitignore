@@ -8,6 +8,7 @@ backend/scripts/resetLocalAdminPassword.local.js
 **/dist/
 **/.cache/
 *.log
+presentation/
 
 # Exclude docs
 docs/
