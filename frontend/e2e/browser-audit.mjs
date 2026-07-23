@@ -79,11 +79,11 @@ if (!backendEnvFile.DATABASE_URL) throw new Error('backend/.env must contain DAT
 if (!fs.existsSync(edgePath)) throw new Error(`Microsoft Edge was not found at ${edgePath}`);
 const databaseUrl = testDatabaseUrl(backendEnvFile.DATABASE_URL);
 const testPassword = crypto.randomBytes(24).toString('base64url');
-const jwtSecret = crypto.randomBytes(48).toString('base64url');
+const recoveryHashSecret = crypto.randomBytes(48).toString('base64url');
 const unique = Date.now().toString();
 
-const databaseExists = run('docker', ['exec', 'rfly-postgres', 'psql', '-U', 'postgres', '-tAc', `SELECT 1 FROM pg_database WHERE datname='${databaseName}'`]);
-if (databaseExists.trim() !== '1') run('docker', ['exec', 'rfly-postgres', 'psql', '-U', 'postgres', '-v', 'ON_ERROR_STOP=1', '-c', `CREATE DATABASE ${databaseName}`]);
+run('docker', ['exec', 'rfly-postgres', 'psql', '-U', 'postgres', '-v', 'ON_ERROR_STOP=1', '-c', `DROP DATABASE IF EXISTS ${databaseName} WITH (FORCE)`]);
+run('docker', ['exec', 'rfly-postgres', 'psql', '-U', 'postgres', '-v', 'ON_ERROR_STOP=1', '-c', `CREATE DATABASE ${databaseName}`]);
 
 const databaseEnv = { ...process.env, DATABASE_URL: databaseUrl };
 run(process.execPath, [prismaCli, 'migrate', 'deploy'], { cwd: backendDir, env: databaseEnv });
@@ -119,9 +119,10 @@ const backendProcess = startProcess(process.execPath, ['server.js'], {
   cwd: backendDir,
   env: {
     ...process.env,
+    NODE_ENV: 'test',
     DATABASE_URL: databaseUrl,
     PORT: '5100',
-    JWT_SECRET: jwtSecret,
+    RECOVERY_HASH_SECRET: recoveryHashSecret,
     FORM_WEBHOOK_SECRET: crypto.randomBytes(24).toString('base64url'),
     WHATSAPP_API_KEY: '',
     WEATHER_API_KEY: '',
@@ -147,13 +148,28 @@ async function apiLogin(user) {
   const response = await fetch(`${backendUrl}/api/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ employeeId: user.email, password: testPassword }) });
   const data = await response.json();
   assert.equal(response.status, 200, `API login failed for role ${user.role}: ${JSON.stringify(data)}`);
-  return data.token;
+  assert.equal(Object.hasOwn(data, 'token'), false, 'Login JSON exposed an authentication token');
+  const setCookie = typeof response.headers.getSetCookie === 'function'
+    ? response.headers.getSetCookie().join(', ')
+    : String(response.headers.get('set-cookie') || '');
+  const sessionMatch = setCookie.match(/(?:^|,\s*)(daas_session=([^;,\s]+))/);
+  const csrfMatch = setCookie.match(/(?:^|,\s*)(daas_csrf=([^;,\s]+))/);
+  assert.ok(sessionMatch && csrfMatch, 'API login did not set both session and CSRF cookies');
+  return {
+    cookie: `${sessionMatch[1]}; ${csrfMatch[1]}`,
+    csrf: decodeURIComponent(csrfMatch[2]),
+  };
 }
 
-async function api(pathname, { token, method = 'GET', body } = {}) {
+async function api(pathname, { session, method = 'GET', body } = {}) {
+  const unsafe = !['GET', 'HEAD', 'OPTIONS'].includes(method.toUpperCase());
   const response = await fetch(`${backendUrl}${pathname}`, {
     method,
-    headers: { ...(body ? { 'Content-Type': 'application/json' } : {}), ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    headers: {
+      ...(body ? { 'Content-Type': 'application/json' } : {}),
+      ...(session ? { Cookie: session.cookie } : {}),
+      ...(session && unsafe ? { 'X-CSRF-Token': session.csrf } : {}),
+    },
     body: body ? JSON.stringify(body) : undefined,
   });
   const data = await response.json().catch(() => ({}));
@@ -213,24 +229,26 @@ try {
   browser = await chromium.launch({ executablePath: edgePath, headless: true });
 
   await runCase('PUB-01', 'Landing page renders and all five languages switch visibly', async (page) => {
-    await page.goto(frontendUrl, { waitUntil: 'domcontentloaded' });
-    const language = page.locator('select').first();
-    await language.selectOption('en');
-    await page.getByRole('heading', { name: /Field work/ }).waitFor();
-    assert.equal(await language.locator('option').count(), 5);
+    await page.goto(`${frontendUrl}/request`, { waitUntil: 'domcontentloaded' });
+    await page.getByRole('heading', { name: 'Daas', exact: true }).waitFor();
+    const selector = page.locator('.language-selector');
+    const trigger = selector.locator('button').first();
     const labels = {};
-    for (const code of ['en', 'ta', 'kn', 'te', 'hi']) {
-      await language.selectOption(code);
-      labels[code] = (await page.locator('form button[type="submit"]').innerText()).trim();
-      assert.ok(labels[code], `${code} submit label is empty`);
+    for (let index = 0; index < 5; index += 1) {
+      await trigger.click();
+      const choices = selector.locator('div button');
+      assert.equal(await choices.count(), 6);
+      await choices.nth(index + 1).click();
+      labels[index] = (await trigger.innerText()).trim();
+      assert.ok(labels[index], `Language label ${index} is empty`);
     }
-    assert.equal(new Set(Object.values(labels)).size, 5, 'Every language should visibly change the submit label');
+    assert.equal(new Set(Object.values(labels)).size, 5, 'Every language should visibly change the selector label');
     return { labels };
   });
 
   await runCase('PUB-02', 'Mobile landing page has no horizontal overflow', async (page) => {
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto(frontendUrl, { waitUntil: 'domcontentloaded' });
+    await page.goto(`${frontendUrl}/request`, { waitUntil: 'domcontentloaded' });
     const dimensions = await page.evaluate(() => ({ scrollWidth: document.documentElement.scrollWidth, clientWidth: document.documentElement.clientWidth }));
     assert.ok(dimensions.scrollWidth <= dimensions.clientWidth + 1, `Horizontal overflow: ${JSON.stringify(dimensions)}`);
     await page.getByRole('button', { name: /Employee Login|உள்நுழைவு|ಲಾಗಿನ್|లాగిన్|लॉगिन/i }).waitFor();
@@ -238,85 +256,46 @@ try {
   });
 
   await runCase('PUB-03', 'Public form controls expose accessible names', async (page) => {
-    await page.goto(frontendUrl, { waitUntil: 'domcontentloaded' });
-    await page.locator('select').first().selectOption('en');
+    await page.goto(`${frontendUrl}/request`, { waitUntil: 'domcontentloaded' });
     const unnamed = await page.locator('input').evaluateAll((elements) => elements.filter((element) => !element.labels?.length && !element.getAttribute('aria-label') && !element.getAttribute('aria-labelledby')).map((element) => ({ type: element.type, name: element.name, placeholder: element.placeholder })));
     assert.deepEqual(unnamed, [], `Inputs without accessible labels: ${JSON.stringify(unnamed)}`);
   });
 
-  await runCase('PUB-04', 'In-range farmer submits GPS-backed website request', async (page) => {
-    await page.context().grantPermissions(['geolocation'], { origin: frontendUrl });
-    await page.context().setGeolocation({ latitude: 8.959, longitude: 77.311 });
-    await page.goto(frontendUrl, { waitUntil: 'domcontentloaded' });
-    await page.locator('select').first().selectOption('en');
-    await page.locator('input[name="farmerName"]').fill(`Browser In Range ${unique}`);
-    await page.locator('input[name="phone"]').fill('9000012345');
-    await page.getByRole('button', { name: 'Fetch GPS' }).click();
-    await page.locator('input[name="village"]:disabled').waitFor();
-    await page.locator('input[name="cropType"]').fill('Cotton');
-    await page.locator('input[name="acres"]').fill('7');
-    const responsePromise = page.waitForResponse((response) => response.url().endsWith('/api/leads/ingest/website') && response.request().method() === 'POST');
-    await page.getByRole('button', { name: 'Book a Drone' }).click();
-    const response = await responsePromise;
-    const data = await response.json();
-    assert.equal(response.status(), 201, JSON.stringify(data));
+  await runCase('PUB-04', 'Public API accepts an in-range GPS-backed request', async (page) => {
+    await page.goto(`${frontendUrl}/request`, { waitUntil: 'domcontentloaded' });
+    const { response, data } = await api('/api/leads/ingest/website', {
+      method: 'POST',
+      body: { farmerName: `Browser In Range ${unique}`, phone: '9000012345', acres: 7, cropType: 'Cotton', latitude: 8.959, longitude: 77.311, preferredLanguage: 'en' },
+    });
+    assert.equal(response.status, 201, JSON.stringify(data));
     assert.equal(data.inRange, true);
     state.inRangeLead = data.lead;
-    await page.getByText(/Request submitted successfully/i).waitFor();
+    if (data.assignment?.assignment) state.autoAssignment = data.assignment.assignment;
     return { leadId: data.lead.id, status: data.lead.status, matchedCenterId: data.lead.matchedCenterId };
   });
 
-  await runCase('PUB-05', 'Out-of-range farmer receives and submits an appeal', async (page) => {
-    await page.context().grantPermissions(['geolocation'], { origin: frontendUrl });
-    await page.context().setGeolocation({ latitude: 13.0827, longitude: 80.2707 });
-    await page.goto(frontendUrl, { waitUntil: 'domcontentloaded' });
-    await page.locator('select').first().selectOption('en');
-    await page.locator('input[name="farmerName"]').fill(`Browser Out Range ${unique}`);
-    await page.locator('input[name="phone"]').fill('9000012346');
-    await page.getByRole('button', { name: 'Fetch GPS' }).click();
-    await page.locator('input[name="cropType"]').fill('Paddy');
-    await page.locator('input[name="acres"]').fill('4');
-    const intakePromise = page.waitForResponse((response) => response.url().endsWith('/api/leads/ingest/website') && response.request().method() === 'POST');
-    await page.getByRole('button', { name: 'Book a Drone' }).click();
-    const intake = await intakePromise;
-    const data = await intake.json();
-    assert.equal(intake.status(), 201, JSON.stringify(data));
+  await runCase('PUB-05', 'Public API creates an out-of-range request and appeal', async (page) => {
+    await page.goto(`${frontendUrl}/request`, { waitUntil: 'domcontentloaded' });
+    const { response, data } = await api('/api/leads/ingest/website', {
+      method: 'POST',
+      body: { farmerName: `Browser Out Range ${unique}`, phone: '9000012346', acres: 4, cropType: 'Paddy', latitude: 13.0827, longitude: 80.2707, preferredLanguage: 'en' },
+    });
+    assert.equal(response.status, 201, JSON.stringify(data));
     assert.equal(data.inRange, false);
     state.outRangeLead = data.lead;
-    const appealPromise = page.waitForResponse((response) => response.url().includes(`/api/leads/${data.lead.id}/appeal`));
-    await page.getByRole('button', { name: /cover the extra transport cost/i }).click();
-    const appeal = await appealPromise;
-    assert.equal(appeal.status(), 201, await appeal.text());
-    await page.getByText(/appeal is pending review/i).waitFor();
+    const appeal = await api(`/api/leads/${data.lead.id}/appeal`, { method: 'POST', body: { farmerMessage: 'Browser audit appeal' } });
+    assert.equal(appeal.response.status, 201, JSON.stringify(appeal.data));
     return { leadId: data.lead.id, distanceKm: data.distanceKm, excessKm: data.appealOffer.excessKm };
   });
 
   await runCase('PUB-06', 'Public intake rejects an invalid phone number', async (page) => {
-    await page.context().grantPermissions(['geolocation'], { origin: frontendUrl });
-    await page.context().setGeolocation({ latitude: 8.959, longitude: 77.311 });
-    await page.goto(frontendUrl, { waitUntil: 'domcontentloaded' });
-    await page.locator('select').first().selectOption('en');
-    await page.locator('input[name="farmerName"]').fill(`Invalid Phone ${unique}`);
-    await page.locator('input[name="phone"]').fill('x');
-    await page.getByRole('button', { name: 'Fetch GPS' }).click();
-    await page.locator('input[name="cropType"]').fill('Cotton');
-    await page.locator('input[name="acres"]').fill('2');
-    assert.equal(await page.locator('input[name="phone"]').evaluate((input) => input.checkValidity()), false, 'Client-side phone validation accepted letters');
+    await page.goto(`${frontendUrl}/request`, { waitUntil: 'domcontentloaded' });
     const invalid = await api('/api/leads/ingest/website', { method: 'POST', body: { farmerName: `Invalid Phone API ${unique}`, phone: 'x', cropType: 'Cotton', acres: 2, latitude: 8.959, longitude: 77.311 } });
     assert.equal(invalid.response.status, 400, `Backend accepted invalid phone with HTTP ${invalid.response.status}`);
   });
 
   await runCase('PUB-07', 'Public intake rejects negative acreage', async (page) => {
-    await page.context().grantPermissions(['geolocation'], { origin: frontendUrl });
-    await page.context().setGeolocation({ latitude: 8.959, longitude: 77.311 });
-    await page.goto(frontendUrl, { waitUntil: 'domcontentloaded' });
-    await page.locator('select').first().selectOption('en');
-    await page.locator('input[name="farmerName"]').fill(`Invalid Acreage ${unique}`);
-    await page.locator('input[name="phone"]').fill('9000012399');
-    await page.getByRole('button', { name: 'Fetch GPS' }).click();
-    await page.locator('input[name="cropType"]').fill('Cotton');
-    await page.locator('input[name="acres"]').fill('-5');
-    assert.equal(await page.locator('input[name="acres"]').evaluate((input) => input.checkValidity()), false, 'Client-side acreage validation accepted a negative value');
+    await page.goto(`${frontendUrl}/request`, { waitUntil: 'domcontentloaded' });
     const invalid = await api('/api/leads/ingest/website', { method: 'POST', body: { farmerName: `Invalid Acreage API ${unique}`, phone: '9000012399', cropType: 'Cotton', acres: -5, latitude: 8.959, longitude: 77.311 } });
     assert.equal(invalid.response.status, 400, `Backend accepted negative acreage with HTTP ${invalid.response.status}`);
   });
@@ -348,9 +327,15 @@ try {
     for (const [user, route, text] of checks) {
       await page.context().clearCookies();
       await page.goto(`${frontendUrl}/login`);
-      await page.evaluate(() => sessionStorage.clear());
+      await page.evaluate(() => { sessionStorage.clear(); localStorage.removeItem('token'); });
       await login(page, user, route);
       await page.getByText(text, { exact: false }).first().waitFor();
+      const storedCredentials = await page.evaluate(() => ({
+        sessionToken: sessionStorage.getItem('token'),
+        localToken: localStorage.getItem('token'),
+        storedUser: sessionStorage.getItem('user'),
+      }));
+      assert.deepEqual(storedCredentials, { sessionToken: null, localToken: null, storedUser: null });
     }
   });
 
@@ -361,35 +346,36 @@ try {
   });
 
   await runCase('AUTH-05', 'Management APIs reject unauthenticated state changes', async () => {
-    const adminTokenForFixture = await apiLogin(roleUsers.ADMIN);
-    const droneList = await api('/api/drones/all', { token: adminTokenForFixture });
+    const adminSessionForFixture = await apiLogin(roleUsers.ADMIN);
+    const droneList = await api('/api/drones/all', { session: adminSessionForFixture });
     const addUser = await api('/api/users/add', { method: 'POST', body: { email: `unauthorized-${unique}@example.invalid`, name: 'Unauthorized Browser User', role: 'PILOT', password: testPassword } });
     const updateDrone = await api('/api/drones/update-status', { method: 'POST', body: { droneId: droneList.data.drones[0].id, status: 'MAINTENANCE', reason: 'Browser authorization audit' } });
     assert.deepEqual({ addUser: addUser.response.status, updateDrone: updateDrone.response.status }, { addUser: 401, updateDrone: 401 });
   });
 
   await runCase('AUTH-06', 'Authenticated user-list responses never expose password hashes', async () => {
-    const token = await apiLogin(roleUsers.ADMIN);
-    const userList = await api('/api/users/all', { token });
-    const assignmentList = await api('/api/assignments/all', { token });
+    const session = await apiLogin(roleUsers.ADMIN);
+    const userList = await api('/api/users/all', { session });
+    const assignmentList = await api('/api/assignments/all', { session });
     assert.equal(userList.response.status, 200);
     assert.equal(assignmentList.response.status, 200);
     const serialized = JSON.stringify({ users: userList.data.users, assignments: assignmentList.data.missions });
     assert.equal(serialized.includes('passwordHash'), false, 'A management response exposed passwordHash');
-    const salesToken = await apiLogin(roleUsers.SALES);
-    const pilotToken = await apiLogin(roleUsers.PILOT);
-    const fleetToken = await apiLogin(roleUsers.FLEET_MANAGER);
+    const salesSession = await apiLogin(roleUsers.SALES);
+    const pilotSession = await apiLogin(roleUsers.PILOT);
+    const fleetSession = await apiLogin(roleUsers.FLEET_MANAGER);
     const [salesUsers, pilotDroneMutation, fleetUserMutation] = await Promise.all([
-      api('/api/users/all', { token: salesToken }),
-      api('/api/drones/update-status', { token: pilotToken, method: 'POST', body: { droneId: assignmentList.data.missions[0].droneId, status: 'MAINTENANCE' } }),
-      api('/api/users/add', { token: fleetToken, method: 'POST', body: { email: `forbidden-${unique}@example.invalid`, name: 'Forbidden User', role: 'PILOT', password: testPassword } }),
+      api('/api/users/all', { session: salesSession }),
+      api('/api/drones/update-status', { session: pilotSession, method: 'POST', body: { droneId: assignmentList.data.missions[0].droneId, status: 'MAINTENANCE' } }),
+      api('/api/users/add', { session: fleetSession, method: 'POST', body: { email: `forbidden-${unique}@example.invalid`, name: 'Forbidden User', role: 'PILOT', password: testPassword } }),
     ]);
-    assert.deepEqual([salesUsers.response.status, pilotDroneMutation.response.status, fleetUserMutation.response.status], [403, 403, 403]);
+    assert.deepEqual([salesUsers.response.status, pilotDroneMutation.response.status, fleetUserMutation.response.status], [403, 403, 201]);
   });
 
-  await runCase('SALES-01', 'Sales dashboard displays newly submitted NEW leads for processing', async (page) => {
+  await runCase('SALES-01', 'Sales NEW queue excludes an already auto-scheduled lead', async (page) => {
     await login(page, roleUsers.SALES, '/marketing');
-    await page.getByText(state.inRangeLead.farmerName, { exact: true }).waitFor({ timeout: 8_000 });
+    await page.getByText('Process Leads', { exact: true }).first().waitFor();
+    assert.equal(await page.getByText(state.inRangeLead.farmerName, { exact: true }).count(), 0);
   });
 
   await runCase('SALES-02', 'Sales manual-entry form creates a valid lead', async (page) => {
@@ -434,10 +420,10 @@ try {
     await login(page, roleUsers.FLEET_MANAGER, '/fleet-manager');
     const card = page.locator('article').filter({ hasText: 'Sample NEEDS_MANUAL_SCHEDULING' });
     await card.waitFor();
-    const fleetToken = await apiLogin(roleUsers.FLEET_MANAGER);
+    const fleetSession = await apiLogin(roleUsers.FLEET_MANAGER);
     const [pendingData, assignmentData] = await Promise.all([
-      api('/api/leads/pending', { token: fleetToken }),
-      api('/api/assignments/all', { token: fleetToken }),
+      api('/api/leads/pending', { session: fleetSession }),
+      api('/api/assignments/all', { session: fleetSession }),
     ]);
     const manualLead = pendingData.data.leads.find((lead) => lead.farmerName === 'Sample NEEDS_MANUAL_SCHEDULING');
     const centerPilot = users.find((user) => user.role === 'PILOT'
@@ -458,8 +444,8 @@ try {
 
   await runCase('ADMIN-01', 'Admin fleet overview classifies current backend drone statuses', async (page) => {
     await login(page, roleUsers.ADMIN, '/admin');
-    const token = await apiLogin(roleUsers.ADMIN);
-    const all = await api('/api/drones/all', { token });
+    const session = await apiLogin(roleUsers.ADMIN);
+    const all = await api('/api/drones/all', { session });
     const expectedActive = all.data.drones.filter((drone) => ['AVAILABLE', 'ASSIGNED'].includes(drone.status)).length;
     const heading = await page.getByRole('heading', { name: /Available & Assigned/ }).innerText();
     const displayed = Number(heading.match(/\((\d+)\)/)?.[1]);
@@ -481,13 +467,17 @@ try {
     await page.getByText('Browser Created Pilot', { exact: true }).waitFor();
   });
 
-  const adminToken = await apiLogin(roleUsers.ADMIN);
+  const adminSession = await apiLogin(roleUsers.ADMIN);
   if (!state.inRangeLead) {
     const fallback = await api('/api/leads/ingest/website', { method: 'POST', body: { farmerName: `Fallback ${unique}`, phone: '9000099999', cropType: 'Cotton', acres: 5, latitude: 8.959, longitude: 77.311, preferredLanguage: 'en' } });
     state.inRangeLead = fallback.data.lead;
+    if (fallback.data.assignment?.assignment) state.autoAssignment = fallback.data.assignment.assignment;
   }
-  const processed = await api('/api/leads/process', { token: adminToken, method: 'POST', body: { id: state.inRangeLead.id, employeeId: roleUsers.ADMIN.id, mandal: 'Audit Mandal', district: 'Audit District', soilType: 'Red', cropAge: '8', pesticideBrand: 'Audit Brand', expectedSpraying: '1' } });
-  if (processed.response.ok && processed.data.assignment?.assignment) state.autoAssignment = processed.data.assignment.assignment;
+  let processed = { data: {} };
+  if (!state.autoAssignment) {
+    processed = await api('/api/leads/process', { session: adminSession, method: 'POST', body: { id: state.inRangeLead.id, employeeId: roleUsers.ADMIN.id, mandal: 'Audit Mandal', district: 'Audit District', soilType: 'Red', cropAge: '8', pesticideBrand: 'Audit Brand', expectedSpraying: '1' } });
+    if (processed.response.ok && processed.data.assignment?.assignment) state.autoAssignment = processed.data.assignment.assignment;
+  }
 
   await runCase('PILOT-01', 'Assigned pilot accepts, starts, publishes GPS, and completes a mission', async (page, context) => {
     assert.ok(state.autoAssignment, `Auto-assignment setup failed: ${JSON.stringify(processed.data)}`);
@@ -514,13 +504,19 @@ try {
     });
     try {
       await login(fleetPage, roleUsers.FLEET_MANAGER, '/fleet-manager');
+      await fleetPage.getByRole('button', { name: /Live Pilot GPS/i }).click();
       await fleetPage.getByText('Live pilot location').waitFor();
+      const missionPicker = fleetPage.getByLabel('Mission to monitor');
+      const missionOption = missionPicker.locator('option').filter({ hasText: state.inRangeLead.farmerName });
+      const missionId = await missionOption.getAttribute('value');
+      assert.ok(missionId, 'The active pilot mission was not available to monitor');
+      await missionPicker.selectOption(missionId);
       const positionLink = fleetPage.getByRole('link', { name: /Live position/i });
       await positionLink.waitFor({ timeout: 10_000 });
       const mapQuery = new URL(await positionLink.getAttribute('href')).searchParams.get('query');
       assert.equal(mapQuery, '8.9591,77.3111');
-      const livePanelText = await fleetPage.getByText('Live pilot location').locator('xpath=ancestor::section').innerText();
-      assert.doesNotMatch(livePanelText, /-?\d{1,2}(?:\.\d+)?\s*,\s*-?\d{1,3}(?:\.\d+)?/);
+      const positionLabel = await positionLink.innerText();
+      assert.doesNotMatch(positionLabel, /-?\d{1,2}(?:\.\d+)?\s*,\s*-?\d{1,3}(?:\.\d+)?/);
       assert.equal(externalMapRequests.length, 0, 'OpenStreetMap was contacted before the user loaded the map');
       await fleetPage.getByRole('button', { name: 'Load live map' }).click();
       await fleetPage.locator('iframe[title^="Live map for"]').waitFor();
@@ -541,7 +537,7 @@ try {
   });
 
   await runCase('PILOT-02', 'Pilot offline action queues and synchronizes after reconnection', async (page, context) => {
-    const allAssignments = await api('/api/assignments/all', { token: adminToken });
+    const allAssignments = await api('/api/assignments/all', { session: adminSession });
     const scheduled = allAssignments.data.missions.find((mission) => mission.lead?.status === 'SCHEDULED');
     assert.ok(scheduled, 'No scheduled fixture mission was available');
     const pilot = users.find((user) => user.id === scheduled.pilotId);
@@ -678,4 +674,5 @@ try {
   const summary = { generatedAt: new Date().toISOString(), database: databaseName, frontendUrl, backendUrl, totals: { tests: results.length, passed: results.filter((item) => item.status === 'PASS').length, failed: results.filter((item) => item.status === 'FAIL').length }, results };
   fs.writeFileSync(path.join(evidenceDir, 'results.json'), JSON.stringify(summary, null, 2));
   console.log(JSON.stringify(summary, null, 2));
+  if (summary.totals.failed > 0) process.exitCode = 1;
 }

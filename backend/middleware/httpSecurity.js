@@ -37,7 +37,7 @@ function corsPolicy(config) {
   return cors({
     credentials: true,
     methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Authorization', 'Content-Type', 'X-Request-Id', 'X-Form-Webhook-Secret', 'X-UPI-Webhook-Secret', 'X-Webhook-Id', 'X-Webhook-Timestamp'],
+    allowedHeaders: ['Authorization', 'Content-Type', 'X-CSRF-Token', 'X-Request-Id', 'X-Form-Webhook-Secret', 'X-UPI-Webhook-Secret', 'X-Webhook-Id', 'X-Webhook-Timestamp'],
     exposedHeaders: ['X-Request-Id', 'RateLimit', 'RateLimit-Policy', 'Retry-After'],
     maxAge: 600,
     origin(origin, callback) {
@@ -82,6 +82,7 @@ function createRateLimiters(config) {
   return {
     general: limiter(config, config.rateLimits.generalMax, 'general'),
     login: limiter(config, config.rateLimits.loginMax, 'login'),
+    recovery: limiter(config, config.rateLimits.recoveryMax, 'recovery'),
     publicIntake: limiter(config, config.rateLimits.publicIntakeMax, 'public-intake'),
     webhook: limiter(config, config.rateLimits.webhookMax, 'webhook'),
   };

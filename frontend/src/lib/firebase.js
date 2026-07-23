@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
+import { getAuth, inMemoryPersistence, setPersistence } from 'firebase/auth';
 
 // Your web app's Firebase configuration
 // These will be provided via Vite environment variables
@@ -15,12 +15,17 @@ const firebaseConfig = {
 // Initialize Firebase only if the config is present
 let app;
 let auth;
+let authReady = Promise.resolve();
 
 if (firebaseConfig.apiKey) {
   try {
     app = initializeApp(firebaseConfig);
     auth = getAuth(app);
     auth.useDeviceLanguage(); // Set language for SMS matching device
+    // Firebase verifies phone ownership only. The application's own HttpOnly
+    // session cookie is authoritative, so do not persist a second identity on
+    // a shared browser after the token exchange finishes.
+    authReady = setPersistence(auth, inMemoryPersistence);
   } catch (err) {
     console.error('Firebase initialization error', err);
   }
@@ -28,4 +33,4 @@ if (firebaseConfig.apiKey) {
   console.warn('Firebase config missing. OTP will not work.');
 }
 
-export { auth };
+export { auth, authReady };

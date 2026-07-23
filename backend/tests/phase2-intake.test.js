@@ -31,7 +31,7 @@ test('website intake geofences in-range and out-of-range requests, then creates 
   createdLeadIds.push(inRangeBody.lead.id);
   assert.equal(inRange.status, 201);
   assert.equal(inRangeBody.inRange, true);
-  assert.equal(inRangeBody.lead.status, 'NEW');
+  assert.equal(inRangeBody.lead.status, 'PROCESSED');
 
   const outOfRange = await fetch(`${baseUrl}/api/leads/ingest/website`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },

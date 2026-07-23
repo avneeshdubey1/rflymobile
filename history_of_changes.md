@@ -1,5 +1,42 @@
 # History of Changes
 
+## July 23, 2026 - Login, Session, and Recovery Hardening Completed Locally
+
+### Rollback and repository safety
+
+* Created rollback checkpoint commit `79a753b` before changing login behavior, and added `presentation/` to `.gitignore` so local presentation material is not committed.
+* Removed the tracked `backend_env_backup` and `frontend_env_backup` copies and ignored that filename pattern. Any credential that ever appeared in those historical files still requires rotation; deleting a working-tree copy does not revoke it.
+
+### Authentication and session security
+
+* Replaced browser-stored bearer credentials with hashed, database-backed opaque sessions. The production session cookie is host-only, `Secure`, `HttpOnly`, and `SameSite=Strict`; a separate host-only, `Secure`, readable CSRF cookie/header protects authenticated mutations.
+* Added `/api/auth/me`, current-session logout, logout-all, idle and absolute expiry, conditional sliding activity, account-state/role enforcement, and immediate session/socket revocation after password, role, activation, archive, or recovery changes.
+* Closed stale-credential races: session creation now locks and compares the exact credential snapshot, and bcrypt cost upgrades cannot overwrite a concurrent password reset.
+* Hardened Socket.IO with cookie-session authentication, immediate post-join and per-packet revalidation, pending-connection revocation, hash-only credential retention, and safe acknowledgement of malformed payloads instead of process-level exceptions.
+* Restricted employee and Business login endpoints to their intended active roles, kept Farmer sessions explicitly Farmer-only, removed raw provider error text from OTP screens, and preserved offline logout-all intent.
+
+### Recovery, password, and identity safety
+
+* Added generic, rate-limited Employee recovery and one-time Business phone recovery. Challenges are HMAC-protected, attempt-limited, expiring, bound to `authVersion`, atomically replaced, and consumed with sibling/session revocation.
+* Queued delivery work for eligible and decoy recovery requests so provider latency does not reveal account existence. The live WhatsApp/SMS/email adapter still fails closed until approved providers and sandbox evidence exist.
+* Required Firebase phone proofs to come from the phone provider, pass revoked-token checking, be recent for recovery, and use a unique hash so the same proof cannot mint two reset grants.
+* Enforced bcrypt's 72-byte input boundary, canonicalized account phone numbers, added database uniqueness, and made ambiguous/invalid legacy phone data fail migration instead of selecting an account arbitrarily.
+* Marked organization-provisioned work emails as verified recovery destinations under the current trusted Admin/Fleet provisioning policy.
+
+### Database, frontend, and deployment contract
+
+* Added forward migrations for the reconciled current schema, recovery concurrency fields, and canonical unique phone identities. Test orchestration now regenerates Prisma Client and recreates a named disposable database before replaying all ten migrations.
+* Updated the React auth context and API/socket clients to use cookies, in-memory identity, CSRF, centralized expiry handling, protected-route loading states, cross-tab logout, and no persisted application token/user.
+* Added Employee and Business recovery flows, corrected role routing and login layouts, retained queued offline actions safely, and contained the Fleet calendar on tablet widths.
+* Reconciled the environment, CI, Docker/Compose, nginx, README, login use case, placeholder register, and production-hardening contract with opaque sessions and recovery hashing.
+
+### Verification
+
+* Full disposable-database backend suite passed **74/74**, including session/CSRF, login races, recovery concurrency/replay, malformed sockets, role guards, phone uniqueness, and bcrypt byte-boundary coverage.
+* Browser acceptance passed **30/30** across public intake, all four employee roles, protected APIs, live chat/GPS, mission/payment lifecycle, offline replay, and responsive phone/tablet layouts. Login responses contain no token and browser storage contains no application credential.
+* Prisma validation, frontend lint, frontend production build, and production Compose rendering passed. The build retains only the known non-blocking large-chunk advisory.
+* Frontend dependency audit reported zero findings. Backend audit passes the high/critical gate; six transitive moderate advisories remain in the Firebase Admin dependency chain and currently require a breaking forced downgrade, so no forced change was applied.
+
 ## July 15, 2026 - Farmer Mobile Auth and Backend Cleanup
 ### Database & Data Models
 * Added the `FARMER` role to the Prisma database schema. --gemini (2026-07-15T13:40Z)

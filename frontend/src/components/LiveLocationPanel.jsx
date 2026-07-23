@@ -1,15 +1,15 @@
 import { useCallback, useEffect, useState } from 'react';
-import { io } from 'socket.io-client';
 import { useAuth } from '../context/useAuth';
 import OpsIcon from './OpsIcon';
 import LocationLink from './LocationLink';
-import { API_URL as API } from '../config';
 import { extractCoordinates, openStreetMapEmbedUrl } from '../utils/locationPresentation';
+import { apiFetch, readJson } from '../services/apiClient';
+import { createAuthenticatedSocket } from '../services/authenticatedSocket';
 
 const activeStatuses = new Set(['PILOT_ACCEPTED', 'IN_PROGRESS']);
 
 function LiveLocationPanel() {
-  const { token } = useAuth();
+  const { user } = useAuth();
   const [missions, setMissions] = useState([]);
   const [selectedId, setSelectedId] = useState('');
   const [location, setLocation] = useState(null);
@@ -18,8 +18,8 @@ function LiveLocationPanel() {
 
   const loadMissions = useCallback(async () => {
     try {
-      const response = await fetch(`${API}/api/assignments/all`);
-      const data = await response.json().catch(() => ({}));
+      const response = await apiFetch('/api/assignments/all');
+      const data = await readJson(response);
       if (!response.ok || !data.success) throw new Error(data.error || 'Could not load live missions');
       const live = (data.missions || []).filter((mission) => activeStatuses.has(mission.lead?.status));
       setMissions(live);
@@ -34,8 +34,8 @@ function LiveLocationPanel() {
   }, [loadMissions]);
 
   useEffect(() => {
-    if (!selectedId || !token) return undefined;
-    const socket = io(API, { auth: { token } });
+    if (!selectedId || !user) return undefined;
+    const socket = createAuthenticatedSocket();
     const update = (nextLocation) => setLocation(nextLocation);
     socket.on('location:update', update);
     socket.on('connect', () => socket.emit('location:watch', { assignmentId: selectedId }, (result) => {
@@ -43,7 +43,7 @@ function LiveLocationPanel() {
       setLocation(result.location);
     }));
     return () => socket.disconnect();
-  }, [selectedId, token]);
+  }, [selectedId, user]);
 
   const selectedMission = missions.find((mission) => mission.id === selectedId);
   const coordinates = extractCoordinates(location || {});

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import OpsIcon from './OpsIcon';
-import { API_URL as API } from '../config';
 import LocationLink from './LocationLink';
+import { apiFetch, readJson } from '../services/apiClient';
 
 const readable = (value) => (value || 'UNKNOWN').replaceAll('_', ' ').toLowerCase();
 const formatDate = (value) => value ? new Date(value).toLocaleString() : 'Not recorded';
@@ -16,8 +16,8 @@ function LogbookTimelinePanel() {
 
   const loadLeads = useCallback(async () => {
     try {
-      const response = await fetch(`${API}/api/leads/all`);
-      const data = await response.json().catch(() => ({}));
+      const response = await apiFetch('/api/leads/all');
+      const data = await readJson(response);
       if (!response.ok || !data.success) throw new Error(data.error || 'Could not load the logbook');
       setLeads(data.leads || []);
     } catch (error) { setNotice(error.message); }
@@ -33,8 +33,8 @@ function LogbookTimelinePanel() {
     setEntries([]);
     setLoadingTimeline(true);
     try {
-      const response = await fetch(`${API}/api/audit-log?entityType=Lead&entityId=${encodeURIComponent(lead.id)}`);
-      const data = await response.json().catch(() => ({}));
+      const response = await apiFetch(`/api/audit-log?entityType=Lead&entityId=${encodeURIComponent(lead.id)}`);
+      const data = await readJson(response);
       if (!response.ok || !data.success) throw new Error(data.error || 'Could not load this timeline');
       setEntries(data.entries || []);
     } catch (error) { setNotice(error.message); }

@@ -1,3 +1,5 @@
+import { apiFetch } from './apiClient';
+
 const DATABASE = 'field-operations-pilot-offline-actions';
 const DATABASE_VERSION = 2;
 const STORE = 'actions';
@@ -127,7 +129,7 @@ export async function flushQueuedActions(userId) {
     // Defense in depth: even a malformed IndexedDB record cannot cross users.
     if (action.ownerUserId !== ownerUserId) continue;
     try {
-      const response = await fetch(action.url, {
+      const response = await apiFetch(action.url, {
         method: action.method || 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -137,6 +139,9 @@ export async function flushQueuedActions(userId) {
         await removeQueuedAction(action.id);
         result.sent += 1;
         result.remaining -= 1;
+      } else if (response.status === 401 || response.status === 403) {
+        result.error = 'Sign in again before synchronizing queued actions.';
+        break;
       } else if (response.status >= 400 && response.status < 500 && response.status !== 408 && response.status !== 429) {
         await removeQueuedAction(action.id);
         result.discarded += 1;

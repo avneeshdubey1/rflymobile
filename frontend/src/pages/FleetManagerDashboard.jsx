@@ -11,7 +11,7 @@ import OpsIcon from '../components/OpsIcon';
 import LiveLocationPanel from '../components/LiveLocationPanel';
 import BhumeetLogbook from '../components/BhumeetLogbook';
 import AcreageTrend from '../components/AcreageTrend';
-import { API_URL as API } from '../config';
+import { apiFetch, readJson } from '../services/apiClient';
 
 const localizer = dateFnsLocalizer({ format, parse, startOfWeek, getDay, locales: { 'en-US': enUS } });
 const withDragAndDrop = dragAndDropModule.default ?? dragAndDropModule;
@@ -37,8 +37,8 @@ function FleetManagerDashboard() {
 
   const showNotice = useCallback((kind, message) => setNotice({ kind, message }), []);
   const request = useCallback(async (url, options) => {
-    const response = await fetch(`${API}${url}`, options);
-    const data = await response.json().catch(() => ({}));
+    const response = await apiFetch(url, options);
+    const data = await readJson(response);
     if (!response.ok || !data.success) throw new Error(data.error || 'The request could not be completed');
     return data;
   }, []);
@@ -164,7 +164,7 @@ function FleetManagerDashboard() {
   ];
 
   return (
-    <OperationsShell roleLabel="Fleet operations" navItems={navItems} activeTab={activeSection} onTabChange={selectSection} user={user} logout={logout}>
+    <OperationsShell roleLabel="Fleet operations" navItems={navItems} activeTab={activeSection} onTabChange={selectSection} user={user} onLogout={logout}>
       {activeSection === 'schedule' && (
       <section id="schedule">
         <header className="page-header">

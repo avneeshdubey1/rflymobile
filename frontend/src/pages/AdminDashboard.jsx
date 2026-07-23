@@ -6,7 +6,7 @@ import ChatPanel from '../components/ChatPanel';
 import PendingPaymentsPanel from '../components/PendingPaymentsPanel';
 import LiveLocationPanel from '../components/LiveLocationPanel';
 import LogbookTimelinePanel from '../components/LogbookTimelinePanel';
-import { API_URL as API } from '../config';
+import { apiFetch } from '../services/apiClient';
 import { MapContainer, TileLayer, Marker, Circle, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -60,9 +60,9 @@ function AdminDashboard() {
   const fetchData = useCallback(async (signal) => {
     try {
       const [userResponse, droneResponse, centerResponse] = await Promise.all([
-        fetch(`${API}/api/users/all`, { signal }),
-        fetch(`${API}/api/drones/all`, { signal }),
-        fetch(`${API}/api/centers/all`, { signal }),
+        apiFetch('/api/users/all', { signal }),
+        apiFetch('/api/drones/all', { signal }),
+        apiFetch('/api/centers/all', { signal }),
       ]);
       const [userData, droneData, centerData] = await Promise.all([userResponse.json(), droneResponse.json(), centerResponse.json()]);
       if (userData.success) setUsers(userData.users);
@@ -84,7 +84,7 @@ function AdminDashboard() {
     event.preventDefault();
     setAdminNotice(null);
     try {
-      const response = await fetch(`${API}/api/users/add`, {
+      const response = await apiFetch('/api/users/add', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newUser),
@@ -102,7 +102,7 @@ function AdminDashboard() {
   const confirmDeleteUser = async () => {
     if (!deleteTarget) return;
     try {
-      const response = await fetch(`${API}/api/users/delete/${deleteTarget.id}`, { method: 'DELETE' });
+      const response = await apiFetch(`/api/users/delete/${deleteTarget.id}`, { method: 'DELETE' });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) { setAdminNotice({ kind: 'error', message: data.error || 'The user could not be deleted.' }); return; }
       setAdminNotice({ kind: 'success', message: `${deleteTarget.name} was deleted.` });
@@ -117,7 +117,7 @@ function AdminDashboard() {
     event.preventDefault();
     if (!passwordTarget) return;
     try {
-      const response = await fetch(`${API}/api/users/edit-password`, {
+      const response = await apiFetch('/api/users/edit-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: passwordTarget.id, newPassword: replacementPassword }),
@@ -126,7 +126,7 @@ function AdminDashboard() {
       if (!response.ok) { setAdminNotice({ kind: 'error', message: data.error || 'Password update failed.' }); return; }
       setAdminNotice({ kind: 'success', message: `Password updated for ${passwordTarget.name}.` });
       setPasswordTarget(null);
-      setReplacementPassword('');
+      setPassword('');
     } catch {
       setAdminNotice({ kind: 'error', message: 'Password update failed.' });
     }
@@ -134,7 +134,7 @@ function AdminDashboard() {
 
   const handleResolveMaintenance = async (droneId, action) => {
     try {
-      const response = await fetch(`${API}/api/drones/resolve-maintenance`, {
+      const response = await apiFetch('/api/drones/resolve-maintenance', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ droneId, action }),
@@ -148,7 +148,7 @@ function AdminDashboard() {
 
   const inquireDroneStatus = async (droneId) => {
     try {
-      const response = await fetch(`${API}/api/drones/inquire`, {
+      const response = await apiFetch('/api/drones/inquire', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ droneId }),
@@ -168,7 +168,7 @@ function AdminDashboard() {
     }
     setAdminNotice(null);
     try {
-      const response = await fetch(`${API}/api/centers/add`, {
+      const response = await apiFetch('/api/centers/add', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: newCenter.name, radiusKm: newCenter.radiusKm, latitude: centerPosition.lat, longitude: centerPosition.lng }),
@@ -186,7 +186,7 @@ function AdminDashboard() {
 
   const confirmDeleteCenter = async (id) => {
     try {
-      const response = await fetch(`${API}/api/centers/delete/${id}`, { method: 'DELETE' });
+      const response = await apiFetch(`/api/centers/delete/${id}`, { method: 'DELETE' });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) { setAdminNotice({ kind: 'error', message: data.error || 'Center could not be deleted.' }); return; }
       setAdminNotice({ kind: 'success', message: `Operating center deleted.` });
@@ -198,7 +198,7 @@ function AdminDashboard() {
 
   const toggleUserActive = async (userId) => {
     try {
-      const response = await fetch(`${API}/api/users/toggle-active`, {
+      const response = await apiFetch('/api/users/toggle-active', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId }),
@@ -206,7 +206,7 @@ function AdminDashboard() {
       const data = await response.json();
       if (response.ok) await fetchData();
       else setAdminNotice({ kind: 'error', message: data.error });
-    } catch (err) {
+    } catch {
       setAdminNotice({ kind: 'error', message: 'Failed to toggle active status.' });
     }
   };
@@ -236,7 +236,7 @@ function AdminDashboard() {
   const [eyebrow, title, description] = pageCopy[activeTab];
 
   return (
-    <OperationsShell roleLabel="Operations control" navItems={navItems} activeTab={activeTab} onTabChange={setActiveTab} user={user} logout={logout}>
+    <OperationsShell roleLabel="Operations control" navItems={navItems} activeTab={activeTab} onTabChange={setActiveTab} user={user} onLogout={logout}>
       <header className="page-header">
         <div className="page-header__copy"><p className="eyebrow">{eyebrow}</p><h1>{title}</h1><p>{description}</p></div>
         <div className="page-header__actions"><button className="action-btn" type="button" onClick={() => void fetchData()}><OpsIcon name="refresh" /> Refresh data</button></div>

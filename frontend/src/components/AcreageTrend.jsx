@@ -1,7 +1,6 @@
-import { useState, useEffect } from "react";
-import axios from "axios";
+import { useCallback, useEffect, useState } from "react";
 import "./AcreageTrend.css";
-import { API_URL as API } from '../config';
+import { apiFetch, readJson } from '../services/apiClient';
 
 import {
   ResponsiveContainer,
@@ -14,8 +13,6 @@ import {
 } from "recharts";
 
 function AcreageTrend() {
-  const droneId = "d8fc4809-c6a2-4fba-b650-be93e37a53f5";
-
   // Initial Date (Today)
   const now = new Date();
 
@@ -46,7 +43,7 @@ function AcreageTrend() {
         toDate.setHours(23, 59, 59, 999);
         break;
 
-      case "week":
+      case "week": {
         const day = now.getDay();
 
         // Monday
@@ -59,6 +56,7 @@ function AcreageTrend() {
         toDate.setDate(fromDate.getDate() + 6);
         toDate.setHours(23, 59, 59, 999);
         break;
+      }
 
       case "month":
         fromDate = new Date(
@@ -111,42 +109,32 @@ function AcreageTrend() {
     });
   };
 
-  const testAcreage = async () => {
+  const testAcreage = useCallback(async () => {
     setLoading(true);
     setResponse(null);
 
     try {
-      const res = await axios.get(`${API}/api/acreage`, {
-        params: {
-          start: filters.fromDate.toISOString(),
-          end: filters.toDate.toISOString(),
-          interval: filters.interval,
-        },
+      const query = new URLSearchParams({
+        start: filters.fromDate.toISOString(),
+        end: filters.toDate.toISOString(),
+        interval: filters.interval,
       });
-
-      setResponse(res.data);
+      const res = await apiFetch(`/api/acreage?${query}`);
+      const data = await readJson(res);
+      if (!res.ok) throw new Error(data.message || data.error || 'Server Error');
+      setResponse(data);
     } catch (error) {
       console.error(error);
-
-      if (error.response) {
-        setResponse({
-          message:
-            error.response.data?.message ||
-            "Server Error",
-        });
-      } else {
-        setResponse({
-          message: error.message,
-        });
-      }
+      setResponse({ message: error.message || 'Server Error' });
     } finally {
       setLoading(false);
     }
-  };
+  }, [filters]);
 
   useEffect(() => {
-    testAcreage();
-  }, [filters]);
+    const timer = window.setTimeout(() => void testAcreage(), 0);
+    return () => window.clearTimeout(timer);
+  }, [testAcreage]);
 
   const graphData =
     response?.totalAcreage?.map((item) => ({

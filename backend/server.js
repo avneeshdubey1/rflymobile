@@ -8,19 +8,19 @@ const { startChatAutoCloseJob } = require('./jobs/chatAutoCloseJob');
 const { startGoogleFormSyncJob } = require('./jobs/googleFormSync');
 const { installChatSocket } = require('./sockets/chatSocket');
 const { installLocationSocket } = require('./sockets/locationSocket');
-const { assertAuthConfiguration } = require('./middleware/auth');
+const { installSocketAuthentication } = require('./middleware/auth');
 const { createSocketServerOptions, installSocketEventProtection } = require('./config/socketSecurity');
 
 const config = loadEnvironment();
-assertAuthConfiguration();
 
 const server = http.createServer(app);
 const io = new Server(server, createSocketServerOptions(config));
 
 app.set('io', io);
+installSocketAuthentication(io, config);
 installSocketEventProtection(io, config);
-installChatSocket(io);
-installLocationSocket(io);
+installChatSocket(io, config);
+installLocationSocket(io, config);
 
 server.listen(config.port, () => {
   console.log(`Server running on port ${config.port}`);

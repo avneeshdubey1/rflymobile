@@ -5,8 +5,8 @@ import OperationsShell from '../../components/OperationsShell';
 import FarmerSettings from './FarmerSettings';
 import PilotSettings from './PilotSettings';
 import EmployeeSettings from './EmployeeSettings';
-import OpsIcon from '../../components/OpsIcon';
 import LanguageSelector from '../../components/LanguageSelector';
+import { apiFetch, readJson } from '../../services/apiClient';
 
 export default function Settings() {
   const { user, logout } = useAuth();
@@ -17,10 +17,8 @@ export default function Settings() {
   useEffect(() => {
     const fetchPreferences = async () => {
       try {
-        const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/users/preferences`, {
-          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-        });
-        const data = await res.json();
+        const res = await apiFetch('/api/users/preferences');
+        const data = await readJson(res);
         if (data.success) {
           setPreferences(data.preferences || {});
         }
@@ -47,6 +45,7 @@ export default function Settings() {
       else if (role === 'FLEET_MANAGER') navigate('/fleet-manager');
       else if (role === 'ADMIN') navigate('/admin');
       else if (role === 'SALES') navigate('/marketing');
+      else if (role === 'BUSINESS') navigate('/business/dashboard');
       else navigate('/');
     }
   };
@@ -54,12 +53,12 @@ export default function Settings() {
   const roleLabel = "Settings";
 
   let SettingsComponent = EmployeeSettings;
-  const normalizedRole = user?.role?.toUpperCase();
+  const normalizedRole = user?.role?.toUpperCase().replaceAll('-', '_');
   if (normalizedRole === 'FARMER') SettingsComponent = FarmerSettings;
   else if (normalizedRole === 'PILOT') SettingsComponent = PilotSettings;
 
   return (
-    <OperationsShell roleLabel={roleLabel} navItems={navItems} activeTab="settings" onTabChange={handleTabChange} user={user} logout={logout}>
+    <OperationsShell roleLabel={roleLabel} navItems={navItems} activeTab="settings" onTabChange={handleTabChange} user={user} onLogout={logout}>
       <header className="page-header">
         <div className="page-header__copy">
           <p className="eyebrow">PREFERENCES</p>

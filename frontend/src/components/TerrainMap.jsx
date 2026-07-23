@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -43,13 +43,6 @@ export default function TerrainMap({ onLocationChange, onTerrainCalculated }) {
   const [loading, setLoading] = useState(false);
   const [terrain, setTerrain] = useState('');
 
-  // Auto calculate terrain when position changes
-  useEffect(() => {
-    if (!position) return;
-    onLocationChange(`${position.lat},${position.lng}`);
-    calculateTerrain(position);
-  }, [position]);
-
   const handleSearch = async (e) => {
     e.preventDefault();
     if (!searchQuery) return;
@@ -58,7 +51,7 @@ export default function TerrainMap({ onLocationChange, onTerrainCalculated }) {
       const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(searchQuery)}&format=json&limit=1`);
       const data = await res.json();
       if (data && data.length > 0) {
-        setPosition({ lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) });
+        handlePositionChange({ lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) });
       } else {
         alert('Location not found.');
       }
@@ -76,7 +69,7 @@ export default function TerrainMap({ onLocationChange, onTerrainCalculated }) {
     }
     setLoading(true);
     navigator.geolocation.getCurrentPosition((pos) => {
-      setPosition({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+      handlePositionChange({ lat: pos.coords.latitude, lng: pos.coords.longitude });
       setLoading(false);
     }, () => {
       alert('Unable to retrieve your location.');
@@ -84,7 +77,7 @@ export default function TerrainMap({ onLocationChange, onTerrainCalculated }) {
     });
   };
 
-  const calculateTerrain = async (pos) => {
+  async function calculateTerrain(pos) {
     try {
       const lat = pos.lat;
       const lng = pos.lng;
@@ -119,7 +112,13 @@ export default function TerrainMap({ onLocationChange, onTerrainCalculated }) {
     } catch (err) {
       console.error('Terrain calculation failed:', err);
     }
-  };
+  }
+
+  function handlePositionChange(nextPosition) {
+    setPosition(nextPosition);
+    onLocationChange(`${nextPosition.lat},${nextPosition.lng}`);
+    void calculateTerrain(nextPosition);
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
@@ -148,7 +147,7 @@ export default function TerrainMap({ onLocationChange, onTerrainCalculated }) {
             attribution="Map data: © OpenStreetMap contributors, SRTM | Map style: © OpenTopoMap"
             maxZoom={17}
           />
-          <LocationMarker position={position} setPosition={setPosition} />
+          <LocationMarker position={position} setPosition={handlePositionChange} />
           {position && <MapUpdater position={position} />}
         </MapContainer>
       </div>

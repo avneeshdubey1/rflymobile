@@ -217,9 +217,9 @@ input:disabled, select:disabled, textarea:disabled { color: var(--text-secondary
 .queue-card:active { cursor: grabbing; }
 .queue-card + .queue-card { margin-top: 0.7rem; }
 .queue-card__warning { margin: 0.45rem 0 0.7rem; color: var(--accent-dark); font-size: 0.8rem; }
-.calendar-wrap { min-width: 0; padding: 0.55rem; color: var(--text-primary); border: 1px solid var(--border); border-radius: 11px; background: var(--surface-raised); }
-.calendar-stage { height: 70vh; min-height: 560px; }
-.rbc-calendar { font-family: inherit; }
+.calendar-wrap { width: 100%; max-width: 100%; min-width: 0; padding: 0.55rem; overflow-x: auto; color: var(--text-primary); border: 1px solid var(--border); border-radius: 11px; background: var(--surface-raised); }
+.calendar-stage { width: 100%; max-width: 100%; min-width: 0; height: 70vh; min-height: 560px; }
+.rbc-calendar { width: 100%; max-width: 100%; min-width: 0; font-family: inherit; }
 .rbc-toolbar { gap: 0.5rem; margin-bottom: 0.75rem; }
 .rbc-toolbar button { min-height: 34px; color: var(--text-primary); border-color: var(--border); background: var(--surface); }
 .rbc-toolbar button:hover, .rbc-toolbar button:focus, .rbc-toolbar button.rbc-active { color: #fff; border-color: var(--primary); background: var(--primary); box-shadow: none; }

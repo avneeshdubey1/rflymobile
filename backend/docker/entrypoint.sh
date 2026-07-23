@@ -83,7 +83,7 @@ load_secret_file WEATHER_API_KEY false
 load_secret_file UPI_GATEWAY_KEY false
 
 if [ "${APP_RUNTIME_MODE:-server}" = "server" ]; then
-  load_secret_file JWT_SECRET true
+  load_secret_file RECOVERY_HASH_SECRET true
 fi
 
 exec "$@"

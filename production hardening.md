@@ -1,10 +1,10 @@
 # Production Hardening Register
 
 **Status:** mandatory pre-production work; not a statement that the application is production-ready.  
-**Last reviewed:** July 14, 2026  
+**Last reviewed:** July 23, 2026
 **Agent rule:** every agent must read this file before production, deployment, security, privacy, authentication, multi-customer, or live-integration work. Update the relevant checkbox and verification evidence in the same change. A checkbox is complete only after a test or operational verification proves it.
 
-**Pause notice:** hardening was stopped at the user's request on July 14, 2026. H0 and H1 reached verified local checkpoints. H2 contains incomplete schema/repository scaffolding and has not been regression-tested; H3-H7 remain pending. Resume from H2 using `docs/hardening_pause_handoff_2026-07-14.md`. Draft container/CI files are not production evidence.
+**Resume notice:** H2 authentication/session hardening has complete local code evidence as of July 23, 2026. Opaque cookie sessions, CSRF, credential-snapshot race rejection, account-state enforcement, atomic recovery invalidation, canonical phone identity, Firebase proof replay protection, and Socket.IO revalidation are covered. Approved live recovery providers and H3-H7 remain pending; local/CI evidence is still not production approval.
 
 ## Locked product decisions
 
@@ -21,13 +21,13 @@
 
 ## Release blockers — security and account safety
 
-- [ ] Remove the development JWT fallback in production and fail startup if `JWT_SECRET` is absent or weak. The code gate is implemented; deployment secret-manager storage and rotation documentation remain.
+- [x] Replace the legacy JavaScript-readable bearer-token/JWT fallback with database-backed opaque sessions. Production uses `Secure`, `HttpOnly`, `SameSite=Strict`, host-only cookies; only hashed session/CSRF values are stored, and production rejects the test-only bearer path.
 - [x] Replace plaintext password comparison/storage with a production password hash (Argon2id or bcrypt with an approved cost), migrate/reset existing development passwords, and never return `passwordHash` from an API or audit state.
-- [ ] Implement WhatsApp-default password recovery with SMS/email fallback, verified destinations, rate limits, expiry, one-time use, audit events, and a generic response that does not reveal whether an account exists. The ignored `backend/scripts/resetLocalAdminPassword.local.js` is local-demo recovery only and is not a production substitute.
+- [ ] Implement WhatsApp-default password recovery with SMS/email fallback, verified destinations, rate limits, expiry, one-time use, audit events, and a generic response that does not reveal whether an account exists. The application-side challenge, attempt, audit, generic-response, queued-delivery boundary, auth-version binding, forced/sibling revocation, Employee UI, and recent one-time Firebase Business grant are implemented and tested. This gate remains open until approved WhatsApp/SMS/email providers deliver codes without logging them and sandbox/fallback tests pass.
 - [ ] Apply authentication and role authorization to every user, drone, operating-centre, configuration, audit, payment, and system route. Add negative permission tests.
 - [ ] Restrict CORS to approved deployment origins; require HTTPS; set secure headers; apply request/body limits and authentication/integration rate limits.
 - [ ] Validate all public and privileged inputs and use consistent non-sensitive error responses.
-- [ ] Define token/session revocation, forced logout after password reset, inactive-user behavior, and secret rotation procedures.
+- [x] Define and enforce session revocation, forced logout after password reset/change, and inactive/archived/role-change behavior. Current-session logout, logout-all, idle/absolute expiry, credential-snapshot/auth-version checks, pending and connected socket revalidation/disconnection, and atomic account/recovery mutation revocation are implemented; operational recovery-secret rotation remains part of deployment procedure.
 - [ ] Run dependency, static-code, and secret scans. Resolve high/critical findings and preserve reports as release evidence.
 - [ ] Rotate the external-service credential that was previously stored in the removed root integration test; deletion from the working tree does not invalidate an already exposed credential.
 
@@ -98,3 +98,5 @@
 | July 14, 2026 | Emergency platform-wide UI correction | `docs/ui_correction_report_2026-07-14.md`; `frontend/e2e/browser-audit.mjs`; screenshot/JSON evidence in `docs/test-evidence/browser-audit-2026-07-14/` | Passed revised local demo gate: Edge 30/30 with zero unexpected console/runtime/normal-flow HTTP errors, backend 26/26, frontend lint/build, and Prisma validation. Responsive browser simulation passed; recorded physical-device/cross-browser acceptance remains open. |
 | July 14, 2026 | H0 privacy/device/GPS presentation and H1 perimeter checkpoint | `backend/src/repositories/auditLogRepository.js`; `backend/tests/hardening-h1-perimeter.test.js`; `frontend/public/sw.js`; `frontend/src/services/offlineActionQueue.js`; `frontend/src/components/LiveLocationPanel.jsx` | Passed at checkpoint: combined backend 39/39, H0 focus 7/7, H1 focus 10/10, Prisma validation, frontend lint/build. Exact-location map loading remains user-initiated; nearest-structure reverse geocoding requires an approved provider. |
 | July 14, 2026 | Hardening pause | `docs/hardening_pause_handoff_2026-07-14.md` | H2 stopped after unverified schema/repository scaffolding; H3-H7 pending. Draft container/CI assets are not production evidence. |
+| July 22, 2026 | H2 opaque-session and recovery foundation | `backend/tests/hardening-h2-auth-session-recovery.test.js`; disposable fresh-database backend suite; `backend/prisma/migrations/20260722090000_reconcile_current_schema/migration.sql` | Passed locally: backend 48/48; production cookie flags and bearer rejection, `/me`, CSRF, login eligibility, logout/admin/recovery revocation, generic recovery responses, wrong/expired/reused recovery proofs, fresh replay of all migrations, empty schema diff, and idempotent migration rerun. Live WhatsApp/SMS/email delivery remains open. |
+| July 23, 2026 | H2 adversarial closeout and full local regression | `backend/tests/hardening-h2-*.test.js`; `backend/tests/hardening-firebase-phone-proof.test.js`; `backend/tests/hardening-password-byte-limit.test.js`; `frontend/e2e/browser-audit.mjs`; migrations through `20260723091000_canonical_unique_user_phone` | Passed locally: backend 74/74 on a fresh replay of all 10 migrations; browser 30/30; Prisma validation, frontend lint/build, and production Compose rendering passed. Frontend audit has zero findings; backend has no high/critical findings and retains six transitive Firebase-chain moderates without a non-breaking fix. Live recovery delivery, production-like staging, physical-device/cross-browser evidence, credential rotation, and the other unchecked release gates remain open. |

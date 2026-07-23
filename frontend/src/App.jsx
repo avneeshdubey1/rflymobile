@@ -3,8 +3,9 @@ import { Toaster } from "react-hot-toast";
 import { AuthProvider } from "./context/AuthContext.jsx";
 import ProtectedRoute from "./components/ProtectedRoute";
 
-import LandingPage from "./pages/LandingPage";
 import Login from "./pages/Login";
+import LandingPage from "./pages/LandingPage";
+import EmployeeForgotPassword from "./pages/EmployeeForgotPassword";
 import AdminDashboard from "./pages/AdminDashboard";
 import MarketingDashboard from "./pages/MarketingDashboard";
 import PilotDashboard from "./pages/PilotDashboard";
@@ -31,7 +32,9 @@ function App() {
         <Routes>
           {/* Public Routes */}
           <Route path="/" element={<Navigate to="/farmer/login" replace />} />
+          <Route path="/request" element={<LandingPage />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/forgot-password" element={<EmployeeForgotPassword />} />
           <Route path="/farmer/login" element={<FarmerLogin />} />
           <Route path="/farmer/register" element={<FarmerRegister />} />
           <Route path="/success" element={<RegistrationSuccess />} />

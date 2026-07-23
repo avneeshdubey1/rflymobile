@@ -1,9 +1,7 @@
 import { useNavigate } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
 
 function BusinessRegistrationSuccess() {
   const navigate = useNavigate();
-  const { t } = useTranslation();
 
   return (
     <div className="login-container" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>

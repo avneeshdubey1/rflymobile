@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import OpsIcon from './OpsIcon';
 import { flushQueuedActions, queueAction, queuedActions } from '../services/offlineActionQueue';
-import { API_URL as API } from '../config';
 import { useAuth } from '../context/useAuth';
 import LocationLink from './LocationLink';
+import { apiFetch, readJson } from '../services/apiClient';
 
 const GPS_INTERVAL_MS = Number(import.meta.env.VITE_GPS_PING_INTERVAL_MS) || 60_000;
 const activeStatuses = new Set(['PILOT_ACCEPTED', 'IN_PROGRESS']);
@@ -30,8 +30,8 @@ function PilotMissionPanel() {
 
   const refreshQueueCount = useCallback(async () => setQueuedCount(userId ? (await queuedActions(userId)).length : 0), [userId]);
   const fetchMissions = useCallback(async () => {
-    const response = await fetch(`${API}/api/assignments/pilot`);
-    const data = await response.json().catch(() => ({}));
+    const response = await apiFetch('/api/assignments/pilot');
+    const data = await readJson(response);
     if (!response.ok || !data.success) throw new Error(data.error || 'Could not load missions');
     setMissions(data.missions || []);
   }, []);
@@ -72,8 +72,8 @@ function PilotMissionPanel() {
     const pausesGps = action.kind === 'mission-state';
     if (pausesGps) setTransitioningMissionIds((ids) => new Set(ids).add(action.assignmentId));
     try {
-      const response = await fetch(action.url, { method: action.method || 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(action.body || {}) });
-      const data = await response.json().catch(() => ({}));
+      const response = await apiFetch(action.url, { method: action.method || 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(action.body || {}) });
+      const data = await readJson(response);
       if (!response.ok || !data.success) throw new Error(data.error || 'Action failed');
       if (action.kind !== 'location') await fetchMissions();
     } catch (error) {
@@ -98,7 +98,7 @@ function PilotMissionPanel() {
     const { latitude, longitude } = position.coords;
     await sendOrQueue({
       assignmentId,
-      url: `${API}/api/assignments/${assignmentId}/location`,
+      url: `/api/assignments/${assignmentId}/location`,
       body: { latitude, longitude, capturedAt: new Date(position.timestamp).toISOString(), accuracy: position.coords.accuracy ?? null },
       kind: 'location',
     });
@@ -155,13 +155,13 @@ function PilotMissionPanel() {
                 <div className="mission-card__detail"><span>Aircraft</span><strong>{mission.drone?.serialNumber || mission.droneId}</strong></div>
               </div>
               <div className="mission-actions">
-                {status === 'SCHEDULED' && <button className="submit-btn" onClick={() => void sendOrQueue({ assignmentId: mission.id, url: `${API}/api/assignments/${mission.id}/accept`, kind: 'mission-state' }, 'PILOT_ACCEPTED')}>Accept mission</button>}
-                {status === 'PILOT_ACCEPTED' && <button className="submit-btn" onClick={() => void sendOrQueue({ assignmentId: mission.id, url: `${API}/api/assignments/${mission.id}/start`, kind: 'mission-state' }, 'IN_PROGRESS')}>Start mission</button>}
+                {status === 'SCHEDULED' && <button className="submit-btn" onClick={() => void sendOrQueue({ assignmentId: mission.id, url: `/api/assignments/${mission.id}/accept`, kind: 'mission-state' }, 'PILOT_ACCEPTED')}>Accept mission</button>}
+                {status === 'PILOT_ACCEPTED' && <button className="submit-btn" onClick={() => void sendOrQueue({ assignmentId: mission.id, url: `/api/assignments/${mission.id}/start`, kind: 'mission-state' }, 'IN_PROGRESS')}>Start mission</button>}
                 {status === 'IN_PROGRESS' && <>
                   <div className="input-group"><label htmlFor={`actual-acreage-${mission.id}`}>Actual acreage</label><input id={`actual-acreage-${mission.id}`} type="number" min="0" step="0.01" placeholder="Actual acres" value={actualAcreage[mission.id] || ''} onChange={(event) => setActualAcreage((items) => ({ ...items, [mission.id]: event.target.value }))} /></div>
-                  <button className="submit-btn" onClick={() => { if (!actualAcreage[mission.id]) { setNotice({ kind: 'error', message: 'Enter the actual acreage before completing.' }); return; } void sendOrQueue({ assignmentId: mission.id, url: `${API}/api/assignments/${mission.id}/complete`, body: { actualAcreage: Number(actualAcreage[mission.id]) }, kind: 'mission-state' }, 'COMPLETED'); }}>Complete</button>
+                  <button className="submit-btn" onClick={() => { if (!actualAcreage[mission.id]) { setNotice({ kind: 'error', message: 'Enter the actual acreage before completing.' }); return; } void sendOrQueue({ assignmentId: mission.id, url: `/api/assignments/${mission.id}/complete`, body: { actualAcreage: Number(actualAcreage[mission.id]) }, kind: 'mission-state' }, 'COMPLETED'); }}>Complete</button>
                   <div className="input-group"><label htmlFor={`decommission-reason-${mission.id}`}>Aircraft issue</label><input id={`decommission-reason-${mission.id}`} placeholder="Decommission reason" value={decommissionReason[mission.id] || ''} onChange={(event) => setDecommissionReason((items) => ({ ...items, [mission.id]: event.target.value }))} /></div>
-                  <button className="danger-btn" onClick={() => void sendOrQueue({ assignmentId: mission.id, url: `${API}/api/assignments/${mission.id}/decommission`, body: { reason: decommissionReason[mission.id] || 'Pilot reported decommission' }, kind: 'mission-state' }, 'FLAGGED')}>Decommission</button>
+                  <button className="danger-btn" onClick={() => void sendOrQueue({ assignmentId: mission.id, url: `/api/assignments/${mission.id}/decommission`, body: { reason: decommissionReason[mission.id] || 'Pilot reported decommission' }, kind: 'mission-state' }, 'FLAGGED')}>Decommission</button>
                 </>}
               </div>
             </article>

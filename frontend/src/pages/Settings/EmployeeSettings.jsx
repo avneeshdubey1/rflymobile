@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { toast } from 'react-hot-toast';
+import { apiFetch, readJson } from '../../services/apiClient';
 
 export default function EmployeeSettings({ initialPreferences, user }) {
   const [preferences, setPreferences] = useState(initialPreferences);
   const [saving, setSaving] = useState(false);
 
-  const isFleetManager = user?.role === 'FLEET_MANAGER';
-  const isAdminOrSales = user?.role === 'ADMIN' || user?.role === 'SALES';
+  const normalizedRole = user?.role?.toUpperCase().replaceAll('-', '_');
+  const isFleetManager = normalizedRole === 'FLEET_MANAGER';
+  const isAdminOrSales = normalizedRole === 'ADMIN' || normalizedRole === 'SALES';
 
   const handleChange = (e) => {
     const { name, type, checked, value } = e.target;
@@ -20,22 +22,21 @@ export default function EmployeeSettings({ initialPreferences, user }) {
     e.preventDefault();
     setSaving(true);
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/users/preferences`, {
+      const res = await apiFetch('/api/users/preferences', {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify(preferences)
       });
       
-      const data = await res.json();
+      const data = await readJson(res);
       if (data.success) {
         toast.success('Preferences saved successfully!');
       } else {
         toast.error(data.error || 'Failed to save preferences.');
       }
-    } catch (err) {
+    } catch {
       toast.error('Network error while saving.');
     } finally {
       setSaving(false);

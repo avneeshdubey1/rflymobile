@@ -2,12 +2,12 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
-import { signInWithPhoneNumber } from 'firebase/auth';
-import { API_URL } from '../config';
-import { auth } from '../lib/firebase';
+import { signInWithPhoneNumber, signOut } from 'firebase/auth';
+import { auth, authReady } from '../lib/firebase';
 import { clearPhoneRecaptcha, getPhoneRecaptcha, normalizeIndianPhone } from '../lib/firebasePhone';
 import OtpInput from '../components/OtpInput';
 import LanguageSelector from '../components/LanguageSelector';
+import { apiFetch, readJson } from '../services/apiClient';
 
 export default function LandingPage() {
   const navigate = useNavigate();
@@ -38,11 +38,13 @@ export default function LandingPage() {
     setBusy(true);
     setError('');
     try {
+      await authReady;
       const result = await signInWithPhoneNumber(auth, normalizeIndianPhone(form.phone), getPhoneRecaptcha());
       setConfirmation(result);
       setStep('otp');
-    } catch (failure) {
-      setError(failure?.message || 'Unable to send OTP.');
+    } catch {
+      clearPhoneRecaptcha();
+      setError(t('unable_to_send_otp', 'Unable to send OTP. Please check the number and try again.'));
     } finally {
       setBusy(false);
     }
@@ -55,18 +57,20 @@ export default function LandingPage() {
     try {
       const credential = await confirmation.confirm(otp.trim());
       const idToken = await credential.user.getIdToken();
-      const response = await fetch(`${API_URL}/api/auth/farmer/complete-signup`, {
+      const response = await apiFetch('/api/auth/farmer/complete-signup', {
         method: 'POST',
+        authFailure: 'ignore',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ idToken, name: form.name, village: form.village, district: form.district }),
       });
-      const data = await response.json();
+      const data = await readJson(response);
       if (!response.ok) throw new Error(data.error || 'Registration failed.');
       clearPhoneRecaptcha();
       setStep('success');
-    } catch (failure) {
-      setError(failure?.message || 'OTP verification failed.');
+    } catch {
+      setError(t('otp_verification_failed', 'OTP verification failed. Please try again.'));
     } finally {
+      if (auth?.currentUser) await signOut(auth).catch(() => undefined);
       setBusy(false);
     }
   };
@@ -124,10 +128,10 @@ export default function LandingPage() {
                 <div className="form-heading"><p className="eyebrow eyebrow--accent">{t('verify_mobile_eyebrow', 'VERIFY MOBILE')}</p><h2>{t('enter_otp', 'Enter the OTP')}</h2><p>{t('sent_six_digit_code', 'We sent a six-digit code to your mobile number.')}</p></div>
                 <div className="input-group">
                   <label>{t('otp_label', '6-digit OTP')}</label>
-                  <OtpInput length={6} onComplete={(val) => { setOtp(val); }} disabled={busy} />
+                  <OtpInput value={otp} onChange={setOtp} length={6} disabled={busy} label={t('otp_label', '6-digit OTP')} />
                 </div>
                 <button className="submit-btn" disabled={busy || otp.length !== 6}>{busy ? t('registering', 'Creating account…') : t('complete_registration', 'Complete registration')}</button>
-                <button type="button" className="login-btn" onClick={() => { setStep('register'); setOtp(''); setConfirmation(null); }} disabled={busy}>{t('edit_details', 'Change details')}</button>
+                <button type="button" className="login-btn" onClick={() => { setStep('register'); setOtp(''); setConfirmation(null); setError(''); clearPhoneRecaptcha(); }} disabled={busy}>{t('edit_details', 'Change details')}</button>
               </form>
             )}
 

@@ -4,6 +4,8 @@ const { hashPassword, validatePassword } = require('../services/passwordService'
 const prisma = new PrismaClient();
 
 async function clearDatabase() {
+  await prisma.passwordRecoveryChallenge.deleteMany();
+  await prisma.authSession.deleteMany();
   await prisma.paymentRecord.deleteMany();
   await prisma.notification.deleteMany();
   await prisma.chatMessage.deleteMany();
@@ -37,20 +39,21 @@ async function main() {
   });
 
   const userPasswordHashes = await Promise.all(Array.from({ length: 8 }, () => hashPassword(demoPassword)));
+  const provisionedAt = new Date();
   const admin = await prisma.user.create({
-    data: { name: 'Admin User', email: 'admin@fieldops.example', passwordHash: userPasswordHashes[0], role: 'ADMIN' },
+    data: { name: 'Admin User', email: 'admin@fieldops.example', emailVerifiedAt: provisionedAt, passwordHash: userPasswordHashes[0], role: 'ADMIN' },
   });
   await prisma.user.createMany({
     data: [
-      { name: 'Sales One', email: 'sales1@fieldops.example', passwordHash: userPasswordHashes[1], role: 'SALES' },
-      { name: 'Sales Two', email: 'sales2@fieldops.example', passwordHash: userPasswordHashes[2], role: 'SALES' },
-      { name: 'Fleet Manager 1', email: 'fleet1@fieldops.example', passwordHash: userPasswordHashes[3], role: 'FLEET_MANAGER' },
-      { name: 'Fleet Manager 2', email: 'fleet2@fieldops.example', passwordHash: userPasswordHashes[4], role: 'FLEET_MANAGER' },
+      { name: 'Sales One', email: 'sales1@fieldops.example', emailVerifiedAt: provisionedAt, passwordHash: userPasswordHashes[1], role: 'SALES' },
+      { name: 'Sales Two', email: 'sales2@fieldops.example', emailVerifiedAt: provisionedAt, passwordHash: userPasswordHashes[2], role: 'SALES' },
+      { name: 'Fleet Manager 1', email: 'fleet1@fieldops.example', emailVerifiedAt: provisionedAt, passwordHash: userPasswordHashes[3], role: 'FLEET_MANAGER' },
+      { name: 'Fleet Manager 2', email: 'fleet2@fieldops.example', emailVerifiedAt: provisionedAt, passwordHash: userPasswordHashes[4], role: 'FLEET_MANAGER' },
     ],
   });
-  const pilot1 = await prisma.user.create({ data: { name: 'Pilot One', email: 'pilot1@fieldops.example', passwordHash: userPasswordHashes[5], role: 'PILOT', homeCenterId: tenkasi.id, pilotLicenseExpiry: new Date('2027-01-01') } });
-  const pilot2 = await prisma.user.create({ data: { name: 'Pilot Two', email: 'pilot2@fieldops.example', passwordHash: userPasswordHashes[6], role: 'PILOT', homeCenterId: kanyakumari.id, pilotLicenseExpiry: new Date('2027-01-01') } });
-  await prisma.user.create({ data: { name: 'Pilot Three', email: 'pilot3@fieldops.example', passwordHash: userPasswordHashes[7], role: 'PILOT', homeCenterId: tenkasi.id, pilotLicenseExpiry: new Date('2025-01-01') } });
+  const pilot1 = await prisma.user.create({ data: { name: 'Pilot One', email: 'pilot1@fieldops.example', emailVerifiedAt: provisionedAt, passwordHash: userPasswordHashes[5], role: 'PILOT', homeCenterId: tenkasi.id, pilotLicenseExpiry: new Date('2027-01-01') } });
+  const pilot2 = await prisma.user.create({ data: { name: 'Pilot Two', email: 'pilot2@fieldops.example', emailVerifiedAt: provisionedAt, passwordHash: userPasswordHashes[6], role: 'PILOT', homeCenterId: kanyakumari.id, pilotLicenseExpiry: new Date('2027-01-01') } });
+  await prisma.user.create({ data: { name: 'Pilot Three', email: 'pilot3@fieldops.example', emailVerifiedAt: provisionedAt, passwordHash: userPasswordHashes[7], role: 'PILOT', homeCenterId: tenkasi.id, pilotLicenseExpiry: new Date('2025-01-01') } });
 
   const drones = await Promise.all([
     prisma.drone.create({ data: { model: 'Agras T10', serialNumber: 'SN-001', homeCenterId: tenkasi.id, status: 'ASSIGNED', airworthinessExpiry: new Date('2027-01-01') } }),

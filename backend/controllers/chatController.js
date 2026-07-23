@@ -1,7 +1,7 @@
 const chatLifecycleService = require('../services/chatLifecycleService');
 
 function respondError(res, error) {
-  const status = /not found/.test(error.message) ? 404 : /not a participant|must be between|Only Admins and Pilots|Only an Admin/.test(error.message) ? 403 : 400;
+  const status = /not found/.test(error.message) ? 404 : /not a participant|do not have permission|must be between|Only Admins and Pilots|Only an Admin/.test(error.message) ? 403 : 400;
   return res.status(status).json({ error: error.message });
 }
 

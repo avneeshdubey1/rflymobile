@@ -1,8 +1,8 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useRef, useEffect } from 'react';
 
-export default function OtpInput({ length = 6, onComplete, disabled }) {
-  const [otp, setOtp] = useState(new Array(length).fill(''));
+export default function OtpInput({ length = 6, value = '', onChange, onComplete, disabled, label = 'One-time password' }) {
   const inputRefs = useRef([]);
+  const otp = Array.from({ length }, (_, index) => String(value || '')[index] || '');
 
   useEffect(() => {
     if (inputRefs.current[0]) {
@@ -17,14 +17,14 @@ export default function OtpInput({ length = 6, onComplete, disabled }) {
     const newOtp = [...otp];
     // Keep only the last typed character in case they type quickly
     newOtp[index] = value.substring(value.length - 1);
-    setOtp(newOtp);
+    const otpValue = newOtp.join('');
+    onChange?.(otpValue);
 
     // Focus next input if a number is entered
     if (value && index < length - 1) {
       inputRefs.current[index + 1].focus();
     }
 
-    const otpValue = newOtp.join('');
     if (otpValue.length === length && onComplete) {
       onComplete(otpValue);
     }
@@ -35,7 +35,7 @@ export default function OtpInput({ length = 6, onComplete, disabled }) {
       e.preventDefault();
       const newOtp = [...otp];
       newOtp[index] = '';
-      setOtp(newOtp);
+      onChange?.(newOtp.join(''));
 
       if (index > 0) {
         inputRefs.current[index - 1].focus();
@@ -63,20 +63,21 @@ export default function OtpInput({ length = 6, onComplete, disabled }) {
       newOtp[i] = pastedData[i];
       focusIndex = i;
     }
-    setOtp(newOtp);
+    const otpValue = newOtp.join('');
+    onChange?.(otpValue);
 
     if (focusIndex < length - 1) {
       inputRefs.current[focusIndex + 1].focus();
     } else {
       inputRefs.current[length - 1].focus();
       if (onComplete) {
-        onComplete(newOtp.join(''));
+        onComplete(otpValue);
       }
     }
   };
 
   return (
-    <div className="otp-container">
+    <div className="otp-container" role="group" aria-label={label}>
       {otp.map((value, index) => (
         <input
           key={index}
@@ -91,6 +92,7 @@ export default function OtpInput({ length = 6, onComplete, disabled }) {
           className="otp-input"
           disabled={disabled}
           maxLength={2}
+          aria-label={`${label}, digit ${index + 1} of ${length}`}
         />
       ))}
     </div>

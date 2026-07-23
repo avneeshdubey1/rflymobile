@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import OpsIcon from './OpsIcon';
-import { API_URL as API } from '../config';
 import { useAuth } from '../context/useAuth';
+import { apiFetch, readJson } from '../services/apiClient';
 
 function BhumeetLogbook() {
-  const { token } = useAuth();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
 
   const [flights, setFlights] = useState([]);
@@ -18,10 +18,8 @@ function BhumeetLogbook() {
   useEffect(() => {
     async function fetchFlights() {
       try {
-        const res = await fetch(`${API}/api/bhumeet/logs`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        const data = await res.json();
+        const res = await apiFetch('/api/bhumeet/logs');
+        const data = await readJson(res);
         if (!res.ok || !data.success) throw new Error(data.error || 'Failed to load logs');
         setFlights(data.flights || []);
       } catch (err) {
@@ -34,15 +32,15 @@ function BhumeetLogbook() {
     async function fetchDashboard() {
       try {
         const [overviewRes, dronesRes, pilotsRes, weatherRes, reportsRes] = await Promise.all([
-          fetch(`${API}/api/bhumeet/overview`, { headers: { Authorization: `Bearer ${token}` } }),
-          fetch(`${API}/api/bhumeet/drones`, { headers: { Authorization: `Bearer ${token}` } }),
-          fetch(`${API}/api/bhumeet/dronePilots`, { headers: { Authorization: `Bearer ${token}` } }),
-          fetch(`${API}/api/bhumeet/weather`, { headers: { Authorization: `Bearer ${token}` } }),
-          fetch(`${API}/api/bhumeet/reports`, { headers: { Authorization: `Bearer ${token}` } })
+          apiFetch('/api/bhumeet/overview'),
+          apiFetch('/api/bhumeet/drones'),
+          apiFetch('/api/bhumeet/dronePilots'),
+          apiFetch('/api/bhumeet/weather'),
+          apiFetch('/api/bhumeet/reports')
         ]);
 
         const [overview, drones, pilots, weather, reports] = await Promise.all([
-          overviewRes.json(), dronesRes.json(), pilotsRes.json(), weatherRes.json(), reportsRes.json()
+          readJson(overviewRes), readJson(dronesRes), readJson(pilotsRes), readJson(weatherRes), readJson(reportsRes)
         ]);
 
         setDashboardData({
@@ -61,7 +59,7 @@ function BhumeetLogbook() {
 
     fetchFlights();
     fetchDashboard();
-  }, [token]);
+  }, [user]);
 
   return (
     <div>

@@ -2,11 +2,13 @@
 **/.env
 **/.env.*
 !**/.env.example
+*_env_backup
 backend/scripts/resetLocalAdminPassword.local.js
 
 # Generated output
 **/dist/
 **/.cache/
+backend/node_modules/.prisma/client/query_engine-windows.dll.node.tmp*
 *.log
 presentation/
 

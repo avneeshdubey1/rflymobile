@@ -1,15 +1,11 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { API_URL } from '../config';
-import { useAuth } from '../context/useAuth';
 import LanguageSelector from '../components/LanguageSelector';
-import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
+import { apiFetch, readJson } from '../services/apiClient';
 
 export default function B2BRegister() {
   const navigate = useNavigate();
-  const { login } = useAuth();
-  const { t } = useTranslation();
   
   const [formData, setFormData] = useState({
     businessName: '',
@@ -34,13 +30,14 @@ export default function B2BRegister() {
     setBusy(true);
     setError('');
     try {
-      const response = await fetch(`${API_URL}/api/auth/business/register`, {
+      const response = await apiFetch('/api/auth/business/register', {
         method: 'POST',
+        authFailure: 'ignore',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
       });
       
-      const data = await response.json();
+      const data = await readJson(response);
       
       if (!response.ok) {
         throw new Error(data.error || 'Registration failed.');

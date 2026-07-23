@@ -1,8 +1,8 @@
-import { API_URL as API } from '../config';
+import { apiFetch } from './apiClient';
 
 export async function getFarmers() {
 
-    const response = await fetch(`${API}/api/forms/sync`);
+    const response = await apiFetch('/api/forms/sync');
 
     return response.json();
 }

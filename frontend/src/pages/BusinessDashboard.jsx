@@ -19,9 +19,9 @@ export default function BusinessDashboard() {
   // Safe fallback if user fields are missing
   const business = user || {};
 
-  const handleLogout = () => {
-    logout();
-    navigate("/business/login");
+  const handleLogout = async () => {
+    await logout();
+    navigate('/business/login', { replace: true });
   };
 
   const pageInfo = {

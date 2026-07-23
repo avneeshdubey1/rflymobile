@@ -15,6 +15,7 @@ async function main() {
   console.log(`Found ${users.length} user(s). Flushing...`);
 
   for (const user of users) {
+    await prisma.passwordRecoveryChallenge.deleteMany({ where: { userId: user.id } });
     await prisma.authSession.deleteMany({ where: { userId: user.id } });
     await prisma.user.delete({ where: { id: user.id } });
     console.log(`Successfully deleted user ID: ${user.id} (${user.name})`);

@@ -3,6 +3,7 @@ import { useAuth } from '../context/useAuth';
 import OpsIcon from './OpsIcon';
 import { useTranslation } from 'react-i18next';
 import { supportedLanguages } from '../i18n';
+import { apiFetch } from '../services/apiClient';
 
 export default function LanguageSelector({ style, className }) {
   const { user } = useAuth();
@@ -23,11 +24,10 @@ export default function LanguageSelector({ style, className }) {
     
     if (user) {
       try {
-        await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/users/preferences`, {
+        await apiFetch('/api/users/preferences', {
           method: 'PUT',
           headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${localStorage.getItem('token')}`
+            'Content-Type': 'application/json'
           },
           body: JSON.stringify({ language: code })
         });
@@ -35,7 +35,6 @@ export default function LanguageSelector({ style, className }) {
         console.error('Failed to sync language preference', err);
       }
     }
-    window.location.reload();
   };
 
   return (

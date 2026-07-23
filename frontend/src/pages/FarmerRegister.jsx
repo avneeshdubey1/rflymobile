@@ -1,14 +1,14 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { signInWithPhoneNumber } from 'firebase/auth';
-import { auth } from '../lib/firebase';
+import { signInWithPhoneNumber, signOut } from 'firebase/auth';
+import { auth, authReady } from '../lib/firebase';
 import { clearPhoneRecaptcha, getPhoneRecaptcha, normalizeIndianPhone } from '../lib/firebasePhone';
-import { API_URL } from '../config';
 import { useAuth } from '../context/useAuth';
 import OtpInput from '../components/OtpInput';
 import LanguageSelector from '../components/LanguageSelector';
 import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
+import { apiFetch, readJson } from '../services/apiClient';
 
 export default function FarmerRegister() {
   const navigate = useNavigate();
@@ -37,11 +37,12 @@ export default function FarmerRegister() {
     setBusy(true);
     setError('');
     try {
+      await authReady;
       const result = await signInWithPhoneNumber(auth, normalizeIndianPhone(phone), getPhoneRecaptcha());
       setConfirmation(result);
-    } catch (failure) {
+    } catch {
       clearPhoneRecaptcha();
-      setError(failure?.message || t('unable_to_send_otp', 'Unable to send OTP.'));
+      setError(t('unable_to_send_otp', 'Unable to send OTP. Please check the number and try again.'));
     } finally {
       setBusy(false);
     }
@@ -55,8 +56,9 @@ export default function FarmerRegister() {
       const credential = await confirmation.confirm(otp.trim());
       const idToken = await credential.user.getIdToken();
       
-      const response = await fetch(`${API_URL}/api/auth/farmer/complete-signup`, {
+      const response = await apiFetch('/api/auth/farmer/complete-signup', {
         method: 'POST',
+        authFailure: 'ignore',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           idToken,
@@ -66,15 +68,16 @@ export default function FarmerRegister() {
         }),
       });
       
-      const data = await response.json();
+      const data = await readJson(response);
       if (!response.ok) throw new Error(data.error || t('registration_failed', 'Registration failed.'));
       
-      login(data.user, data.token);
+      login(data.user);
       toast.success(t('registration_complete', 'Registration Complete!'));
       navigate('/success', { replace: true });
-    } catch (failure) {
-      setError(failure?.message || t('registration_verification_failed', 'Registration verification failed.'));
+    } catch {
+      setError(t('otp_verification_failed', 'OTP verification failed. Please try again.'));
     } finally {
+      if (auth?.currentUser) await signOut(auth).catch(() => undefined);
       setBusy(false);
     }
   };
@@ -125,7 +128,7 @@ export default function FarmerRegister() {
             <form className="login-form" onSubmit={verifyOtp}>
               <div className="input-group">
                 <label>{t('otp_sent_to', '6-digit OTP sent to')} {phone}</label>
-                <OtpInput length={6} onComplete={(val) => { setOtp(val); }} disabled={busy} />
+                <OtpInput value={otp} onChange={setOtp} length={6} disabled={busy} label={t('otp_label', '6-digit OTP')} />
               </div>
               <button className="submit-btn login-submit" disabled={busy || otp.length !== 6}>{busy ? t('registering', 'Registering…') : t('complete_registration', 'Complete Registration')}</button>
               <button type="button" className="login-btn button-wide" style={{ marginTop: '0.65rem' }} onClick={() => { setConfirmation(null); setOtp(''); clearPhoneRecaptcha(); }} disabled={busy}>{t('edit_details', 'Edit Details')}</button>
@@ -134,7 +137,7 @@ export default function FarmerRegister() {
           
           <div style={{ marginTop: '1.5rem', textAlign: 'center', display: 'grid', gap: '0.5rem' }}>
             <p>{t('already_registered', 'Already registered?')} <Link to="/farmer/login" style={{ fontWeight: 'bold' }}>{t('login_here', 'Login here')}</Link></p>
-            <p>New Business? <Link to="/business/register" style={{ fontWeight: 'bold' }}>Business Registration</Link></p>
+            <p>{t('new_business_question', 'New Business?')} <Link to="/business/register" style={{ fontWeight: 'bold' }}>{t('business_registration', 'Business Registration')}</Link></p>
             <p className="muted">{t('employee_q', 'Employee?')} <Link to="/login" style={{ color: 'inherit' }}>{t('employee_login', 'Employee login')}</Link></p>
           </div>
         </div>

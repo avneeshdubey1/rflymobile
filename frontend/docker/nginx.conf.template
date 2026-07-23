@@ -70,7 +70,6 @@ http {
       proxy_send_timeout 30s;
       proxy_read_timeout 30s;
       proxy_hide_header X-Powered-By;
-      proxy_cookie_flags ~ secure httponly samesite=strict;
     }
 
     location /socket.io/ {

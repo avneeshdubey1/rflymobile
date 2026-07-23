@@ -1,6 +1,8 @@
 const userRepository = require('../src/repositories/userRepository');
 const auditLogRepository = require('../src/repositories/auditLogRepository');
 const { hashPassword, validatePassword } = require('../services/passwordService');
+const { normalizePhone } = require('../services/identityService');
+const { disconnectUserSockets } = require('../middleware/auth');
 const roles = new Set(['ADMIN', 'SALES', 'FLEET_MANAGER', 'PILOT']);
 
 function normalizeRole(role) {
@@ -21,6 +23,7 @@ exports.addUser = async (req, res) => {
     const name = String(req.body.name || '').trim();
     if (name.length < 2 || name.length > 120 || !roles.has(role)) return res.status(400).json({ error: 'A name and valid role are required' });
     const email = normalizeEmail(req.body.email);
+    const phone = req.body.phone ? normalizePhone(req.body.phone) : null;
     validatePassword(req.body.password);
     const passwordHash = await hashPassword(req.body.password);
     if (req.auth.role === 'FLEET_MANAGER' && role !== 'PILOT') {
@@ -31,17 +34,20 @@ exports.addUser = async (req, res) => {
     const user = await userRepository.create({
       email,
       name,
-      phone: req.body.phone ? String(req.body.phone).trim() : null,
+      phone,
       homeCenterId: req.body.homeCenterId || null,
       role,
       passwordHash,
-      active: isActive
+      active: isActive,
+      // Internal employee accounts are provisioned against a work address
+      // that the approving Admin/Fleet Manager has already verified.
+      emailVerifiedAt: new Date(),
     });
     await auditLogRepository.create({ entityType: 'User', entityId: user.id, action: 'CREATED', actorId: req.auth.userId, afterState: user });
     res.status(201).json({ success: true, user });
   } catch (error) {
     const validationError = /required|between|valid/i.test(error.message || '');
-    const message = error.code === 'P2002' ? 'That work email is already registered' : validationError ? error.message : 'Failed to add user';
+    const message = error.code === 'P2002' ? 'That work email or mobile is already registered' : validationError ? error.message : 'Failed to add user';
     res.status(error.code === 'P2002' ? 409 : validationError ? 400 : 500).json({ error: message });
   }
 };
@@ -49,6 +55,7 @@ exports.deleteUser = async (req, res) => {
   try {
     if (req.params.id === req.auth.userId) return res.status(409).json({ error: 'You cannot delete your own account' });
     const user = await userRepository.delete(req.params.id);
+    disconnectUserSockets(req.app.get('io'), user.id);
     await auditLogRepository.create({ entityType: 'User', entityId: user.id, action: 'DELETED', actorId: req.auth.userId, beforeState: user });
     res.json({ success: true });
   } catch (error) {
@@ -58,7 +65,8 @@ exports.deleteUser = async (req, res) => {
 exports.editPassword = async (req, res) => {
   try {
     validatePassword(req.body.newPassword);
-    const user = await userRepository.updatePasswordHash(req.body.id, await hashPassword(req.body.newPassword));
+    const user = await userRepository.resetPassword(req.body.id, await hashPassword(req.body.newPassword), 'PASSWORD_CHANGED_BY_ADMIN');
+    disconnectUserSockets(req.app.get('io'), user.id);
     await auditLogRepository.create({ entityType: 'User', entityId: user.id, action: 'PASSWORD_CHANGED_BY_ADMIN', actorId: req.auth.userId, afterState: { credentialChanged: true } });
     res.json({ success: true, user });
   } catch (error) {
@@ -68,13 +76,11 @@ exports.editPassword = async (req, res) => {
 };
 exports.toggleActive = async (req, res) => {
   try {
-    const prisma = require('../src/lib/prisma');
-    const user = await prisma.user.findUnique({ where: { id: req.body.userId } });
+    if (req.body.userId === req.auth.userId) return res.status(409).json({ error: 'You cannot deactivate your own account' });
+    const user = await userRepository.findById(req.body.userId);
     if (!user) return res.status(404).json({ error: 'User not found' });
-    const updatedUser = await prisma.user.update({
-      where: { id: user.id },
-      data: { active: !user.active }
-    });
+    const updatedUser = await userRepository.setActive(user.id, !user.active);
+    disconnectUserSockets(req.app.get('io'), user.id);
     await auditLogRepository.create({ entityType: 'User', entityId: user.id, action: 'TOGGLE_ACTIVE', actorId: req.auth.userId, beforeState: user, afterState: updatedUser });
     res.json({ success: true, user: updatedUser });
   } catch (error) {
@@ -84,8 +90,7 @@ exports.toggleActive = async (req, res) => {
 
 exports.getPreferences = async (req, res) => {
   try {
-    const prisma = require('../src/lib/prisma');
-    const user = await prisma.user.findUnique({ where: { id: req.auth.userId } });
+    const user = await userRepository.getPreferences(req.auth.userId);
     if (!user) return res.status(404).json({ error: 'User not found' });
     res.json({ success: true, preferences: user.preferences });
   } catch (error) {
@@ -95,8 +100,7 @@ exports.getPreferences = async (req, res) => {
 
 exports.updatePreferences = async (req, res) => {
   try {
-    const prisma = require('../src/lib/prisma');
-    const user = await prisma.user.findUnique({ where: { id: req.auth.userId } });
+    const user = await userRepository.getPreferences(req.auth.userId);
     if (!user) return res.status(404).json({ error: 'User not found' });
     
     const updatedPreferences = {
@@ -104,10 +108,7 @@ exports.updatePreferences = async (req, res) => {
       ...req.body
     };
 
-    const updatedUser = await prisma.user.update({
-      where: { id: user.id },
-      data: { preferences: updatedPreferences }
-    });
+    const updatedUser = await userRepository.updatePreferences(user.id, updatedPreferences);
     
     await auditLogRepository.create({ entityType: 'User', entityId: user.id, action: 'UPDATE_PREFERENCES', actorId: req.auth.userId, beforeState: user.preferences, afterState: updatedPreferences });
     res.json({ success: true, preferences: updatedUser.preferences });

@@ -1,3 +1,5 @@
+import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import OpsIcon from './OpsIcon';
 
 function initials(name) {
@@ -5,6 +7,19 @@ function initials(name) {
 }
 
 function OperationsShell({ roleLabel, navItems, activeTab, onTabChange, user, onLogout, children }) {
+  const [signingOut, setSigningOut] = useState(false);
+  const { t } = useTranslation();
+
+  const handleSignOut = async () => {
+    if (!onLogout || signingOut) return;
+    setSigningOut(true);
+    try {
+      await onLogout();
+    } finally {
+      setSigningOut(false);
+    }
+  };
+
   return (
     <div className="ops-shell">
       <aside className="ops-sidebar">
@@ -38,15 +53,10 @@ function OperationsShell({ roleLabel, navItems, activeTab, onTabChange, user, on
             <span className="account-chip__avatar">{initials(user?.name)}</span>
             <span className="account-chip__text"><strong>{user?.name || roleLabel}</strong><small>{roleLabel}</small></span>
           </div>
-          <button className="sidebar-signout" type="button" onClick={onLogout}>
+          <button className="sidebar-signout" type="button" onClick={() => void handleSignOut()} disabled={signingOut || !onLogout}>
             <OpsIcon name="logout" />
-            <span>Sign out</span>
+            <span>{signingOut ? t('signing_out', 'Signing out…') : t('sign_out', 'Sign out')}</span>
           </button>
-
-          {/* <button className="sidebar-signout" type="button" onClick={logout}>
-            <OpsIcon name="logout" />
-            <span>Sign out</span>
-          </button> */}
         </div>
       </aside>
 

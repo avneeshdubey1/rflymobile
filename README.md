@@ -22,7 +22,7 @@ An internal drone-service operations platform for lead intake, geofencing, autom
    docker run --name rfly-postgres -e POSTGRES_PASSWORD=devpass -e POSTGRES_DB=rfly_daas -p 5432:5432 -d postgres:16
    ```
 
-2. In `backend/`, create a local `.env` with `DATABASE_URL`, `JWT_SECRET`, and your `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, and `FIREBASE_PRIVATE_KEY` (if you are testing the Farmer Login). For a fresh seed, choose the local demo password directly in your terminal, then run:
+2. In `backend/`, create a local `.env` with `DATABASE_URL` and your `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, and `FIREBASE_PRIVATE_KEY` (if you are testing the Farmer Login). Production also requires a separately managed `RECOVERY_HASH_SECRET`; local development generates an in-memory recovery hashing key when it is omitted. For a fresh seed, choose the local demo password directly in your terminal, then run:
 
    ```powershell
    npm install
@@ -52,9 +52,9 @@ If port `5000` reports `EADDRINUSE`, another backend is already running. Stop th
 
 The current build is suitable for a controlled local stakeholder demonstration. The verified path covers public GPS intake, Sales verification and appeals, automatic/manual Fleet scheduling, Pilot accept/start/GPS/complete, offline replay, payment cash fallback, CRM history, and Admin–Pilot chat.
 
-The July 14 UI correction gives every active route one customer-neutral operations design system, with professional colour accents and verified desktop, tablet, and phone layouts. The current isolated Edge suite passes 30/30 checks; normal workflows produce no console, runtime, or HTTP errors.
+Every active route uses one customer-neutral operations design system with verified desktop, tablet, and phone layouts. Login now uses server-managed opaque cookies, CSRF protection, role/account-state checks, revocation, and one-time recovery challenges; no application bearer token or user record is persisted in browser storage. The current isolated browser suite passes 30/30 checks with no unexpected console, runtime, or HTTP errors.
 
-WhatsApp, live weather, Google Form delivery, and UPI remain deliberately mocked or fail-open until provider sandboxes and company-owned configuration are supplied. This demo status is not production approval; see `production hardening.md`.
+WhatsApp/SMS/email recovery delivery, lifecycle WhatsApp, live weather, Google Form delivery, and UPI remain deliberately unavailable, mocked, or fail-open until provider sandboxes and company-owned configuration are supplied. This demo status is not production approval; see `production hardening.md`.
 
 ## Verification
 
@@ -69,7 +69,7 @@ npm run build
 npm run test:browser
 ```
 
-Backend tests reset only `rfly_daas_backend_test`; the Edge audit resets only `rfly_daas_browser_test`. Neither suite seeds or changes the normal demo database. See `docs/demo_acceptance_report_2026-07-14.md` for the latest methodical result.
+Backend tests reset only `rfly_daas_backend_test`; the browser audit resets only `rfly_daas_browser_test`. Neither suite seeds or changes the normal demo database. The July 23 local result is backend 74/74 and browser 30/30; see `history_of_changes.md` and the verification log in `production hardening.md`.
 
 ## Operations notes
 

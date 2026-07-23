@@ -10,7 +10,7 @@ async function main() {
   for (const record of records) {
     if (/^\$2[aby]\$/.test(record.passwordHash)) continue;
     const passwordHash = await bcrypt.hash(record.passwordHash, BCRYPT_COST);
-    await userRepository.updatePasswordHash(record.id, passwordHash);
+    await userRepository.resetPassword(record.id, passwordHash, 'DEVELOPMENT_PASSWORD_MIGRATION');
     migrated += 1;
   }
   console.log(`Migrated ${migrated} development account credential${migrated === 1 ? '' : 's'} to bcrypt.`);

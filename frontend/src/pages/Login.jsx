@@ -1,38 +1,41 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/useAuth';
-import { API_URL as API } from '../config';
 import { useTranslation } from 'react-i18next';
 import LanguageSelector from '../components/LanguageSelector';
+import { apiFetch, readJson } from '../services/apiClient';
+import { homeForRole } from '../utils/authRouting';
 
 function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { t } = useTranslation();
   const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
 
   const handleLogin = async (event) => {
     event.preventDefault();
     setError('');
+    setBusy(true);
     try {
-      const response = await fetch(`${API}/api/auth/login`, {
+      const response = await apiFetch('/api/auth/login', {
         method: 'POST',
+        authFailure: 'ignore',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       });
-      const data = await response.json();
-      if (!data.success) { setError(data.error || data.message || 'Login failed'); return; }
+      const data = await readJson(response);
+      if (!response.ok || !data.success) { setError(data.error || data.message || t('login_failed', 'Login failed')); return; }
 
-      login(data.user, data.token);
-      if (data.user.role === 'admin') navigate('/admin');
-      else if (data.user.role === 'sales') navigate('/marketing');
-      else if (data.user.role === 'pilot') navigate('/pilot');
-      else if (data.user.role === 'fleet-manager') navigate('/fleet-manager');
-      else navigate('/');
+      login(data.user);
+      navigate(location.state?.from || homeForRole(data.user.role), { replace: true });
     } catch {
-      setError('Server error. Please try again.');
+      setError(t('server_error_try_again', 'Server error. Please try again.'));
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -56,17 +59,19 @@ function Login() {
           <p className="subtitle">{t('employee_login_instruction', 'Use your assigned work account to continue.')}</p>
 
           {error && <div role="alert" className="alert error">{error}</div>}
+          {location.state?.recoveryComplete && <div role="status" className="notice">{t('password_reset_login_notice', 'Password reset complete. Sign in with your new password.')}</div>}
 
           <form onSubmit={handleLogin} className="login-form">
             <div className="input-group">
               <label htmlFor="login-email">{t('work_email', 'Work Email')}</label>
-              <input id="login-email" name="email" type="email" placeholder="name@company.example" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="username" required />
+              <input id="login-email" name="email" type="email" placeholder="name@company.example" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="username" required disabled={busy} />
             </div>
             <div className="input-group">
               <label htmlFor="login-password">{t('password', 'Password')}</label>
-              <input id="login-password" name="password" type="password" placeholder="Enter your password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="current-password" required />
+              <input id="login-password" name="password" type="password" placeholder={t('enter_password', 'Enter your password')} value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="current-password" required disabled={busy} />
+              <div style={{ textAlign: 'right', marginTop: '0.25rem' }}><Link to="/forgot-password" style={{ fontSize: '0.85rem', color: 'var(--accent)' }}>{t('forgot_password', 'Forgot password?')}</Link></div>
             </div>
-            <button type="submit" className="submit-btn login-submit">{t('login', 'Login')}</button>
+            <button type="submit" className="submit-btn login-submit" disabled={busy}>{busy ? t('logging_in', 'Logging in…') : t('login', 'Login')}</button>
           </form>
           <button type="button" className="back-link" onClick={() => navigate('/')}>{t('return_to_service', '← Return to service request')}</button>
         </div>

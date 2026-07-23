@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useAuth } from '../context/useAuth';
 import OperationsShell from '../components/OperationsShell';
 import OpsIcon from '../components/OpsIcon';
 import TerrainMap from '../components/TerrainMap';
-import { API_URL as API } from '../config';
 import { useTranslation } from 'react-i18next';
+import { apiFetch, readJson } from '../services/apiClient';
 
 const statusLabel = (status) => String(status || 'UNKNOWN').replaceAll('_', ' ').toLowerCase();
 const statusTone = (status) => {
@@ -39,6 +39,8 @@ export default function FarmerDashboard() {
     waterBodyNearby: false,
     terrainType: ''
   });
+  const handleLocationChange = useCallback((coords) => setForm((current) => ({ ...current, mapsLink: coords })), []);
+  const handleTerrainCalculated = useCallback((terrain) => setForm((current) => ({ ...current, terrainType: terrain })), []);
   
   const submitRequest = async (e) => {
     e.preventDefault();
@@ -64,13 +66,13 @@ export default function FarmerDashboard() {
         terrainType: form.terrainType
       };
       
-      const response = await fetch(`${API}/api/leads/new`, {
+      const response = await apiFetch('/api/leads/new', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
       
-      const data = await response.json();
+      const data = await readJson(response);
       if (!response.ok) throw new Error(data.error || 'Failed to submit request.');
       
       setNotice({ kind: 'success', message: 'Your drone service request has been submitted successfully! We will contact you soon.' });
@@ -90,7 +92,7 @@ export default function FarmerDashboard() {
   ];
 
   return (
-    <OperationsShell roleLabel={t("Farmer Workspace")} navItems={navItems} activeTab={activeTab} onTabChange={setActiveTab} user={user} logout={logout}>
+    <OperationsShell roleLabel={t('farmer_workspace', 'Farmer Workspace')} navItems={navItems} activeTab={activeTab} onTabChange={setActiveTab} user={user} onLogout={logout}>
       <header className="page-header">
         <div className="page-header__copy">
           <p className="eyebrow">FARMER PORTAL</p>
@@ -304,8 +306,8 @@ export default function FarmerDashboard() {
                   <span className="field-hint" style={{ marginBottom: '0.8rem', display: 'block' }}>{t('Search your area, fetch GPS, or drag the pin. The terrain will be analyzed automatically.')}</span>
                   <div style={{ borderRadius: 'var(--radius-sm)', overflow: 'hidden', border: '1px solid var(--border)' }}>
                     <TerrainMap 
-                      onLocationChange={(coords) => setForm(prev => ({...prev, mapsLink: coords}))}
-                      onTerrainCalculated={(terrain) => setForm(prev => ({...prev, terrainType: terrain}))}
+                      onLocationChange={handleLocationChange}
+                      onTerrainCalculated={handleTerrainCalculated}
                     />
                   </div>
                 </div>

@@ -24,7 +24,14 @@ function createApp({ config = loadEnvironment() } = {}) {
   app.use(requireJsonContentType);
 
   const limits = createRateLimiters(config);
-  app.use('/api/auth/login', limits.login);
+  app.use([
+    '/api/auth/login',
+    '/api/auth/farmer/login',
+    '/api/auth/farmer/complete-signup',
+    '/api/auth/business/login',
+    '/api/auth/business/register',
+  ], limits.login);
+  app.use(['/api/auth/recovery', '/api/auth/business/recovery'], limits.recovery);
   app.use(['/api/leads/new', '/api/leads/ingest/website'], limits.publicIntake);
   app.use(/^\/api\/leads\/[^/]+\/appeal\/?$/, limits.publicIntake);
   app.use(['/api/forms/webhook', '/api/leads/ingest/google-form'], limits.webhook);

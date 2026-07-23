@@ -1,145 +1,121 @@
 const userRepository = require('../src/repositories/userRepository');
-const { issueToken } = require('../middleware/auth');
-const { hashPassword, verifyPassword } = require('../services/passwordService');
-const admin = require('../config/firebase');
-const { getAuth } = require('firebase-admin/auth');
+const { hashPassword, INVALID_ACCOUNT_PASSWORD_HASH, needsRehash, verifyPassword } = require('../services/passwordService');
+const { verifiedFirebasePhoneProof } = require('../services/firebasePhoneService');
+const { normalizeEmail, normalizePhone, phoneVariants, validateEmail } = require('../services/identityService');
+const { establishSession, publicUser, SessionError } = require('../services/sessionService');
+const recoveryService = require('../services/recoveryService');
+const authAuditService = require('../services/authAuditService');
+const { disconnectUserSockets } = require('../middleware/auth');
 
-const publicRole = (role) => String(role || '').toLowerCase().replaceAll('_', '-');
+const BUSINESS_ROLES = new Set(['BUSINESS']);
 
-async function verifiedFirebasePhone(idToken) {
-  if (!idToken) {
-    const error = new Error('Missing Firebase ID token');
-    error.status = 400;
-    throw error;
-  }
-  if (!admin.getApps().length) {
-    const error = new Error('Phone authentication is not configured on the server');
-    error.status = 503;
-    throw error;
-  }
-  const decodedToken = await getAuth().verifyIdToken(idToken);
-  if (!decodedToken.phone_number) {
-    const error = new Error('The verified Firebase account has no phone number');
-    error.status = 400;
-    throw error;
-  }
-  return decodedToken.phone_number;
+function canLogin(user) {
+  return Boolean(user && BUSINESS_ROLES.has(user.role) && user.active !== false && !user.archivedAt);
 }
-
-const businessResponse = (user, token) => ({
-  success: true,
-  token,
-  user: {
-    id: user.id,
-    phone: user.phone,
-    email: user.email,
-    role: publicRole(user.role),
-    name: user.name,
-    businessName: user.businessName,
-    gstNo: user.gstNo,
-    contactPerson: user.contactPerson,
-    address: user.address,
-  },
-});
 
 exports.registerBusiness = async (req, res) => {
   try {
-    const { businessName, contactPerson, email, mobile, address, gstNo, password } = req.body;
-    
-    if (!businessName || !contactPerson || !email || !mobile || !address || !gstNo || !password) {
+    const businessName = String(req.body.businessName || '').trim();
+    const contactPerson = String(req.body.contactPerson || '').trim();
+    const email = validateEmail(req.body.email);
+    const phone = normalizePhone(req.body.mobile);
+    const address = String(req.body.address || '').trim();
+    const gstNo = String(req.body.gstNo || '').trim().toUpperCase();
+    if (!businessName || !contactPerson || !email || !address || !gstNo || !req.body.password) {
       return res.status(400).json({ error: 'All fields are required' });
     }
-
-    let existingUser = await userRepository.findByEmail(email);
-    if (!existingUser) {
-        existingUser = await userRepository.findByPhone(mobile);
-    }
-    
-    if (existingUser) {
+    const existingEmail = await userRepository.findByEmail(email);
+    const existingPhone = await userRepository.findIdentityByPhone(phoneVariants(phone));
+    if (existingEmail || existingPhone) {
       return res.status(409).json({ error: 'A user is already registered with this email or mobile' });
     }
-
     const user = await userRepository.create({
       name: contactPerson,
       businessName,
       contactPerson,
       email,
-      phone: mobile,
+      phone,
       address,
       gstNo,
       role: 'BUSINESS',
       active: false,
-      passwordHash: await hashPassword(password),
+      passwordHash: await hashPassword(req.body.password),
     });
-
-    return res.status(201).json({ 
-      success: true, 
-      message: 'Business registered successfully. Pending activation.' 
+    await authAuditService.record({
+      entityType: 'User',
+      entityId: user.id,
+      action: 'BUSINESS_REGISTRATION_CREATED',
+      state: { role: user.role, active: user.active },
     });
+    return res.status(201).json({ success: true, message: 'Business registered successfully. Pending activation.' });
   } catch (error) {
-    console.error('Business register error:', error);
-    return res.status(500).json({ error: 'Registration failed' });
+    console.error('Business registration failed', { error: error.name, code: error.code });
+    const isValidation = /required|between|valid/i.test(error.message || '');
+    const status = error.code === 'P2002' ? 409 : error.status || (isValidation ? 400 : 500);
+    return res.status(status).json({ error: status === 409 ? 'A user is already registered with this email or mobile' : isValidation ? error.message : 'Registration failed' });
   }
 };
 
 exports.businessLogin = async (req, res) => {
   try {
-    const { email, password } = req.body;
-    
-    if (!email || !password) {
-      return res.status(400).json({ error: 'Email and password are required' });
+    const identifier = normalizeEmail(req.body.email);
+    const user = identifier ? await userRepository.findByEmailForAuthentication(identifier) : null;
+    const validPassword = await verifyPassword(req.body.password, user?.passwordHash || INVALID_ACCOUNT_PASSWORD_HASH);
+    if (!validPassword || !canLogin(user)) return res.status(401).json({ error: 'Invalid email or password' });
+    if (needsRehash(user.passwordHash)) {
+      const updated = await userRepository.updatePasswordHashIfCurrent({
+        id: user.id,
+        expectedPasswordHash: user.passwordHash,
+        expectedAuthVersion: user.authVersion,
+        passwordHash: await hashPassword(req.body.password),
+      });
+      if (!updated) throw new SessionError('Credentials changed during sign in', 'CREDENTIAL_STATE_CHANGED');
     }
-
-    const identifier = String(email).trim().toLowerCase();
-    const user = await userRepository.findByEmailForAuthentication(identifier);
-    
-    if (!user || !(await verifyPassword(password, user.passwordHash))) {
-      return res.status(401).json({ error: 'Invalid email or password' });
-    }
-
-    if (user.role !== 'BUSINESS') {
-        return res.status(403).json({ error: 'Access denied: not a business account' });
-    }
-    if (user.active === false) {
-        return res.status(403).json({ error: 'This account is inactive' });
-    }
-
-    const token = issueToken(user);
-    return res.json(businessResponse(user, token));
+    const created = await establishSession(req, res, user, { allowedRoles: BUSINESS_ROLES });
+    await authAuditService.record({
+      entityType: 'AuthSession',
+      entityId: created.session.id,
+      action: 'SESSION_CREATED',
+      actorId: created.session.userId,
+      state: { userId: created.session.userId, role: created.session.user.role, status: 'ACTIVE' },
+    });
+    return res.json({ success: true, user: publicUser(created.session.user) });
   } catch (error) {
-    console.error('Business login error:', error);
-    return res.status(error.status || 401).json({ error: error.status ? error.message : 'Login failed' });
+    console.error('Business login failed', { error: error.name, code: error.code });
+    return res.status(error.status || 500).json({ error: error.status === 401 ? 'Invalid email or password' : 'Login failed' });
   }
 };
 
-exports.resetPassword = async (req, res) => {
+exports.verifyRecoveryPhone = async (req, res) => {
   try {
-    const { idToken, newPassword } = req.body;
-    
-    if (!idToken || !newPassword) {
-      return res.status(400).json({ error: 'Firebase ID token and new password are required' });
-    }
-
-    const phone = await verifiedFirebasePhone(idToken);
-    
-    const user = await userRepository.findByPhone(phone);
-    if (!user) {
-      return res.status(404).json({ error: 'No business account found for this verified phone number' });
-    }
-    
-    if (user.role !== 'BUSINESS') {
-      return res.status(403).json({ error: 'Access denied: not a business account' });
-    }
-
-    const newPasswordHash = await hashPassword(newPassword);
-    
-    await userRepository.update(user.id, {
-      passwordHash: newPasswordHash
+    const config = req.app.get('config');
+    const proof = await verifiedFirebasePhoneProof(req.body.idToken, {
+      maxAuthAgeMs: config.recovery.firebaseProofMaxAgeMs,
     });
-
-    return res.json({ success: true, message: 'Password updated successfully' });
+    const result = await recoveryService.createBusinessPhoneGrant(proof, config);
+    return res.status(202).json(result);
   } catch (error) {
-    console.error('Business reset password error:', error);
-    return res.status(error.status || 500).json({ error: error.status ? error.message : 'Password reset failed' });
+    console.error('Business recovery verification failed', { error: error.name, code: error.code });
+    const status = error.status === 503 ? 503 : 401;
+    return res.status(status).json({ error: status === 503 ? error.message : 'Invalid or expired phone verification' });
+  }
+};
+
+exports.completeRecovery = async (req, res) => {
+  try {
+    const result = await recoveryService.completeRecovery({
+      challengeId: req.body.challengeId,
+      code: req.body.resetToken,
+      newPassword: req.body.newPassword,
+      allowedRoles: new Set(['BUSINESS']),
+    }, req.app.get('config'));
+    disconnectUserSockets(req.app.get('io'), result.userId);
+    return res.json({ success: true, message: 'Password updated successfully. Please sign in again.' });
+  } catch (error) {
+    const isValidation = /between|required/i.test(error.message || '');
+    return res.status(isValidation ? 400 : error.status || 500).json({
+      error: isValidation ? error.message : error.status ? 'The recovery challenge is invalid or has expired' : 'Password reset failed',
+      ...(error.code ? { code: error.code } : {}),
+    });
   }
 };

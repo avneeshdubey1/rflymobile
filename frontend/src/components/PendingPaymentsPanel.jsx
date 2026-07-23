@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import OpsIcon from './OpsIcon';
-import { API_URL as API } from '../config';
+import { apiFetch, readJson } from '../services/apiClient';
 
 function PendingPaymentsPanel() {
   const [payments, setPayments] = useState([]);
@@ -8,8 +8,8 @@ function PendingPaymentsPanel() {
   const [loading, setLoading] = useState(true);
 
   const request = useCallback(async (path, options) => {
-    const response = await fetch(`${API}${path}`, options);
-    const data = await response.json().catch(() => ({}));
+    const response = await apiFetch(path, options);
+    const data = await readJson(response);
     if (!response.ok || !data.success) throw new Error(data.error || 'Payment request failed');
     return data;
   }, []);

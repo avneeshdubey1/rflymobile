@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
-import { io } from 'socket.io-client';
 import { useAuth } from '../context/useAuth';
 import OperationsShell from '../components/OperationsShell';
 import OpsIcon from '../components/OpsIcon';
 import PendingPaymentsPanel from '../components/PendingPaymentsPanel';
 import LogbookTimelinePanel from '../components/LogbookTimelinePanel';
 import LocationLink from '../components/LocationLink';
-import { API_URL as API } from '../config';
 import { extractCoordinates } from '../utils/locationPresentation';
+import { createAuthenticatedSocket } from '../services/authenticatedSocket';
+import { apiFetch, readJson } from '../services/apiClient';
 
 function MarketingDashboard() {
   const { user, logout } = useAuth();
@@ -27,8 +27,8 @@ function MarketingDashboard() {
   const fetchData = useCallback(async (signal) => {
     try {
       const [leadResponse, alertResponse] = await Promise.all([
-        fetch(`${API}/api/leads/pending`, { signal }),
-        fetch(`${API}/api/assignments/sales-alerts`, { signal }),
+        apiFetch('/api/leads/pending', { signal }),
+        apiFetch('/api/assignments/sales-alerts', { signal }),
       ]);
       const [leadData, alertData] = await Promise.all([leadResponse.json(), alertResponse.json()]);
       if (leadData.success) setLeads(leadData.leads);
@@ -47,7 +47,7 @@ function MarketingDashboard() {
     const controller = new AbortController();
     const initialLoad = window.setTimeout(() => void fetchData(controller.signal), 0);
     const interval = window.setInterval(() => void fetchData(controller.signal), 5000);
-    const socket = io(API, { transports: ['websocket'] });
+    const socket = createAuthenticatedSocket();
     socket.on('assignment_rescheduled', (mission) => setShowToast(`Assignment rescheduled for ${mission.farmerName}. New time: ${mission.expectedSpraying}. Please inform customer.`));
     return () => { window.clearTimeout(initialLoad); window.clearInterval(interval); controller.abort(); socket.disconnect(); };
   }, [fetchData]);
@@ -56,12 +56,12 @@ function MarketingDashboard() {
     event.preventDefault();
     setProcessStatus('processing');
     try {
-      const response = await fetch(`${API}/api/leads/process`, {
+      const response = await apiFetch('/api/leads/process', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: selectedLead.id, employeeId: user.id, ...extraDetails }),
       });
-      const data = await response.json().catch(() => ({}));
+      const data = await readJson(response);
       if (!response.ok) { setProcessStatus(data.error || 'The lead could not be processed.'); return; }
       setProcessStatus('success');
       setSelectedLead(null);
@@ -76,8 +76,8 @@ function MarketingDashboard() {
     try {
       const coordinates = extractCoordinates({ address: manualLead.village });
       const payload = coordinates ? { ...manualLead, ...coordinates, village: 'Pinned field location' } : manualLead;
-      const response = await fetch(`${API}/api/leads/ingest/manual`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-      const data = await response.json().catch(() => ({}));
+      const response = await apiFetch('/api/leads/ingest/manual', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      const data = await readJson(response);
       if (!response.ok) { setManualStatus(data.error || 'Failed to create lead. Please try again.'); return; }
       setManualStatus(data.assignment?.outcome === 'MANUAL_SCHEDULING' ? 'manual-queue' : 'success');
       setManualLead({ farmerName: '', phone: '', village: '', cropType: '', acres: '' });
@@ -89,8 +89,8 @@ function MarketingDashboard() {
   const createAppeal = async (leadId) => {
     try {
       setAppealStatus('processing');
-      const response = await fetch(`${API}/api/leads/${leadId}/appeal`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ farmerMessage: 'Recorded by Sales after farmer follow-up' }) });
-      const data = await response.json().catch(() => ({}));
+      const response = await apiFetch(`/api/leads/${leadId}/appeal`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ farmerMessage: 'Recorded by Sales after farmer follow-up' }) });
+      const data = await readJson(response);
       if (!response.ok) throw new Error(data.error || 'Could not record the appeal');
       setAppealStatus('Farmer appeal recorded and ready for review.');
       await fetchData();
@@ -101,8 +101,8 @@ function MarketingDashboard() {
     try {
       setAppealStatus('processing');
       const finalFee = appealFees[lead.id] ?? lead.appeal?.suggestedFee;
-      const response = await fetch(`${API}/api/leads/${lead.id}/appeal/review`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ decision, finalFee, reason: 'Reviewed in the Sales appeal queue' }) });
-      const data = await response.json().catch(() => ({}));
+      const response = await apiFetch(`/api/leads/${lead.id}/appeal/review`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ decision, finalFee, reason: 'Reviewed in the Sales appeal queue' }) });
+      const data = await readJson(response);
       if (!response.ok) throw new Error(data.error || 'Could not review the appeal');
       setAppealStatus(decision === 'APPROVED' ? 'Appeal approved and sent to scheduling.' : 'Appeal rejected and recorded.');
       await fetchData();
@@ -130,7 +130,7 @@ function MarketingDashboard() {
   const toastIsSchedule = typeof showToast === 'string' && showToast.includes('rescheduled');
 
   return (
-    <OperationsShell roleLabel="Sales operations" navItems={navItems} activeTab={activeTab} onTabChange={setActiveTab} user={user} logout={logout}>
+    <OperationsShell roleLabel="Sales operations" navItems={navItems} activeTab={activeTab} onTabChange={setActiveTab} user={user} onLogout={logout}>
       {showToast && <div className={`toast ${toastIsSchedule ? '' : 'toast--alert'}`} onClick={() => { if (toastIsSchedule) setShowToast(false); else { setActiveTab('appeals'); setShowToast(false); } }}><strong>{toastIsSchedule ? 'Schedule updated' : 'Operational follow-up'}</strong><span>{showToast}</span></div>}
 
       <header className="page-header">

@@ -89,7 +89,7 @@ model User {
   id                   String    @id @default(uuid())
   name                 String
   email                String    @unique
-  phone                String?
+  phone                String?   @unique
   passwordHash         String
   role                 Role
   preferredLanguage    String    @default("ta")   // ISO-ish code, see §10
@@ -145,6 +145,8 @@ model PasswordRecoveryChallenge {
   id              String   @id
   user            User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
   userId          String?
+  expectedAuthVersion Int?
+  externalProofHash String? @unique
   identifierHash  String
   channel         String
   deliveryStatus  String

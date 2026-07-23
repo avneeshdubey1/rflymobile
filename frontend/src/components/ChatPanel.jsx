@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { io } from 'socket.io-client';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/useAuth';
 import OpsIcon from './OpsIcon';
-import { API_URL as API } from '../config';
+import { apiFetch, readJson } from '../services/apiClient';
+import { createAuthenticatedSocket } from '../services/authenticatedSocket';
 
 function getChatTitle(session, userId) {
   if (session.lead) {
@@ -14,7 +14,7 @@ function getChatTitle(session, userId) {
 }
 
 function ChatPanel() {
-  const { user, token } = useAuth();
+  const { user } = useAuth();
   const socketRef = useRef(null);
   const selectedSessionRef = useRef(null);
   const [sessions, setSessions] = useState([]);
@@ -26,13 +26,11 @@ function ChatPanel() {
   const [connection, setConnection] = useState('Connecting…');
 
   const request = useCallback(async (path, options = {}) => {
-    const headers = new Headers(options.headers);
-    if (token) headers.set('Authorization', `Bearer ${token}`);
-    const response = await fetch(`${API}${path}`, { ...options, headers });
-    const data = await response.json().catch(() => ({}));
+    const response = await apiFetch(path, options);
+    const data = await readJson(response);
     if (!response.ok || !data.success) throw new Error(data.error || 'Chat request failed');
     return data;
-  }, [token]);
+  }, []);
 
   const loadSessions = useCallback(async () => {
     try { const data = await request('/api/chat/sessions'); setSessions(data.sessions || []); }
@@ -56,8 +54,8 @@ function ChatPanel() {
   }, []);
 
   useEffect(() => {
-    if (!token) return undefined;
-    const socket = io(API, { auth: { token }, transports: ['websocket'] });
+    if (!user) return undefined;
+    const socket = createAuthenticatedSocket();
     socketRef.current = socket;
     socket.on('connect', () => {
       setConnection('Live');
@@ -75,7 +73,7 @@ function ChatPanel() {
       toast.success('This chat was closed by an administrator.');
     });
     return () => socket.disconnect();
-  }, [loadSessions, token, updateClosedState, updateReadState]);
+  }, [loadSessions, user, updateClosedState, updateReadState]);
 
   useEffect(() => {
     const initialLoad = window.setTimeout(() => { void loadSessions(); void loadParticipants(); }, 0);

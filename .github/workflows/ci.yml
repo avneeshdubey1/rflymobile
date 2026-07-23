@@ -45,7 +45,7 @@ jobs:
       - name: Generate process-local test secrets
         shell: bash
         run: |
-          echo "JWT_SECRET=$(openssl rand -hex 48)" >> "$GITHUB_ENV"
+          echo "RECOVERY_HASH_SECRET=$(openssl rand -hex 48)" >> "$GITHUB_ENV"
           echo "DEMO_USER_PASSWORD=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
       - run: npm ci
       - run: npm audit --audit-level=high
@@ -91,7 +91,7 @@ jobs:
           chmod 700 "$secret_dir"
           umask 077
           openssl rand -base64 36 > "$secret_dir/db_password"
-          openssl rand -base64 48 > "$secret_dir/jwt_secret"
+          openssl rand -base64 48 > "$secret_dir/recovery_hash_secret"
           cat > "$RUNNER_TEMP/operations-ci.env" <<EOF
           DEPLOYMENT_NAME=operations-ci-${GITHUB_RUN_ID}
           IMAGE_TAG=ci-${GITHUB_SHA}
@@ -103,7 +103,7 @@ jobs:
           POSTGRES_USER=operations
           POSTGRES_DB=operations
           DB_PASSWORD_FILE=$secret_dir/db_password
-          JWT_SECRET_FILE=$secret_dir/jwt_secret
+          RECOVERY_HASH_SECRET_FILE=$secret_dir/recovery_hash_secret
           EOF
           echo "DEPLOY_ENV=$RUNNER_TEMP/operations-ci.env" >> "$GITHUB_ENV"
       - name: Validate rendered Compose configuration

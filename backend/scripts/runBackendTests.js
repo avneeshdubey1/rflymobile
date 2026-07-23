@@ -38,17 +38,21 @@ if (!sourceDatabaseUrl) throw new Error('DATABASE_URL is required in backend/.en
 const databaseUrl = new URL(sourceDatabaseUrl);
 databaseUrl.pathname = `/${databaseName}`;
 
-const exists = run('docker', ['exec', containerName, 'psql', '-U', 'postgres', '-tAc', `SELECT 1 FROM pg_database WHERE datname='${databaseName}'`]);
-if (exists.trim() !== '1') run('docker', ['exec', containerName, 'psql', '-U', 'postgres', '-v', 'ON_ERROR_STOP=1', '-c', `CREATE DATABASE ${databaseName}`]);
+// The fixed name is intentionally disposable. Recreating it prevents residue
+// from a failed or interrupted run from masking migration drift or changing
+// later test behavior.
+run('docker', ['exec', containerName, 'psql', '-U', 'postgres', '-v', 'ON_ERROR_STOP=1', '-c', `DROP DATABASE IF EXISTS ${databaseName} WITH (FORCE)`]);
+run('docker', ['exec', containerName, 'psql', '-U', 'postgres', '-v', 'ON_ERROR_STOP=1', '-c', `CREATE DATABASE ${databaseName}`]);
 
 const testEnv = {
   ...process.env,
   DATABASE_URL: databaseUrl.toString(),
-  JWT_SECRET: crypto.randomBytes(48).toString('base64url'),
+  RECOVERY_HASH_SECRET: crypto.randomBytes(48).toString('base64url'),
   DEMO_USER_PASSWORD: crypto.randomBytes(24).toString('base64url'),
   NODE_ENV: 'test',
 };
 const prismaCli = path.join(backendDir, 'node_modules', 'prisma', 'build', 'index.js');
+run(process.execPath, [prismaCli, 'generate'], { env: testEnv });
 run(process.execPath, [prismaCli, 'migrate', 'deploy'], { env: testEnv });
 run(process.execPath, ['prisma/seed.js'], { env: testEnv });
 
@@ -56,4 +60,4 @@ const testFiles = fs.readdirSync(path.join(backendDir, 'tests'))
   .filter((file) => file.endsWith('.test.js'))
   .sort()
   .map((file) => path.join('tests', file));
-run(process.execPath, ['--test', '--test-concurrency=1', '--test-force-exit', ...testFiles], { env: testEnv, stdio: 'inherit' });
+run(process.execPath, ['--test', '--test-concurrency=1', ...testFiles], { env: testEnv, stdio: 'inherit' });

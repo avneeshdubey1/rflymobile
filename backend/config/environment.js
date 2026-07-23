@@ -70,29 +70,39 @@ function loadEnvironment(env = process.env) {
     throw new ConfigurationError('ENFORCE_HTTPS cannot be disabled in production');
   }
 
+  const allowedOrigins = origins(env.CORS_ALLOWED_ORIGINS, nodeEnv);
+  const mapFrameOrigins = origins(env.MAP_FRAME_ORIGINS, nodeEnv, {
+    name: 'MAP_FRAME_ORIGINS',
+    developmentDefaults: ['https://www.openstreetmap.org'],
+    requiredInProduction: false,
+  });
+
   const rateLimitsEnabled = boolean(env.RATE_LIMITS_ENABLED, nodeEnv !== 'test', 'RATE_LIMITS_ENABLED');
   if (nodeEnv === 'production' && !rateLimitsEnabled) {
     throw new ConfigurationError('RATE_LIMITS_ENABLED cannot be disabled in production');
   }
   const formWebhookSecret = String(env.FORM_WEBHOOK_SECRET || '').trim();
   const upiWebhookSecret = String(env.UPI_WEBHOOK_SECRET || '').trim();
+  const recoveryHashSecret = String(env.RECOVERY_HASH_SECRET || '').trim();
   if (nodeEnv === 'production' && formWebhookSecret && formWebhookSecret.length < 32) {
     throw new ConfigurationError('FORM_WEBHOOK_SECRET must contain at least 32 characters in production');
   }
   if (nodeEnv === 'production' && upiWebhookSecret && upiWebhookSecret.length < 32) {
     throw new ConfigurationError('UPI_WEBHOOK_SECRET must contain at least 32 characters in production');
   }
+  if (nodeEnv === 'production' && recoveryHashSecret.length < 32) {
+    throw new ConfigurationError('RECOVERY_HASH_SECRET must contain at least 32 characters in production');
+  }
+
+  const sessionIdleTimeoutMs = integer(env.SESSION_IDLE_TIMEOUT_MS, 30 * 60_000, 'SESSION_IDLE_TIMEOUT_MS', { min: 60_000, max: 24 * 60 * 60_000 });
+  const sessionAbsoluteTimeoutMs = integer(env.SESSION_ABSOLUTE_TIMEOUT_MS, 8 * 60 * 60_000, 'SESSION_ABSOLUTE_TIMEOUT_MS', { min: sessionIdleTimeoutMs, max: 30 * 24 * 60 * 60_000 });
 
   return Object.freeze({
     nodeEnv,
     isProduction: nodeEnv === 'production',
     port: integer(env.PORT, 5000, 'PORT', { min: 1, max: 65535 }),
-    allowedOrigins: origins(env.CORS_ALLOWED_ORIGINS, nodeEnv),
-    mapFrameOrigins: origins(env.MAP_FRAME_ORIGINS, nodeEnv, {
-      name: 'MAP_FRAME_ORIGINS',
-      developmentDefaults: ['https://www.openstreetmap.org'],
-      requiredInProduction: false,
-    }),
+    allowedOrigins,
+    mapFrameOrigins,
     trustProxyHops,
     enforceHttps,
     jsonBodyLimitBytes: integer(env.JSON_BODY_LIMIT_BYTES, 128 * 1024, 'JSON_BODY_LIMIT_BYTES', { min: 1024, max: 10 * 1024 * 1024 }),
@@ -101,8 +111,20 @@ function loadEnvironment(env = process.env) {
       windowMs: integer(env.RATE_LIMIT_WINDOW_MS, 15 * 60_000, 'RATE_LIMIT_WINDOW_MS', { min: 1000, max: 24 * 60 * 60_000 }),
       generalMax: integer(env.RATE_LIMIT_GENERAL_MAX, 300, 'RATE_LIMIT_GENERAL_MAX', { min: 1, max: 100_000 }),
       loginMax: integer(env.RATE_LIMIT_LOGIN_MAX, 10, 'RATE_LIMIT_LOGIN_MAX', { min: 1, max: 10_000 }),
+      recoveryMax: integer(env.RATE_LIMIT_RECOVERY_MAX, 5, 'RATE_LIMIT_RECOVERY_MAX', { min: 1, max: 10_000 }),
       publicIntakeMax: integer(env.RATE_LIMIT_PUBLIC_INTAKE_MAX, 30, 'RATE_LIMIT_PUBLIC_INTAKE_MAX', { min: 1, max: 10_000 }),
       webhookMax: integer(env.RATE_LIMIT_WEBHOOK_MAX, 60, 'RATE_LIMIT_WEBHOOK_MAX', { min: 1, max: 100_000 }),
+    }),
+    session: Object.freeze({
+      idleTimeoutMs: sessionIdleTimeoutMs,
+      absoluteTimeoutMs: sessionAbsoluteTimeoutMs,
+      touchIntervalMs: integer(env.SESSION_TOUCH_INTERVAL_MS, 60_000, 'SESSION_TOUCH_INTERVAL_MS', { min: 5_000, max: Math.floor(sessionIdleTimeoutMs / 2) }),
+    }),
+    recovery: Object.freeze({
+      hashSecret: recoveryHashSecret,
+      codeTtlMs: integer(env.RECOVERY_CODE_TTL_MS, 10 * 60_000, 'RECOVERY_CODE_TTL_MS', { min: 60_000, max: 60 * 60_000 }),
+      maxAttempts: integer(env.RECOVERY_MAX_ATTEMPTS, 5, 'RECOVERY_MAX_ATTEMPTS', { min: 1, max: 20 }),
+      firebaseProofMaxAgeMs: integer(env.FIREBASE_RECOVERY_MAX_AUTH_AGE_MS, 5 * 60_000, 'FIREBASE_RECOVERY_MAX_AUTH_AGE_MS', { min: 60_000, max: 60 * 60_000 }),
     }),
     socket: Object.freeze({
       maxPayloadBytes: integer(env.SOCKET_MAX_PAYLOAD_BYTES, 64 * 1024, 'SOCKET_MAX_PAYLOAD_BYTES', { min: 1024, max: 1024 * 1024 }),

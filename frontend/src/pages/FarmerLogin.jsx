@@ -1,14 +1,14 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { signInWithPhoneNumber } from 'firebase/auth';
-import { auth } from '../lib/firebase';
+import { signInWithPhoneNumber, signOut } from 'firebase/auth';
+import { auth, authReady } from '../lib/firebase';
 import { clearPhoneRecaptcha, getPhoneRecaptcha, normalizeIndianPhone } from '../lib/firebasePhone';
-import { API_URL } from '../config';
 import { useAuth } from '../context/useAuth';
 import OtpInput from '../components/OtpInput';
 import { useTranslation } from 'react-i18next';
 
 import LanguageSelector from '../components/LanguageSelector';
+import { apiFetch, readJson } from '../services/apiClient';
 
 export default function FarmerLogin() {
   const navigate = useNavigate();
@@ -26,10 +26,12 @@ export default function FarmerLogin() {
     setBusy(true);
     setError('');
     try {
+      await authReady;
       const result = await signInWithPhoneNumber(auth, normalizeIndianPhone(phone), getPhoneRecaptcha());
       setConfirmation(result);
-    } catch (failure) {
-      setError(failure?.message || 'Unable to send OTP.');
+    } catch {
+      clearPhoneRecaptcha();
+      setError(t('unable_to_send_otp', 'Unable to send OTP. Please check the number and try again.'));
     } finally {
       setBusy(false);
     }
@@ -42,18 +44,20 @@ export default function FarmerLogin() {
     try {
       const credential = await confirmation.confirm(otp.trim());
       const idToken = await credential.user.getIdToken();
-      const response = await fetch(`${API_URL}/api/auth/farmer/login`, {
+      const response = await apiFetch('/api/auth/farmer/login', {
         method: 'POST',
+        authFailure: 'ignore',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ idToken }),
       });
-      const data = await response.json();
+      const data = await readJson(response);
       if (!response.ok) throw new Error(data.error || 'Login failed.');
-      login(data.user, data.token);
+      login(data.user);
       navigate('/farmer/dashboard', { replace: true });
-    } catch (failure) {
-      setError(failure?.message || 'OTP verification failed.');
+    } catch {
+      setError(t('otp_verification_failed', 'OTP verification failed. Please try again.'));
     } finally {
+      if (auth?.currentUser) await signOut(auth).catch(() => undefined);
       setBusy(false);
     }
   };
@@ -93,16 +97,16 @@ export default function FarmerLogin() {
             <form className="login-form" onSubmit={verifyOtp}>
               <div className="input-group">
                 <label>{t('otp_label', '6-digit OTP')}</label>
-                <OtpInput length={6} onComplete={(val) => { setOtp(val); }} disabled={busy} />
+                <OtpInput value={otp} onChange={setOtp} length={6} disabled={busy} label={t('otp_label', '6-digit OTP')} />
               </div>
               <button className="submit-btn login-submit" disabled={busy || otp.length !== 6}>{busy ? t('verifying', 'Verifying…') : t('login', 'Login')}</button>
-              <button type="button" className="login-btn button-wide" style={{ marginTop: '0.65rem' }} onClick={() => { setConfirmation(null); setOtp(''); }} disabled={busy}>{t('use_another_number', 'Use another number')}</button>
+              <button type="button" className="login-btn button-wide" style={{ marginTop: '0.65rem' }} onClick={() => { setConfirmation(null); setOtp(''); clearPhoneRecaptcha(); }} disabled={busy}>{t('use_another_number', 'Use another number')}</button>
             </form>
           )}
           
           <div style={{ marginTop: '1.5rem', textAlign: 'center', display: 'grid', gap: '0.5rem' }}>
             <p>{t('new_to_here', 'New to here?')} <Link to="/farmer/register" style={{ fontWeight: 'bold' }}>{t('create_account', 'Farmer Registration')}</Link></p>
-            <p>Business account? <Link to="/business/login" style={{ fontWeight: 'bold' }}>Business Login</Link></p>
+            <p>{t('business_account_question', 'Business account?')} <Link to="/business/login" style={{ fontWeight: 'bold' }}>{t('business_login', 'Business Login')}</Link></p>
             <p className="muted">{t('employee_q', 'Employee?')} <Link to="/login" style={{ color: 'inherit' }}>{t('employee_login', 'Employee login')}</Link></p>
           </div>
         </div>
@@ -110,4 +114,3 @@ export default function FarmerLogin() {
     </main>
   );
 }
-

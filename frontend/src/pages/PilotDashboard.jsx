@@ -14,7 +14,7 @@ function PilotDashboard() {
   ];
 
   return (
-    <OperationsShell roleLabel="Pilot operations" navItems={navItems} activeTab={activeTab} onTabChange={setActiveTab} user={user} logout={logout}>
+    <OperationsShell roleLabel="Pilot operations" navItems={navItems} activeTab={activeTab} onTabChange={setActiveTab} user={user} onLogout={logout}>
         <AnimatePresence mode="wait">
           <motion.div key={activeTab} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.18 }}>
             {activeTab === 'tasks' ? <PilotMissionPanel /> : <ChatPanel />}

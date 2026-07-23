@@ -26,6 +26,7 @@ function productionEnvironment(overrides = {}) {
     MAP_FRAME_ORIGINS: 'https://www.openstreetmap.org',
     TRUST_PROXY_HOPS: '1',
     RATE_LIMITS_ENABLED: 'true',
+    RECOVERY_HASH_SECRET: 'a-secure-password-recovery-hash-secret',
     ...overrides,
   };
 }
