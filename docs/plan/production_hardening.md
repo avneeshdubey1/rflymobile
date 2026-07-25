@@ -1,0 +1,102 @@
+# Production Hardening Register
+
+**Status:** mandatory pre-production work; the application is not production-ready.
+**Last reviewed:** July 25, 2026
+**Evidence rule:** a checkbox is complete only after test, staging, or operational evidence proves it. Local tests and Compose rendering are not production approval.
+
+## Locked product and deployment decisions
+
+- The interface remains customer-neutral.
+- Each company receives one isolated Docker Compose stack, PostgreSQL volume/database, secret set, and domain. Shared-database tenancy is not approved.
+- The initial host is provider-neutral Linux infrastructure. Containers stay portable to Kubernetes, but Kubernetes operation is deferred.
+- Fresh handover uses migrations plus guarded initial-Admin bootstrap only. Development seed data is never used for client handover, production-like staging, or production.
+- Admin is the highest in-application role but never receives secrets, password hashes, raw SQL, or audit-log rewrite access.
+- Phone Sales intake is primary; public booking is secondary; Google Form/surveyor intake is retired.
+- Every channel uses strict service-area validation. Out-of-area requests become 30-day contact-only Declined Enquiries; appeals and transport-fee negotiation are retired.
+- A pilot, drone, and LMV are one schedulable crew. Mission completion frees drone and LMV before billing.
+- Billing is separate from mission completion. Sales approves final acreage and internal invoice drafts; Admin can oversee/correct; raw route distance is not a price.
+- WhatsApp has SMS fallback and failed delivery produces a human follow-up task.
+- Raw telemetry is disabled until vendor, retention, access, encryption, deletion, and incident policy are approved.
+- Audit records remain append-only and coordinate-free. Exact pilot location and raw telemetry have separate privacy policies.
+
+## Verified local baseline
+
+- [x] Database-backed opaque sessions, secure production cookie contract, CSRF, session revocation, auth-version checks, and Socket.io revalidation have local test evidence.
+- [x] Password hashing, account-state enforcement, canonical account phone identity, recovery challenge controls, and non-sensitive recovery responses have local test evidence.
+- [x] Coordinate-free GPS auditing has local test evidence.
+- [x] Current local regression evidence: backend 74/74, browser audit 30/30, Prisma validation, frontend lint/build, and production Compose rendering.
+- [x] Guarded fresh-handover bootstrap was locally verified to leave exactly one active Admin and no demo operational data.
+
+These results prove only the current baseline. They do not cover the approved LMV, strict-intake, billing-evidence, production-delivery, or real-provider target.
+
+## Release blockers: security and access
+
+- [ ] Apply authentication and role authorization, plus negative tests, to every current and new route, socket event, worker action, import, billing, evidence, LMV, and portal read.
+- [ ] Finish approved WhatsApp-default recovery delivery with SMS/email fallback, provider sandbox tests, bounce/failure handling, and no code logging.
+- [ ] Restrict CORS to approved origins, require HTTPS, set secure headers, enforce body/request limits, and rate-limit public, login, recovery, webhook, and upload routes.
+- [ ] Validate all public and privileged inputs; return consistent non-sensitive errors.
+- [ ] Complete dependency, static-code, secret, and image scans; resolve high/critical findings and preserve non-secret evidence.
+- [ ] Remove credential-like documentation artifacts from the workspace and rotate potentially exposed values outside the repository. Record only non-secret rotation evidence.
+
+## Release blockers: data, money, and privacy
+
+- [ ] Implement strict transient geofence processing and 30-day Declined Enquiry purge; prove no rejected location/distance/acreage persists.
+- [ ] Remove appeal/transport-fee/Google Form/Bhumeet operational paths through tested migrations and route retirement.
+- [ ] Implement LMV data, scheduling conflicts, maintenance/compliance controls, assignment release, and audit history.
+- [ ] Implement BillingCase, evidence, flight-leg, invoice-draft, invoice-line, and settlement state with idempotency and precise money.
+- [ ] Snapshot approved price inputs and protect issued/corrected/voided invoices from silent rewrite.
+- [ ] Require human acreage approval and manually approved LMV charge lines before invoice release.
+- [ ] Do not enable raw telemetry upload until the company approves vendor, sample export, retention, access, encryption/key ownership, deletion, backup, and incident response.
+- [ ] Approve pilot location notice, consent, cadence, viewers, retention, and deletion; record consent separately from browser permission.
+- [ ] Define privacy access/correction/deletion process, contact, and incident owner.
+
+## Release blockers: configuration and operations control
+
+- [ ] Build audited Admin Operations Control for people, portals, customers, centres/radii, drones, LMVs, configuration, requests, assignments, billing, settlements, chats, alerts, and follow-up tasks.
+- [ ] Add validated/confirmed create, edit, deactivate, archive, maintenance, and compliance workflows; company-owned values must never be developer literals.
+- [ ] Build validated Excel/Zoho core-master import with dry run, canonical deduplication, reconciliation, backup/restore, and audit evidence.
+- [ ] Supply approved operating centres, radii, fleet data, pricing, currency, compliance policy, tax/GST rules, and manual-LMV-fee policy.
+
+## Release blockers: integrations and communications
+
+- [ ] Select and verify WhatsApp/SMS/email provider accounts, sender identity, templates, consent/opt-in, delivery callbacks, and sandbox/failure paths.
+- [ ] Select weather provider/plan, thresholds, caching, quota behavior, and fail-open operational queue.
+- [ ] Select legal UPI merchant/gateway, settlement/refund/reconciliation rules, signed idempotent webhook, and sandbox evidence.
+- [ ] Select vendor/controller evidence source and provide sample exports; do not treat mock Bhumeet material as an approved integration.
+- [ ] Select object storage, encryption/key ownership, retention, access, backup, and incident controls for future raw evidence.
+
+## Release blockers: delivery and reliability
+
+- [ ] Build immutable image publishing, SBOM, image scanning, browser checks, staging deployment, and approval-gated production promotion in GitHub Actions.
+- [ ] Pin deployed image digests and retain source revision, migration, health, backup, and rollback evidence per release.
+- [ ] Configure encrypted automated backups and prove isolated restore. Define RPO, RTO, retention, region, and owners.
+- [ ] Configure redacted central logs, metrics, health/worker-heartbeat monitoring, storage/queue monitoring, alert recipients, quiet hours, acknowledgement, and escalation.
+- [ ] Operate a durable evidence worker with retry, idempotency, backlog visibility, restart recovery, and dead-letter review.
+- [ ] Configure approved TLS/reverse proxy, firewall, trusted proxy hops, secrets, maintenance windows, incident response, and support ownership.
+- [ ] Correct deployment documentation to use recovery-secret files and a guarded initial-Admin procedure rather than obsolete JWT-secret instructions.
+
+## Release blockers: quality and acceptance
+
+- [ ] Run all tests, browser workflows, and Compose checks against production-like staging.
+- [ ] Test Android and desktop supported browsers, low bandwidth, offline replay, duplicate requests, app/database/worker restart, provider failure, webhook replay, uploads, and queue recovery.
+- [ ] Complete accessibility, localization, timezone/date, currency, mobile-layout, and raw-evidence access review.
+- [ ] Complete client acceptance with fresh non-demo master data and named operating owners.
+
+## Inputs required from the company
+
+1. Operations, privacy, finance, security, deployment, and incident owners.
+2. Centres/radii, staff/pilot/LMV/drone masters, compliance policy, pricing, currency, tax/GST, and manual-LMV-fee policy.
+3. Hosting/domain/TLS, alerts, backup targets, RPO/RTO, expected load, and support escalation.
+4. WhatsApp/SMS/email/weather/UPI accounts and sandbox access, supplied only through approved secret handling.
+5. Drone/controller vendor, sample evidence exports, usable-evidence definition, and raw-evidence retention/access/deletion policy.
+6. Excel/Zoho master-data mapping and reconciliation owner.
+
+## Verification log
+
+| Date | Item | Evidence | Result |
+|---|---|---|---|
+| July 14, 2026 | Demo/browser baseline | Browser audit and local backend/frontend/schema checks | Local demo evidence only; production blockers remained open. |
+| July 22, 2026 | Opaque-session and recovery foundation | Fresh-database backend suite and migration replay | Passed locally; live recovery provider delivery remained open. |
+| July 23, 2026 | Authentication hardening closeout | Backend 74/74, browser 30/30, schema/lint/build/Compose rendering | Passed locally; not production approval. |
+| July 24, 2026 | Fresh handover bootstrap | Guarded local reset | Passed locally; exactly one active Admin, no demo operational data. |
+| July 25, 2026 | Canonical production-readiness documentation | docs/plan migration and link/ignore review | Documentation phase only; no new application behaviour claimed. |

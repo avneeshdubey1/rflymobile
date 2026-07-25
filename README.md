@@ -1,80 +1,66 @@
 # Field Operations Platform
 
-An internal drone-service operations platform for lead intake, geofencing, automated assignment, pilot mission execution, live current-location monitoring, payments, and an auditable CRM timeline.
+> **Current product target:** start with [docs/plan/AGENTS.md](docs/plan/AGENTS.md). This README describes the current code baseline and local setup; it is not the current product specification.
 
-## Architecture
+This repository contains an internal drone-service operations platform for lead intake, geofencing, fleet scheduling, pilot mission work, current-location monitoring, payment tracking, and an auditable CRM timeline.
 
-- `frontend/` — React + Vite, Tailwind CSS, `react-i18next`, Socket.io client, and an offline pilot action queue.
-- `backend/` — Express, Socket.io, Prisma, and PostgreSQL.
-- `backend/prisma/` — data model, migrations, and repeatable development seed data.
-- `docs/SPEC.md` — product and technical source of truth.
-- `docs/CONTEXT.md` — operating model and domain rationale.
-- `docs/AGENTS.md` — engineering constraints and implementation rules.
-- `current placeholders.md` — every external integration or business decision still required for production.
-- `production hardening.md` — mandatory security, privacy, tenant-isolation, reliability, and release gates.
-- `docs/ui_correction_report_2026-07-14.md` — platform-wide UI correction scope, root cause, and browser evidence.
+## Canonical documentation
+
+- [Agent guide](docs/plan/AGENTS.md)
+- [Business context](docs/plan/CONTEXT.md)
+- [Future-state technical specification](docs/plan/SPEC.md)
+- [Production hardening register](docs/plan/production_hardening.md)
+- [External-input register](docs/plan/current_placeholders.md)
+- [Production-readiness delivery plan](docs/plan/plan_for_production_rediness.md)
+
+## Repository layout
+
+- frontend/ — React and Vite frontend.
+- backend/ — Express, Socket.io, Prisma, and PostgreSQL backend.
+- backend/prisma/ — schema, migrations, and development/demo seed only.
+- compose.production.yml — isolated single-company Compose baseline.
+- deploy/ — deployment configuration examples and runbook entry point.
 
 ## Local development
 
-1. Start PostgreSQL:
+Use a local PostgreSQL instance or disposable container, create local environment files from the tracked examples, and keep all credentials outside Git.
 
-   ```powershell
-   docker run --name rfly-postgres -e POSTGRES_PASSWORD=devpass -e POSTGRES_DB=rfly_daas -p 5432:5432 -d postgres:16
-   ```
+    cd backend
+    npm install
+    npm run prisma:migrate
+    npm run dev
 
-2. In `backend/`, create a local `.env` with `DATABASE_URL` and your `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, and `FIREBASE_PRIVATE_KEY` (if you are testing the Farmer Login). Production also requires a separately managed `RECOVERY_HASH_SECRET`; local development generates an in-memory recovery hashing key when it is omitted. For a fresh seed, choose the local demo password directly in your terminal, then run:
+In a separate terminal:
 
-   ```powershell
-   npm install
-   npm run prisma:migrate
-   $env:DEMO_USER_PASSWORD = Read-Host -MaskInput "Choose the local demo password"
-   npm run prisma:seed
-   Remove-Item Env:DEMO_USER_PASSWORD
-   npm run dev
-   ```
+    cd frontend
+    npm install
+    npm run dev
 
-   The seed creates neutral role accounts for Admin, Sales, Fleet Manager, and Pilot. Their non-secret account identifiers are declared in `backend/prisma/seed.js`; the password is only the local value entered above and is never printed by the application.
+The development seed is for demo data only. A fresh client handover must use migrations and the guarded initial-Admin bootstrap described in the canonical plan.
 
-   If you are locked out of the local demo Admin account, run `node scripts/resetLocalAdminPassword.local.js` from `backend/`. This ignored, local-only script securely prompts for a replacement password, changes only the Admin account, records a credential-free audit event, and refuses to run in production.
+## Current baseline versus target
 
-3. In `frontend/`, create a local `.env` and copy the Firebase credentials from `.env.example` into it. Then run:
+The existing application is suitable for a controlled local demonstration and has local evidence for opaque-session authentication, role dashboards, scheduling, pilot lifecycle, offline replay, current-location handling, payment fallback, CRM history, and chat.
 
-   ```powershell
-   npm install
-   npm run dev
-   ```
+Some current runtime behaviour is intentionally legacy relative to the approved target: Google Form intake, out-of-area appeals, immediate manual-acreage payment creation, and Bhumeet mock material are scheduled for retirement. The canonical plan documents the target; it does not falsely claim those changes already exist.
 
-The frontend runs on Vite's local URL and the backend defaults to port `5000`.
-
-If port `5000` reports `EADDRINUSE`, another backend is already running. Stop that older process or use its existing server; do not start a second backend on the same port.
-
-## Demonstration status
-
-The current build is suitable for a controlled local stakeholder demonstration. The verified path covers public GPS intake, Sales verification and appeals, automatic/manual Fleet scheduling, Pilot accept/start/GPS/complete, offline replay, payment cash fallback, CRM history, and Admin–Pilot chat.
-
-Every active route uses one customer-neutral operations design system with verified desktop, tablet, and phone layouts. Login now uses server-managed opaque cookies, CSRF protection, role/account-state checks, revocation, and one-time recovery challenges; no application bearer token or user record is persisted in browser storage. The current isolated browser suite passes 30/30 checks with no unexpected console, runtime, or HTTP errors.
-
-WhatsApp/SMS/email recovery delivery, lifecycle WhatsApp, live weather, Google Form delivery, and UPI remain deliberately unavailable, mocked, or fail-open until provider sandboxes and company-owned configuration are supplied. This demo status is not production approval; see `production hardening.md`.
+Local evidence includes backend 74/74 and browser audit 30/30 as of July 23, 2026. This is not production approval. Real provider delivery, privacy decisions, staging, backup/restore, monitoring, and release gates remain open in the hardening register.
 
 ## Verification
 
-```powershell
-cd backend
-npm test
-npm run prisma:validate
+    cd backend
+    npm test
+    npm run prisma:validate
 
-cd ..\frontend
-npm run lint
-npm run build
-npm run test:browser
-```
+    cd ../frontend
+    npm run lint
+    npm run build
+    npm run test:browser
 
-Backend tests reset only `rfly_daas_backend_test`; the browser audit resets only `rfly_daas_browser_test`. Neither suite seeds or changes the normal demo database. The July 23 local result is backend 74/74 and browser 30/30; see `history_of_changes.md` and the verification log in `production hardening.md`.
+Use disposable test databases only. Do not seed or reset client data as part of verification.
 
-## Operations notes
+## Operations
 
-- `GET /api/health` checks the database and exposes latest scheduled-job heartbeats.
-- Google Form intake is ready at `POST /api/leads/ingest/google-form` (or `/api/forms/webhook`), but needs the real Apps Script, deployment URL, and `FORM_WEBHOOK_SECRET` before use.
-- The development database may be reset only through `POST /api/system/seed` by an authenticated Admin; it is disabled in production.
-- `npm run demo:prepare` removes interrupted automated-test fixtures from the normal development database without changing the seeded operational sample records.
-- Never place production credentials in source control or chat. Review `current placeholders.md` and complete `production hardening.md` before deployment.
+The current Compose foundation keeps database and backend ports private and expects an approved TLS edge. Read [deploy/README.md](deploy/README.md) and the canonical hardening register before staging or production work.
+
+Do not configure Google Form for a new deployment. Do not place credentials, customer data, raw telemetry, or production values in source control, documentation, logs, or chat.

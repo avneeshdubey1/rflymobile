@@ -1,9 +1,5 @@
-# Repository Agent Entry Point
+# EOL — Superseded Repository Guidance
 
-Every coding agent working in this repository must read and follow:
+This file is retained only as a compatibility redirect. It is not authoritative and must not receive new requirements.
 
-1. `docs/AGENTS.md` for architecture, testing, placeholder, and milestone rules.
-2. `production hardening.md` before any production, deployment, security, privacy, authentication, multi-customer, or live-integration work.
-3. `current placeholders.md` whenever a task touches a temporary value or external integration.
-
-Update `history_of_changes.md`, `current placeholders.md`, and `production hardening.md` whenever the corresponding implementation or product decision changes. Never place credentials in source code, documentation, prompts, chat, logs, or test fixtures.
+Start every future task with [docs/plan/AGENTS.md](docs/plan/AGENTS.md). The canonical planning set there contains the current context, specification, hardening register, placeholder register, and delivery plan.

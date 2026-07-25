@@ -1,5 +1,15 @@
 # History of Changes
 
+> **Historical record:** current product requirements are in [docs/plan/AGENTS.md](docs/plan/AGENTS.md). Entries below describe what happened in the codebase at the time; they are not the current specification.
+
+## July 25, 2026 - Canonical Production-Readiness Documentation Migration
+
+* Created the versioned canonical planning set under `docs/plan/`: agent guidance, business context, future-state specification, production hardening register, placeholder register, and production-readiness delivery plan.
+* Marked the superseded root/hidden/docs guidance, legacy specification/context, product handoff, placeholders, hardening register, and Bhumeet guidance as EOL redirects. README and operational runbooks now identify themselves as baseline/history rather than current product requirements.
+* Recorded the approved future target without changing application behaviour: phone-first Sales intake, strict service-area decline with 30-day contact-only retention, LMV fleet scheduling, evidence-backed billing, optional status portals, Compose-first deployment, and staged CI/CD delivery.
+* Corrected the deployment runbook's obsolete JWT-secret reference to the recovery-hash-secret contract. Removed local credential-like documentation artifacts without recording their contents; external credential rotation remains required and is not claimed as complete.
+* Verification: reviewed canonical links, Git ignore policy, and planned source-doc staging. No LMV, intake, billing, provider, CI/CD, or runtime code was changed in this documentation migration.
+
 ## July 23, 2026 - Login, Session, and Recovery Hardening Completed Locally
 
 ### Rollback and repository safety

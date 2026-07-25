@@ -3,15 +3,97 @@
 **/.env.*
 !**/.env.example
 *_env_backup
+*.local
+*.local.*
 backend/scripts/resetLocalAdminPassword.local.js
 
-# Generated output
-**/dist/
-**/.cache/
-backend/node_modules/.prisma/client/query_engine-windows.dll.node.tmp*
-*.log
-presentation/
+# Dependencies and package-manager caches
+node_modules/
+**/node_modules/
+.npm/
+.yarn/
+.pnpm-store/
 
-# Exclude docs
-docs/
-docs
+# Build, generated output, and framework caches
+dist/
+**/dist/
+build/
+**/build/
+.cache/
+**/.cache/
+.vite/
+**/.vite/
+coverage/
+**/coverage/
+playwright-report/
+test-results/
+tmp/
+temp/
+*.tmp
+*.temp
+backend/node_modules/.prisma/client/query_engine-windows.dll.node.tmp*
+
+# Logs and runtime dumps
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.pid
+*.seed
+*.stackdump
+
+# Generated reports, evidence, and presentation material
+# Keep only reviewed canonical/source Markdown under docs trackable.
+/docs/*
+!/docs/plan/
+!/docs/plan/**
+!/docs/AGENTS.md
+!/docs/CONTEXT.md
+!/docs/SPEC.md
+!/docs/product_decisions_and_production_handoff.md
+!/docs/deferred/
+!/docs/deferred/bhumeet.md
+!/docs/operations/
+!/docs/operations/*.md
+/docs/test-evidence/
+/docs/browser_acceptance_audit_*.md
+/docs/demo_acceptance_report_*.md
+/docs/ui_correction_report_*.md
+/docs/server_side_hardening_report*.md
+/docs/hardening_pause_handoff_*.md
+/docs/current_codebase_overview.md
+/docs/credentials.md
+/docs/*.json
+/docs/**/*.json
+*.pem
+*.key
+docs.zip
+presentation/
+*.ppt
+*.pptx
+*.key
+*.pdf
+*.docx
+
+# Local archives and transfer bundles
+*.zip
+*.7z
+*.rar
+*.tar
+*.tar.gz
+*.tgz
+
+# Legacy/reference snapshots and imported workspaces
+DaaS-RFLY-main/
+DaaS-RFLY-b2b-development/
+PaaS_Demo-main_OLD__emp/
+
+# Scratch/context files created while coding
+chatgpt_context.md
+detailed_srs_context.md
+implementation_plan.md
+project_context.md
+OTP_SETUP.md
+START_SERVER_INSTRUCTIONS.txt
+parse.js
