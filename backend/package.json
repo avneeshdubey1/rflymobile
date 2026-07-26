@@ -23,6 +23,7 @@
     "prisma:validate": "prisma validate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "node prisma/seed.js",
+    "bootstrap:initial-admin": "node scripts/bootstrapInitialAdmin.js",
     "security:migrate-passwords": "node scripts/hashDevelopmentPasswords.js",
     "demo:prepare": "node scripts/prepareDevelopmentDemo.js",
     "test": "node scripts/runBackendTests.js",

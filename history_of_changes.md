@@ -10,6 +10,12 @@
 * Corrected the deployment runbook's obsolete JWT-secret reference to the recovery-hash-secret contract. Removed local credential-like documentation artifacts without recording their contents; external credential rotation remains required and is not claimed as complete.
 * Verification: reviewed canonical links, Git ignore policy, and planned source-doc staging. No LMV, intake, billing, provider, CI/CD, or runtime code was changed in this documentation migration.
 
+## July 24, 2026 - Fresh Handover Bootstrap
+
+* Added `backend/scripts/bootstrapInitialAdmin.js` and the `npm run bootstrap:initial-admin` command. The script refuses to run without `CONFIRM_DATABASE_WIPE=RESET_TO_INITIAL_ADMIN`, wipes operational/demo data, and creates exactly one active Admin from environment-provided name, email, and password.
+* Clarified that `backend/prisma/seed.js` is development/demo-only and must not be used for client production handover. Fresh client databases should run migrations, then the guarded initial-Admin bootstrap, then let the client Admin create real employee and operational records.
+* Verification: local database reset was executed successfully after migrations; the database contained one active Admin and zero demo Sales/Fleet/Pilot/Farmer/Business users, leads, drones, centres, assignments, payments, chats, pricing rows, recovery challenges, or sessions.
+
 ## July 23, 2026 - Login, Session, and Recovery Hardening Completed Locally
 
 ### Rollback and repository safety
