@@ -44,7 +44,7 @@ The existing application is suitable for a controlled local demonstration and ha
 
 Phase 1 source now enforces strict service-area intake and retires active Google Form, appeal, transport-fee, and Bhumeet mock paths. Its forward migration intentionally stops on populated legacy data until an approved backup/archival procedure is evidenced. Immediate manual-acreage payment creation and Firebase-dependent Farmer/Business phone proof remain later delivery work.
 
-The pre-Phase-1 baseline had backend 74/74 and browser audit 30/30 evidence on July 23, 2026. Phase 1 static checks pass; its disposable database/migration/browser evidence is still required. This is not production approval. Real provider delivery, privacy decisions, staging, backup/restore, monitoring, and release gates remain open in the hardening register.
+The pre-Phase-1 baseline had backend 74/74 and browser audit 30/30 evidence on July 23, 2026. Phase 1 local evidence now includes fresh disposable-database migration replay, backend 80/80, and browser audit 30/30. This is not production approval. Real provider delivery, privacy decisions, staging, backup/restore, monitoring, and release gates remain open in the hardening register.
 
 ## Verification
 

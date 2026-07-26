@@ -308,7 +308,7 @@ try {
     await page.getByText('Service is not currently available for this farm location. Please call the operations team for assistance.').waitFor();
     assert.equal(await page.getByRole('button', { name: /appeal/i }).count(), 0);
     return { outcome: data.outcome };
-  });
+  }, { allowedConsoleErrors: [/422 \(Unprocessable Entity\)/] });
 
   await runCase('PUB-06', 'Public intake rejects an invalid phone number', async (page) => {
     await page.goto(`${frontendUrl}/request`, { waitUntil: 'domcontentloaded' });
@@ -436,7 +436,7 @@ try {
     assert.equal(Object.hasOwn(data, 'lead'), false);
     await page.getByText(/outside the active service area/i).waitFor();
     assert.equal(await page.getByRole('button', { name: /appeal/i }).count(), 0);
-  });
+  }, { allowedConsoleErrors: [/422 \(Unprocessable Entity\)/] });
 
   await runCase('FLEET-01', 'Fleet Manager manually schedules an exception lead', async (page) => {
     await login(page, roleUsers.FLEET_MANAGER, '/fleet-manager');

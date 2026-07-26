@@ -25,10 +25,10 @@
 - [x] Database-backed opaque sessions, secure production cookie contract, CSRF, session revocation, auth-version checks, and Socket.io revalidation have local test evidence.
 - [x] Password hashing, account-state enforcement, canonical account phone identity, recovery challenge controls, and non-sensitive recovery responses have local test evidence.
 - [x] Coordinate-free GPS auditing has local test evidence.
-- [x] Current local regression evidence: backend 74/74, browser audit 30/30, Prisma validation, frontend lint/build, and production Compose rendering.
+- [x] Current local regression evidence: backend 80/80, browser audit 30/30, Prisma validation, frontend lint/build, production Compose rendering, and fresh disposable-database migration replay.
 - [x] Guarded fresh-handover bootstrap was locally verified to leave exactly one active Admin and no demo operational data.
 
-These results prove only the current baseline. Phase 1 source implementation exists but has not yet received disposable-database, browser, migration-replay, or staging evidence. The results do not cover LMV, billing-evidence, production-delivery, or real-provider target work.
+These results prove only the current local baseline. Phase 1 source implementation now has disposable-database migration replay, backend regression, and browser-audit evidence. The results do not replace production-like staging evidence and do not cover LMV, billing-evidence, production-delivery, or real-provider target work.
 
 ## Release blockers: security and access
 
@@ -111,3 +111,4 @@ These results prove only the current baseline. Phase 1 source implementation exi
 | July 25, 2026 | Canonical production-readiness documentation | docs/plan migration and link/ignore review | Documentation phase only; no new application behaviour claimed. |
 | July 26, 2026 | Phone-verification and provider decision research | Official Firebase, Meta, Google pricing, TRAI, and provider documentation review | Firebase is SMS-only; no recurring free WhatsApp-authentication allowance was accepted; direct Meta Cloud API is a provisional cost baseline pending client onboarding and sandbox evidence. |
 | July 26, 2026 | Phase 1 strict-intake source implementation | Prisma validation, syntax checks, locale parsing, frontend lint/build, and production Compose rendering | Passed locally; disposable database/migration/browser and staging evidence remain pending because Docker Desktop was unavailable. Not production approval. |
+| July 26, 2026 | Phase 1 strict-intake evidence replay | Docker `rfly-postgres`, disposable `rfly_phase1_migration_20260726` migration replay, backend suite, browser audit | Passed locally: 11/11 migrations applied from empty database, backend 80/80, browser audit 30/30 after allowing expected strict-decline 422 console noise in the audit harness. Staging and production gates remain open. |
