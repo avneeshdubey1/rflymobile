@@ -12,6 +12,7 @@ This is the only engineering-agent entry point for future work. Legacy guidance 
 3. [production_hardening.md](production_hardening.md) before any security, privacy, authentication, deployment, integration, billing, or live-data work.
 4. [current_placeholders.md](current_placeholders.md) whenever a company-owned value, provider, migration input, or external system is involved.
 5. [plan_for_production_rediness.md](plan_for_production_rediness.md) for sequencing, delivery packages, release gates, and acceptance evidence.
+6. Once a parent agent selects a delivery card, read the relevant card and its prerequisites in [ATOMIC_WORK_ITEMS.md](ATOMIC_WORK_ITEMS.md). Do not broaden the task to unrelated cards.
 
 Do not treat a dated report, a legacy document, a seed value, or current application behaviour as an approved requirement when it conflicts with these documents.
 

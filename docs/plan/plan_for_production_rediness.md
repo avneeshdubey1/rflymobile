@@ -4,6 +4,8 @@
 **Last reviewed:** July 26, 2026
 **Plan status:** Phase 1 strict-intake source implementation is recorded in the July 26 history entry; all later packages and production acceptance remain pending. This document remains the planning contract, not production approval.
 
+Use [ATOMIC_WORK_ITEMS.md](ATOMIC_WORK_ITEMS.md) to select one small, ordered implementation handoff. It refines this plan's delivery packages; it does not authorize skipped gates or change the approved product contract.
+
 ## Outcome
 
 The target product is a phone-first, strictly service-area-limited agricultural drone operation with schedulable LMVs, optional customer status portals, application-owned phone verification, evidence-backed billing, and controlled Compose-based production delivery.
