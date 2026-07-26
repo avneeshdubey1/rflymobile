@@ -105,6 +105,7 @@ export default function FarmerLogin() {
           )}
           
           <div style={{ marginTop: '1.5rem', textAlign: 'center', display: 'grid', gap: '0.5rem' }}>
+            <p>{t('public_booking_link_prompt')} <Link to="/request" style={{ fontWeight: 'bold' }}>{t('public_booking_link')}</Link></p>
             <p>{t('new_to_here', 'New to here?')} <Link to="/farmer/register" style={{ fontWeight: 'bold' }}>{t('create_account', 'Farmer Registration')}</Link></p>
             <p>{t('business_account_question', 'Business account?')} <Link to="/business/login" style={{ fontWeight: 'bold' }}>{t('business_login', 'Business Login')}</Link></p>
             <p className="muted">{t('employee_q', 'Employee?')} <Link to="/login" style={{ color: 'inherit' }}>{t('employee_login', 'Employee login')}</Link></p>

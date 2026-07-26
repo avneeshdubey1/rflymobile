@@ -22,6 +22,7 @@ function normalizeEmail(email) {
 async function wipeOperationalData() {
   await prisma.passwordRecoveryChallenge.deleteMany();
   await prisma.authSession.deleteMany();
+  await prisma.declinedEnquiry.deleteMany();
   await prisma.paymentRecord.deleteMany();
   await prisma.notification.deleteMany();
   await prisma.chatMessage.deleteMany();
@@ -29,14 +30,12 @@ async function wipeOperationalData() {
   await prisma.scheduleChangeLog.deleteMany();
   await prisma.notificationEscalation.deleteMany();
   await prisma.assignment.deleteMany();
-  await prisma.outOfRangeAppeal.deleteMany();
   await prisma.auditLog.deleteMany();
   await prisma.lead.deleteMany();
   await prisma.drone.deleteMany();
   await prisma.user.deleteMany();
   await prisma.pricingConfig.deleteMany();
   await prisma.operatingCenter.deleteMany();
-  await prisma.bhumeetFlight.deleteMany();
 }
 
 async function main() {
@@ -65,7 +64,7 @@ async function main() {
   });
 
   console.log(`Initial Admin created: ${admin.email}`);
-  console.log('Database now contains no demo users, leads, drones, centers, pricing rows, assignments, chats, or payments.');
+  console.log('Database now contains no demo users, leads, declined enquiries, drones, centers, pricing rows, assignments, chats, or payments.');
 }
 
 main()

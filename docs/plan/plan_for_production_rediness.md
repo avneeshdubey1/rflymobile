@@ -2,13 +2,13 @@
 
 **Status:** approved planning baseline
 **Last reviewed:** July 26, 2026
-**Scope of this document migration:** documentation and operational guidance only. It does not change application behaviour.
+**Plan status:** Phase 1 strict-intake source implementation is recorded in the July 26 history entry; all later packages and production acceptance remain pending. This document remains the planning contract, not production approval.
 
 ## Outcome
 
 The target product is a phone-first, strictly service-area-limited agricultural drone operation with schedulable LMVs, optional customer status portals, application-owned phone verification, evidence-backed billing, and controlled Compose-based production delivery.
 
-The codebase is not yet at that target. The existing application still contains Google Form/surveyor intake, out-of-range appeal behaviour, immediate manual-acreage payment creation, Bhumeet mock material, and Firebase-dependent Farmer/Business phone proof. It has no LMV model, Billing Case, flight-evidence store, object-storage integration, dedicated evidence worker, generic application-owned phone-verification challenge, release registry, or automated production promotion.
+The codebase is not yet at that target. Phase 1 source removes Google Form/surveyor intake, out-of-range appeals, transport-fee behaviour, and Bhumeet mock paths; its migration must still be exercised on a fresh database and staged before release. The application still has immediate manual-acreage payment creation and Firebase-dependent Farmer/Business phone proof. It has no LMV model, Billing Case, flight-evidence store, object-storage integration, dedicated evidence worker, generic application-owned phone-verification challenge, release registry, or automated production promotion.
 
 ## Locked decisions
 

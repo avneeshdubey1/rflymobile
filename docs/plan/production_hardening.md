@@ -28,7 +28,7 @@
 - [x] Current local regression evidence: backend 74/74, browser audit 30/30, Prisma validation, frontend lint/build, and production Compose rendering.
 - [x] Guarded fresh-handover bootstrap was locally verified to leave exactly one active Admin and no demo operational data.
 
-These results prove only the current baseline. They do not cover the approved LMV, strict-intake, billing-evidence, production-delivery, or real-provider target.
+These results prove only the current baseline. Phase 1 source implementation exists but has not yet received disposable-database, browser, migration-replay, or staging evidence. The results do not cover LMV, billing-evidence, production-delivery, or real-provider target work.
 
 ## Release blockers: security and access
 
@@ -110,3 +110,4 @@ These results prove only the current baseline. They do not cover the approved LM
 | July 24, 2026 | Fresh handover bootstrap | Guarded local reset | Passed locally; exactly one active Admin, no demo operational data. |
 | July 25, 2026 | Canonical production-readiness documentation | docs/plan migration and link/ignore review | Documentation phase only; no new application behaviour claimed. |
 | July 26, 2026 | Phone-verification and provider decision research | Official Firebase, Meta, Google pricing, TRAI, and provider documentation review | Firebase is SMS-only; no recurring free WhatsApp-authentication allowance was accepted; direct Meta Cloud API is a provisional cost baseline pending client onboarding and sandbox evidence. |
+| July 26, 2026 | Phase 1 strict-intake source implementation | Prisma validation, syntax checks, locale parsing, frontend lint/build, and production Compose rendering | Passed locally; disposable database/migration/browser and staging evidence remain pending because Docker Desktop was unavailable. Not production approval. |

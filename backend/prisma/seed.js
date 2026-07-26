@@ -6,6 +6,7 @@ const prisma = new PrismaClient();
 async function clearDatabase() {
   await prisma.passwordRecoveryChallenge.deleteMany();
   await prisma.authSession.deleteMany();
+  await prisma.declinedEnquiry.deleteMany();
   await prisma.paymentRecord.deleteMany();
   await prisma.notification.deleteMany();
   await prisma.chatMessage.deleteMany();
@@ -13,7 +14,6 @@ async function clearDatabase() {
   await prisma.scheduleChangeLog.deleteMany();
   await prisma.notificationEscalation.deleteMany();
   await prisma.assignment.deleteMany();
-  await prisma.outOfRangeAppeal.deleteMany();
   await prisma.auditLog.deleteMany();
   await prisma.lead.deleteMany();
   await prisma.drone.deleteMany();
@@ -64,10 +64,10 @@ async function main() {
   ]);
 
   const statusRows = [
-    ['NEW', 'WEBSITE'], ['OUT_OF_RANGE', 'GOOGLE_FORM'], ['APPEAL_PENDING', 'WEBSITE'],
-    ['PROCESSED', 'MANUAL_SALES'], ['NEEDS_MANUAL_SCHEDULING', 'WEBSITE'], ['SCHEDULED', 'MANUAL_SALES'],
-    ['PILOT_ACCEPTED', 'WEBSITE'], ['IN_PROGRESS', 'GOOGLE_FORM'], ['COMPLETED', 'MANUAL_SALES'],
-    ['FLAGGED', 'WEBSITE'], ['CANCELLED', 'GOOGLE_FORM'], ['REJECTED', 'MANUAL_SALES'],
+    ['NEW', 'WEBSITE'], ['MANUAL_CALL_REQUIRED', 'WEBSITE'], ['PROCESSED', 'MANUAL_SALES'],
+    ['NEEDS_MANUAL_SCHEDULING', 'WEBSITE'], ['SCHEDULED', 'MANUAL_SALES'], ['PILOT_ACCEPTED', 'WEBSITE'],
+    ['IN_PROGRESS', 'MANUAL_SALES'], ['COMPLETED', 'MANUAL_SALES'], ['FLAGGED', 'WEBSITE'],
+    ['CANCELLED', 'WEBSITE'], ['REJECTED', 'MANUAL_SALES'],
   ];
   const leads = {};
   for (const [status, intakeChannel] of statusRows) {
@@ -75,14 +75,13 @@ async function main() {
       data: {
         farmerName: `Sample ${status}`, farmerPhone: `900000${String(Object.keys(leads).length).padStart(4, '0')}`,
         acreage: 5, status, intakeChannel,
-        matchedCenterId: status === 'OUT_OF_RANGE' || status === 'REJECTED' ? null : tenkasi.id,
-        distanceFromCenterKm: status === 'OUT_OF_RANGE' || status === 'APPEAL_PENDING' || status === 'REJECTED' ? 60 : 15,
+        latitude: tenkasi.latitude,
+        longitude: tenkasi.longitude,
+        matchedCenterId: tenkasi.id,
+        distanceFromCenterKm: 0,
       },
     });
   }
-  await prisma.outOfRangeAppeal.create({ data: { leadId: leads.APPEAL_PENDING.id, distanceKm: 60, excessKm: 10, suggestedFee: 150 } });
-  await prisma.outOfRangeAppeal.create({ data: { leadId: leads.REJECTED.id, distanceKm: 60, excessKm: 10, suggestedFee: 150, status: 'REJECTED', reviewedBy: admin.id, resolvedAt: new Date() } });
-
   for (const status of ['SCHEDULED', 'PILOT_ACCEPTED', 'IN_PROGRESS', 'COMPLETED']) {
     await prisma.assignment.create({
       data: {
@@ -96,7 +95,7 @@ async function main() {
   }
 
   await prisma.pricingConfig.createMany({ data: [
-    { key: 'OUT_OF_RANGE_RATE_PER_KM', value: 15 }, { key: 'DISCREPANCY_THRESHOLD_PCT', value: 5 },
+    { key: 'DISCREPANCY_THRESHOLD_PCT', value: 5 },
     { key: 'WIND_THRESHOLD_KPH', value: 15 }, { key: 'RAIN_PROBABILITY_THRESHOLD_PCT', value: 40 },
     { key: 'PILOT_LICENSE_GRACE_DAYS', value: 14 }, { key: 'SPRAY_RATE_PER_ACRE', value: 1 }, // Development placeholder only; replace with approved commercial rate.
     { key: 'MAX_LEAD_ACREAGE', value: 10000 }, // Development validation placeholder; company must approve the operational limit.

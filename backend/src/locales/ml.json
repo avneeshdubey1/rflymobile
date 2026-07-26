@@ -1,0 +1,8 @@
+{
+  "lead_processed": "നിങ്ങളുടെ ഡ്രോൺ സേവന അഭ്യർത്ഥന ലഭിച്ചു; ഷെഡ്യൂളിംഗ് നടക്കുന്നു.",
+  "mission_scheduled": "നിങ്ങൾക്കായി ഒരു പൈലറ്റിനെ {{scheduledDate}}-ന് ഷെഡ്യൂൾ ചെയ്തിട്ടുണ്ട്.",
+  "mission_started": "നിങ്ങളുടെ പൈലറ്റ് എത്തി; സ്പ്രേയിംഗ് ആരംഭിച്ചു.",
+  "mission_completed": "സ്പ്രേയിംഗ് പൂർത്തിയായി. {{actualAcreage}} ഏക്കർ പൂർത്തിയായി. {{invoiceNote}}",
+  "invoice_pending": "ഇൻവോയ്സ് വിവരങ്ങൾ ഉടൻ ലഭിക്കും.",
+  "invoice_link": "ഇൻവോയ്സ്: {{invoiceLink}}"
+}

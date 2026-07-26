@@ -32,16 +32,13 @@ function createApp({ config = loadEnvironment() } = {}) {
     '/api/auth/business/register',
   ], limits.login);
   app.use(['/api/auth/recovery', '/api/auth/business/recovery'], limits.recovery);
-  app.use(['/api/leads/new', '/api/leads/ingest/website'], limits.publicIntake);
-  app.use(/^\/api\/leads\/[^/]+\/appeal\/?$/, limits.publicIntake);
-  app.use(['/api/forms/webhook', '/api/leads/ingest/google-form'], limits.webhook);
+  app.use('/api/leads/ingest/website', limits.publicIntake);
   app.use(/^\/api\/payments\/[^/]+\/webhook\/?$/, limits.webhook);
   app.use('/api', limits.general);
 
   app.use(express.json({ limit: config.jsonBodyLimitBytes, strict: true }));
 
   app.use('/api/auth', require('./routes/authRoutes'));
-  app.use('/api/forms', require('./routes/formRoutes'));
   app.use('/api/leads', require('./routes/leadRoutes'));
   app.use('/api/assignments', require('./routes/assignmentRoutes'));
   app.use('/api/payments', require('./routes/paymentRoutes'));
@@ -51,8 +48,6 @@ function createApp({ config = loadEnvironment() } = {}) {
   app.use('/api/users', require('./routes/userRoutes'));
   app.use('/api/drones', require('./routes/droneRoutes'));
   app.use('/api/system', require('./routes/systemRoutes'));
-  app.use('/api/bhumeet', require('./routes/bhumeetRoutes'));
-  app.use('/api/acreage', require('./routes/acreageRoutes'));
   app.use('/api/centers', require('./routes/centerRoutes'));
   app.use(notFound);
   app.use(errorHandler);

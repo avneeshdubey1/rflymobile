@@ -2,7 +2,7 @@
 
 **Status:** approved future-state contract
 **Last reviewed:** July 26, 2026
-**Important:** this specification supersedes legacy product guidance. The documentation migration does not itself change runtime behaviour; current legacy routes and models remain until their delivery package is implemented and verified.
+**Important:** this specification supersedes legacy product guidance. Phase 1 source changes retire the legacy intake paths and add strict intake enforcement, but the migration and staging acceptance evidence remain required before any production claim.
 
 ## 1. Scope and baseline
 
@@ -13,7 +13,7 @@ The product coordinates one agricultural drone-service company per isolated depl
 3. A pilot, drone, and LMV are scheduled as one operational crew.
 4. Billing is evidence-backed and separate from mission completion.
 
-Current code is a baseline, not proof of this target. Existing appeal, Google Form, immediate-payment, and Bhumeet/mock paths must be removed or retired in later implementation packages. No code should claim the target is already complete merely because this document exists.
+Current code remains a baseline, not proof of the complete target. Phase 1 removes active appeal, Google Form, and Bhumeet/mock intake paths from source; immediate-payment, LMV, billing-evidence, and phone-verification work remain later packages. No code should claim the target is complete merely because this document exists.
 
 ## 2. Platform and deployment contract
 

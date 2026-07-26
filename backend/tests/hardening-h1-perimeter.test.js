@@ -121,33 +121,16 @@ test('login and general API rate limits return structured 429 responses', async 
   } finally { await runtime.close(); }
 });
 
-test('production Google Form webhook is disabled without a secret and accepts only the configured header', async () => {
-  const missingRuntime = await start(createApp({ config: loadEnvironment(productionEnvironment()) }));
-  try {
-    const response = await fetch(`${missingRuntime.baseUrl}/api/forms/webhook`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Origin: 'https://operations.example.test', 'X-Forwarded-Proto': 'https' },
-      body: JSON.stringify({ formResponseId: 'missing-secret', secret: 'body-secrets-are-not-accepted' }),
-    });
-    assert.equal(response.status, 503);
-    assert.equal((await response.json()).code, 'WEBHOOK_NOT_CONFIGURED');
-  } finally { await missingRuntime.close(); }
-
-  const configuredRuntime = await start(createApp({ config: loadEnvironment(productionEnvironment({ FORM_WEBHOOK_SECRET: 'a-secure-form-webhook-secret-value' })) }));
+test('retired Google Form endpoints are not exposed in production', async () => {
+  const runtime = await start(createApp({ config: loadEnvironment(productionEnvironment()) }));
   try {
     const baseHeaders = { 'Content-Type': 'application/json', Origin: 'https://operations.example.test', 'X-Forwarded-Proto': 'https' };
-    const bodyOnly = await fetch(`${configuredRuntime.baseUrl}/api/forms/webhook`, {
-      method: 'POST', headers: baseHeaders, body: JSON.stringify({ formResponseId: 'body-only', secret: 'a-secure-form-webhook-secret-value' }),
-    });
-    assert.equal(bodyOnly.status, 401);
-    const headerAuthenticated = await fetch(`${configuredRuntime.baseUrl}/api/forms/webhook`, {
-      method: 'POST',
-      headers: { ...baseHeaders, 'X-Form-Webhook-Secret': 'a-secure-form-webhook-secret-value' },
-      body: JSON.stringify({}),
-    });
-    assert.equal(headerAuthenticated.status, 400);
-    assert.match((await headerAuthenticated.json()).error, /formResponseId/);
-  } finally { await configuredRuntime.close(); }
+    const [formWebhook, leadIngest] = await Promise.all([
+      fetch(`${runtime.baseUrl}/api/forms/webhook`, { method: 'POST', headers: baseHeaders, body: JSON.stringify({}) }),
+      fetch(`${runtime.baseUrl}/api/leads/ingest/google-form`, { method: 'POST', headers: baseHeaders, body: JSON.stringify({}) }),
+    ]);
+    assert.deepEqual([formWebhook.status, leadIngest.status], [404, 404]);
+  } finally { await runtime.close(); }
 });
 
 test('UPI webhook authentication, freshness, and event replay checks fail closed', async () => {

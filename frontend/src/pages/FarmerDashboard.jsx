@@ -1,15 +1,14 @@
-import { useCallback, useState } from 'react';
+import { useState } from 'react';
 import { useAuth } from '../context/useAuth';
 import OperationsShell from '../components/OperationsShell';
 import OpsIcon from '../components/OpsIcon';
-import TerrainMap from '../components/TerrainMap';
 import { useTranslation } from 'react-i18next';
 import { apiFetch, readJson } from '../services/apiClient';
 
 const statusLabel = (status) => String(status || 'UNKNOWN').replaceAll('_', ' ').toLowerCase();
 const statusTone = (status) => {
   if (['COMPLETED', 'PROCESSED'].includes(status)) return 'success';
-  if (['CANCELLED', 'REJECTED', 'OUT_OF_RANGE'].includes(status)) return 'danger';
+  if (['CANCELLED', 'REJECTED'].includes(status)) return 'danger';
   if (['IN_PROGRESS', 'SCHEDULED'].includes(status)) return 'info';
   return 'warning';
 };
@@ -27,7 +26,8 @@ export default function FarmerDashboard() {
     cropType: '', 
     village: user?.village || '', 
     district: user?.district || '', 
-    mapsLink: '',
+    latitude: '',
+    longitude: '',
     soilType: '',
     cropAgeWeeks: '',
     chemicalBrand: '',
@@ -39,21 +39,36 @@ export default function FarmerDashboard() {
     waterBodyNearby: false,
     terrainType: ''
   });
-  const handleLocationChange = useCallback((coords) => setForm((current) => ({ ...current, mapsLink: coords })), []);
-  const handleTerrainCalculated = useCallback((terrain) => setForm((current) => ({ ...current, terrainType: terrain })), []);
-  
+  const useCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      setNotice({ kind: 'error', message: t('service_location_unavailable') });
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setForm((current) => ({
+          ...current,
+          latitude: position.coords.latitude.toFixed(6),
+          longitude: position.coords.longitude.toFixed(6),
+        }));
+      },
+      () => setNotice({ kind: 'error', message: t('service_location_unavailable') }),
+      { enableHighAccuracy: false, timeout: 10_000, maximumAge: 60_000 },
+    );
+  };
+
   const submitRequest = async (e) => {
     e.preventDefault();
     setBusy(true);
     setNotice(null);
     try {
       const payload = {
-        farmerName: user.name,
-        farmerPhone: user.phone,
         acreage: parseFloat(form.acreage),
         cropType: form.cropType,
-        village: `${form.village}, ${form.district}`,
-        mapsLink: form.mapsLink,
+        village: form.village,
+        district: form.district,
+        latitude: Number(form.latitude),
+        longitude: Number(form.longitude),
         soilType: form.soilType,
         cropAgeWeeks: form.cropAgeWeeks ? parseInt(form.cropAgeWeeks) : undefined,
         chemicalBrand: form.chemicalBrand,
@@ -73,10 +88,15 @@ export default function FarmerDashboard() {
       });
       
       const data = await readJson(response);
-      if (!response.ok) throw new Error(data.error || 'Failed to submit request.');
+      if (data.code === 'OUTSIDE_SERVICE_AREA') {
+        setNotice({ kind: 'warning', message: t('service_area_unavailable') });
+        setForm((current) => ({ ...current, acreage: '', cropType: '', latitude: '', longitude: '' }));
+        return;
+      }
+      if (!response.ok) throw new Error(data.code === 'LOCATION_REQUIRED' ? t('service_location_required') : (data.error || t('request_error')));
       
-      setNotice({ kind: 'success', message: 'Your drone service request has been submitted successfully! We will contact you soon.' });
-      setForm({ ...form, acreage: '', cropType: '', mapsLink: '' });
+      setNotice({ kind: 'success', message: t('request_received_for_review') });
+      setForm({ ...form, acreage: '', cropType: '', latitude: '', longitude: '' });
       setLeads([data.lead, ...leads]);
       setActiveTab('services');
     } catch (err) {
@@ -301,16 +321,15 @@ export default function FarmerDashboard() {
                   </div>
                 </div>
 
-                <div className="input-group">
-                  <label>{t('Precise Farm Location')}</label>
-                  <span className="field-hint" style={{ marginBottom: '0.8rem', display: 'block' }}>{t('Search your area, fetch GPS, or drag the pin. The terrain will be analyzed automatically.')}</span>
-                  <div style={{ borderRadius: 'var(--radius-sm)', overflow: 'hidden', border: '1px solid var(--border)' }}>
-                    <TerrainMap 
-                      onLocationChange={handleLocationChange}
-                      onTerrainCalculated={handleTerrainCalculated}
-                    />
+                <fieldset className="form-stack">
+                  <legend>{t('service_location_title')}</legend>
+                  <span className="field-hint" style={{ marginBottom: '0.8rem', display: 'block' }}>{t('service_location_hint')}</span>
+                  <div className="row-group">
+                    <div className="input-group"><label htmlFor="farmer-latitude">{t('latitude_label')}</label><input id="farmer-latitude" type="number" min="-90" max="90" step="any" inputMode="decimal" required disabled={busy} value={form.latitude} onChange={e => setForm({ ...form, latitude: e.target.value })} /></div>
+                    <div className="input-group"><label htmlFor="farmer-longitude">{t('longitude_label')}</label><input id="farmer-longitude" type="number" min="-180" max="180" step="any" inputMode="decimal" required disabled={busy} value={form.longitude} onChange={e => setForm({ ...form, longitude: e.target.value })} /></div>
                   </div>
-                </div>
+                  <button type="button" className="action-btn" onClick={useCurrentLocation} disabled={busy}>{t('use_current_location')}</button>
+                </fieldset>
               </div>
             </div>
             

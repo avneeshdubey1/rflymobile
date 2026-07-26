@@ -7,6 +7,7 @@ const notificationCascadeService = require('../services/notificationCascadeServi
 const missionStateService = require('../services/missionStateService');
 const whatsappService = require('../services/whatsappService');
 const locationService = require('../services/locationService');
+const { ServiceAreaValidationError, revalidateForScheduling } = require('../services/leadServiceAreaService');
 
 function dayBounds(date) {
   const start = new Date(date);
@@ -31,9 +32,11 @@ exports.createManualAssignment = async (req, res) => {
     const leadId = req.body.leadId || req.body.lead?.id;
     const pilotId = req.body.pilotId || req.body.pilot?.id;
     const droneId = req.body.droneId;
-    const [lead, pilot, drone] = await Promise.all([leadRepository.findById(leadId), userRepository.findById(pilotId), droneRepository.findById(droneId)]);
-    if (!lead || !pilot || !drone) return res.status(400).json({ error: 'A valid lead, pilot, and drone are required' });
+    const [storedLead, pilot, drone] = await Promise.all([leadRepository.findById(leadId), userRepository.findById(pilotId), droneRepository.findById(droneId)]);
+    if (!storedLead || !pilot || !drone) return res.status(400).json({ error: 'A valid lead, pilot, and drone are required' });
+    let lead = storedLead;
     if (!['PROCESSED', 'NEEDS_MANUAL_SCHEDULING'].includes(lead.status)) return res.status(409).json({ error: 'Only processed or manual-scheduling leads can be assigned' });
+    lead = await revalidateForScheduling(lead, { actorId: req.auth.userId });
     if (pilot.role !== 'PILOT' || pilot.homeCenterId !== lead.matchedCenterId) return res.status(409).json({ error: 'Pilot must belong to the lead operating centre' });
     if (drone.status !== 'AVAILABLE' || drone.homeCenterId !== lead.matchedCenterId) return res.status(409).json({ error: 'Drone must be available at the lead operating centre' });
     const scheduledDate = req.body.scheduledDate ? new Date(req.body.scheduledDate) : new Date();
@@ -49,7 +52,10 @@ exports.createManualAssignment = async (req, res) => {
     await whatsappService.sendMissionScheduled(scheduledLead, assignment.scheduledDate);
     await notificationCascadeService.start(assignment);
     res.status(201).json({ success: true, mission: assignment });
-  } catch (error) { res.status(400).json({ error: error.message || 'Failed to create assignment' }); }
+  } catch (error) {
+    if (error instanceof ServiceAreaValidationError) return res.status(409).json({ code: error.code });
+    return res.status(400).json({ error: error.message || 'Failed to create assignment' });
+  }
 };
 
 function stateHandler(action) {
@@ -86,6 +92,7 @@ exports.rescheduleAssignment = async (req, res) => {
     const before = await assignmentRepository.findById(req.params.id);
     if (!before) return res.status(404).json({ error: 'Assignment not found' });
     if (!['SCHEDULED', 'PILOT_ACCEPTED'].includes(before.lead.status)) return res.status(409).json({ error: 'Only scheduled or accepted assignments can be rescheduled' });
+    await revalidateForScheduling(before.lead, { actorId: req.auth.userId });
     const scheduledDate = new Date(req.body.scheduledDate);
     if (Number.isNaN(scheduledDate.valueOf())) return res.status(400).json({ error: 'Valid scheduledDate is required' });
     const { start, end } = dayBounds(scheduledDate);
@@ -114,5 +121,8 @@ exports.rescheduleAssignment = async (req, res) => {
     }
 
     res.json({ success: true, mission: assignment, lead });
-  } catch (error) { res.status(400).json({ error: error.message || 'Failed to reschedule assignment' }); }
+  } catch (error) {
+    if (error instanceof ServiceAreaValidationError) return res.status(409).json({ code: error.code });
+    return res.status(400).json({ error: error.message || 'Failed to reschedule assignment' });
+  }
 };

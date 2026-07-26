@@ -76,7 +76,6 @@ NODE
 load_secret_file DATABASE_URL false
 build_database_url
 
-load_secret_file FORM_WEBHOOK_SECRET false
 load_secret_file UPI_WEBHOOK_SECRET false
 load_secret_file WHATSAPP_API_KEY false
 load_secret_file WEATHER_API_KEY false

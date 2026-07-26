@@ -4,7 +4,5 @@
   "mission_started": "Your pilot is on the way and spraying has begun.",
   "mission_completed": "Spraying is complete. {{actualAcreage}} acres covered. {{invoiceNote}}",
   "invoice_pending": "Invoice details will follow.",
-  "invoice_link": "Invoice: {{invoiceLink}}",
-  "appeal_approved": "Your service-area appeal has been approved. Additional service fee: {{fee}}.",
-  "appeal_rejected": "Your service-area appeal could not be approved. Our team can help with alternative options."
+  "invoice_link": "Invoice: {{invoiceLink}}"
 }

@@ -8,6 +8,7 @@ const weatherService = require('./weatherService');
 const notificationCascadeService = require('./notificationCascadeService');
 const whatsappService = require('./whatsappService');
 const logger = require('./loggerService');
+const { revalidateForScheduling } = require('./leadServiceAreaService');
 
 function startOfDay(date) { const result = new Date(date); result.setHours(0, 0, 0, 0); return result; }
 function endOfDay(date) { const result = startOfDay(date); result.setDate(result.getDate() + 1); return result; }
@@ -35,10 +36,10 @@ async function selectWeatherDate(lead, now) {
 }
 
 async function autoAssignProcessedLead(leadId, { excludePilotIds = [], now = new Date() } = {}) {
-  const lead = await leadRepository.findById(leadId);
+  let lead = await leadRepository.findById(leadId);
   if (!lead) throw new Error('Lead not found');
   if (lead.status !== 'PROCESSED') return { outcome: 'SKIPPED', reason: `Lead is ${lead.status}, not PROCESSED` };
-  if (!lead.matchedCenterId || lead.latitude === null || lead.longitude === null) return moveToManualScheduling(lead, 'No matched operating centre or GPS coordinates are available.');
+  lead = await revalidateForScheduling(lead);
 
   const weatherWindow = await selectWeatherDate(lead, now);
   if (!weatherWindow) return moveToManualScheduling(lead, 'No suitable weather day was found in the next five days.', 'WEATHER_RISK');

@@ -20,6 +20,12 @@
 5. Confirm maintenance window, operator, approver, rollback decision owner, and communication channel.
 6. Stop new writes if the migration is not proven online-compatible.
 
+### Phase 1 strict-intake legacy-data guard
+
+`20260726110000_strict_intake_and_retire_legacy_paths` is intentionally fail-closed. A fresh handover database may apply it normally. It stops if it finds any legacy appeal, Google Form identifier/channel, transport-fee configuration, Bhumeet record, or related notification. Do not bypass this guard by deleting data through a seed, bootstrap, or ad hoc SQL command.
+
+For a non-fresh legacy database, obtain explicit approval for the exact archival/deletion plan, take the backup, rehearse its restore, record preflight counts without customer payloads, and preserve the migration output. Only then may an approved operator apply the migration. The historical migration files remain part of the chain and must not be edited.
+
 ```sh
 docker compose --env-file "$DEPLOY_ENV" -f compose.production.yml stop frontend backend
 docker compose --env-file "$DEPLOY_ENV" -f compose.production.yml up --abort-on-container-exit --exit-code-from migrate migrate

@@ -5,7 +5,7 @@ const { loadEnvironment } = require('./config/environment');
 const app = require('./app');
 const { startNotificationEscalationJob } = require('./jobs/notificationEscalationJob');
 const { startChatAutoCloseJob } = require('./jobs/chatAutoCloseJob');
-const { startGoogleFormSyncJob } = require('./jobs/googleFormSync');
+const { startDeclinedEnquiryPurgeJob } = require('./jobs/declinedEnquiryPurgeJob');
 const { installChatSocket } = require('./sockets/chatSocket');
 const { installLocationSocket } = require('./sockets/locationSocket');
 const { installSocketAuthentication } = require('./middleware/auth');
@@ -28,8 +28,9 @@ server.listen(config.port, () => {
 
 const notificationEscalationJob = startNotificationEscalationJob();
 const chatAutoCloseJob = startChatAutoCloseJob();
-const googleFormSyncJob = startGoogleFormSyncJob();
+const declinedEnquiryPurgeJob = startDeclinedEnquiryPurgeJob(config.intake.declinedEnquiryPurgeIntervalMs);
 process.on('SIGTERM', () => {
   clearInterval(notificationEscalationJob);
   clearInterval(chatAutoCloseJob);
+  clearInterval(declinedEnquiryPurgeJob);
 });

@@ -72,7 +72,7 @@ docker compose --env-file "$DEPLOY_ENV" -f compose.production.yml build --pull
 
 For registry releases, pull images by immutable tag/digest instead of building on the host. Preserve the image digests in the release record.
 
-Before upgrading an existing installation, take and verify a backup according to [backup and restore](backup-restore.md).
+Before upgrading an existing installation, take and verify a backup according to [backup and restore](backup-restore.md). The Phase 1 strict-intake migration intentionally refuses non-empty legacy appeal/Google Form/Bhumeet data; follow the additional guard in [migration and rollback](migration-rollback.md) rather than deleting records ad hoc.
 
 ## Controlled migration and start
 
@@ -123,7 +123,7 @@ The final two commands must return no published port. Confirm that:
 
 ## Provider secrets
 
-The entrypoint supports `*_FILE` variables for Google Form, UPI webhook, WhatsApp, weather, and UPI gateway credentials. Do not mount any provider secret until its adapter, sandbox verification, rotation owner, failure queue, and launch approval are complete. Missing Google/UPI webhook secrets keep those production endpoints closed.
+The entrypoint supports `*_FILE` variables for UPI webhook, WhatsApp, weather, and UPI gateway credentials. Google Form is retired and has no deployment secret. Do not mount any provider secret until its adapter, sandbox verification, rotation owner, failure queue, and launch approval are complete. Missing UPI webhook secrets keep that production endpoint closed.
 
 Add provider secrets through a deployment-specific Compose override stored with deployment configuration, not by editing or committing `compose.production.yml`.
 

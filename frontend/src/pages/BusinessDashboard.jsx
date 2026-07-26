@@ -31,7 +31,7 @@ export default function BusinessDashboard() {
     },
     users: {
       title: "Requests",
-      description: "Create and manage your service requests.",
+      description: "View service requests explicitly linked to this business account.",
     },
     not: {
       title: "Notifications",
@@ -146,10 +146,6 @@ export default function BusinessDashboard() {
         <section className="request-page">
           <div className="request-header">
             <h2>Requests</h2>
-            <button className="new-request-btn">
-              <OpsIcon name="plus" />
-              <span>New Request</span>
-            </button>
           </div>
           <div className="request-empty">
             <div className="request-empty__icon">
@@ -157,7 +153,7 @@ export default function BusinessDashboard() {
             </div>
             <h3>No requests found</h3>
             <p>
-              Click <strong>New Request</strong> to create your first service request.
+              Linked requests will appear here after the Sales team records them.
             </p>
           </div>
         </section>

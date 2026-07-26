@@ -36,7 +36,6 @@ async function prepareDevelopmentDemo() {
     if (leadIds.length) {
       await transaction.notification.deleteMany({ where: { leadId: { in: leadIds } } });
       await transaction.paymentRecord.deleteMany({ where: { leadId: { in: leadIds } } });
-      await transaction.outOfRangeAppeal.deleteMany({ where: { leadId: { in: leadIds } } });
       await transaction.lead.deleteMany({ where: { id: { in: leadIds } } });
     }
     if (userIds.length) {

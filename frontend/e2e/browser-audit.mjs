@@ -123,7 +123,6 @@ const backendProcess = startProcess(process.execPath, ['server.js'], {
     DATABASE_URL: databaseUrl,
     PORT: '5100',
     RECOVERY_HASH_SECRET: recoveryHashSecret,
-    FORM_WEBHOOK_SECRET: crypto.randomBytes(24).toString('base64url'),
     WHATSAPP_API_KEY: '',
     WEATHER_API_KEY: '',
     UPI_GATEWAY_KEY: '',
@@ -228,30 +227,31 @@ try {
   await waitForUrl(frontendUrl);
   browser = await chromium.launch({ executablePath: edgePath, headless: true });
 
-  await runCase('PUB-01', 'Landing page renders and all five languages switch visibly', async (page) => {
-    await page.goto(`${frontendUrl}/request`, { waitUntil: 'domcontentloaded' });
-    await page.getByRole('heading', { name: 'Daas', exact: true }).waitFor();
+  await runCase('PUB-01', 'Root opens the public booking page and all six languages switch visibly', async (page) => {
+    await page.goto(`${frontendUrl}/`, { waitUntil: 'domcontentloaded' });
+    await page.waitForURL('**/request');
+    await page.getByRole('heading', { name: 'Request a drone service', exact: true }).waitFor();
     const selector = page.locator('.language-selector');
     const trigger = selector.locator('button').first();
     const labels = {};
-    for (let index = 0; index < 5; index += 1) {
+    for (let index = 0; index < 6; index += 1) {
       await trigger.click();
       const choices = selector.locator('div button');
       assert.equal(await choices.count(), 6);
-      await choices.nth(index + 1).click();
+      await choices.nth(index).click();
       labels[index] = (await trigger.innerText()).trim();
       assert.ok(labels[index], `Language label ${index} is empty`);
     }
-    assert.equal(new Set(Object.values(labels)).size, 5, 'Every language should visibly change the selector label');
+    assert.equal(new Set(Object.values(labels)).size, 6, 'Every language should visibly change the selector label');
     return { labels };
   });
 
-  await runCase('PUB-02', 'Mobile landing page has no horizontal overflow', async (page) => {
-    await page.setViewportSize({ width: 390, height: 844 });
+  await runCase('PUB-02', 'Narrow mobile landing page has no horizontal overflow', async (page) => {
+    await page.setViewportSize({ width: 360, height: 844 });
     await page.goto(`${frontendUrl}/request`, { waitUntil: 'domcontentloaded' });
     const dimensions = await page.evaluate(() => ({ scrollWidth: document.documentElement.scrollWidth, clientWidth: document.documentElement.clientWidth }));
     assert.ok(dimensions.scrollWidth <= dimensions.clientWidth + 1, `Horizontal overflow: ${JSON.stringify(dimensions)}`);
-    await page.getByRole('button', { name: /Employee Login|உள்நுழைவு|ಲಾಗಿನ್|లాగిన్|लॉगिन/i }).waitFor();
+    await page.getByRole('link', { name: /Employee Login|உள்நுழைவு|ಲಾಗಿನ್|లాగిన్|लॉगिन/i }).waitFor();
     return dimensions;
   });
 
@@ -261,31 +261,53 @@ try {
     assert.deepEqual(unnamed, [], `Inputs without accessible labels: ${JSON.stringify(unnamed)}`);
   });
 
-  await runCase('PUB-04', 'Public API accepts an in-range GPS-backed request', async (page) => {
+  await runCase('PUB-04', 'Public booking creates an in-range request for Sales review', async (page) => {
     await page.goto(`${frontendUrl}/request`, { waitUntil: 'domcontentloaded' });
-    const { response, data } = await api('/api/leads/ingest/website', {
-      method: 'POST',
-      body: { farmerName: `Browser In Range ${unique}`, phone: '9000012345', acres: 7, cropType: 'Cotton', latitude: 8.959, longitude: 77.311, preferredLanguage: 'en' },
-    });
-    assert.equal(response.status, 201, JSON.stringify(data));
-    assert.equal(data.inRange, true);
-    state.inRangeLead = data.lead;
-    if (data.assignment?.assignment) state.autoAssignment = data.assignment.assignment;
-    return { leadId: data.lead.id, status: data.lead.status, matchedCenterId: data.lead.matchedCenterId };
+    const farmerName = `Browser In Range ${unique}`;
+    await page.locator('#public-farmer-name').fill(farmerName);
+    await page.locator('#public-phone').fill('9000012345');
+    await page.locator('#public-village').fill('Browser Audit Village');
+    await page.locator('#public-crop').fill('Cotton');
+    await page.locator('#public-acres').fill('7');
+    await page.locator('#public-latitude').fill('8.959');
+    await page.locator('#public-longitude').fill('77.311');
+    const responsePromise = page.waitForResponse((response) => response.url().endsWith('/api/leads/ingest/website') && response.request().method() === 'POST');
+    await page.getByRole('button', { name: 'Book a Drone' }).click();
+    const response = await responsePromise;
+    const data = await response.json();
+    assert.equal(response.status(), 201, JSON.stringify(data));
+    assert.equal(data.outcome, 'ACCEPTED');
+    assert.equal(data.lead.status, 'NEW');
+    assert.equal(data.assignmentOutcome, null);
+    await page.getByText('Your request was received and is waiting for Sales review.').waitFor();
+    state.inRangeLead = { ...data.lead, farmerName };
+    return { leadId: data.lead.id, status: data.lead.status };
   });
 
-  await runCase('PUB-05', 'Public API creates an out-of-range request and appeal', async (page) => {
+  await runCase('PUB-05', 'Public booking strictly declines an out-of-area request without exposing an appeal', async (page) => {
     await page.goto(`${frontendUrl}/request`, { waitUntil: 'domcontentloaded' });
-    const { response, data } = await api('/api/leads/ingest/website', {
-      method: 'POST',
-      body: { farmerName: `Browser Out Range ${unique}`, phone: '9000012346', acres: 4, cropType: 'Paddy', latitude: 13.0827, longitude: 80.2707, preferredLanguage: 'en' },
+    await page.locator('#public-farmer-name').fill(`Browser Out Range ${unique}`);
+    await page.locator('#public-phone').fill('9000012346');
+    await page.locator('#public-village').fill('Out of Area Village');
+    await page.locator('#public-crop').fill('Paddy');
+    await page.locator('#public-acres').fill('4');
+    await page.locator('#public-latitude').fill('13.0827');
+    await page.locator('#public-longitude').fill('80.2707');
+    const responsePromise = page.waitForResponse((response) => response.url().endsWith('/api/leads/ingest/website') && response.request().method() === 'POST');
+    await page.getByRole('button', { name: 'Book a Drone' }).click();
+    const response = await responsePromise;
+    const data = await response.json();
+    assert.equal(response.status(), 422, JSON.stringify(data));
+    assert.deepEqual(data, {
+      success: false,
+      outcome: 'DECLINED',
+      code: 'OUTSIDE_SERVICE_AREA',
+      messageKey: 'service_area_unavailable',
     });
-    assert.equal(response.status, 201, JSON.stringify(data));
-    assert.equal(data.inRange, false);
-    state.outRangeLead = data.lead;
-    const appeal = await api(`/api/leads/${data.lead.id}/appeal`, { method: 'POST', body: { farmerMessage: 'Browser audit appeal' } });
-    assert.equal(appeal.response.status, 201, JSON.stringify(appeal.data));
-    return { leadId: data.lead.id, distanceKm: data.distanceKm, excessKm: data.appealOffer.excessKm };
+    assert.equal(/latitude|longitude|distance|acreage|lead|appeal|fee/i.test(JSON.stringify(data)), false);
+    await page.getByText('Service is not currently available for this farm location. Please call the operations team for assistance.').waitFor();
+    assert.equal(await page.getByRole('button', { name: /appeal/i }).count(), 0);
+    return { outcome: data.outcome };
   });
 
   await runCase('PUB-06', 'Public intake rejects an invalid phone number', async (page) => {
@@ -372,48 +394,48 @@ try {
     assert.deepEqual([salesUsers.response.status, pilotDroneMutation.response.status, fleetUserMutation.response.status], [403, 403, 201]);
   });
 
-  await runCase('SALES-01', 'Sales NEW queue excludes an already auto-scheduled lead', async (page) => {
+  await runCase('SALES-01', 'Sales queue includes an in-range public request awaiting review', async (page) => {
     await login(page, roleUsers.SALES, '/marketing');
     await page.getByText('Process Leads', { exact: true }).first().waitFor();
-    assert.equal(await page.getByText(state.inRangeLead.farmerName, { exact: true }).count(), 0);
+    await page.getByText(state.inRangeLead.farmerName, { exact: true }).waitFor();
   });
 
   await runCase('SALES-02', 'Sales manual-entry form creates a valid lead', async (page) => {
     await login(page, roleUsers.SALES, '/marketing');
     await page.getByRole('button', { name: /Enter New Lead/ }).click();
-    const form = page.locator('form');
-    const inputs = form.locator('input');
-    await inputs.nth(0).fill(`Browser Manual ${unique}`);
-    await inputs.nth(1).fill('9000012347');
-    await inputs.nth(2).fill('GPS: 8.959, 77.311');
-    await inputs.nth(3).fill('Groundnut');
-    await inputs.nth(4).fill('3');
+    await page.locator('#manual-farmer-name').fill(`Browser Manual ${unique}`);
+    await page.locator('#manual-phone').fill('9000012347');
+    await page.locator('#manual-location').fill('Browser Audit Village');
+    await page.locator('#manual-crop').fill('Groundnut');
+    await page.locator('#manual-acres').fill('3');
+    await page.locator('#manual-latitude').fill('8.959');
+    await page.locator('#manual-longitude').fill('77.311');
     const responsePromise = page.waitForResponse((response) => response.url().endsWith('/api/leads/ingest/manual') && response.request().method() === 'POST');
-    await page.getByRole('button', { name: 'Create Lead' }).click();
+    await page.getByRole('button', { name: 'Create lead' }).click();
     const response = await responsePromise;
     assert.equal(response.status(), 201, await response.text());
-    await page.getByText(/Lead created and automatically scheduled|Fleet has been notified/i).waitFor();
+    await page.getByText(/Lead created and sent through the normal scheduling workflow|Fleet has been notified/i).waitFor();
   });
 
-  await runCase('SALES-03', 'Sales reviews an out-of-range website appeal', async (page) => {
-    if (!state.outRangeLead) {
-      const fallback = await api('/api/leads/ingest/website', { method: 'POST', body: { farmerName: `Fallback Appeal ${unique}`, phone: '9000088888', cropType: 'Paddy', acres: 4, latitude: 13.0827, longitude: 80.2707, preferredLanguage: 'en' } });
-      assert.equal(fallback.response.status, 201, JSON.stringify(fallback.data));
-      state.outRangeLead = fallback.data.lead;
-      const appeal = await api(`/api/leads/${state.outRangeLead.id}/appeal`, { method: 'POST', body: { farmerMessage: 'Browser fallback appeal' } });
-      assert.equal(appeal.response.status, 201, JSON.stringify(appeal.data));
-    }
+  await runCase('SALES-03', 'Sales intake strictly declines an out-of-area caller without an appeal path', async (page) => {
     await login(page, roleUsers.SALES, '/marketing');
-    await page.getByRole('button', { name: /Appeals & alerts/ }).click();
-    const appealCard = page.locator('article').filter({ hasText: state.outRangeLead.farmerName });
-    await appealCard.waitFor();
-    const responsePromise = page.waitForResponse((response) => response.url().includes(`/api/leads/${state.outRangeLead.id}/appeal/review`) && response.request().method() === 'POST');
-    await appealCard.getByRole('button', { name: 'Approve appeal' }).click();
+    await page.getByRole('button', { name: /Enter New Lead/ }).click();
+    await page.locator('#manual-farmer-name').fill(`Manual Out Range ${unique}`);
+    await page.locator('#manual-phone').fill('9000012357');
+    await page.locator('#manual-location').fill('Out of Area Village');
+    await page.locator('#manual-crop').fill('Paddy');
+    await page.locator('#manual-acres').fill('4');
+    await page.locator('#manual-latitude').fill('13.0827');
+    await page.locator('#manual-longitude').fill('80.2707');
+    const responsePromise = page.waitForResponse((response) => response.url().endsWith('/api/leads/ingest/manual') && response.request().method() === 'POST');
+    await page.getByRole('button', { name: 'Create lead' }).click();
     const response = await responsePromise;
     const data = await response.json();
-    assert.equal(response.status(), 200, JSON.stringify(data));
-    assert.ok(['SCHEDULED', 'NEEDS_MANUAL_SCHEDULING'].includes(data.assignment?.lead?.status || data.lead.status));
-    await page.getByText(/Appeal approved and sent to scheduling/i).waitFor();
+    assert.equal(response.status(), 422, JSON.stringify(data));
+    assert.equal(data.code, 'OUTSIDE_SERVICE_AREA');
+    assert.equal(Object.hasOwn(data, 'lead'), false);
+    await page.getByText(/outside the active service area/i).waitFor();
+    assert.equal(await page.getByRole('button', { name: /appeal/i }).count(), 0);
   });
 
   await runCase('FLEET-01', 'Fleet Manager manually schedules an exception lead', async (page) => {
@@ -470,8 +492,10 @@ try {
   const adminSession = await apiLogin(roleUsers.ADMIN);
   if (!state.inRangeLead) {
     const fallback = await api('/api/leads/ingest/website', { method: 'POST', body: { farmerName: `Fallback ${unique}`, phone: '9000099999', cropType: 'Cotton', acres: 5, latitude: 8.959, longitude: 77.311, preferredLanguage: 'en' } });
+    assert.equal(fallback.response.status, 201, JSON.stringify(fallback.data));
+    assert.equal(fallback.data.outcome, 'ACCEPTED');
     state.inRangeLead = fallback.data.lead;
-    if (fallback.data.assignment?.assignment) state.autoAssignment = fallback.data.assignment.assignment;
+    state.inRangeLead.farmerName = `Fallback ${unique}`;
   }
   let processed = { data: {} };
   if (!state.autoAssignment) {
@@ -629,7 +653,7 @@ try {
 
   await runCase('UI-02', 'Sales workspace remains usable without page overflow on mobile', async (page) => {
     await login(page, roleUsers.SALES, '/marketing');
-    const tabs = ['Process Leads', 'Enter New Lead', 'Appeals & alerts', 'Payment Collection', 'CRM Logbook'];
+    const tabs = ['Process Leads', 'Enter New Lead', 'Operational alerts', 'Payment Collection', 'CRM Logbook'];
     const dimensions = {};
     for (const tab of tabs) {
       await page.getByRole('button', { name: new RegExp(tab, 'i') }).click();

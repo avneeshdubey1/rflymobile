@@ -42,9 +42,9 @@ The development seed is for demo data only. A fresh client handover must use mig
 
 The existing application is suitable for a controlled local demonstration and has local evidence for opaque-session authentication, role dashboards, scheduling, pilot lifecycle, offline replay, current-location handling, payment fallback, CRM history, and chat.
 
-Some current runtime behaviour is intentionally legacy relative to the approved target: Google Form intake, out-of-area appeals, immediate manual-acreage payment creation, and Bhumeet mock material are scheduled for retirement. The canonical plan documents the target; it does not falsely claim those changes already exist.
+Phase 1 source now enforces strict service-area intake and retires active Google Form, appeal, transport-fee, and Bhumeet mock paths. Its forward migration intentionally stops on populated legacy data until an approved backup/archival procedure is evidenced. Immediate manual-acreage payment creation and Firebase-dependent Farmer/Business phone proof remain later delivery work.
 
-Local evidence includes backend 74/74 and browser audit 30/30 as of July 23, 2026. This is not production approval. Real provider delivery, privacy decisions, staging, backup/restore, monitoring, and release gates remain open in the hardening register.
+The pre-Phase-1 baseline had backend 74/74 and browser audit 30/30 evidence on July 23, 2026. Phase 1 static checks pass; its disposable database/migration/browser evidence is still required. This is not production approval. Real provider delivery, privacy decisions, staging, backup/restore, monitoring, and release gates remain open in the hardening register.
 
 ## Verification
 

@@ -2,6 +2,15 @@
 
 > **Historical record:** current product requirements are in [docs/plan/AGENTS.md](docs/plan/AGENTS.md). Entries below describe what happened in the codebase at the time; they are not the current specification.
 
+## July 26, 2026 - Phase 1 Strict Intake and Legacy-Path Retirement
+
+* Added a forward-only, fail-closed strict-intake migration. It creates the minimal, expiry-indexed `DeclinedEnquiry` record and removes active appeal, Google Form, transport-fee, and Bhumeet schema paths only on a fresh/approved database. It refuses a populated legacy path until backup, archival approval, and restore evidence exist.
+* Reworked public, Sales, and authenticated Farmer intake around server-pinned channels, explicit input allowlists, canonical phone normalization, deterministic nearest-centre geofencing, and coordinate-free audit events. An out-of-area request now returns only a generic decline and stores no Lead, location, distance, acreage, assignment, appeal, payment, or schedule.
+* Added an idempotent declined-enquiry expiry purge, revalidation before Sales processing, automatic assignment, manual scheduling, and rescheduling, and safe rejection of legacy records whose current location is no longer serviceable. Public bookings await Sales review; manual Sales remains the phone-first path.
+* Removed active Google Form/surveyor routes/jobs/configuration, appeal routes/UI/templates, transport-fee logic, and Bhumeet mock UI/routes. Replaced the public Firebase registration screen with the secondary public booking form, and aligned the browser acceptance scenarios to strict decline behaviour.
+* Added Malayalam to the backend language contract so the frontend’s advertised language cannot cause a valid public request to fail.
+* Verification to date: Prisma schema validation, backend syntax checks, backend/frontend locale parsing, frontend lint, production build, and production Compose rendering passed (the existing large-chunk advisory remains). The disposable PostgreSQL suite, migration replay, and browser audit are pending because Docker Desktop was unavailable on this workstation; this is not a production-ready claim.
+
 ## July 25, 2026 - Canonical Production-Readiness Documentation Migration
 
 * Created the versioned canonical planning set under `docs/plan/`: agent guidance, business context, future-state specification, production hardening register, placeholder register, and production-readiness delivery plan.

@@ -17,9 +17,7 @@ enum Role {
 }
 
 enum LeadStatus {
-  NEW                     // raw submission, not yet geofence-checked
-  OUT_OF_RANGE            // failed geofence check
-  APPEAL_PENDING          // farmer requested to pay extra / be reconsidered
+  NEW                     // accepted website request awaiting Sales review
   PROCESSED               // verified, inside range, ready for auto-assignment
   NEEDS_MANUAL_SCHEDULING // auto-assignment found no valid candidates
   MANUAL_CALL_REQUIRED    // farmer claims to have chemicals but no proof attached
@@ -29,7 +27,7 @@ enum LeadStatus {
   COMPLETED
   FLAGGED                 // discrepancy, decommission, or admin flag
   CANCELLED
-  REJECTED                // appeal denied, or lead otherwise rejected
+  REJECTED                // request or operational rejection
 }
 
 enum DroneStatus {
@@ -41,7 +39,6 @@ enum DroneStatus {
 
 enum IntakeChannel {
   WEBSITE
-  GOOGLE_FORM
   MANUAL_SALES
 }
 
@@ -54,7 +51,6 @@ enum NotificationType {
   MISSION_FLAGGED
   MISSION_COMPLETED
   LEAD_PROCESSED
-  OUT_OF_RANGE_APPEAL
   NEEDS_MANUAL_SCHEDULING
   WEATHER_RISK
   PAYMENT_PENDING
@@ -189,8 +185,6 @@ model Lead {
   preferredLanguage String       @default("ta")
   status           LeadStatus    @default(NEW)
   intakeChannel    IntakeChannel
-  formResponseId   String?       @unique   // idempotency key for Google Form webhook
-  surveyorName     String?                 // set when channel = GOOGLE_FORM
   matchedCenter    OperatingCenter? @relation(fields: [matchedCenterId], references: [id])
   matchedCenterId  String?
   distanceFromCenterKm Float?
@@ -211,30 +205,31 @@ model Lead {
   processedAt      DateTime?
 
   assignment       Assignment?
-  appeal           OutOfRangeAppeal?
   notifications    Notification[]
   payments         PaymentRecord[]
   chatSessions     ChatSession[]
 }
 
-model OutOfRangeAppeal {
-  id            String   @id @default(uuid())
-  lead          Lead     @relation(fields: [leadId], references: [id])
-  leadId        String   @unique
-  distanceKm    Float
-  excessKm      Float
-  farmerMessage String?
-  suggestedFee  Float?               // auto-calculated: excessKm * PricingConfig rate
-  finalFee      Float?               // admin/sales-overridable, since customers negotiate
-  status        String   @default("PENDING")  // PENDING, APPROVED, REJECTED
-  reviewedBy    String?
-  createdAt     DateTime @default(now())
-  resolvedAt    DateTime?
+// This is deliberately not a Lead: a declined request must never become
+// schedulable or retain farm/route/acreage details. Contact fields support a
+// short staff-recognition window only and are purged after the policy expiry.
+model DeclinedEnquiry {
+  id              String        @id @default(uuid())
+  contactName     String
+  contactPhone    String
+  sourceChannel   IntakeChannel
+  reason          String        @default("OUTSIDE_SERVICE_AREA")
+  createdByUserId String?
+  createdAt       DateTime      @default(now())
+  expiresAt       DateTime
+
+  @@index([expiresAt])
+  @@index([contactPhone, createdAt])
 }
 
 model PricingConfig {
   id        String   @id @default(uuid())
-  key       String   @unique   // e.g. "OUT_OF_RANGE_RATE_PER_KM", "DISCREPANCY_THRESHOLD_PCT"
+  key       String   @unique   // e.g. "DISCREPANCY_THRESHOLD_PCT"
   value     Float               // placeholder values
   updatedBy String?
   updatedAt DateTime @updatedAt
@@ -369,11 +364,4 @@ model AuditLog {
   afterState  Json?
   reason      String?
   createdAt  DateTime @default(now())
-}
-
-model BhumeetFlight {
-  id        String   @id @default(uuid())
-  flightId  String   @unique
-  data      Json
-  fetchedAt DateTime @default(now())
 }

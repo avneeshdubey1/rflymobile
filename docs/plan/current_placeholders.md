@@ -7,7 +7,7 @@ This register records company-owned decisions, provider dependencies, and intent
 
 | Area | Safe current state | Required company input | Owner | Blocks |
 |---|---|---|---|---|
-| Strict service areas | Current code still has legacy appeal behaviour; target requires every channel to validate service area before Lead creation. | Active centres, approved radii, refusal wording, and operational owner. | Operations | Strict-intake delivery and launch |
+| Strict service areas | Phase 1 source enforces the same geofence before accepted Lead creation for public, Sales, and authenticated Farmer intake. Declines create a 30-day minimal contact record only. The forward migration intentionally stops on populated legacy appeal/Form/Bhumeet data. | Active centres, approved radii, refusal wording, approved legacy-data archival path where applicable, and operational owner. | Operations | Fresh-handover migration, staging evidence, and launch |
 | LMV fleet | No LMV model or scheduler exists yet. | Registration, centre mapping, capacity, maintenance/compliance records, and policy owners. | Fleet/compliance | LMV scheduling |
 | Pilot and drone masters | Current records are incomplete/demo-oriented. | Actual people, centre, licence, drone serial, airworthiness, and maintenance data. | Fleet/compliance | Safe dispatch |
 | Customer and organization linkage | Current records are lead-centric and portals are incomplete. | Business organization/membership rules and customer-data ownership. | Operations/privacy | Portal launch |
@@ -35,9 +35,9 @@ This register records company-owned decisions, provider dependencies, and intent
 
 | Item | Resolution |
 |---|---|
-| Google Form/surveyor intake | Retired target. Legacy code remains until the strict-intake implementation package removes it. |
-| Out-of-area appeal and transport pricing | Retired target. Strict service-area decline replaces it. |
-| Bhumeet mock | Not a production telemetry or billing strategy. Retire/quarantine legacy mock paths during implementation. |
+| Google Form/surveyor intake | Phase 1 source routes, job, configuration, test fixtures, and UI paths are retired. Historical migration records remain; applying the forward migration to populated legacy data requires approved archival evidence. |
+| Out-of-area appeal and transport pricing | Phase 1 source schema/runtime/UI paths are retired. Strict service-area decline replaces them; populated legacy data is intentionally migration-blocked pending approved archival handling. |
+| Bhumeet mock | Phase 1 source routes, mock UI, and schema model are retired. It remains neither a production telemetry nor billing strategy. |
 | Development seed for handover | Demo/development only. Use migrations and guarded initial-Admin bootstrap for fresh handover. |
 | Raw telemetry upload | Intentionally disabled until the required privacy, storage, vendor, and retention approvals exist. |
 | Kubernetes operation | Deferred. Compose is the approved initial deployment model. |

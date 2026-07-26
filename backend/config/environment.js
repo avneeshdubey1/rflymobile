@@ -81,12 +81,8 @@ function loadEnvironment(env = process.env) {
   if (nodeEnv === 'production' && !rateLimitsEnabled) {
     throw new ConfigurationError('RATE_LIMITS_ENABLED cannot be disabled in production');
   }
-  const formWebhookSecret = String(env.FORM_WEBHOOK_SECRET || '').trim();
   const upiWebhookSecret = String(env.UPI_WEBHOOK_SECRET || '').trim();
   const recoveryHashSecret = String(env.RECOVERY_HASH_SECRET || '').trim();
-  if (nodeEnv === 'production' && formWebhookSecret && formWebhookSecret.length < 32) {
-    throw new ConfigurationError('FORM_WEBHOOK_SECRET must contain at least 32 characters in production');
-  }
   if (nodeEnv === 'production' && upiWebhookSecret && upiWebhookSecret.length < 32) {
     throw new ConfigurationError('UPI_WEBHOOK_SECRET must contain at least 32 characters in production');
   }
@@ -126,6 +122,11 @@ function loadEnvironment(env = process.env) {
       maxAttempts: integer(env.RECOVERY_MAX_ATTEMPTS, 5, 'RECOVERY_MAX_ATTEMPTS', { min: 1, max: 20 }),
       firebaseProofMaxAgeMs: integer(env.FIREBASE_RECOVERY_MAX_AUTH_AGE_MS, 5 * 60_000, 'FIREBASE_RECOVERY_MAX_AUTH_AGE_MS', { min: 60_000, max: 60 * 60_000 }),
     }),
+    intake: Object.freeze({
+      // Declined enquiries have a fixed, approved 30-day lifetime. The purge
+      // may run more often, but never less often than daily.
+      declinedEnquiryPurgeIntervalMs: integer(env.DECLINED_ENQUIRY_PURGE_INTERVAL_MS, 24 * 60 * 60_000, 'DECLINED_ENQUIRY_PURGE_INTERVAL_MS', { min: 60_000, max: 24 * 60 * 60_000 }),
+    }),
     socket: Object.freeze({
       maxPayloadBytes: integer(env.SOCKET_MAX_PAYLOAD_BYTES, 64 * 1024, 'SOCKET_MAX_PAYLOAD_BYTES', { min: 1024, max: 1024 * 1024 }),
       eventWindowMs: integer(env.SOCKET_EVENT_WINDOW_MS, 60_000, 'SOCKET_EVENT_WINDOW_MS', { min: 1000, max: 60 * 60_000 }),
@@ -133,7 +134,6 @@ function loadEnvironment(env = process.env) {
       connectionMax: integer(env.SOCKET_CONNECTION_MAX, 30, 'SOCKET_CONNECTION_MAX', { min: 1, max: 10_000 }),
     }),
     webhooks: Object.freeze({
-      formSecret: formWebhookSecret,
       upiSecret: upiWebhookSecret,
       replayWindowMs: integer(env.WEBHOOK_REPLAY_WINDOW_MS, 5 * 60_000, 'WEBHOOK_REPLAY_WINDOW_MS', { min: 1000, max: 24 * 60 * 60_000 }),
     }),

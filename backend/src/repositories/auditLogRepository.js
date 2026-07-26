@@ -10,7 +10,7 @@ const privateStateKeys = new Set([
   // Exact GPS fields and common aliases.
   'latitude', 'longitude', 'lat', 'lng', 'lon', 'long',
   'lastknownlat', 'lastknownlng', 'gpslat', 'gpslng', 'gpslatitude', 'gpslongitude',
-  'coordinate', 'coordinates', 'gpscoordinate', 'gpscoordinates',
+  'coordinate', 'coordinates', 'gpscoordinate', 'gpscoordinates', 'distancefromcenterkm', 'distancekm',
   // Payment destinations/links. Transaction-presence booleans remain safe.
   'paymentlink', 'paymenturl', 'paymenturi', 'upilink', 'upiurl', 'upiuri',
   'checkoutlink', 'checkouturl', 'qrcode', 'qrpayload',

@@ -71,17 +71,10 @@ function protectAgainstReplay(provider) {
   };
 }
 
-const verifyGoogleFormWebhook = verifyWebhook({
-  environmentName: 'FORM_WEBHOOK_SECRET',
-  configKey: 'formSecret',
-  headerName: 'x-form-webhook-secret',
-  allowBodySecretInDevelopment: true,
-});
-
 const verifyUpiWebhook = verifyWebhook({
   environmentName: 'UPI_WEBHOOK_SECRET',
   configKey: 'upiSecret',
   headerName: 'x-upi-webhook-secret',
 });
 
-module.exports = { matchesSecret, protectAgainstReplay, timestampIsFresh, verifyGoogleFormWebhook, verifyUpiWebhook };
+module.exports = { matchesSecret, protectAgainstReplay, timestampIsFresh, verifyUpiWebhook };
