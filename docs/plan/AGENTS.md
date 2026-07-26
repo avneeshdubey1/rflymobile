@@ -1,7 +1,7 @@
 # Canonical Engineering Agent Guide
 
 **Status:** authoritative planning baseline
-**Last reviewed:** July 25, 2026
+**Last reviewed:** July 26, 2026
 
 This is the only engineering-agent entry point for future work. Legacy guidance is EOL or historical only. The current code does not yet implement every requirement in this planning set; do not claim that a documented target already exists in the application.
 
@@ -34,6 +34,7 @@ Do not treat a dated report, a legacy document, a seed value, or current applica
 8. **Safe money:** use precise decimal or minor-unit money, immutable approved price snapshots, idempotency, and separate invoice and settlement state.
 9. **Privacy by design:** exact location is only collected where operationally required; it is never copied into AuditLog. Raw telemetry has its own retention and access policy.
 10. **Fresh handover:** use migrations plus the guarded initial-Admin bootstrap only. Development seed data is never used for client handover, staging intended to mirror production, or production.
+11. **Application-owned phone proof:** the application, not a delivery provider, generates, hashes, rate-limits, expires, verifies, and consumes OTP challenges. A provider only transports an approved message and reports delivery. Never trust a browser-supplied phone number, Firebase token, or delivery receipt as proof of account ownership.
 
 ## Approved product rules
 
@@ -43,6 +44,7 @@ Do not treat a dated report, a legacy document, a seed value, or current applica
 - An assignment reserves a pilot, drone, and LMV. The assigned pilot drives the LMV. Capacity is recorded for future expansion, but one LMV supports one pilot-and-drone crew at a time in the initial release.
 - Mission completion releases the drone and LMV immediately. Billing is a separate workflow and cannot hold fleet resources.
 - Billing evidence is vendor-neutral. Raw telemetry ingestion remains disabled until the company approves the vendor, retention, access, encryption, and incident policy.
+- Firebase Authentication is a retired target dependency. Replace its SMS-only phone proof with an application-owned verification challenge, WhatsApp-first delivery, and SMS fallback; do not retain a Firebase compatibility path after the approved cutover.
 - Farmer communications use WhatsApp with SMS fallback. A delivery failure creates a human follow-up task; do not build robo-calling.
 - Sales may approve final acreage and issue an internal invoice draft. Admin may oversee or correct it. Tax/GST issuance is deferred until company rules are supplied.
 - Kubernetes is deferred. The initial live topology is one isolated Docker Compose deployment per company, built with portable container contracts.
@@ -54,6 +56,7 @@ Do not treat a dated report, a legacy document, a seed value, or current applica
 - Prefer a focused migration or feature commit. Include documentation, tests, and verification evidence with the corresponding implementation.
 - For destructive operations, resolve the exact target first, require the approved guard/confirmation path, make backups where applicable, and record the result without sensitive values.
 - Do not activate a provider merely because an adapter exists. Build and test the fallback path first.
+- Treat the direct Meta WhatsApp Cloud API as the provisional cost baseline, not as an approved live provider. Confirm the client-owned business account, sender, authentication template, opt-in, India rate card, webhook verification, and sandbox evidence before activation. A free service-message or advertising-entry window is never an OTP design assumption.
 - Do not use legacy Bhumeet/mock marketplace material as a production telemetry or billing dependency.
 
 ## Completion and evidence

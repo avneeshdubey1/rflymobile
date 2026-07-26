@@ -1,7 +1,7 @@
 # Product and Operating Context
 
 **Status:** authoritative business context
-**Last reviewed:** July 25, 2026
+**Last reviewed:** July 26, 2026
 
 ## The operating model
 
@@ -69,6 +69,14 @@ Farmer communications remain practical:
 - WhatsApp is supported where the farmer uses it.
 - SMS is the fallback for feature-phone and delivery-failure cases.
 - A failed message creates a staff follow-up task. Automated voice calling is out of scope.
+
+### Phone verification and delivery ownership
+
+Firebase's documented phone sign-in flow is SMS-only, so it cannot satisfy the approved WhatsApp-first experience. The target retires Firebase Authentication entirely after a staged cutover. The application owns the phone-verification challenge and uses an external provider only to transport the message.
+
+A one-time code proves current control of a phone number for one narrow purpose; it does not by itself create a customer relationship, role, or portal entitlement. The default portal-enrolment rule is an existing explicitly linked account or an approved invitation. Any public self-registration policy requires separate client approval.
+
+For an approved Farmer portal login, Farmer phone link, or Business recovery, the server creates the short-lived challenge, sends it first through WhatsApp, and may use SMS only as a controlled fallback. A provider delivery receipt never proves identity. Staff follow-up must help the customer through an approved support process and must never disclose or ask for an OTP.
 
 Every human-facing message remains localized. Tamil and other supported languages require operational review; a translation being technically present is not equivalent to approved business wording.
 

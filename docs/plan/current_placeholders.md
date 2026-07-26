@@ -1,7 +1,7 @@
 # Current Placeholders and External-Input Register
 
 **Status:** canonical live register
-**Last reviewed:** July 25, 2026
+**Last reviewed:** July 26, 2026
 
 This register records company-owned decisions, provider dependencies, and intentionally disabled capabilities. It is not a production approval list. Never place passwords, private keys, tokens, reset codes, payment credentials, customer data, raw telemetry, or production values in this document.
 
@@ -17,8 +17,10 @@ This register records company-owned decisions, provider dependencies, and intent
 | Pricing and money | Existing seed/config values are non-commercial and current payment fields are not invoice-safe. | Currency, acreage rule, service pricing, manual-LMV-fee policy, discounts, correction/void policy. | Finance/operations | Invoice drafts |
 | Tax/GST | Tax issuance is intentionally deferred. | Registration, HSN/SAC, rate, numbering, tax wording, and legal approval. | Finance/legal | Tax invoices |
 | UPI and cash settlement | UPI adapter is not live; cash is manual. | Merchant/gateway account, settlement account, reconciliation/refunds, signed webhook, and sandbox evidence. | Finance | Live settlement |
-| WhatsApp, SMS, and email | Providers are mocked/fail-open or unavailable. | Provider accounts, senders, templates, opt-in evidence, callbacks, failure policy, and sandbox verification. | Business/provider owner | Live communication and recovery |
-| Password recovery | Application controls have local evidence; live delivery is not approved. | Approved WhatsApp/SMS/email delivery and rotation procedure for recovery secret. | Security/provider owner | Production recovery |
+| WhatsApp, SMS, and email | No live provider is approved. Firebase cannot deliver WhatsApp OTP. Direct Meta Cloud API is the provisional WhatsApp cost baseline; SMS remains a separately selected fallback. | Client-owned WABA/sender, Meta business/scaling eligibility, approved localized authentication templates, opt-in wording, current India rate-card evidence, budget owner, signed callbacks, sandbox results, and an India-capable SMS provider. | Business/provider owner | Live communication and recovery |
+| Phone verification and Firebase retirement | Current Farmer proof and Business phone recovery still rely on Firebase; there is no generic application-owned phone-verification challenge or durable delivery worker yet. Firebase has no Firestore/Storage/FCM data role in this repository. | Approved purposes, OTP/enrolment policy, retention policy, Meta and SMS sandbox evidence, cutover owner/window, and external Firebase service-account revocation evidence after removal. | Security/provider owner | Farmer/Business phone verification and production approval |
+| Portal enrolment | Current Firebase-era Farmer self-registration is legacy behaviour. The target portal is access-controlled. | Confirm whether Farmer access is Sales/Admin-linked only or invitation-based; public self-registration is not approved by default. | Operations/privacy | Farmer portal launch |
+| Password recovery | Application controls have local evidence; live delivery is not approved. | Approved WhatsApp/SMS/email delivery, stronger/manual Admin recovery policy, and rotation procedure for recovery secret. | Security/provider owner | Production recovery |
 | Recovery hash secret | Production session/recovery deployment requires a secret held outside the checkout. | Generate, store, rotate, and mount the approved secret through the deployment secret store; record no value here. | Deployment/security | Production authentication |
 | Fresh handover bootstrap | A guarded local bootstrap exists; its approved containerized deployment procedure is not yet verified. | Named operator, approved run procedure/image, post-bootstrap password replacement, and staging rehearsal. | Deployment/security/client Admin | Fresh client launch |
 | Weather | Current provider is not approved/live. | Provider/plan, thresholds, cache/quota policy, and sandbox evidence. | Operations/agronomy | Automated weather decision |
@@ -40,6 +42,7 @@ This register records company-owned decisions, provider dependencies, and intent
 | Raw telemetry upload | Intentionally disabled until the required privacy, storage, vendor, and retention approvals exist. |
 | Kubernetes operation | Deferred. Compose is the approved initial deployment model. |
 | Browser bearer-token storage | Replaced by revocable server-side opaque sessions with cookie/CSRF controls. |
+| Firebase Authentication phone proof | Retired target. Current code remains Firebase-dependent until the internal challenge, provider fallback, staging cutover, and removal evidence are complete. |
 
 ## Maintenance rule
 

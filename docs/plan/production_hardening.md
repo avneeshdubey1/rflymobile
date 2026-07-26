@@ -1,7 +1,7 @@
 # Production Hardening Register
 
 **Status:** mandatory pre-production work; the application is not production-ready.
-**Last reviewed:** July 25, 2026
+**Last reviewed:** July 26, 2026
 **Evidence rule:** a checkbox is complete only after test, staging, or operational evidence proves it. Local tests and Compose rendering are not production approval.
 
 ## Locked product and deployment decisions
@@ -16,6 +16,7 @@
 - A pilot, drone, and LMV are one schedulable crew. Mission completion frees drone and LMV before billing.
 - Billing is separate from mission completion. Sales approves final acreage and internal invoice drafts; Admin can oversee/correct; raw route distance is not a price.
 - WhatsApp has SMS fallback and failed delivery produces a human follow-up task.
+- Firebase Authentication is retired from the production target. The server owns purpose-bound OTP challenges; WhatsApp/SMS providers only deliver an approved message and report transport status.
 - Raw telemetry is disabled until vendor, retention, access, encryption, deletion, and incident policy are approved.
 - Audit records remain append-only and coordinate-free. Exact pilot location and raw telemetry have separate privacy policies.
 
@@ -33,6 +34,11 @@ These results prove only the current baseline. They do not cover the approved LM
 
 - [ ] Apply authentication and role authorization, plus negative tests, to every current and new route, socket event, worker action, import, billing, evidence, LMV, and portal read.
 - [ ] Finish approved WhatsApp-default recovery delivery with SMS/email fallback, provider sandbox tests, bounce/failure handling, and no code logging.
+- [ ] Build application-owned OTP challenges for Farmer portal authentication, Farmer phone link, and Business recovery: CSPRNG codes, dedicated-secret HMAC, constant-time verification, short configurable expiry, one-time consumption, transactional replacement, attempt caps, resend cooldowns, and purpose/recipient binding.
+- [ ] Enforce non-enumerating OTP responses and independent phone, account/purpose, IP, global, and provider-budget limits. A provider receipt must never verify an account or issue a session.
+- [ ] Use a durable outbox/worker for OTP delivery, signed idempotent webhook processing, encrypted TTL-bound delivery payloads only when necessary, dead-letter review, sanitized metrics, and human follow-up that never exposes a code.
+- [ ] Restrict privileged Admin recovery to an approved stronger/manual process; phone OTP alone is not sufficient Admin assurance.
+- [ ] Remove Firebase packages, browser/server SDKs, Firebase ID-token acceptance, environment/deployment references, and Firebase-specific tests only after staging cutover evidence. Revoke external Firebase service-account access through its owner and verify built images contain no Firebase dependency.
 - [ ] Restrict CORS to approved origins, require HTTPS, set secure headers, enforce body/request limits, and rate-limit public, login, recovery, webhook, and upload routes.
 - [ ] Validate all public and privileged inputs; return consistent non-sensitive errors.
 - [ ] Complete dependency, static-code, secret, and image scans; resolve high/critical findings and preserve non-secret evidence.
@@ -59,7 +65,9 @@ These results prove only the current baseline. They do not cover the approved LM
 
 ## Release blockers: integrations and communications
 
-- [ ] Select and verify WhatsApp/SMS/email provider accounts, sender identity, templates, consent/opt-in, delivery callbacks, and sandbox/failure paths.
+- [ ] Provision and verify a client-owned WhatsApp Business Account, sender, business/scaling eligibility, approved localized authentication template, opt-in wording, current India rate card, budget alert, signed callbacks, and sandbox/failure paths. Direct Meta Cloud API is the provisional cost baseline, not a live approval.
+- [ ] Select a separate India-capable SMS fallback provider and complete Principal Entity, header, content-template, consent, and delivery-report requirements before live fallback. Do not treat a trial allowance as production capacity.
+- [ ] Prove WhatsApp-primary to SMS fallback only occurs after a terminal delivery result or approved timeout; prove repeated provider webhooks, retries, outages, and worker restarts cannot create duplicate codes, sessions, or charges.
 - [ ] Select weather provider/plan, thresholds, caching, quota behavior, and fail-open operational queue.
 - [ ] Select legal UPI merchant/gateway, settlement/refund/reconciliation rules, signed idempotent webhook, and sandbox evidence.
 - [ ] Select vendor/controller evidence source and provide sample exports; do not treat mock Bhumeet material as an approved integration.
@@ -78,7 +86,7 @@ These results prove only the current baseline. They do not cover the approved LM
 ## Release blockers: quality and acceptance
 
 - [ ] Run all tests, browser workflows, and Compose checks against production-like staging.
-- [ ] Test Android and desktop supported browsers, low bandwidth, offline replay, duplicate requests, app/database/worker restart, provider failure, webhook replay, uploads, and queue recovery.
+- [ ] Test Android and desktop supported browsers, low bandwidth, offline replay, duplicate requests, app/database/worker restart, provider failure, webhook replay, uploads, queue recovery, OTP expiry/replay/purpose isolation, rate-limit abuse, and controlled WhatsApp-to-SMS fallback.
 - [ ] Complete accessibility, localization, timezone/date, currency, mobile-layout, and raw-evidence access review.
 - [ ] Complete client acceptance with fresh non-demo master data and named operating owners.
 
@@ -87,7 +95,7 @@ These results prove only the current baseline. They do not cover the approved LM
 1. Operations, privacy, finance, security, deployment, and incident owners.
 2. Centres/radii, staff/pilot/LMV/drone masters, compliance policy, pricing, currency, tax/GST, and manual-LMV-fee policy.
 3. Hosting/domain/TLS, alerts, backup targets, RPO/RTO, expected load, and support escalation.
-4. WhatsApp/SMS/email/weather/UPI accounts and sandbox access, supplied only through approved secret handling.
+4. Client-owned WhatsApp Business Account/sender, approved authentication templates and opt-in wording, current India rate evidence, SMS Principal Entity/header/content-template setup, email/weather/UPI accounts, and sandbox access, supplied only through approved secret handling.
 5. Drone/controller vendor, sample evidence exports, usable-evidence definition, and raw-evidence retention/access/deletion policy.
 6. Excel/Zoho master-data mapping and reconciliation owner.
 
@@ -100,3 +108,4 @@ These results prove only the current baseline. They do not cover the approved LM
 | July 23, 2026 | Authentication hardening closeout | Backend 74/74, browser 30/30, schema/lint/build/Compose rendering | Passed locally; not production approval. |
 | July 24, 2026 | Fresh handover bootstrap | Guarded local reset | Passed locally; exactly one active Admin, no demo operational data. |
 | July 25, 2026 | Canonical production-readiness documentation | docs/plan migration and link/ignore review | Documentation phase only; no new application behaviour claimed. |
+| July 26, 2026 | Phone-verification and provider decision research | Official Firebase, Meta, Google pricing, TRAI, and provider documentation review | Firebase is SMS-only; no recurring free WhatsApp-authentication allowance was accepted; direct Meta Cloud API is a provisional cost baseline pending client onboarding and sandbox evidence. |

@@ -1,7 +1,7 @@
 # Production Target Technical Specification
 
 **Status:** approved future-state contract
-**Last reviewed:** July 25, 2026
+**Last reviewed:** July 26, 2026
 **Important:** this specification supersedes legacy product guidance. The documentation migration does not itself change runtime behaviour; current legacy routes and models remain until their delivery package is implemented and verified.
 
 ## 1. Scope and baseline
@@ -27,6 +27,7 @@ Current code is a baseline, not proof of this target. Existing appeal, Google Fo
 | Scale path | Containers remain portable to Kubernetes; operating Kubernetes is deferred. |
 | Files | Encrypted, external object storage for future raw billing evidence. Never database blobs for raw telemetry. |
 | Queue/worker | A dedicated durable worker handles evidence processing and retryable billing jobs. |
+| Phone verification | Application-owned, purpose-bound OTP challenges; provider adapters deliver WhatsApp first and SMS on controlled fallback. Firebase Authentication is not part of the target. |
 
 Every service must be stateless except for approved persistent stores. Compose is the initial orchestration boundary, not a claim of high availability.
 
@@ -63,6 +64,15 @@ Names below express the required business relationships. Final Prisma naming may
 - DeclinedEnquiry: a separate, non-schedulable contact-only record for out-of-area intake.
 
 DeclinedEnquiry may store only contact name, canonical phone, source channel, generic decline reason, created time, expiry time, and non-sensitive staff/system identifiers. It must not store the rejected address, coordinates, distance, acreage, route, appeal, payment, or assignment. A daily idempotent purge removes it after 30 days.
+
+### 4.2.1 Phone verification and delivery
+
+- PhoneVerificationChallenge: an opaque challenge ID, recipient reference or protected short-lived canonical-phone value, purpose, code HMAC, expiry, attempt counters, resend/cooldown state, one-time consumption state, and minimal lifecycle timestamps.
+- VerificationDeliveryAttempt: a separately recorded provider/channel attempt with a safe provider reference, sanitized status, retry/fallback reason, and timestamps. It must not store an OTP, message body, provider secret, or raw webhook payload.
+
+The initially approved purposes are `FARMER_PORTAL_AUTH`, `FARMER_PHONE_LINK`, and `BUSINESS_RECOVERY`. A code is bound to one recipient and one purpose; it cannot be reused for another account, purpose, role, phone change, or reset. A provider delivery receipt is evidence of transport only, never proof that the recipient owns an application account.
+
+Only the server can create, verify, replace, revoke, or consume a challenge. It uses a cryptographically secure numeric code of at least six digits, stores only a dedicated-secret HMAC of that code, uses constant-time comparison, and transactionally invalidates a consumed or superseded challenge. Exact TTL, attempt, resend, retention, and budget limits are approved company configuration, not browser-controlled literals.
 
 ### 4.3 LMV fleet
 
@@ -198,6 +208,30 @@ When both automatic channels fail or a policy requires personal contact, create 
 
 Password recovery remains a separate security workflow governed by the hardening register and must support approved channel fallback without revealing account existence.
 
+### 8.3 Application-owned phone verification
+
+Firebase Authentication is an SMS-only legacy proof mechanism and is retired from the target. The server, not Firebase, the browser, or a delivery provider, owns every OTP lifecycle. The existing opaque server session remains the only application session; no Firebase ID token or third-party identity token is accepted after cutover.
+
+The standard flow is:
+
+1. A public or authenticated caller requests one approved purpose using a normalized phone number.
+2. The server applies account/purpose, phone, IP, global, and provider-budget controls; gives a generic non-enumerating response; creates or safely replaces one challenge; and places delivery in a durable outbox.
+3. A worker sends an approved WhatsApp authentication template through the selected adapter. It invokes SMS fallback only after a terminal WhatsApp failure or an approved delivery timeout, never merely because a send request was accepted.
+4. Signed, replay-safe, idempotent provider webhooks update delivery status only. They cannot verify a challenge or issue a session.
+5. The frontend submits the opaque challenge ID and code only to the application server. A successful one-time verification performs the permitted action and creates the normal opaque session where appropriate.
+
+The provisional primary adapter is the client-owned direct Meta WhatsApp Cloud API because it avoids a BSP delivery layer and supports approved authentication templates. It remains an adapter, not a committed live account: business verification, sender registration, approved localized templates, opt-in wording, webhook validation, current India rate-card confirmation, sandbox delivery, and budget alerting are activation gates. The independent SMS fallback must meet the applicable Indian sender, header, template, and consent requirements.
+
+No raw OTP, full phone number, message body, provider credential, raw webhook payload, or provider error payload may enter an AuditLog, application log, fixture, browser response, or operational report. If a worker must retain a send payload, it is encrypted, TTL-bound, access-limited, and deleted with the challenge; otherwise the fallback issues a replacement challenge without retaining the prior code. Failed automatic delivery creates a visible staff task, but staff must never ask for or relay a code.
+
+Phone possession is not automatic portal enrolment. Only an active, explicitly linked Farmer/Business account or an approved invitation can receive portal access. Open public self-registration is not approved unless the client makes and records that separate product decision. Phone OTP is not sufficient for privileged Admin recovery; Admin recovery needs an approved stronger/manual process.
+
+### 8.4 Firebase retirement and cutover
+
+The application already owns its users, roles, local phone identities, and opaque sessions; no Firestore, Storage, or Firebase identity data migration is expected. Existing users must prove the local phone identity again at their next affected action after cutover.
+
+The implementation sequence is: build and test the internal challenge/adapter/outbox path; complete provider sandbox and fallback evidence; replace all browser Firebase flows; move Business recovery to the internal proof; run staging replay/concurrency/outage/restart tests; then remove Firebase packages, configuration, SDK initialization, environment references, deployment references, and Firebase-specific tests. Revoke external Firebase service-account access through the owner after removal. No permanent dual-provider compatibility path is approved.
+
 ## 9. Administration and import
 
 Admin Operations Control must provide audited, validated, confirmation-protected management of:
@@ -226,6 +260,7 @@ Excel/Zoho import begins with core masters only: staff, pilots, LMVs, drones, ce
 - externalized secrets and no secret-bearing documentation;
 - redacted central logs, metrics, health checks, worker heartbeat, and alert routing;
 - idempotent queue/worker processing with retries and dead-letter visibility;
+- a durable verification-delivery outbox, signed webhook processing, delivery/fallback metrics, and provider-budget alerts that contain no OTP or message content;
 - one isolated Compose stack per company, with no DB/backend public port.
 
 ## 11. Acceptance matrix
@@ -239,6 +274,7 @@ Implementation is not complete until evidence proves:
 5. evidence upload is idempotent, multi-leg cases reconcile, mismatches queue for review, and billing cannot hold fleet resources;
 6. Sales/Admin invoice control, manual LMV line approval, UPI/cash settlement, and correction/void paths are tested;
 7. staging, backup restore, migration/rollback, worker restart, alert delivery, and approved production promotion have recorded evidence.
+8. application-owned OTP challenges reject enumeration, replay, wrong-purpose, expired, excessive-attempt, and delivery-webhook attacks; WhatsApp-to-SMS fallback is controlled; and no Firebase package, configuration, or accepted proof remains after cutover.
 
 ## 12. Explicit exclusions until approved inputs exist
 
@@ -246,5 +282,6 @@ Implementation is not complete until evidence proves:
 - live raw telemetry ingestion or vendor cloud sync;
 - tax/GST invoice issuance;
 - historic financial or flight import;
-- real WhatsApp/SMS/UPI/weather providers;
+- live WhatsApp/SMS/UPI/weather providers before their approved accounts, templates, rate/usage controls, sandbox evidence, and security gates exist;
+- Firebase Authentication or a Firebase compatibility path after the approved phone-verification cutover;
 - unapproved customer branding, production values, or compliance thresholds.
