@@ -18,7 +18,7 @@ The codebase is not yet at that target. Phase 1 source removes Google Form/surve
 - Google Form/surveyor intake is retired.
 - Every intake channel uses strict service-area validation. Out-of-area requests become 30-day contact-only declined enquiries; appeals and transport-fee negotiation are retired.
 - Farmer and Business accounts are optional, read-only status portals. Business accounts represent farm groups or companies with explicit record linkage.
-- A job reserves one pilot, one drone, and one LMV. The pilot is the LMV driver. Vehicle capacity is recorded for future use, but the initial rule is one crew per LMV.
+- A job reserves one pilot, one drone, and one LMV. The pilot is the LMV driver. The first LMV release stays lightweight: registration, optional label, centre, status, capacity placeholder, and notes. Vehicle capacity is recorded for future use, but the initial rule is one crew per LMV.
 - Operational completion immediately releases drone and LMV resources. Billing begins afterward and cannot block fleet reuse.
 - Billing is vendor-neutral. Sales approves final acreage and releases an internal invoice draft; Admin can correct or oversee it.
 - Route distance is evidence only, never an automatic price. A manually approved LMV charge may be included in the invoice draft.

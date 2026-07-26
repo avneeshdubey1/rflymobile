@@ -76,10 +76,10 @@ Only the server can create, verify, replace, revoke, or consume a challenge. It 
 
 ### 4.3 LMV fleet
 
-- LMV: unique registration, centre, future capacity, availability state, maintenance history, compliance/insurance/permit fields supplied by the company, and audit history.
+- LMV: unique registration, optional label, centre, lightweight capacity placeholder, availability state, optional notes, and audit history. Insurance, permit, fitness, pollution, odometer, and detailed maintenance history are deferred until the company asks for those fields.
 - Assignment: requires pilot, drone, and LMV references. The pilot reference is the LMV driver; do not duplicate a separate driver field.
 
-Required LMV states are AVAILABLE, ASSIGNED, MAINTENANCE, and OUT_OF_SERVICE. The exact compliance dates and warning windows are company configuration. Initial scheduling reserves one crew per LMV even when capacity is greater than one.
+Required LMV states are AVAILABLE, ASSIGNED, MAINTENANCE, and OUT_OF_SERVICE. Initial scheduling reserves one crew per LMV even when capacity is greater than one. For the first LMV release, MAINTENANCE and OUT_OF_SERVICE block scheduling; detailed compliance dates and warning windows remain future placeholders.
 
 ### 4.4 Evidence, billing, and settlement
 
