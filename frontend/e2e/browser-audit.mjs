@@ -13,6 +13,7 @@ const evidenceDir = path.join(rootDir, 'docs', 'test-evidence', 'browser-audit-2
 const frontendUrl = 'http://127.0.0.1:5180';
 const backendUrl = 'http://127.0.0.1:5100';
 const databaseName = 'rfly_daas_browser_test';
+const postgresContainer = process.env.POSTGRES_CONTAINER || 'rfly-postgres';
 const edgePath = 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe';
 const prismaCli = path.join(backendDir, 'node_modules', 'prisma', 'build', 'index.js');
 const viteCli = path.join(frontendDir, 'node_modules', 'vite', 'bin', 'vite.js');
@@ -82,10 +83,11 @@ const testPassword = crypto.randomBytes(24).toString('base64url');
 const recoveryHashSecret = crypto.randomBytes(48).toString('base64url');
 const unique = Date.now().toString();
 
-run('docker', ['exec', 'rfly-postgres', 'psql', '-U', 'postgres', '-v', 'ON_ERROR_STOP=1', '-c', `DROP DATABASE IF EXISTS ${databaseName} WITH (FORCE)`]);
-run('docker', ['exec', 'rfly-postgres', 'psql', '-U', 'postgres', '-v', 'ON_ERROR_STOP=1', '-c', `CREATE DATABASE ${databaseName}`]);
+run('docker', ['exec', postgresContainer, 'psql', '-U', 'postgres', '-v', 'ON_ERROR_STOP=1', '-c', `DROP DATABASE IF EXISTS ${databaseName} WITH (FORCE)`]);
+run('docker', ['exec', postgresContainer, 'psql', '-U', 'postgres', '-v', 'ON_ERROR_STOP=1', '-c', `CREATE DATABASE ${databaseName}`]);
 
 const databaseEnv = { ...process.env, DATABASE_URL: databaseUrl };
+run(process.execPath, [prismaCli, 'generate'], { cwd: backendDir, env: databaseEnv });
 run(process.execPath, [prismaCli, 'migrate', 'deploy'], { cwd: backendDir, env: databaseEnv });
 run(process.execPath, ['prisma/seed.js'], { cwd: backendDir, env: { ...databaseEnv, DEMO_USER_PASSWORD: testPassword } });
 
@@ -101,6 +103,7 @@ const prisma = new PrismaClient();
   for (const [index, center] of centers.entries()) {
     for (let pilot = 0; pilot < 3; pilot += 1) await prisma.user.create({ data: { name: 'Browser Audit Pilot ' + (index + 1) + '-' + (pilot + 1), email: 'browser-pilot-' + index + '-' + pilot + '@example.invalid', passwordHash, role: 'PILOT', homeCenterId: center.id, pilotLicenseExpiry: future } });
     for (let drone = 0; drone < 4; drone += 1) await prisma.drone.create({ data: { model: 'Browser Audit Drone', serialNumber: 'E2E-' + index + '-' + drone, status: 'AVAILABLE', homeCenterId: center.id, airworthinessExpiry: future } });
+    for (let lmv = 0; lmv < 4; lmv += 1) await prisma.lMV.create({ data: { registrationNo: 'E2E-LMV-' + index + '-' + lmv, label: 'Browser Audit LMV ' + (index + 1) + '-' + (lmv + 1), status: 'AVAILABLE', homeCenterId: center.id, capacity: 1 } });
   }
   const users = await prisma.user.findMany({ select: { id: true, email: true, name: true, role: true, homeCenterId: true }, orderBy: { createdAt: 'asc' } });
   console.log(JSON.stringify(users));

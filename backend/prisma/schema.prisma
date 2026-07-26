@@ -37,6 +37,13 @@ enum DroneStatus {
   OUT_OF_SERVICE
 }
 
+enum LMVStatus {
+  AVAILABLE
+  ASSIGNED
+  MAINTENANCE
+  OUT_OF_SERVICE
+}
+
 enum IntakeChannel {
   WEBSITE
   MANUAL_SALES
@@ -77,6 +84,7 @@ model OperatingCenter {
   createdAt DateTime @default(now())
 
   drones    Drone[]
+  lmvs      LMV[]
   pilots    User[]
   leads     Lead[]
 }
@@ -172,6 +180,23 @@ model Drone {
   assignments         Assignment[]
 }
 
+model LMV {
+  id             String          @id @default(uuid())
+  registrationNo String          @unique
+  label          String?
+  status         LMVStatus       @default(AVAILABLE)
+  homeCenter     OperatingCenter @relation(fields: [homeCenterId], references: [id])
+  homeCenterId   String
+  capacity       Int             @default(1)
+  notes          String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  assignments    Assignment[]
+
+  @@index([homeCenterId, status])
+}
+
 model Lead {
   id               String        @id @default(uuid())
   farmerName       String
@@ -243,6 +268,8 @@ model Assignment {
   pilotId           String
   drone             Drone     @relation(fields: [droneId], references: [id])
   droneId           String
+  lmv               LMV?      @relation(fields: [lmvId], references: [id])
+  lmvId             String?
 
   scheduledDate     DateTime
   autoAssigned      Boolean   @default(true)   // false if a Fleet Manager manually created/overrode it

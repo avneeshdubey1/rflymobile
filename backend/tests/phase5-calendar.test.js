@@ -6,7 +6,7 @@ const { issueToken } = require('../middleware/auth');
 
 let server;
 let baseUrl;
-const ids = { center: null, users: [], drones: [], leads: [], assignments: [] };
+const ids = { center: null, users: [], drones: [], lmvs: [], leads: [], assignments: [] };
 let fleetManager;
 let pilot;
 let sales;
@@ -29,19 +29,22 @@ test.before(async () => {
 });
 
 test('a fleet manager can turn a manual-scheduling lead into an assignment, then reschedule it with a Sales notification', async () => {
-  const [lead, drone] = await Promise.all([
+  const [lead, drone, lmv] = await Promise.all([
     prisma.lead.create({ data: { farmerName: 'Phase 5 Farmer', farmerPhone: '955550005', acreage: 3, intakeChannel: 'MANUAL_SALES', status: 'NEEDS_MANUAL_SCHEDULING', latitude: 11, longitude: 76, matchedCenterId: ids.center } }),
     prisma.drone.create({ data: { model: 'Test', serialNumber: `PHASE5-DRONE-${runId}`, status: 'AVAILABLE', homeCenterId: ids.center, airworthinessExpiry: new Date('2027-01-01') } }),
+    prisma.lMV.create({ data: { registrationNo: `PHASE5-LMV-${runId}`, label: 'Phase 5 LMV', status: 'AVAILABLE', homeCenterId: ids.center } }),
   ]);
   ids.leads.push(lead.id);
   ids.drones.push(drone.id);
+  ids.lmvs.push(lmv.id);
   const firstDate = new Date('2026-08-10T09:00:00.000Z');
   const createResponse = await fetch(`${baseUrl}/api/assignments/manual`, {
-    method: 'POST', headers: auth(fleetManager), body: JSON.stringify({ leadId: lead.id, pilotId: pilot.id, droneId: drone.id, scheduledDate: firstDate }),
+    method: 'POST', headers: auth(fleetManager), body: JSON.stringify({ leadId: lead.id, pilotId: pilot.id, droneId: drone.id, lmvId: lmv.id, scheduledDate: firstDate }),
   });
   const created = await createResponse.json();
   assert.equal(createResponse.status, 201);
   assert.equal(created.mission.autoAssigned, false);
+  assert.equal(created.mission.lmvId, lmv.id);
   ids.assignments.push(created.mission.id);
 
   const rescheduledDate = new Date('2026-08-11T09:00:00.000Z');
@@ -67,6 +70,7 @@ test.after(async () => {
   await prisma.assignment.deleteMany({ where: { id: { in: ids.assignments } } });
   await prisma.lead.deleteMany({ where: { id: { in: ids.leads } } });
   await prisma.drone.deleteMany({ where: { id: { in: ids.drones } } });
+  await prisma.lMV.deleteMany({ where: { id: { in: ids.lmvs } } });
   await prisma.user.deleteMany({ where: { id: { in: ids.users } } });
   await prisma.operatingCenter.delete({ where: { id: ids.center } });
   await new Promise((resolve) => server.close(resolve));

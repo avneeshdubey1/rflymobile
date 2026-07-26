@@ -1,6 +1,7 @@
 const assignmentRepository = require('../src/repositories/assignmentRepository');
 const droneRepository = require('../src/repositories/droneRepository');
 const leadRepository = require('../src/repositories/leadRepository');
+const lmvRepository = require('../src/repositories/lmvRepository');
 const notificationEscalationRepository = require('../src/repositories/notificationEscalationRepository');
 const userRepository = require('../src/repositories/userRepository');
 const auditLogRepository = require('../src/repositories/auditLogRepository');
@@ -48,6 +49,7 @@ async function autoAssignProcessedLead(leadId, { excludePilotIds = [], now = new
     .filter((pilot) => !excludePilotIds.includes(pilot.id) && !hasExpired(pilot.pilotLicenseExpiry, now));
   const drones = (await droneRepository.findAll({ status: 'AVAILABLE', homeCenterId: lead.matchedCenterId }))
     .filter((drone) => !hasExpired(drone.airworthinessExpiry, now));
+  const lmvs = await lmvRepository.findEligibleForCenter(lead.matchedCenterId);
   const dayStart = startOfDay(weatherWindow.date);
   const dayEnd = endOfDay(weatherWindow.date);
   const availablePilots = [];
@@ -55,8 +57,17 @@ async function autoAssignProcessedLead(leadId, { excludePilotIds = [], now = new
     const conflicts = await assignmentRepository.findScheduledForPilotOnDate(pilot.id, dayStart, dayEnd);
     if (conflicts.length === 0) availablePilots.push(pilot);
   }
-  if (availablePilots.length === 0 || drones.length === 0) {
-    const reason = availablePilots.length === 0 ? 'No eligible pilot is available; expired licences are excluded.' : 'No eligible drone is available; expired airworthiness is excluded.';
+  const availableLmvs = [];
+  for (const lmv of lmvs) {
+    const conflicts = await assignmentRepository.findScheduledForLmvOnDate(lmv.id, dayStart, dayEnd);
+    if (conflicts.length === 0) availableLmvs.push(lmv);
+  }
+  if (availablePilots.length === 0 || drones.length === 0 || availableLmvs.length === 0) {
+    const reason = availablePilots.length === 0
+      ? 'No eligible pilot is available; expired licences are excluded.'
+      : drones.length === 0
+        ? 'No eligible drone is available; expired airworthiness is excluded.'
+        : 'No eligible LMV is available at the lead operating centre.';
     return moveToManualScheduling(lead, reason);
   }
 
@@ -66,23 +77,26 @@ async function autoAssignProcessedLead(leadId, { excludePilotIds = [], now = new
   scoredPilots.sort((a, b) => a.workload - b.workload || a.pilot.createdAt - b.pilot.createdAt);
   const pilot = scoredPilots[0].pilot;
   const drone = drones[0];
+  const lmv = availableLmvs[0];
   const assignment = await assignmentRepository.create({
-    leadId: lead.id, pilotId: pilot.id, droneId: drone.id, scheduledDate: weatherWindow.date, autoAssigned: true, expectedAcreage: lead.acreage,
+    leadId: lead.id, pilotId: pilot.id, droneId: drone.id, lmvId: lmv.id, scheduledDate: weatherWindow.date, autoAssigned: true, expectedAcreage: lead.acreage,
     weatherCheckedAt: new Date(), weatherSuitable: weatherWindow.weather.suitable, weatherNote: weatherWindow.weather.note,
   });
   const scheduledLead = await leadRepository.update(lead.id, { status: 'SCHEDULED' });
   await droneRepository.update(drone.id, { status: 'ASSIGNED' });
-  await auditLogRepository.create({ entityType: 'Lead', entityId: lead.id, action: 'AUTO_ASSIGNED', beforeState: lead, afterState: scheduledLead, reason: `Pilot ${pilot.id}, drone ${drone.id}, date ${weatherWindow.date.toISOString()}` });
+  await lmvRepository.update(lmv.id, { status: 'ASSIGNED' });
+  await auditLogRepository.create({ entityType: 'Lead', entityId: lead.id, action: 'AUTO_ASSIGNED', beforeState: lead, afterState: scheduledLead, reason: `Pilot ${pilot.id}, drone ${drone.id}, LMV ${lmv.id}, date ${weatherWindow.date.toISOString()}` });
   await whatsappService.sendMissionScheduled(scheduledLead, assignment.scheduledDate);
   if (weatherWindow.weather.suitable === null) await notificationCascadeService.createFleetNotifications('WEATHER_RISK', lead.id, `Weather data was unavailable for automatically scheduled lead ${lead.id}; manual review is required.`);
   await notificationCascadeService.start(assignment);
-  logger.info('assignment.auto_assigned', { leadId: lead.id, assignmentId: assignment.id, pilotId: pilot.id, droneId: drone.id, weatherSuitable: weatherWindow.weather.suitable });
+  logger.info('assignment.auto_assigned', { leadId: lead.id, assignmentId: assignment.id, pilotId: pilot.id, droneId: drone.id, lmvId: lmv.id, weatherSuitable: weatherWindow.weather.suitable });
   return { outcome: 'SCHEDULED', lead: scheduledLead, assignment };
 }
 
 async function reassignUnacceptedAssignment(assignment, now) {
   await notificationEscalationRepository.deleteByAssignmentId(assignment.id);
   await droneRepository.update(assignment.droneId, { status: 'AVAILABLE' });
+  if (assignment.lmvId) await lmvRepository.update(assignment.lmvId, { status: 'AVAILABLE' });
   await assignmentRepository.delete(assignment.id);
   const lead = await leadRepository.update(assignment.leadId, { status: 'PROCESSED' });
   await auditLogRepository.create({ entityType: 'Assignment', entityId: assignment.id, action: 'AUTO_REASSIGNMENT_STARTED', beforeState: assignment });

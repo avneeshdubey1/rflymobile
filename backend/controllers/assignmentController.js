@@ -1,6 +1,7 @@
 const assignmentRepository = require('../src/repositories/assignmentRepository');
 const leadRepository = require('../src/repositories/leadRepository');
 const droneRepository = require('../src/repositories/droneRepository');
+const lmvRepository = require('../src/repositories/lmvRepository');
 const userRepository = require('../src/repositories/userRepository');
 const auditLogRepository = require('../src/repositories/auditLogRepository');
 const notificationCascadeService = require('../services/notificationCascadeService');
@@ -32,21 +33,26 @@ exports.createManualAssignment = async (req, res) => {
     const leadId = req.body.leadId || req.body.lead?.id;
     const pilotId = req.body.pilotId || req.body.pilot?.id;
     const droneId = req.body.droneId;
-    const [storedLead, pilot, drone] = await Promise.all([leadRepository.findById(leadId), userRepository.findById(pilotId), droneRepository.findById(droneId)]);
-    if (!storedLead || !pilot || !drone) return res.status(400).json({ error: 'A valid lead, pilot, and drone are required' });
+    const lmvId = req.body.lmvId;
+    const [storedLead, pilot, drone, lmv] = await Promise.all([leadRepository.findById(leadId), userRepository.findById(pilotId), droneRepository.findById(droneId), lmvId ? lmvRepository.findById(lmvId) : null]);
+    if (!storedLead || !pilot || !drone || !lmv) return res.status(400).json({ error: 'A valid lead, pilot, drone, and LMV are required' });
     let lead = storedLead;
     if (!['PROCESSED', 'NEEDS_MANUAL_SCHEDULING'].includes(lead.status)) return res.status(409).json({ error: 'Only processed or manual-scheduling leads can be assigned' });
     lead = await revalidateForScheduling(lead, { actorId: req.auth.userId });
     if (pilot.role !== 'PILOT' || pilot.homeCenterId !== lead.matchedCenterId) return res.status(409).json({ error: 'Pilot must belong to the lead operating centre' });
     if (drone.status !== 'AVAILABLE' || drone.homeCenterId !== lead.matchedCenterId) return res.status(409).json({ error: 'Drone must be available at the lead operating centre' });
+    if (lmv.status !== 'AVAILABLE' || lmv.homeCenterId !== lead.matchedCenterId) return res.status(409).json({ error: 'LMV must be available at the lead operating centre' });
     const scheduledDate = req.body.scheduledDate ? new Date(req.body.scheduledDate) : new Date();
     if (Number.isNaN(scheduledDate.valueOf())) return res.status(400).json({ error: 'Valid scheduledDate is required' });
     const { start, end } = dayBounds(scheduledDate);
     const pilotAssignments = await assignmentRepository.findScheduledForPilotOnDate(pilot.id, start, end);
     if (pilotAssignments.length) return res.status(409).json({ error: 'Pilot already has a scheduled mission that day' });
-    const assignment = await assignmentRepository.create({ leadId, pilotId, droneId, scheduledDate, expectedAcreage: lead.acreage, autoAssigned: false });
+    const lmvAssignments = await assignmentRepository.findScheduledForLmvOnDate(lmv.id, start, end);
+    if (lmvAssignments.length) return res.status(409).json({ error: 'LMV already has a scheduled mission that day' });
+    const assignment = await assignmentRepository.create({ leadId, pilotId, droneId, lmvId, scheduledDate, expectedAcreage: lead.acreage, autoAssigned: false });
     const scheduledLead = await leadRepository.update(lead.id, { status: 'SCHEDULED' });
     await droneRepository.update(drone.id, { status: 'ASSIGNED' });
+    await lmvRepository.update(lmv.id, { status: 'ASSIGNED' });
     await auditLogRepository.create({ entityType: 'Assignment', entityId: assignment.id, action: 'MANUAL_ASSIGNMENT_CREATED', actorId: req.auth.userId, afterState: assignment });
     await auditLogRepository.create({ entityType: 'Lead', entityId: lead.id, action: 'STATUS_CHANGE', actorId: req.auth.userId, beforeState: lead, afterState: scheduledLead });
     await whatsappService.sendMissionScheduled(scheduledLead, assignment.scheduledDate);
@@ -98,10 +104,19 @@ exports.rescheduleAssignment = async (req, res) => {
     const { start, end } = dayBounds(scheduledDate);
     
     const newPilotId = req.body.pilotId || before.pilotId;
+    const newLmvId = req.body.lmvId || before.lmvId;
+    if (!newLmvId) return res.status(400).json({ error: 'LMV is required for rescheduling' });
+    const lmv = await lmvRepository.findById(newLmvId);
+    if (!lmv || lmv.homeCenterId !== before.lead.matchedCenterId) return res.status(409).json({ error: 'LMV must belong to the lead operating centre' });
+    if (newLmvId !== before.lmvId && lmv.status !== 'AVAILABLE') return res.status(409).json({ error: 'LMV must be available at the lead operating centre' });
     
     const conflictingAssignments = await assignmentRepository.findScheduledForPilotOnDate(newPilotId, start, end);
     if (conflictingAssignments.some((item) => item.id !== before.id)) return res.status(409).json({ error: 'Pilot already has a scheduled mission that day' });
-    const assignment = await assignmentRepository.update(before.id, { scheduledDate, pilotId: newPilotId, acceptedAt: null });
+    const conflictingLmvs = await assignmentRepository.findScheduledForLmvOnDate(newLmvId, start, end);
+    if (conflictingLmvs.some((item) => item.id !== before.id)) return res.status(409).json({ error: 'LMV already has a scheduled mission that day' });
+    const assignment = await assignmentRepository.update(before.id, { scheduledDate, pilotId: newPilotId, lmvId: newLmvId, acceptedAt: null });
+    if (before.lmvId && before.lmvId !== newLmvId) await lmvRepository.update(before.lmvId, { status: 'AVAILABLE' });
+    if (before.lmvId !== newLmvId) await lmvRepository.update(newLmvId, { status: 'ASSIGNED' });
     const lead = await leadRepository.update(before.leadId, { status: 'SCHEDULED' });
     await assignmentRepository.createScheduleChange({ assignmentId: assignment.id, oldDate: before.scheduledDate, newDate: scheduledDate, changedBy: req.auth.userId, reason: req.body.reason });
     await auditLogRepository.create({ entityType: 'Assignment', entityId: assignment.id, action: 'RESCHEDULE', actorId: req.auth.userId, beforeState: before, afterState: assignment, reason: req.body.reason });

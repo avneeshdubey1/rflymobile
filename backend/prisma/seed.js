@@ -17,6 +17,7 @@ async function clearDatabase() {
   await prisma.auditLog.deleteMany();
   await prisma.lead.deleteMany();
   await prisma.drone.deleteMany();
+  await prisma.lMV.deleteMany();
   await prisma.user.deleteMany();
   await prisma.pricingConfig.deleteMany();
   await prisma.operatingCenter.deleteMany();
@@ -62,6 +63,11 @@ async function main() {
     prisma.drone.create({ data: { model: 'Agras T30', serialNumber: 'SN-004', homeCenterId: kanyakumari.id, status: 'MAINTENANCE', airworthinessExpiry: new Date('2027-01-01') } }),
     prisma.drone.create({ data: { model: 'Agras T20', serialNumber: 'SN-005', homeCenterId: tenkasi.id, status: 'OUT_OF_SERVICE', airworthinessExpiry: new Date('2025-01-01') } }),
   ]);
+  const lmvs = await Promise.all([
+    prisma.lMV.create({ data: { registrationNo: 'TN-72-LMV-001', label: 'Tenkasi LMV 1', homeCenterId: tenkasi.id, status: 'ASSIGNED', capacity: 1 } }),
+    prisma.lMV.create({ data: { registrationNo: 'TN-72-LMV-002', label: 'Tenkasi LMV 2', homeCenterId: tenkasi.id, status: 'AVAILABLE', capacity: 1 } }),
+    prisma.lMV.create({ data: { registrationNo: 'TN-74-LMV-001', label: 'Kanyakumari LMV 1', homeCenterId: kanyakumari.id, status: 'AVAILABLE', capacity: 1 } }),
+  ]);
 
   const statusRows = [
     ['NEW', 'WEBSITE'], ['MANUAL_CALL_REQUIRED', 'WEBSITE'], ['PROCESSED', 'MANUAL_SALES'],
@@ -85,7 +91,7 @@ async function main() {
   for (const status of ['SCHEDULED', 'PILOT_ACCEPTED', 'IN_PROGRESS', 'COMPLETED']) {
     await prisma.assignment.create({
       data: {
-        leadId: leads[status].id, pilotId: pilot1.id, droneId: drones[0].id, scheduledDate: new Date('2026-07-20'), expectedAcreage: 5,
+        leadId: leads[status].id, pilotId: pilot1.id, droneId: drones[0].id, lmvId: lmvs[0].id, scheduledDate: new Date('2026-07-20'), expectedAcreage: 5,
         acceptedAt: status === 'PILOT_ACCEPTED' || status === 'IN_PROGRESS' || status === 'COMPLETED' ? new Date('2026-07-19') : null,
         startedAt: status === 'IN_PROGRESS' || status === 'COMPLETED' ? new Date('2026-07-20T09:00:00Z') : null,
         completedAt: status === 'COMPLETED' ? new Date('2026-07-20T10:00:00Z') : null,

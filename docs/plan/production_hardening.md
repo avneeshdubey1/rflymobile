@@ -48,7 +48,7 @@ These results prove only the current local baseline. Phase 1 source implementati
 
 - [ ] Implement strict transient geofence processing and 30-day Declined Enquiry purge; prove no rejected location/distance/acreage persists.
 - [ ] Remove appeal/transport-fee/Google Form/Bhumeet operational paths through tested migrations and route retirement.
-- [ ] Implement LMV data, scheduling conflicts, maintenance/compliance controls, assignment release, and audit history.
+- [x] Implement lightweight LMV data, scheduling conflicts, maintenance status exclusion, assignment release, and audit history with local evidence. Detailed compliance controls remain deferred until the company supplies those fields.
 - [ ] Implement BillingCase, evidence, flight-leg, invoice-draft, invoice-line, and settlement state with idempotency and precise money.
 - [ ] Snapshot approved price inputs and protect issued/corrected/voided invoices from silent rewrite.
 - [ ] Require human acreage approval and manually approved LMV charge lines before invoice release.
@@ -112,3 +112,4 @@ These results prove only the current local baseline. Phase 1 source implementati
 | July 26, 2026 | Phone-verification and provider decision research | Official Firebase, Meta, Google pricing, TRAI, and provider documentation review | Firebase is SMS-only; no recurring free WhatsApp-authentication allowance was accepted; direct Meta Cloud API is a provisional cost baseline pending client onboarding and sandbox evidence. |
 | July 26, 2026 | Phase 1 strict-intake source implementation | Prisma validation, syntax checks, locale parsing, frontend lint/build, and production Compose rendering | Passed locally; disposable database/migration/browser and staging evidence remain pending because Docker Desktop was unavailable. Not production approval. |
 | July 26, 2026 | Phase 1 strict-intake evidence replay | Docker `rfly-postgres`, disposable `rfly_phase1_migration_20260726` migration replay, backend suite, browser audit | Passed locally: 11/11 migrations applied from empty database, backend 80/80, browser audit 30/30 after allowing expected strict-decline 422 console noise in the audit harness. Staging and production gates remain open. |
+| July 26, 2026 | Lightweight LMV fleet and scheduling | Temporary Docker PostgreSQL `rfly-postgres-lmv-test`, Prisma validation, backend suite, frontend lint/build, browser audit | Passed locally: backend 83/83 and browser audit 30/30. Existing `rfly-postgres` container was unavailable because Docker Desktop could not start its old bind mount. Staging and client LMV master-data gates remain open. |

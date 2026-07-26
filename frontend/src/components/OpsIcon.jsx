@@ -9,6 +9,7 @@ const paths = {
   alert: <><path d="m12 3 10 18H2L12 3Z"/><path d="M12 9v5M12 18h.01"/></>,
   calendar: <><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></>,
   drone: <><path d="M7 10h10M12 10v7M8 17h8M5 7h2v3H4a2 2 0 1 1 1-3ZM19 7h-2v3h3a2 2 0 1 0-1-3Z"/><circle cx="12" cy="19" r="1"/></>,
+  vehicle: <><path d="M4 16V9l2-4h12l2 4v7"/><path d="M6 16h12"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/><path d="M7 9h10"/></>,
   logout: <><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></>,
   leaf: <><path d="M11 20A7 7 0 0 1 4 13C4 6 11 3 20 4c1 9-2 16-9 16Z"/><path d="M4 21c4-5 8-9 14-13"/></>,
   refresh: <><path d="M20 11a8 8 0 1 0 2 5M20 4v7h-7"/></>,

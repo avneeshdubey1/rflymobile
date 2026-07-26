@@ -13,7 +13,7 @@ let center;
 let assignment;
 let scheduledLead;
 const deliveries = [];
-const ids = { users: [], drones: [], assignedDrones: [], leads: [], assignments: [] };
+const ids = { users: [], drones: [], assignedDrones: [], lmvs: [], assignedLmvs: [], leads: [], assignments: [] };
 const runId = `${process.pid}-${Date.now()}`;
 
 const auth = (user) => ({ Authorization: `Bearer ${issueToken(user)}`, 'Content-Type': 'application/json' });
@@ -38,6 +38,8 @@ test.before(async () => {
   ids.users.push(sales.id, pilot.id);
   const drone = await prisma.drone.create({ data: { model: 'Test', serialNumber: `PHASE7-DRONE-${runId}`, status: 'AVAILABLE', homeCenterId: center.id, airworthinessExpiry: new Date('2027-01-01') } });
   ids.drones.push(drone.id);
+  const lmv = await prisma.lMV.create({ data: { registrationNo: `PHASE7-LMV-${runId}`, label: 'Phase 7 LMV', status: 'AVAILABLE', homeCenterId: center.id, capacity: 1 } });
+  ids.lmvs.push(lmv.id);
 });
 
 test('lead processing, scheduling, mission start, and completion each send the correct English template', async () => {
@@ -49,6 +51,7 @@ test('lead processing, scheduling, mission start, and completion each send the c
   assignment = processed.assignment.assignment;
   ids.assignments.push(assignment.id);
   ids.assignedDrones.push(assignment.droneId);
+  ids.assignedLmvs.push(assignment.lmvId);
   assert.deepEqual(templatesFor(scheduledLead.id), ['lead_processed', 'mission_scheduled']);
   assert.match(deliveries.find((delivery) => delivery.templateKey === 'mission_scheduled').text, /pilot has been scheduled/i);
 
@@ -75,8 +78,10 @@ test.after(async () => {
   await prisma.scheduleChangeLog.deleteMany({ where: { assignmentId: { in: ids.assignments } } });
   await prisma.assignment.deleteMany({ where: { id: { in: ids.assignments } } });
   await prisma.drone.updateMany({ where: { id: { in: ids.assignedDrones.filter((id) => !ids.drones.includes(id)) } }, data: { status: 'AVAILABLE' } });
+  await prisma.lMV.updateMany({ where: { id: { in: ids.assignedLmvs.filter((id) => id && !ids.lmvs.includes(id)) } }, data: { status: 'AVAILABLE' } });
   await prisma.lead.deleteMany({ where: { id: { in: ids.leads } } });
   await prisma.drone.deleteMany({ where: { id: { in: ids.drones } } });
+  await prisma.lMV.deleteMany({ where: { id: { in: ids.lmvs } } });
   await prisma.user.deleteMany({ where: { id: { in: ids.users } } });
   await prisma.operatingCenter.delete({ where: { id: center.id } });
   await new Promise((resolve, reject) => {

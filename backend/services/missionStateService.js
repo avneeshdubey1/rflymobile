@@ -1,6 +1,7 @@
 const assignmentRepository = require('../src/repositories/assignmentRepository');
 const leadRepository = require('../src/repositories/leadRepository');
 const droneRepository = require('../src/repositories/droneRepository');
+const lmvRepository = require('../src/repositories/lmvRepository');
 const auditLogRepository = require('../src/repositories/auditLogRepository');
 const notificationEscalationRepository = require('../src/repositories/notificationEscalationRepository');
 const notificationCascadeService = require('./notificationCascadeService');
@@ -45,6 +46,7 @@ async function complete(assignmentId, actorId, actualAcreage) {
   if (!Number.isFinite(Number(actualAcreage)) || Number(actualAcreage) <= 0) throw new Error('A positive actual acreage is required');
   const result = await transition(assignment, 'COMPLETED', { completedAt: new Date(), actualAcreage: Number(actualAcreage) }, 'MISSION_COMPLETED', actorId);
   await droneRepository.update(assignment.droneId, { status: 'AVAILABLE' });
+  if (assignment.lmvId) await lmvRepository.update(assignment.lmvId, { status: 'AVAILABLE' });
   const payment = await paymentService.createPendingPayment(result.assignment.id);
   return { ...result, payment };
 }
@@ -55,6 +57,7 @@ async function decommission(assignmentId, actorId, reason) {
   if (!reason) throw new Error('A decommission reason is required');
   const result = await transition(assignment, 'FLAGGED', { decommissionedMidMission: true, decommissionReason: reason }, 'DRONE_DECOMMISSIONED', actorId, reason);
   await droneRepository.update(assignment.droneId, { status: 'MAINTENANCE' });
+  if (assignment.lmvId) await lmvRepository.update(assignment.lmvId, { status: 'AVAILABLE' });
   await notificationEscalationRepository.closeByAssignmentId(assignment.id);
   await notificationCascadeService.createFleetNotifications('DRONE_DECOMMISSIONED', assignment.leadId, `Drone ${assignment.droneId} was decommissioned during assignment ${assignment.id}: ${reason}`);
   return result;

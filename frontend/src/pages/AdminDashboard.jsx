@@ -46,6 +46,7 @@ function AdminDashboard() {
   const [activeUserTab, setActiveUserTab] = useState('employees');
   const [users, setUsers] = useState([]);
   const [drones, setDrones] = useState([]);
+  const [lmvs, setLmvs] = useState([]);
   const [adminNotice, setAdminNotice] = useState(null);
   const [newUser, setNewUser] = useState({ name: '', email: '', password: '', role: 'PILOT' });
   const [passwordTarget, setPasswordTarget] = useState(null);
@@ -59,16 +60,18 @@ function AdminDashboard() {
 
   const fetchData = useCallback(async (signal) => {
     try {
-      const [userResponse, droneResponse, centerResponse] = await Promise.all([
+      const [userResponse, droneResponse, lmvResponse, centerResponse] = await Promise.all([
         apiFetch('/api/users/all', { signal }),
         apiFetch('/api/drones/all', { signal }),
+        apiFetch('/api/lmvs/all', { signal }),
         apiFetch('/api/centers/all', { signal }),
       ]);
-      const [userData, droneData, centerData] = await Promise.all([userResponse.json(), droneResponse.json(), centerResponse.json()]);
+      const [userData, droneData, lmvData, centerData] = await Promise.all([userResponse.json(), droneResponse.json(), lmvResponse.json(), centerResponse.json()]);
       if (userData.success) setUsers(userData.users);
       if (droneData.success) setDrones(droneData.drones);
+      if (lmvData.success) setLmvs(lmvData.lmvs);
       if (centerData.success) setCenters(centerData.centers);
-      if (!userResponse.ok || !droneResponse.ok || !centerResponse.ok) setAdminNotice({ kind: 'error', message: userData.error || droneData.error || centerData.error || 'Could not load administration data.' });
+      if (!userResponse.ok || !droneResponse.ok || !lmvResponse.ok || !centerResponse.ok) setAdminNotice({ kind: 'error', message: userData.error || droneData.error || lmvData.error || centerData.error || 'Could not load administration data.' });
     } catch (error) {
       if (error.name !== 'AbortError' && !signal?.aborted) setAdminNotice({ kind: 'error', message: 'Could not load administration data.' });
     }
@@ -213,6 +216,8 @@ function AdminDashboard() {
 
   const activeDrones = useMemo(() => drones.filter((drone) => ['AVAILABLE', 'ASSIGNED'].includes(drone.status)), [drones]);
   const standbyDrones = useMemo(() => drones.filter((drone) => ['MAINTENANCE', 'OUT_OF_SERVICE'].includes(drone.status)), [drones]);
+  const activeLmvs = useMemo(() => lmvs.filter((lmv) => ['AVAILABLE', 'ASSIGNED'].includes(lmv.status)), [lmvs]);
+  const standbyLmvs = useMemo(() => lmvs.filter((lmv) => ['MAINTENANCE', 'OUT_OF_SERVICE'].includes(lmv.status)), [lmvs]);
   const maintenanceRequests = useMemo(() => drones.filter((drone) => drone.maintenanceRequest), [drones]);
   const navItems = [
     { id: 'fleet', label: 'Fleet Overview', icon: 'overview', badge: maintenanceRequests.length || null },
@@ -250,7 +255,8 @@ function AdminDashboard() {
             <article className="metric-card"><div className="metric-card__top"><span>Total fleet</span><span className="metric-card__icon"><OpsIcon name="drone" /></span></div><strong className="metric-card__value">{drones.length}</strong></article>
             <article className="metric-card"><div className="metric-card__top"><span>Available</span><span className="metric-card__icon"><OpsIcon name="overview" /></span></div><strong className="metric-card__value">{drones.filter((drone) => drone.status === 'AVAILABLE').length}</strong></article>
             <article className="metric-card metric-card--info"><div className="metric-card__top"><span>Assigned</span><span className="metric-card__icon"><OpsIcon name="location" /></span></div><strong className="metric-card__value">{drones.filter((drone) => drone.status === 'ASSIGNED').length}</strong></article>
-            <article className="metric-card metric-card--danger"><div className="metric-card__top"><span>Needs attention</span><span className="metric-card__icon"><OpsIcon name="alert" /></span></div><strong className="metric-card__value">{standbyDrones.length}</strong></article>
+            <article className="metric-card"><div className="metric-card__top"><span>LMVs</span><span className="metric-card__icon"><OpsIcon name="vehicle" /></span></div><strong className="metric-card__value">{lmvs.length}</strong></article>
+            <article className="metric-card metric-card--danger"><div className="metric-card__top"><span>Needs attention</span><span className="metric-card__icon"><OpsIcon name="alert" /></span></div><strong className="metric-card__value">{standbyDrones.length + standbyLmvs.length}</strong></article>
           </section>
 
           <section className="admin-fleet-grid">
@@ -262,6 +268,11 @@ function AdminDashboard() {
             <div className="panel panel--accent">
               <div className="panel-header"><div className="panel-header__title"><div className="panel-title-row"><span className="panel-title-icon"><OpsIcon name="alert" /></span><h2>Maintenance &amp; out of service ({standbyDrones.length})</h2></div><p>Aircraft unavailable for new scheduling.</p></div></div>
               {standbyDrones.length ? <div className="data-stack">{standbyDrones.map((drone) => <div className="data-row" key={drone.id}><div className="data-row__main"><span className="data-row__title">{drone.model}</span><span className="data-row__meta">Serial {drone.serialNumber || drone.id}</span><span className={`status-badge status-badge--${statusTone(drone.status)}`}>{statusLabel(drone.status)}</span></div>{drone.status !== 'MAINTENANCE' && <div className="data-row__actions"><button className="action-btn" type="button" onClick={() => void inquireDroneStatus(drone.id)}>{drone.pendingInquiry ? 'Inquiry Sent ✓' : 'Inquire Status'}</button></div>}</div>)}</div> : <div className="panel-body"><div className="empty-state"><strong>No maintenance exceptions</strong><span>The unavailable fleet queue is clear.</span></div></div>}
+            </div>
+
+            <div className="panel panel--raised">
+              <div className="panel-header"><div className="panel-header__title"><div className="panel-title-row"><span className="panel-title-icon"><OpsIcon name="vehicle" /></span><h2>LMVs ({activeLmvs.length})</h2></div><p>Vehicles attached to pilot and drone crews.</p></div></div>
+              {lmvs.length ? <div className="data-stack">{lmvs.map((lmv) => <div className="data-row" key={lmv.id}><div className="data-row__main"><span className="data-row__title">{lmv.registrationNo}</span><span className="data-row__meta">{lmv.label || 'No label'} | Center: {lmv.homeCenter?.name || 'N/A'}</span><span className={`status-badge status-badge--${statusTone(lmv.status)}`}>{statusLabel(lmv.status)}</span></div></div>)}</div> : <div className="panel-body"><div className="empty-state"><strong>No LMVs registered</strong><span>Fleet can add lightweight vehicle records from the LMV tab.</span></div></div>}
             </div>
           </section>
 

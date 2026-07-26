@@ -5,7 +5,7 @@ const weatherService = require('../services/weatherService');
 const { autoAssignProcessedLead } = require('../services/autoAssignmentService');
 const { processDueEscalations } = require('../jobs/notificationEscalationJob');
 
-const ids = { centers: [], users: [], drones: [], leads: [] };
+const ids = { centers: [], users: [], drones: [], lmvs: [], leads: [] };
 let firstAssignmentId;
 
 async function createCenter(name) {
@@ -38,11 +38,16 @@ test('auto-assignment schedules an eligible pilot and escalates through reassign
     const drone = await prisma.drone.create({ data: { model: 'Test', serialNumber: `PHASE3-${suffix}`, status: 'AVAILABLE', homeCenterId: center.id, airworthinessExpiry: new Date('2027-01-01') } });
     ids.drones.push(drone.id);
   }));
+  await Promise.all(['A', 'B'].map(async (suffix) => {
+    const lmv = await prisma.lMV.create({ data: { registrationNo: `PHASE3-LMV-${suffix}-${Date.now()}`, label: `Phase 3 LMV ${suffix}`, status: 'AVAILABLE', homeCenterId: center.id } });
+    ids.lmvs.push(lmv.id);
+  }));
   const lead = await createLead(center, '0001');
   const scheduled = await autoAssignProcessedLead(lead.id);
   assert.equal(scheduled.outcome, 'SCHEDULED');
   assert.equal(scheduled.lead.status, 'SCHEDULED');
   assert.equal(scheduled.assignment.weatherSuitable, true);
+  assert.ok(scheduled.assignment.lmvId);
   firstAssignmentId = scheduled.assignment.id;
   const firstPilotId = scheduled.assignment.pilotId;
 
@@ -60,6 +65,7 @@ test('auto-assignment schedules an eligible pilot and escalates through reassign
   const reassignedLead = await prisma.lead.findUnique({ where: { id: lead.id }, include: { assignment: true } });
   assert.equal(reassignedLead.status, 'SCHEDULED');
   assert.notEqual(reassignedLead.assignment.pilotId, firstPilotId);
+  assert.ok(reassignedLead.assignment.lmvId);
   assert.ok(pilots.some((pilot) => pilot.id === reassignedLead.assignment.pilotId));
 });
 
@@ -69,6 +75,8 @@ test('missing weather data fails open and a lack of candidates lands in the manu
   ids.users.push(pilot.id);
   const drone = await prisma.drone.create({ data: { model: 'Test', serialNumber: 'PHASE3-FAILOPEN', status: 'AVAILABLE', homeCenterId: center.id, airworthinessExpiry: new Date('2027-01-01') } });
   ids.drones.push(drone.id);
+  const lmv = await prisma.lMV.create({ data: { registrationNo: `PHASE3-FAILOPEN-LMV-${Date.now()}`, label: 'Phase 3 Fail-open LMV', status: 'AVAILABLE', homeCenterId: center.id } });
+  ids.lmvs.push(lmv.id);
   weatherService.setForecastProvider(null);
   const failOpenLead = await createLead(center, '0002');
   const failOpen = await autoAssignProcessedLead(failOpenLead.id);
@@ -93,6 +101,7 @@ test.after(async () => {
   await prisma.assignment.deleteMany({ where: { id: { in: assignmentIds } } });
   await prisma.lead.deleteMany({ where: { id: { in: ids.leads } } });
   await prisma.drone.deleteMany({ where: { id: { in: ids.drones } } });
+  await prisma.lMV.deleteMany({ where: { id: { in: ids.lmvs } } });
   await prisma.user.deleteMany({ where: { id: { in: ids.users } } });
   await prisma.operatingCenter.deleteMany({ where: { id: { in: ids.centers } } });
   weatherService.setForecastProvider(null);
