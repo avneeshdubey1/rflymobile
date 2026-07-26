@@ -65,7 +65,8 @@ These results prove only the current baseline. They do not cover the approved LM
 
 ## Release blockers: integrations and communications
 
-- [ ] Provision and verify a client-owned WhatsApp Business Account, sender, business/scaling eligibility, approved localized authentication template, opt-in wording, current India rate card, budget alert, signed callbacks, and sandbox/failure paths. Direct Meta Cloud API is the provisional cost baseline, not a live approval.
+- [ ] Build and test a provider-neutral OTP delivery port, disabled production-safe adapter, deterministic test adapter, validated `OTP_DELIVERY_PROVIDER` selector, and secret-file/environment configuration boundary before selecting a live provider. An API key cannot enable an adapter that has not been implemented and reviewed.
+- [ ] After the client selects a provider, provision and verify its sender/account, eligibility, approved localized authentication template, opt-in wording, current rate card, budget alert, signed callbacks, and sandbox/failure paths. Meta Cloud API remains a candidate, not a live approval.
 - [ ] Select a separate India-capable SMS fallback provider and complete Principal Entity, header, content-template, consent, and delivery-report requirements before live fallback. Do not treat a trial allowance as production capacity.
 - [ ] Prove WhatsApp-primary to SMS fallback only occurs after a terminal delivery result or approved timeout; prove repeated provider webhooks, retries, outages, and worker restarts cannot create duplicate codes, sessions, or charges.
 - [ ] Select weather provider/plan, thresholds, caching, quota behavior, and fail-open operational queue.

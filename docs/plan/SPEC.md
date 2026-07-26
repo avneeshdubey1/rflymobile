@@ -27,7 +27,7 @@ Current code is a baseline, not proof of this target. Existing appeal, Google Fo
 | Scale path | Containers remain portable to Kubernetes; operating Kubernetes is deferred. |
 | Files | Encrypted, external object storage for future raw billing evidence. Never database blobs for raw telemetry. |
 | Queue/worker | A dedicated durable worker handles evidence processing and retryable billing jobs. |
-| Phone verification | Application-owned, purpose-bound OTP challenges; provider adapters deliver WhatsApp first and SMS on controlled fallback. Firebase Authentication is not part of the target. |
+| Phone verification | Application-owned, purpose-bound OTP challenges; a provider-neutral delivery adapter is configured through deployment secrets after the client selects and approves a provider. Firebase Authentication is not part of the target. |
 
 Every service must be stateless except for approved persistent stores. Compose is the initial orchestration boundary, not a claim of high availability.
 
@@ -220,7 +220,13 @@ The standard flow is:
 4. Signed, replay-safe, idempotent provider webhooks update delivery status only. They cannot verify a challenge or issue a session.
 5. The frontend submits the opaque challenge ID and code only to the application server. A successful one-time verification performs the permitted action and creates the normal opaque session where appropriate.
 
-The provisional primary adapter is the client-owned direct Meta WhatsApp Cloud API because it avoids a BSP delivery layer and supports approved authentication templates. It remains an adapter, not a committed live account: business verification, sender registration, approved localized templates, opt-in wording, webhook validation, current India rate-card confirmation, sandbox delivery, and budget alerting are activation gates. The independent SMS fallback must meet the applicable Indian sender, header, template, and consent requirements.
+#### Provider adapter and configuration contract
+
+The OTP core exposes a small provider port: `sendAuthenticationOtp`, `verifyWebhook`, `normalizeDeliveryEvent`, and declared channel capabilities. It has a disabled production-safe adapter and a deterministic test adapter before any real provider adapter exists. A provider-specific adapter translates that port to the selected provider's request format, sender/template requirements, delivery callbacks, and signature verification without changing challenge or session logic.
+
+`OTP_DELIVERY_PROVIDER` is a validated configuration selector for an installed adapter; the default is disabled. Provider credentials, sender identifiers, template identifiers, endpoints, and webhook secrets are supplied only through the deployment secret store or mounted secret files, never source, fixtures, browser configuration, or documentation. An arbitrary API key alone cannot make an unknown provider work: its adapter must be implemented, reviewed, sandbox-tested, and added to the allowed selector before the configuration is accepted.
+
+Meta Cloud API is a researched candidate, not a chosen dependency. If the client selects it, business verification, sender registration, approved localized templates, opt-in wording, webhook validation, current India rate-card confirmation, sandbox delivery, and budget alerting become activation gates. Any selected SMS adapter must meet the applicable Indian sender, header, template, and consent requirements.
 
 No raw OTP, full phone number, message body, provider credential, raw webhook payload, or provider error payload may enter an AuditLog, application log, fixture, browser response, or operational report. If a worker must retain a send payload, it is encrypted, TTL-bound, access-limited, and deleted with the challenge; otherwise the fallback issues a replacement challenge without retaining the prior code. Failed automatic delivery creates a visible staff task, but staff must never ask for or relay a code.
 
@@ -230,7 +236,7 @@ Phone possession is not automatic portal enrolment. Only an active, explicitly l
 
 The application already owns its users, roles, local phone identities, and opaque sessions; no Firestore, Storage, or Firebase identity data migration is expected. Existing users must prove the local phone identity again at their next affected action after cutover.
 
-The implementation sequence is: build and test the internal challenge/adapter/outbox path; complete provider sandbox and fallback evidence; replace all browser Firebase flows; move Business recovery to the internal proof; run staging replay/concurrency/outage/restart tests; then remove Firebase packages, configuration, SDK initialization, environment references, deployment references, and Firebase-specific tests. Revoke external Firebase service-account access through the owner after removal. No permanent dual-provider compatibility path is approved.
+The implementation sequence is: build and test the internal challenge, provider port, disabled/test adapters, configuration validation, and outbox path; after the client confirms a provider, add and sandbox-test that one adapter and its fallback; replace all browser Firebase flows; move Business recovery to the internal proof; run staging replay/concurrency/outage/restart tests; then remove Firebase packages, configuration, SDK initialization, environment references, deployment references, and Firebase-specific tests. Revoke external Firebase service-account access through the owner after removal. No permanent dual-provider compatibility path is approved.
 
 ## 9. Administration and import
 

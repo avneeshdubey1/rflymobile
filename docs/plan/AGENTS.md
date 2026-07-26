@@ -56,7 +56,7 @@ Do not treat a dated report, a legacy document, a seed value, or current applica
 - Prefer a focused migration or feature commit. Include documentation, tests, and verification evidence with the corresponding implementation.
 - For destructive operations, resolve the exact target first, require the approved guard/confirmation path, make backups where applicable, and record the result without sensitive values.
 - Do not activate a provider merely because an adapter exists. Build and test the fallback path first.
-- Treat the direct Meta WhatsApp Cloud API as the provisional cost baseline, not as an approved live provider. Confirm the client-owned business account, sender, authentication template, opt-in, India rate card, webhook verification, and sandbox evidence before activation. A free service-message or advertising-entry window is never an OTP design assumption.
+- No OTP delivery provider is selected. Build the OTP core behind a stable provider adapter and validated environment/secret-file configuration; a provider API key can select only an adapter that has been deliberately implemented and tested. Meta is a candidate, not an implementation dependency. A free service-message or advertising-entry window is never an OTP design assumption.
 - Do not use legacy Bhumeet/mock marketplace material as a production telemetry or billing dependency.
 
 ## Completion and evidence

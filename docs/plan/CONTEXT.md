@@ -74,6 +74,8 @@ Farmer communications remain practical:
 
 Firebase's documented phone sign-in flow is SMS-only, so it cannot satisfy the approved WhatsApp-first experience. The target retires Firebase Authentication entirely after a staged cutover. The application owns the phone-verification challenge and uses an external provider only to transport the message.
 
+No delivery provider has been selected. The first implementation builds the internal challenge and a provider-neutral integration boundary; only after the client confirms a provider will its adapter and deployment-secret configuration be activated. This prevents a provider choice from changing the login security model.
+
 A one-time code proves current control of a phone number for one narrow purpose; it does not by itself create a customer relationship, role, or portal entitlement. The default portal-enrolment rule is an existing explicitly linked account or an approved invitation. Any public self-registration policy requires separate client approval.
 
 For an approved Farmer portal login, Farmer phone link, or Business recovery, the server creates the short-lived challenge, sends it first through WhatsApp, and may use SMS only as a controlled fallback. A provider delivery receipt never proves identity. Staff follow-up must help the customer through an approved support process and must never disclose or ask for an OTP.

@@ -23,7 +23,7 @@ The codebase is not yet at that target. The existing application still contains 
 - The normal target is an invoice draft within 30 minutes after usable evidence arrives.
 - WhatsApp is supported with SMS fallback; failed delivery creates a human follow-up task.
 - Firebase Authentication is retired from the target. The application creates and verifies purpose-bound OTP challenges; a WhatsApp/SMS provider only delivers an approved message and reports delivery status.
-- Direct Meta WhatsApp Cloud API is the provisional WhatsApp cost baseline. It is not activated until the client owns a verified eligible WABA/sender, has approved authentication templates and opt-in wording, confirms the then-current India rate, and proves sandbox callback/fallback behaviour. SMS remains launch-capable when WhatsApp eligibility is pending or delivery fails.
+- No OTP delivery provider is selected. Implement the server-owned OTP core plus a provider-neutral adapter and validated environment/secret-file configuration first. An API key selects only a deliberately implemented, reviewed adapter; it cannot make an arbitrary external API work without its provider translation and webhook verification. Meta is a researched candidate awaiting client confirmation. SMS remains launch-capable when WhatsApp eligibility is pending or delivery fails.
 - No recurring free production allowance is assumed for WhatsApp authentication messages. Free service-message or advertising-entry windows are not a login design.
 - Raw telemetry upload remains disabled until the client approves the vendor, sample export, retention, access, deletion, encryption, and incident policy.
 - The first live topology is one isolated Docker Compose stack per company on a provider-neutral Linux host. Kubernetes remains a future migration option, not an initial operational requirement.
@@ -39,12 +39,18 @@ The first approved purposes are Farmer portal authentication, an approved Farmer
 
 Use a durable outbox and worker, signed/replay-safe idempotent delivery webhooks, delivery/fallback metrics, and a dead-letter/follow-up queue. Never retain a raw code unless an encrypted, TTL-bound worker payload is unavoidable; never place it, a message body, full phone number, provider credential, or raw callback into logs, AuditLog, fixtures, or browser responses.
 
+### Provider-neutral integration boundary
+
+Implement the challenge before choosing a provider. The first delivery boundary includes a disabled production-safe adapter, a deterministic test adapter, and one validated selector such as `OTP_DELIVERY_PROVIDER`. The adapter contract sends an authentication OTP, validates a callback signature, normalizes a delivery event, and declares channel capabilities. Provider-specific values—API token, sender, template ID, base URL, and callback secret—belong only in deployment secrets or mounted secret files.
+
+When the client confirms Meta, another WhatsApp provider, or an SMS provider, add a small adapter that maps this contract to that provider. The OTP database model, code verification, sessions, UI flow, rate limits, and audit policy do not change. Until then, no real provider is activated and no credential is requested or placed in an environment file.
+
 ### Provider and free-tier finding — researched July 26, 2026
 
 | Option | WhatsApp OTP fit | Free allowance finding | Decision |
 |---|---|---|---|
 | Firebase Authentication | No. Its documented phone flow sends SMS, not WhatsApp. | First 10 SMS/day are unbilled on the paid Identity Platform path; India is currently listed at US$0.07/SMS thereafter. This is not WhatsApp capacity. | Retire after staged cutover. |
-| Direct Meta WhatsApp Cloud API | Yes, using approved Authentication Templates while the application owns the code. | No unconditional recurring free authentication-message allowance. Meta's free service window and conditional 72-hour click-to-WhatsApp/Page entry window cannot be used as a normal login design. | Preferred WhatsApp adapter once client eligibility and sandbox gates pass. |
+| Direct Meta WhatsApp Cloud API | Yes, using approved Authentication Templates while the application owns the code. | No unconditional recurring free authentication-message allowance. Meta's free service window and conditional 72-hour click-to-WhatsApp/Page entry window cannot be used as a normal login design. | Candidate only; integrate after client confirmation and eligibility/sandbox gates. |
 | Infobip trial | Testable through a BSP. | 100 WhatsApp conversations for 60 days, only to verified numbers through a shared sender; not live production capacity. | Optional sandbox comparison, not a production free tier. |
 | Twilio Verify | Not suitable as WhatsApp-primary in India: its documentation says India WhatsApp Verify falls back to SMS; it also makes Twilio the verification service. | Trial only; paid verification and channel fees apply. | Do not select for this WhatsApp-primary, application-owned design. |
 
@@ -52,7 +58,7 @@ There is therefore no "most messages" recurring free tier to choose for producti
 
 For current India planning, a published BSP pass-through shows an approximately INR 0.115 delivered-authentication-template baseline, but that number is volatile and not a committed repository value. At activation, capture the official Meta/WABA rate-card evidence, any provider fee, taxes, delivery volume, fallback-SMS rate, and a budget alert. The decision must use total monthly cost, not a headline free tier.
 
-The direct Meta route minimizes fixed BSP markup. A client may instead select a single India-focused BSP such as MSG91 for WhatsApp plus DLT SMS if operational simplicity outweighs its subscription/markup; that is a company procurement decision, not an application dependency. In either case, Meta business verification, sender registration, authentication-template approval, applicable messaging-limit/scaling eligibility, consent, callback signing, and sandbox delivery are hard gates. Do not misclassify an OTP as a utility message to avoid those gates.
+Direct Meta and a single India-focused BSP such as MSG91 remain alternatives for the client to choose. Provider selection is a company procurement decision, not an application dependency. The adapter boundary makes either choice a contained follow-up integration. Where Meta is selected, business verification, sender registration, authentication-template approval, applicable messaging-limit/scaling eligibility, consent, callback signing, and sandbox delivery are hard gates. Do not misclassify an OTP as a utility message to avoid those gates.
 
 Research sources: [Firebase phone authentication](https://firebase.google.com/docs/auth/web/phone-auth), [Google Identity Platform pricing](https://cloud.google.com/identity-platform/pricing), [Meta Authentication Templates](https://developers.facebook.com/docs/whatsapp/business-management-api/authentication-templates), [WhatsApp Business Platform pricing](https://business.whatsapp.com/products/platform-pricing/), [TRAI sender requirements](https://trai.gov.in/advice-to-senders), [Infobip WhatsApp trial](https://www.infobip.com/docs/whatsapp/get-started), [Twilio Verify templates](https://www.twilio.com/docs/verify/verification-templates), and [MSG91 India WhatsApp pricing](https://msg91.com/in/pricing/whatsapp). Revalidate every rate, policy, template, and eligibility condition before staging activation or production promotion.
 
@@ -89,7 +95,7 @@ Research sources: [Firebase phone authentication](https://firebase.google.com/do
 - Improve Sales call intake with customer lookup, canonical phone identity, location capture, and clear service-area result.
 - Implement isolated Farmer and Business status portal reads.
 - Add server-owned purpose-bound OTP challenges and delivery-attempt records for Farmer portal authentication, approved Farmer linking/invitation, and Business recovery. Preserve opaque application sessions; do not accept Firebase tokens after cutover.
-- Add durable WhatsApp-to-SMS delivery fallback, signed idempotent callbacks, provider-budget visibility, and staff follow-up tasks. Do not enable WhatsApp OTP before the Meta/business/template eligibility gate; SMS is a separately compliant launch path/fallback.
+- Add the provider-neutral delivery port, disabled/test adapters, configuration validation, signed idempotent callback boundary, provider-budget visibility, and staff follow-up tasks. After client confirmation, add the selected WhatsApp and/or SMS adapters; do not enable a real provider before its account/template/eligibility gate passes.
 - Remove Firebase browser/server packages, configuration, deployment references, token-proof services, and legacy tests only after provider staging evidence and external service-account revocation are complete.
 
 **Acceptance:** portals expose only linked records; OTP request, expiry, replay, concurrency, wrong-purpose, abuse-rate, provider-webhook, delivery failure, worker-restart, and fallback tests pass; no delivery receipt creates a session; Firebase is absent from the built application; and a communication failure reaches a visible staff queue without exposing a code.
@@ -138,7 +144,7 @@ Research sources: [Firebase phone authentication](https://firebase.google.com/do
 - Exact drone/controller vendor, sample evidence exports, usable-evidence definition, and telemetry retention/access/deletion policy.
 - Approved service radii, operating centres, LMV and drone master data, compliance rules, pricing, currency, and manual-LMV-fee policy.
 - Tax/GST rules, invoice numbering, legal merchant/UPI account, settlement/reconciliation/refund policy.
-- Client-owned WABA/sender, Meta business/scaling eligibility evidence, approved WhatsApp authentication templates, opt-in wording, current India rate-card evidence, signed callback sandbox access, and an India DLT-compliant SMS provider/Principal Entity/header/content-template setup.
+- Provider decision from the client. If Meta is selected: WABA/sender, business/scaling eligibility evidence, approved WhatsApp authentication templates, opt-in wording, current India rate-card evidence, and signed callback sandbox access. If SMS is selected: the applicable India DLT/Principal Entity/header/content-template setup and sandbox evidence.
 - Hosting provider, production domain, TLS owner, monitoring/alert recipients, backup target, RPO/RTO, and incident/support owners.
 - Excel/Zoho source mapping and accountable import/reconciliation owner.
 
