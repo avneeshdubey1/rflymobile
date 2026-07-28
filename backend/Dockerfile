@@ -7,14 +7,16 @@ WORKDIR /workspace
 COPY package.json package-lock.json ./
 COPY prisma ./prisma
 RUN --mount=type=cache,id=rfly-backend-prod-npm,target=/root/.npm,sharing=locked \
-    npm ci --omit=dev && npm cache clean --force
+    PRISMA_CLI_BINARY_TARGETS=linux-musl-openssl-3.0.x npm ci --omit=dev \
+    && npm cache clean --force
 
 FROM ${NODE_IMAGE} AS migration-dependencies
 WORKDIR /workspace
 COPY package.json package-lock.json ./
 COPY prisma ./prisma
 RUN --mount=type=cache,id=rfly-backend-migration-npm,target=/root/.npm,sharing=locked \
-    npm ci && npm cache clean --force
+    PRISMA_CLI_BINARY_TARGETS=linux-musl-openssl-3.0.x npm ci \
+    && npm cache clean --force
 
 FROM ${NODE_IMAGE} AS runtime-base
 ENV NODE_ENV=production \
