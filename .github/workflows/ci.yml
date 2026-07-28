@@ -126,17 +126,25 @@ jobs:
             -H 'X-Forwarded-Proto: https' \
             http://127.0.0.1:18080/api/health | grep -q '"status":"ok"'
 
-          db_port="$(docker compose --env-file "$DEPLOY_ENV" -f compose.production.yml port db 5432 2>/dev/null || true)"
-          backend_port="$(docker compose --env-file "$DEPLOY_ENV" -f compose.production.yml port backend 5000 2>/dev/null || true)"
-          test -z "$db_port"
-          test -z "$backend_port"
+          db_container="$(docker compose --env-file "$DEPLOY_ENV" -f compose.production.yml ps -q db)"
+          backend_container="$(docker compose --env-file "$DEPLOY_ENV" -f compose.production.yml ps -q backend)"
+          db_published_ports="$(docker container inspect "$db_container" --format '{{range $port, $bindings := .NetworkSettings.Ports}}{{if $bindings}}{{range $bindings}}{{println .HostPort}}{{end}}{{end}}{{end}}')"
+          backend_published_ports="$(docker container inspect "$backend_container" --format '{{range $port, $bindings := .NetworkSettings.Ports}}{{if $bindings}}{{range $bindings}}{{println .HostPort}}{{end}}{{end}}{{end}}')"
+          if [ -n "$db_published_ports" ]; then
+            echo "db service unexpectedly publishes host ports: $db_published_ports" >&2
+            exit 1
+          fi
+          if [ -n "$backend_published_ports" ]; then
+            echo "backend service unexpectedly publishes host ports: $backend_published_ports" >&2
+            exit 1
+          fi
 
           backend_user="$(docker image inspect "field-operations-backend:ci-${GITHUB_SHA}" --format '{{.Config.User}}')"
           frontend_user="$(docker image inspect "field-operations-frontend:ci-${GITHUB_SHA}" --format '{{.Config.User}}')"
           migration_user="$(docker image inspect "field-operations-migration:ci-${GITHUB_SHA}" --format '{{.Config.User}}')"
-          test "$backend_user" = node
-          test "$frontend_user" = nginx
-          test "$migration_user" = node
+          test "$backend_user" = node || { echo "backend image must run as node, got '$backend_user'" >&2; exit 1; }
+          test "$frontend_user" = nginx || { echo "frontend image must run as nginx, got '$frontend_user'" >&2; exit 1; }
+          test "$migration_user" = node || { echo "migration image must run as node, got '$migration_user'" >&2; exit 1; }
       - name: Print container diagnostics after failure
         if: failure()
         run: |
