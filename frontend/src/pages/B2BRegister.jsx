@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router';
 import LanguageSelector from '../components/LanguageSelector';
 import toast from 'react-hot-toast';
 import { apiFetch, readJson } from '../services/apiClient';
