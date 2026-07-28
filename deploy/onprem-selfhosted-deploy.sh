@@ -75,6 +75,7 @@ stage_secret_file() {
   [ -n "$source_path" ] || fail "Required deployment variable is not set: $var_name"
   [ -r "$source_path" ] || fail "Required file from $var_name is not readable: $source_path"
 
+  rm -f "$target_path" || fail "Could not remove previous staged secret file for $var_name"
   cp "$source_path" "$target_path" || fail "Could not stage secret file from $var_name into Docker-visible runner workspace"
   chmod 0400 "$target_path" || fail "Could not secure staged secret file for $var_name"
   [ -r "$target_path" ] || fail "Staged secret file is not readable: $target_path"
