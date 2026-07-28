@@ -6,7 +6,7 @@ deploy_changelog="${DEPLOY_CHANGELOG:-/opt/client-demo-app/deployment-notes/CHAN
 compose_env=".deploy-runtime.env"
 compose_files=(-f compose.production.yml -f compose.onprem-demo.yml)
 runner_user="$(id -un)"
-secret_stage_dir="${DEPLOY_SECRET_STAGE_DIR:-/home/${runner_user}/.rfly-deploy-secrets}"
+secret_stage_dir="${DEPLOY_SECRET_STAGE_DIR:-/home/${runner_user}/actions-runner/.rfly-deploy-secrets}"
 
 cleanup() {
   rm -f "$compose_env"
