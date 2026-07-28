@@ -7,3 +7,5 @@ The production Compose definition runs one customer-neutral application stack an
 Start with [the deployment runbook](../docs/operations/deployment.md). `example.env` deliberately contains no credential values; copy it outside the repository and replace its deployment-specific entries.
 
 The stack is not a TLS terminator. The frontend port binds to loopback by default and must sit behind an approved HTTPS load balancer or host reverse proxy. The backend rejects requests not marked as HTTPS by that trusted proxy chain.
+
+The `release-image-evidence` GitHub Actions workflow can publish backend, migration, and frontend images to GHCR with source-linked digests, SBOM artifacts, and vulnerability-scan artifacts. Treat those artifacts as release inputs, not production approval. Staging/production deployment still requires the chosen host, domain, TLS, backup, monitoring, alert, and rollback owners.

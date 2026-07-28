@@ -45,6 +45,7 @@ Run these commands on the Linux deployment host as its deployment administrator.
 sudo install -d -m 0700 /etc/field-operations/company-installation/secrets
 sudo sh -c 'umask 077; openssl rand -base64 36 > /etc/field-operations/company-installation/secrets/db_password'
 sudo sh -c 'umask 077; openssl rand -base64 48 > /etc/field-operations/company-installation/secrets/recovery_hash_secret'
+sudo sh -c 'umask 077; openssl rand -base64 48 > /etc/field-operations/company-installation/secrets/otp_hash_secret'
 sudo chmod 0400 /etc/field-operations/company-installation/secrets/*
 ```
 
@@ -55,6 +56,7 @@ Copy `deploy/example.env` to an access-controlled path outside the checkout, suc
 - the approved HTTPS `CORS_ALLOWED_ORIGINS`;
 - only approved HTTPS `MAP_FRAME_ORIGINS` (OpenStreetMap is the current map-frame provider);
 - absolute `DB_PASSWORD_FILE` and `RECOVERY_HASH_SECRET_FILE` paths;
+- an absolute `OTP_HASH_SECRET_FILE` path and `OTP_DELIVERY_PROVIDER=disabled` until a reviewed WhatsApp/SMS adapter is approved;
 - non-secret database identifiers;
 - measured resource limits.
 
@@ -148,11 +150,11 @@ Do not use `docker compose down --volumes` on a real installation. That command 
 ## Evidence to retain per release
 
 - Approved change/release ticket and operator.
-- Source revision and immutable image digests.
+- Source revision, release workflow run, SBOM artifacts, vulnerability-scan artifacts, and immutable image digests.
 - Rendered Compose configuration with secret values absent.
 - Backup identifier, checksum, encryption/storage confirmation, and restore-test reference.
 - Migration output and duration.
 - Health, role-workflow, Socket.IO, and browser/device results.
 - Monitoring/alert check and rollback decision window.
 
-The portable CI workflow validates source gates and starts a disposable isolated stack. It does not replace production-like staging, physical Android/browser acceptance, provider sandboxes, image scanning, backup restoration, or penetration testing.
+The portable CI workflow validates source gates and starts a disposable isolated stack. The release image workflow publishes immutable GHCR images and stores digest, SBOM, and scan artifacts. Neither workflow replaces production-like staging, physical Android/browser acceptance, provider sandboxes, backup restoration, alert rehearsal, restore testing, or penetration testing.

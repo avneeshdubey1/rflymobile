@@ -46,6 +46,8 @@ jobs:
         shell: bash
         run: |
           echo "RECOVERY_HASH_SECRET=$(openssl rand -hex 48)" >> "$GITHUB_ENV"
+          echo "OTP_HASH_SECRET=$(openssl rand -hex 48)" >> "$GITHUB_ENV"
+          echo "OTP_DELIVERY_PROVIDER=test" >> "$GITHUB_ENV"
           echo "DEMO_USER_PASSWORD=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
       - run: npm ci
       - run: npm audit --audit-level=high
@@ -92,6 +94,7 @@ jobs:
           umask 077
           openssl rand -base64 36 > "$secret_dir/db_password"
           openssl rand -base64 48 > "$secret_dir/recovery_hash_secret"
+          openssl rand -base64 48 > "$secret_dir/otp_hash_secret"
           cat > "$RUNNER_TEMP/operations-ci.env" <<EOF
           DEPLOYMENT_NAME=operations-ci-${GITHUB_RUN_ID}
           IMAGE_TAG=ci-${GITHUB_SHA}
@@ -104,6 +107,8 @@ jobs:
           POSTGRES_DB=operations
           DB_PASSWORD_FILE=$secret_dir/db_password
           RECOVERY_HASH_SECRET_FILE=$secret_dir/recovery_hash_secret
+          OTP_HASH_SECRET_FILE=$secret_dir/otp_hash_secret
+          OTP_DELIVERY_PROVIDER=disabled
           EOF
           echo "DEPLOY_ENV=$RUNNER_TEMP/operations-ci.env" >> "$GITHUB_ENV"
       - name: Validate rendered Compose configuration

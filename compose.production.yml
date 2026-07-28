@@ -79,6 +79,7 @@ services:
       <<: *backend-environment
       APP_RUNTIME_MODE: server
       RECOVERY_HASH_SECRET_FILE: /run/secrets/recovery_hash_secret
+      OTP_HASH_SECRET_FILE: /run/secrets/otp_hash_secret
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?Set the approved HTTPS browser origin or origins}
       MAP_FRAME_ORIGINS: ${MAP_FRAME_ORIGINS:-}
       TRUST_PROXY_HOPS: ${TRUST_PROXY_HOPS:-2}
@@ -97,7 +98,10 @@ services:
       SESSION_TOUCH_INTERVAL_MS: ${SESSION_TOUCH_INTERVAL_MS:-60000}
       RECOVERY_CODE_TTL_MS: ${RECOVERY_CODE_TTL_MS:-600000}
       RECOVERY_MAX_ATTEMPTS: ${RECOVERY_MAX_ATTEMPTS:-5}
-      FIREBASE_RECOVERY_MAX_AUTH_AGE_MS: ${FIREBASE_RECOVERY_MAX_AUTH_AGE_MS:-300000}
+      OTP_DELIVERY_PROVIDER: ${OTP_DELIVERY_PROVIDER:-disabled}
+      OTP_CODE_TTL_MS: ${OTP_CODE_TTL_MS:-300000}
+      OTP_MAX_ATTEMPTS: ${OTP_MAX_ATTEMPTS:-5}
+      OTP_RESEND_COOLDOWN_MS: ${OTP_RESEND_COOLDOWN_MS:-30000}
       SOCKET_MAX_PAYLOAD_BYTES: ${SOCKET_MAX_PAYLOAD_BYTES:-65536}
       SOCKET_EVENT_WINDOW_MS: ${SOCKET_EVENT_WINDOW_MS:-60000}
       SOCKET_EVENT_MAX: ${SOCKET_EVENT_MAX:-120}
@@ -106,6 +110,7 @@ services:
     secrets:
       - db_password
       - recovery_hash_secret
+      - otp_hash_secret
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -163,3 +168,5 @@ secrets:
     file: ${DB_PASSWORD_FILE:?Set DB_PASSWORD_FILE to an absolute host path outside the repository}
   recovery_hash_secret:
     file: ${RECOVERY_HASH_SECRET_FILE:?Set RECOVERY_HASH_SECRET_FILE to an absolute host path outside the repository}
+  otp_hash_secret:
+    file: ${OTP_HASH_SECRET_FILE:?Set OTP_HASH_SECRET_FILE to an absolute host path outside the repository}

@@ -83,6 +83,7 @@ load_secret_file UPI_GATEWAY_KEY false
 
 if [ "${APP_RUNTIME_MODE:-server}" = "server" ]; then
   load_secret_file RECOVERY_HASH_SECRET true
+  load_secret_file OTP_HASH_SECRET false
 fi
 
 exec "$@"
