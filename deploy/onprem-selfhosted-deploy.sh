@@ -5,7 +5,6 @@ deploy_env="${DEPLOY_ENV:-/opt/client-demo-app/deployment.env}"
 deploy_changelog="${DEPLOY_CHANGELOG:-/opt/client-demo-app/deployment-notes/CHANGELOG.md}"
 compose_env=".deploy-runtime.env"
 compose_files=(-f compose.production.yml -f compose.onprem-demo.yml)
-secret_stage_dir="${DEPLOY_SECRET_STAGE_DIR:-/opt/client-demo-app/.rfly-deploy-secrets}"
 
 cleanup() {
   rm -f "$compose_env"
@@ -50,35 +49,6 @@ require_env_file_path() {
   local file_path="${!var_name:-}"
   [ -n "$file_path" ] || fail "Required deployment variable is not set: $var_name"
   [ -r "$file_path" ] || fail "Required file from $var_name is not readable: $file_path"
-}
-
-rewrite_env_value() {
-  local var_name="$1"
-  local var_value="$2"
-  local temp_env="${compose_env}.tmp"
-
-  awk -F= -v key="$var_name" -v value="$var_value" '
-    BEGIN { updated = 0 }
-    $1 == key { print key "=" value; updated = 1; next }
-    { print }
-    END { if (!updated) print key "=" value }
-  ' "$compose_env" > "$temp_env"
-  mv "$temp_env" "$compose_env"
-}
-
-stage_secret_file() {
-  local var_name="$1"
-  local target_name="$2"
-  local source_path="${!var_name:-}"
-  local target_path="${secret_stage_dir}/${target_name}"
-
-  [ -n "$source_path" ] || fail "Required deployment variable is not set: $var_name"
-  [ -r "$source_path" ] || fail "Required file from $var_name is not readable: $source_path"
-
-  cp "$source_path" "$target_path"
-  chmod 0400 "$target_path"
-  rewrite_env_value "$var_name" "$target_path"
-  export "${var_name}=${target_path}"
 }
 
 compose() {
@@ -144,14 +114,6 @@ set +a
 require_env_file_path DB_PASSWORD_FILE
 require_env_file_path RECOVERY_HASH_SECRET_FILE
 require_env_file_path OTP_HASH_SECRET_FILE
-
-mkdir -p "$secret_stage_dir" || fail "Could not create secret staging directory: $secret_stage_dir"
-[ -d "$secret_stage_dir" ] || fail "Secret staging path is not a directory: $secret_stage_dir"
-[ -w "$secret_stage_dir" ] || fail "Secret staging directory is not writable by $(id -un): $secret_stage_dir"
-chmod 0700 "$secret_stage_dir" || fail "Could not secure secret staging directory: $secret_stage_dir"
-stage_secret_file DB_PASSWORD_FILE db_password
-stage_secret_file RECOVERY_HASH_SECRET_FILE recovery_hash_secret
-stage_secret_file OTP_HASH_SECRET_FILE otp_hash_secret
 
 if ! docker info >/dev/null 2>&1; then
   fail "Docker is not available to the self-hosted runner. Add the runner user to the docker group or configure approved non-interactive Docker access."
