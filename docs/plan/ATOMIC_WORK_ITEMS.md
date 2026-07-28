@@ -101,7 +101,7 @@ All code packages + named owners ─> client acceptance ─> production promotio
 
 | ID | Small outcome | Depends / stop condition | Done when |
 |---|---|---|---|
-| OTP-01 | Record exact challenge purpose, expiry, attempt, resend, retention, and enrolment policy values as company configuration requirements. | G-03 | No default value is silently presented as client approval. |
+| OTP-01 | Record exact challenge purpose, expiry, attempt, resend, retention, enrolment, and immediate Firebase-removal policy values as company configuration requirements. | G-03 | Approved values are recorded: 6-digit code, 5-minute expiry, 5 attempts, 30-second resend cooldown, one active challenge per recipient/purpose, short metadata retention, no raw OTP retention outside dev/test CLI display, and no long Firebase compatibility path. |
 | OTP-02 | Add `PhoneVerificationChallenge` schema and migration only. | OTP-01 | No raw code, full phone, or provider payload field is added. |
 | OTP-03 | Add `VerificationDeliveryAttempt` and durable outbox schema/migration only. | OTP-02 | Attempt/outbox records use safe references and idempotency keys. |
 | OTP-04 | Add repositories for challenge, delivery attempt, and outbox. | OTP-03 | Repositories are the only database boundary. |
@@ -119,7 +119,7 @@ All code packages + named owners ─> client acceptance ─> production promotio
 | OTP-16 | Add focused OTP API/worker/browser security regression tests. | OTP-05 through OTP-15 | Expiry, replay, purpose, limits, callback, outage, and fallback cases pass. |
 | OTP-17 | Implement the selected real WhatsApp/SMS adapter only after sandbox approval. | G-04, OTP-09, OTP-12 | Sandbox send, signature, template, budget, and fallback evidence exist. |
 | OTP-18 | Run staging cutover/retry/failure/restart evidence with the selected adapter. | OTP-17 | All delivery failures create safe follow-up work. |
-| OTP-19 | Remove Firebase browser/server packages, configuration, token-proof code, tests, and deployment references. | OTP-14, OTP-15, OTP-18 | Build contains no Firebase dependency or accepted Firebase proof. |
+| OTP-19 | Remove Firebase browser/server packages, configuration, token-proof code, tests, and deployment references immediately after internal OTP browser/recovery cutover. | OTP-14, OTP-15, OTP-16 | Build contains no Firebase dependency or accepted Firebase proof. Real WhatsApp/SMS provider activation remains held behind G-04. |
 | OTP-20 | Obtain and record external Firebase service-account revocation evidence. | OTP-19 | Owner records non-secret revocation evidence. |
 
 ## 4. Package 5 — evidence-backed billing and settlement

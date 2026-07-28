@@ -94,7 +94,7 @@ DeclinedEnquiry may store only contact name, canonical phone, source channel, ge
 
 The initially approved purposes are `FARMER_PORTAL_AUTH`, `FARMER_PHONE_LINK`, and `BUSINESS_RECOVERY`. A code is bound to one recipient and one purpose; it cannot be reused for another account, purpose, role, phone change, or reset. A provider delivery receipt is evidence of transport only, never proof that the recipient owns an application account.
 
-Only the server can create, verify, replace, revoke, or consume a challenge. It uses a cryptographically secure numeric code of at least six digits, stores only a dedicated-secret HMAC of that code, uses constant-time comparison, and transactionally invalidates a consumed or superseded challenge. Exact TTL, attempt, resend, retention, and budget limits are approved company configuration, not browser-controlled literals.
+Only the server can create, verify, replace, revoke, or consume a challenge. It uses a cryptographically secure 6-digit numeric code, stores only a dedicated-secret HMAC of that code, uses constant-time comparison, and transactionally invalidates a consumed or superseded challenge. The approved initial policy is: 5-minute challenge expiry, 5 verification attempts, 30-second resend cooldown, one active challenge per recipient and purpose, same-day delivery-attempt retention for successful/consumed challenges, 7-day retention for failed/abuse/dead-letter metadata, and no raw OTP retention outside an explicit local/test CLI display. Budget and provider-rate limits remain company configuration after provider selection.
 
 ### 4.3 LMV fleet
 
@@ -258,7 +258,7 @@ Phone possession is not automatic portal enrolment. Only an active, explicitly l
 
 The application already owns its users, roles, local phone identities, and opaque sessions; no Firestore, Storage, or Firebase identity data migration is expected. Existing users must prove the local phone identity again at their next affected action after cutover.
 
-The implementation sequence is: build and test the internal challenge, provider port, disabled/test adapters, configuration validation, and outbox path; after the client confirms a provider, add and sandbox-test that one adapter and its fallback; replace all browser Firebase flows; move Business recovery to the internal proof; run staging replay/concurrency/outage/restart tests; then remove Firebase packages, configuration, SDK initialization, environment references, deployment references, and Firebase-specific tests. Revoke external Firebase service-account access through the owner after removal. No permanent dual-provider compatibility path is approved.
+The implementation sequence is: build and test the internal challenge, provider port, disabled/test/CLI adapters, configuration validation, and outbox path; replace all browser Firebase flows; move Business recovery to the internal proof; then immediately remove Firebase packages, configuration, SDK initialization, environment references, deployment references, and Firebase-specific tests in the same internal OTP cutover. Real WhatsApp/SMS adapters and provider-process activation are held behind the client/provider gate and are not required before Firebase removal, because local/test validation uses the disabled, deterministic, and CLI adapters. Revoke external Firebase service-account access through the owner after repository removal. No permanent dual-provider compatibility path is approved.
 
 ## 9. Administration and import
 
