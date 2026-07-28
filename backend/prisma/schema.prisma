@@ -127,6 +127,25 @@ model User {
   recoveryChallenges   PasswordRecoveryChallenge[]
 }
 
+model Customer {
+  id                String    @id @default(uuid())
+  displayName       String
+  phone             String    @unique
+  preferredLanguage String    @default("ta")
+  village           String?
+  district          String?
+  farmerUserId      String?   @unique
+  createdByUserId   String?
+  staffConfirmedAt  DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  leads             Lead[]
+
+  @@index([displayName])
+  @@index([createdAt])
+}
+
 model AuthSession {
   id                String   @id @default(uuid())
   user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -199,6 +218,8 @@ model LMV {
 
 model Lead {
   id               String        @id @default(uuid())
+  customer         Customer?     @relation(fields: [customerId], references: [id])
+  customerId       String?
   farmerName       String
   farmerPhone      String
   farmerAddress    String?
@@ -233,6 +254,8 @@ model Lead {
   notifications    Notification[]
   payments         PaymentRecord[]
   chatSessions     ChatSession[]
+
+  @@index([customerId, createdAt])
 }
 
 // This is deliberately not a Lead: a declined request must never become

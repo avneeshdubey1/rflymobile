@@ -1,6 +1,6 @@
 const prisma = require('../lib/prisma');
 
-const defaultInclude = { matchedCenter: true, assignment: true };
+const defaultInclude = { matchedCenter: true, assignment: true, customer: true };
 
 module.exports = {
   create: (data) => prisma.lead.create({ data, include: defaultInclude }),

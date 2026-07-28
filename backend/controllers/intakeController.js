@@ -28,10 +28,11 @@ function sprayPurposeFrom(value) {
   return value.map((item) => item.trim()).filter(Boolean).join(', ');
 }
 
-function allowedFields(body, { farmerName, farmerPhone, intakeChannel, actorId, preferredLanguage } = {}) {
+function allowedFields(body, { farmerName, farmerPhone, intakeChannel, actorId, preferredLanguage, customerId = null } = {}) {
   return {
     farmerName,
     farmerPhone,
+    customerId,
     acreage: body.acreage ?? body.acres,
     intakeChannel,
     farmerAddress: addressFrom(body),
@@ -72,13 +73,13 @@ function decline(res) {
   });
 }
 
-async function submit(req, res, { intakeChannel, actorId = null, farmerName, farmerPhone, preferredLanguage, autoAssign = false }) {
+async function submit(req, res, { intakeChannel, actorId = null, farmerName, farmerPhone, preferredLanguage, customerId = null, autoAssign = false }) {
   const coordinates = coordinatesFrom(req.body);
   if (!coordinates) {
     return res.status(400).json({ code: 'LOCATION_REQUIRED', messageKey: 'service_location_required' });
   }
   const result = await intakeService.createIntake({
-    ...allowedFields(req.body, { farmerName, farmerPhone, intakeChannel, actorId, preferredLanguage }),
+    ...allowedFields(req.body, { farmerName, farmerPhone, intakeChannel, actorId, preferredLanguage, customerId }),
     ...coordinates,
   });
   if (result.outcome === 'DECLINED') return decline(res);
@@ -109,6 +110,8 @@ exports.website = async (req, res) => {
     return res.status(400).json({ error: error.message || 'Failed to submit service request' });
   }
 };
+
+exports.submit = submit;
 
 exports.manual = async (req, res) => {
   try {

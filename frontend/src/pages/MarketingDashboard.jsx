@@ -9,6 +9,7 @@ import { createAuthenticatedSocket } from '../services/authenticatedSocket';
 import { apiFetch, readJson } from '../services/apiClient';
 
 const blankManualLead = { farmerName: '', phone: '', village: '', cropType: '', acres: '', latitude: '', longitude: '' };
+const blankCustomer = { displayName: '', phone: '', village: '', district: '', preferredLanguage: 'ta' };
 
 function MarketingDashboard() {
   const { user, logout } = useAuth();
@@ -18,6 +19,11 @@ function MarketingDashboard() {
   const [dataError, setDataError] = useState('');
   const [manualLead, setManualLead] = useState(blankManualLead);
   const [manualStatus, setManualStatus] = useState('');
+  const [customers, setCustomers] = useState([]);
+  const [customerSearch, setCustomerSearch] = useState('');
+  const [newCustomer, setNewCustomer] = useState(blankCustomer);
+  const [customerStatus, setCustomerStatus] = useState('');
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [selectedLead, setSelectedLead] = useState(null);
   const [extraDetails, setExtraDetails] = useState({ mandal: '', district: '', fertilizerShop: '', expectedSpraying: '', soilType: '', pesticideBrand: '', cropAge: '' });
   const [processStatus, setProcessStatus] = useState('');
@@ -39,14 +45,27 @@ function MarketingDashboard() {
     }
   }, []);
 
+  const fetchCustomers = useCallback(async (query = '', signal) => {
+    try {
+      const response = await apiFetch(`/api/customers/sales?q=${encodeURIComponent(query || '')}`, { signal });
+      const data = await readJson(response);
+      if (!response.ok) throw new Error(data.error || 'Could not refresh customers.');
+      setCustomers(data.customers || []);
+      setCustomerStatus('');
+    } catch (error) {
+      if (error.name !== 'AbortError' && !signal?.aborted) setCustomerStatus(error.message || 'Could not refresh customers.');
+    }
+  }, []);
+
   useEffect(() => {
     const controller = new AbortController();
     const initialLoad = window.setTimeout(() => void fetchData(controller.signal), 0);
+    const initialCustomers = window.setTimeout(() => void fetchCustomers('', controller.signal), 0);
     const interval = window.setInterval(() => void fetchData(controller.signal), 5000);
     const socket = createAuthenticatedSocket();
     socket.on('assignment_rescheduled', (mission) => setShowToast(`Assignment rescheduled for ${mission.farmerName}. Please contact the customer.`));
-    return () => { window.clearTimeout(initialLoad); window.clearInterval(interval); controller.abort(); socket.disconnect(); };
-  }, [fetchData]);
+    return () => { window.clearTimeout(initialLoad); window.clearTimeout(initialCustomers); window.clearInterval(interval); controller.abort(); socket.disconnect(); };
+  }, [fetchData, fetchCustomers]);
 
   const handleProcess = async (event) => {
     event.preventDefault();
@@ -78,7 +97,8 @@ function MarketingDashboard() {
     event.preventDefault();
     setManualStatus('processing');
     try {
-      const response = await apiFetch('/api/leads/ingest/manual', {
+      const path = selectedCustomer ? `/api/customers/sales/${selectedCustomer.id}/leads` : '/api/leads/ingest/manual';
+      const response = await apiFetch(path, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(manualLead),
@@ -94,17 +114,69 @@ function MarketingDashboard() {
         return;
       }
       setManualStatus(data.assignmentOutcome === 'MANUAL_SCHEDULING' ? 'manual-queue' : 'success');
-      setManualLead(blankManualLead);
+      setManualLead(selectedCustomer ? { ...blankManualLead, farmerName: selectedCustomer.displayName, phone: selectedCustomer.phone, village: selectedCustomer.village || '' } : blankManualLead);
       await fetchData();
+      await fetchCustomers(customerSearch);
       window.setTimeout(() => setManualStatus(''), 3000);
     } catch {
       setManualStatus('Failed to create lead. Please try again.');
     }
   };
 
+  const handleCustomerSearch = async (event) => {
+    event.preventDefault();
+    setCustomerStatus('searching');
+    await fetchCustomers(customerSearch);
+  };
+
+  const handleCustomerCreate = async (event) => {
+    event.preventDefault();
+    setCustomerStatus('saving');
+    try {
+      const response = await apiFetch('/api/customers/sales', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newCustomer),
+      });
+      const data = await readJson(response);
+      if (!response.ok) {
+        setCustomerStatus(data.error || 'Could not create customer.');
+        return;
+      }
+      setNewCustomer(blankCustomer);
+      setSelectedCustomer(data.customer);
+      setManualLead({ ...blankManualLead, farmerName: data.customer.displayName, phone: data.customer.phone, village: data.customer.village || '' });
+      setCustomerStatus(data.created ? 'Customer created. Service view is ready.' : 'Existing customer opened. Service view is ready.');
+      await fetchCustomers(customerSearch);
+      setActiveTab('manual');
+    } catch {
+      setCustomerStatus('Could not create customer.');
+    }
+  };
+
+  const openCustomerServiceView = async (customer) => {
+    setCustomerStatus('opening');
+    try {
+      const response = await apiFetch(`/api/customers/sales/${customer.id}/service-context`);
+      const data = await readJson(response);
+      if (!response.ok) {
+        setCustomerStatus(data.error || 'Could not open customer service view.');
+        return;
+      }
+      setSelectedCustomer(data.customer);
+      setManualLead({ ...blankManualLead, farmerName: data.customer.displayName, phone: data.customer.phone, village: data.customer.village || '' });
+      setManualStatus('');
+      setCustomerStatus('');
+      setActiveTab('manual');
+    } catch {
+      setCustomerStatus('Could not open customer service view.');
+    }
+  };
+
   const newLeads = leads.filter((lead) => ['NEW', 'MANUAL_CALL_REQUIRED'].includes(lead.status));
   const navItems = [
     { id: 'process', label: 'Process Leads', icon: 'clipboard', badge: newLeads.length || null },
+    { id: 'customers', label: 'Customers', icon: 'users', badge: selectedCustomer ? '1' : null },
     { id: 'manual', label: 'Enter New Lead', icon: 'plus' },
     { id: 'alerts', label: 'Operational alerts', icon: 'alert', badge: alerts.length || null },
     { id: 'payments', label: 'Payment Collection', icon: 'wallet' },
@@ -129,17 +201,55 @@ function MarketingDashboard() {
         </section>
       )}
 
+      {activeTab === 'customers' && (
+        <section className="lead-workbench">
+          <div className="panel">
+            <div className="panel-header"><div className="panel-header__title"><div className="panel-title-row"><span className="panel-title-icon"><OpsIcon name="users" /></span><h2>Registered customers</h2></div><p>Search by name, phone, village, or district before raising a request during a call.</p></div></div>
+            <div className="panel-body">
+              {customerStatus && !['searching', 'saving', 'opening'].includes(customerStatus) && <div role="status" className={customerStatus.includes('Could') ? 'notice notice--error' : 'notice notice--success'}>{customerStatus}</div>}
+              <form className="row-group" onSubmit={handleCustomerSearch}>
+                <div className="input-group"><label htmlFor="customer-search">Search customers</label><input id="customer-search" type="search" value={customerSearch} onChange={(event) => setCustomerSearch(event.target.value)} placeholder="Name, phone, village or district" /></div>
+                <div className="form-actions"><button type="submit" className="action-btn" disabled={customerStatus === 'searching'}><OpsIcon name="search" /> {customerStatus === 'searching' ? 'Searching…' : 'Search'}</button></div>
+              </form>
+              <div className="data-stack">
+                {!customers.length && <div className="empty-state"><strong>No customers found</strong><span>Create a customer from the call details on the right.</span></div>}
+                {customers.map((customer) => (
+                  <article className="data-row" key={customer.id}>
+                    <div className="data-row__main">
+                      <span className="data-row__title">{customer.displayName}</span>
+                      <span className="data-row__meta">{customer.phone} · {customer.village || 'Village not set'}{customer.district ? `, ${customer.district}` : ''}</span>
+                      <span className={`status-badge status-badge--${customer.hasFarmerPortalUser ? 'success' : 'info'}`}>{customer.hasFarmerPortalUser ? 'Farmer portal user' : 'Staff-confirmed'}</span>
+                    </div>
+                    <button type="button" className="action-btn" onClick={() => void openCustomerServiceView(customer)} disabled={customerStatus === 'opening'}>Open service view</button>
+                  </article>
+                ))}
+              </div>
+            </div>
+          </div>
+          <div className="panel panel--raised">
+            <div className="panel-header"><div className="panel-header__title"><p className="eyebrow">Phone call</p><h2>Create customer</h2><p>No OTP is needed for Sales-assisted internal intake. External Farmer portal access remains a separate verified flow.</p></div></div>
+            <form className="panel-body form-stack" onSubmit={handleCustomerCreate}>
+              <div className="input-group"><label htmlFor="customer-name">Customer / farmer name</label><input id="customer-name" type="text" minLength="2" maxLength="120" value={newCustomer.displayName} onChange={(event) => setNewCustomer({ ...newCustomer, displayName: event.target.value })} required /></div>
+              <div className="input-group"><label htmlFor="customer-phone">Phone number</label><input id="customer-phone" type="tel" minLength="7" maxLength="20" value={newCustomer.phone} onChange={(event) => setNewCustomer({ ...newCustomer, phone: event.target.value.replace(/[^\d+\s().-]/g, '') })} required /></div>
+              <div className="row-group"><div className="input-group"><label htmlFor="customer-village">Village</label><input id="customer-village" type="text" maxLength="120" value={newCustomer.village} onChange={(event) => setNewCustomer({ ...newCustomer, village: event.target.value })} /></div><div className="input-group"><label htmlFor="customer-district">District</label><input id="customer-district" type="text" maxLength="120" value={newCustomer.district} onChange={(event) => setNewCustomer({ ...newCustomer, district: event.target.value })} /></div></div>
+              <div className="input-group"><label htmlFor="customer-language">Preferred language</label><select id="customer-language" value={newCustomer.preferredLanguage} onChange={(event) => setNewCustomer({ ...newCustomer, preferredLanguage: event.target.value })}><option value="ta">Tamil</option><option value="en">English</option><option value="ml">Malayalam</option><option value="hi">Hindi</option></select></div>
+              <div className="form-actions"><button type="submit" className="submit-btn" disabled={customerStatus === 'saving'}>{customerStatus === 'saving' ? 'Saving…' : 'Create and open service view'}</button></div>
+            </form>
+          </div>
+        </section>
+      )}
+
       {activeTab === 'manual' && (
         <section className="panel panel--raised manual-form-panel">
-          <div className="panel-header"><div className="panel-header__title"><div className="panel-title-row"><span className="panel-title-icon"><OpsIcon name="plus" /></span><h2>Enter phone enquiry</h2></div><p>Record the caller’s details and exact farm location. The server applies the same strict service-area decision as the public form.</p></div></div>
+          <div className="panel-header"><div className="panel-header__title"><div className="panel-title-row"><span className="panel-title-icon"><OpsIcon name="plus" /></span><h2>{selectedCustomer ? `Service view: ${selectedCustomer.displayName}` : 'Enter phone enquiry'}</h2></div><p>{selectedCustomer ? 'You are still signed in as Sales. Requests created here are audited as staff-assisted customer work.' : 'Record the caller’s details and exact farm location. The server applies the same strict service-area decision as the public form.'}</p></div>{selectedCustomer && <button type="button" className="action-btn" onClick={() => { setSelectedCustomer(null); setManualLead(blankManualLead); setManualStatus(''); }}>Clear customer</button>}</div>
           <div className="panel-body">
             {manualStatus === 'success' && <div role="status" className="notice notice--success">Lead created and sent through the normal scheduling workflow.</div>}
             {manualStatus === 'manual-queue' && <div role="status" className="notice notice--success">Lead created. Fleet has been notified to schedule it manually.</div>}
             {manualStatus === 'declined' && <div role="status" className="notice notice--warning">This farm is outside the active service area. A contact-only declined enquiry was recorded; no lead or schedule was created.</div>}
             {manualStatus && !['success', 'manual-queue', 'declined', 'processing'].includes(manualStatus) && <div role="alert" className="notice notice--error">{manualStatus}</div>}
             <form className="form-stack" onSubmit={handleManualLeadSubmit}>
-              <div className="input-group"><label htmlFor="manual-farmer-name">Farmer name</label><input id="manual-farmer-name" type="text" minLength="2" maxLength="120" value={manualLead.farmerName} onChange={(event) => setManualLead({ ...manualLead, farmerName: event.target.value })} required /></div>
-              <div className="input-group"><label htmlFor="manual-phone">Phone number</label><input id="manual-phone" type="tel" minLength="7" maxLength="20" value={manualLead.phone} onChange={(event) => setManualLead({ ...manualLead, phone: event.target.value.replace(/[^\d+\s().-]/g, '') })} required /></div>
+              <div className="input-group"><label htmlFor="manual-farmer-name">Farmer name</label><input id="manual-farmer-name" type="text" minLength="2" maxLength="120" value={manualLead.farmerName} onChange={(event) => setManualLead({ ...manualLead, farmerName: event.target.value })} disabled={Boolean(selectedCustomer)} required /></div>
+              <div className="input-group"><label htmlFor="manual-phone">Phone number</label><input id="manual-phone" type="tel" minLength="7" maxLength="20" value={manualLead.phone} onChange={(event) => setManualLead({ ...manualLead, phone: event.target.value.replace(/[^\d+\s().-]/g, '') })} disabled={Boolean(selectedCustomer)} required /></div>
               <div className="input-group"><label htmlFor="manual-location">Village / location description</label><input id="manual-location" type="text" maxLength="500" value={manualLead.village} onChange={(event) => setManualLead({ ...manualLead, village: event.target.value })} required /></div>
               <div className="row-group"><div className="input-group"><label htmlFor="manual-crop">Crop type</label><input id="manual-crop" type="text" maxLength="120" value={manualLead.cropType} onChange={(event) => setManualLead({ ...manualLead, cropType: event.target.value })} required /></div><div className="input-group"><label htmlFor="manual-acres">Estimated acres</label><input id="manual-acres" type="number" min="0.01" step="0.01" value={manualLead.acres} onChange={(event) => setManualLead({ ...manualLead, acres: event.target.value })} required /></div></div>
               <div className="row-group"><div className="input-group"><label htmlFor="manual-latitude">Farm latitude</label><input id="manual-latitude" type="number" min="-90" max="90" step="any" inputMode="decimal" value={manualLead.latitude} onChange={(event) => setManualLead({ ...manualLead, latitude: event.target.value })} required /></div><div className="input-group"><label htmlFor="manual-longitude">Farm longitude</label><input id="manual-longitude" type="number" min="-180" max="180" step="any" inputMode="decimal" value={manualLead.longitude} onChange={(event) => setManualLead({ ...manualLead, longitude: event.target.value })} required /></div></div>

@@ -97,6 +97,7 @@ async function createIntake(input) {
     latitude,
     longitude,
     actorId = null,
+    customerId = null,
   } = input;
   const normalizedName = optionalText(farmerName, 'Farmer name');
   if (!normalizedName || normalizedName.length < 2) {
@@ -123,6 +124,7 @@ async function createIntake(input) {
 
   const status = statusForAcceptedIntake(intakeChannel);
   const lead = await leadRepository.create({
+    customerId,
     farmerName: normalizedName,
     farmerPhone: normalizedPhone,
     acreage: normalizedAcreage,

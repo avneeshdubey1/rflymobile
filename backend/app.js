@@ -46,6 +46,7 @@ function createApp({ config = loadEnvironment() } = {}) {
   app.use('/api/audit-log', require('./routes/auditLogRoutes'));
   app.use('/api/health', require('./routes/healthRoutes'));
   app.use('/api/users', require('./routes/userRoutes'));
+  app.use('/api/customers', require('./routes/customerRoutes'));
   app.use('/api/drones', require('./routes/droneRoutes'));
   app.use('/api/lmvs', require('./routes/lmvRoutes'));
   app.use('/api/system', require('./routes/systemRoutes'));
