@@ -95,6 +95,7 @@ jobs:
           openssl rand -base64 36 > "$secret_dir/db_password"
           openssl rand -base64 48 > "$secret_dir/recovery_hash_secret"
           openssl rand -base64 48 > "$secret_dir/otp_hash_secret"
+          chmod 0444 "$secret_dir/db_password" "$secret_dir/recovery_hash_secret" "$secret_dir/otp_hash_secret"
           cat > "$RUNNER_TEMP/operations-ci.env" <<EOF
           DEPLOYMENT_NAME=operations-ci-${GITHUB_RUN_ID}
           IMAGE_TAG=ci-${GITHUB_SHA}
