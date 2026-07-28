@@ -12,7 +12,29 @@ cleanup() {
   rm -f "$compose_env"
 }
 
-trap cleanup EXIT
+dump_diagnostics() {
+  echo "::group::compose ps"
+  compose ps || true
+  echo "::endgroup::"
+
+  for service in db migrate backend frontend; do
+    echo "::group::compose logs ${service}"
+    compose logs --no-color --tail=200 "$service" || true
+    echo "::endgroup::"
+  done
+}
+
+on_exit() {
+  local status="$?"
+  if [ "$status" -ne 0 ]; then
+    echo "Deployment failed with exit code ${status}. Dumping Compose diagnostics." >&2
+    dump_diagnostics
+  fi
+  cleanup
+  exit "$status"
+}
+
+trap on_exit EXIT
 
 fail() {
   echo "deploy_error=$1" >&2
@@ -76,6 +98,39 @@ wait_for_http() {
   done
 }
 
+wait_for_service_healthy() {
+  local service="$1"
+  local deadline=$((SECONDS + 240))
+  local container_id=""
+  local health_status=""
+
+  until [ -n "$container_id" ]; do
+    container_id="$(compose ps -q "$service" 2>/dev/null || true)"
+    if [ "$SECONDS" -ge "$deadline" ]; then
+      fail "Timed out waiting for ${service} container to exist"
+    fi
+    sleep 2
+  done
+
+  while true; do
+    health_status="$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$container_id" 2>/dev/null || true)"
+    case "$health_status" in
+      healthy|running|exited)
+        echo "Service ${service} status: ${health_status}"
+        return
+        ;;
+      unhealthy)
+        fail "Service ${service} became unhealthy"
+        ;;
+    esac
+
+    if [ "$SECONDS" -ge "$deadline" ]; then
+      fail "Timed out waiting for ${service} to become healthy"
+    fi
+    sleep 5
+  done
+}
+
 require_file "$deploy_env"
 require_file compose.production.yml
 require_file compose.onprem-demo.yml
@@ -120,12 +175,19 @@ started_at="$(date --iso-8601=seconds)"
 
 compose config --quiet
 
-if docker compose up --help | grep -q -- '--wait'; then
-  compose up --detach --build --wait --wait-timeout 240
-else
-  echo "Docker Compose does not advertise --wait support; using health-check polling fallback."
-  compose up --detach --build
-fi
+echo "Building deployment images."
+compose build db migrate backend frontend
+
+echo "Starting database."
+compose up --detach db
+wait_for_service_healthy db
+
+echo "Running database migrations."
+compose rm --force --stop migrate >/dev/null 2>&1 || true
+compose run --rm migrate
+
+echo "Starting backend and frontend."
+compose up --detach --no-deps backend frontend
 
 wait_for_http http://127.0.0.1:8088/healthz
 wait_for_http http://127.0.0.1:8088/api/health
@@ -143,8 +205,8 @@ fi
   echo "- compose_files: compose.production.yml + compose.onprem-demo.yml"
   echo "- deploy_env: ${deploy_env}"
   echo "- host_port: 8088"
-  echo "- checks: compose config, compose up, localhost /healthz, localhost /api/health, srs still running"
-  echo "- rollback: docker compose --env-file ${deploy_env} -f compose.production.yml -f compose.onprem-demo.yml down"
+  echo "- checks: compose config, build, db health, migration, localhost /healthz, localhost /api/health, srs still running"
+  echo "- rollback: docker compose --env-file ${compose_env} -f compose.production.yml -f compose.onprem-demo.yml down"
 } >> "$deploy_changelog"
 
 echo "On-prem deployment completed for ${source_sha}."
