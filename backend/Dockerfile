@@ -21,12 +21,12 @@ ENV NODE_ENV=production \
     PORT=5000
 WORKDIR /app
 RUN apt-get update \
-    && apt-get install --yes --no-install-recommends ca-certificates openssl tini \
+    && apt-get install --yes --no-install-recommends ca-certificates openssl \
     && rm -rf /var/lib/apt/lists/*
 COPY docker/entrypoint.sh /usr/local/bin/operations-entrypoint
 RUN chmod 0555 /usr/local/bin/operations-entrypoint \
     && chown node:node /app
-ENTRYPOINT ["/usr/bin/tini", "--", "/usr/local/bin/operations-entrypoint"]
+ENTRYPOINT ["/usr/local/bin/operations-entrypoint"]
 
 FROM runtime-base AS runtime
 COPY --from=production-dependencies --chown=node:node /workspace/node_modules ./node_modules
