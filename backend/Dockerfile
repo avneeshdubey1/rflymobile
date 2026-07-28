@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 
-ARG NODE_IMAGE=node:24-bookworm-slim
+ARG NODE_IMAGE=node:24-alpine
 
 FROM ${NODE_IMAGE} AS production-dependencies
 WORKDIR /workspace
@@ -20,9 +20,7 @@ FROM ${NODE_IMAGE} AS runtime-base
 ENV NODE_ENV=production \
     PORT=5000
 WORKDIR /app
-RUN apt-get update \
-    && apt-get install --yes --no-install-recommends ca-certificates openssl \
-    && rm -rf /var/lib/apt/lists/*
+RUN apk add --no-cache ca-certificates openssl
 COPY docker/entrypoint.sh /usr/local/bin/operations-entrypoint
 RUN chmod 0444 /usr/local/bin/operations-entrypoint \
     && chown node:node /app
