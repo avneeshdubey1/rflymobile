@@ -77,7 +77,7 @@ stage_secret_file() {
 
   rm -f "$target_path" || fail "Could not remove previous staged secret file for $var_name"
   cp "$source_path" "$target_path" || fail "Could not stage secret file from $var_name into Docker-visible runner workspace"
-  chmod 0400 "$target_path" || fail "Could not secure staged secret file for $var_name"
+  chmod 0444 "$target_path" || fail "Could not secure staged secret file for $var_name"
   [ -r "$target_path" ] || fail "Staged secret file is not readable: $target_path"
 
   rewrite_env_value "$var_name" "$target_path"
