@@ -89,6 +89,9 @@ test('Sales customer lookup APIs are denied to non-Sales roles', async () => {
 
   const farmer = await request('/api/customers/sales', { authorization: farmerAuthorization });
   assert.equal(farmer.response.status, 403);
+
+  const deniedPortalEnable = await request('/api/customers/sales/missing/portal-access', { method: 'POST', authorization: fleetAuthorization });
+  assert.equal(deniedPortalEnable.response.status, 403);
 });
 
 test('Sales can create and search staff-confirmed customers without issuing Farmer sessions', async () => {
@@ -147,6 +150,83 @@ test('existing Farmer users are linked for Sales service view without impersonat
   const audit = await prisma.auditLog.findMany({ where: { entityType: 'Customer', entityId: linked.data.customer.id } });
   assert.equal(audit.some((entry) => entry.action === 'SALES_SERVICE_VIEW_OPENED'), true);
   assert.equal(await prisma.authSession.count({ where: { userId: farmerUser.id, revokedAt: null } }), 0);
+});
+
+test('Sales can enable Farmer portal access without impersonating the farmer', async () => {
+  const created = await request('/api/customers/sales', {
+    method: 'POST',
+    authorization: salesAuthorization,
+    body: {
+      displayName: 'Phase 16 Portal Enable',
+      phone: '9333333333',
+      village: 'Portal Village',
+      district: 'Portal District',
+      preferredLanguage: 'en',
+    },
+  });
+  assert.equal(created.response.status, 201, JSON.stringify(created.data));
+  ids.customers.push(created.data.customer.id);
+
+  const enabled = await request(`/api/customers/sales/${created.data.customer.id}/portal-access`, {
+    method: 'POST',
+    authorization: salesAuthorization,
+  });
+  assert.equal(enabled.response.status, 201, JSON.stringify(enabled.data));
+  assert.equal(enabled.data.createdUser, true);
+  assert.equal(enabled.data.customer.hasFarmerPortalUser, true);
+  assert.ok(enabled.data.customer.farmerPortalUserId);
+  assert.equal(Object.hasOwn(enabled.data.customer, 'passwordHash'), false);
+  ids.users.push(enabled.data.customer.farmerPortalUserId);
+
+  const farmer = await prisma.user.findUnique({ where: { id: enabled.data.customer.farmerPortalUserId } });
+  assert.equal(farmer.role, 'FARMER');
+  assert.equal(farmer.phone, '+919333333333');
+  assert.equal(farmer.email, `farmer-${created.data.customer.id}@farmer.local`);
+  assert.equal(farmer.phoneVerifiedAt, null);
+  assert.equal(await prisma.authSession.count({ where: { userId: farmer.id, revokedAt: null } }), 0);
+
+  const repeated = await request(`/api/customers/sales/${created.data.customer.id}/portal-access`, {
+    method: 'POST',
+    authorization: adminAuthorization,
+  });
+  assert.equal(repeated.response.status, 200, JSON.stringify(repeated.data));
+  assert.equal(repeated.data.createdUser, false);
+  assert.equal(repeated.data.customer.farmerPortalUserId, farmer.id);
+
+  const audit = await prisma.auditLog.findMany({ where: { entityType: 'Customer', entityId: created.data.customer.id } });
+  assert.equal(audit.some((entry) => entry.action === 'FARMER_PORTAL_USER_CREATED'), true);
+  assert.equal(audit.some((entry) => entry.action === 'FARMER_PORTAL_USER_LINKED'), true);
+  assert.equal(JSON.stringify(audit).match(/9333333333|password|otp|latitude|longitude/i), null);
+});
+
+test('portal access is refused when customer phone belongs to a non-Farmer account', async () => {
+  const business = await prisma.user.create({
+    data: {
+      name: 'Phase 16 Phone Conflict',
+      email: 'phase16-phone-conflict@example.test',
+      phone: '+919333333334',
+      passwordHash: 'test',
+      role: 'BUSINESS',
+      active: true,
+    },
+  });
+  ids.users.push(business.id);
+  const created = await request('/api/customers/sales', {
+    method: 'POST',
+    authorization: salesAuthorization,
+    body: { displayName: 'Phase 16 Conflict Customer', phone: business.phone },
+  });
+  assert.equal(created.response.status, 201, JSON.stringify(created.data));
+  ids.customers.push(created.data.customer.id);
+
+  const enabled = await request(`/api/customers/sales/${created.data.customer.id}/portal-access`, {
+    method: 'POST',
+    authorization: salesAuthorization,
+  });
+  assert.equal(enabled.response.status, 409, JSON.stringify(enabled.data));
+  assert.equal(enabled.data.code, 'PORTAL_PHONE_ACCOUNT_CONFLICT');
+  const customer = await prisma.customer.findUnique({ where: { id: created.data.customer.id } });
+  assert.equal(customer.farmerUserId, null);
 });
 
 test('Sales service view creates customer-linked manual leads and keeps strict geofence decline behavior', async () => {

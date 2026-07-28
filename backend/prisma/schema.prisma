@@ -150,6 +150,7 @@ model User {
   recoveryChallenges   PasswordRecoveryChallenge[]
   businessMemberships  BusinessMembership[]
   phoneVerificationChallenges PhoneVerificationChallenge[]
+  customerProfile      Customer?          @relation("CustomerFarmerUser")
 }
 
 model Customer {
@@ -167,6 +168,7 @@ model Customer {
 
   leads             Lead[]
   phoneVerificationChallenges PhoneVerificationChallenge[]
+  farmerPortalUser  User?     @relation("CustomerFarmerUser", fields: [farmerUserId], references: [id], onDelete: SetNull)
 
   @@index([displayName])
   @@index([createdAt])

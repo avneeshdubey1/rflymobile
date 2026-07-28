@@ -16,6 +16,19 @@ const includeRecentLeads = {
   },
 };
 
+const includeRecentLeadsAndPortalUser = {
+  ...includeRecentLeads,
+  farmerPortalUser: {
+    select: {
+      id: true,
+      role: true,
+      active: true,
+      archivedAt: true,
+      phone: true,
+    },
+  },
+};
+
 function searchableWhere(query) {
   const value = String(query || '').trim();
   if (!value) return {};
@@ -41,5 +54,48 @@ module.exports = {
     take,
   }),
   update: (id, data) => prisma.customer.update({ where: { id }, data, include: includeRecentLeads }),
+  enableFarmerPortalAccess: (customerId, createUserData) => prisma.$transaction(async (transaction) => {
+    const customer = await transaction.customer.findUnique({
+      where: { id: customerId },
+      include: includeRecentLeadsAndPortalUser,
+    });
+    if (!customer) return null;
+    if (customer.farmerUserId) return { customer, createdUser: false, linkedExistingUser: true };
+
+    const existingUser = await transaction.user.findUnique({
+      where: { phone: customer.phone },
+      select: {
+        id: true,
+        role: true,
+        active: true,
+        archivedAt: true,
+      },
+    });
+    if (existingUser) {
+      if (existingUser.role !== 'FARMER' || !existingUser.active || existingUser.archivedAt) {
+        const error = new Error('This phone number belongs to an account that cannot be linked as a Farmer portal user');
+        error.code = 'PORTAL_PHONE_ACCOUNT_CONFLICT';
+        error.status = 409;
+        throw error;
+      }
+      const updated = await transaction.customer.update({
+        where: { id: customerId },
+        data: { farmerUserId: existingUser.id },
+        include: includeRecentLeadsAndPortalUser,
+      });
+      return { customer: updated, createdUser: false, linkedExistingUser: true };
+    }
+
+    const user = await transaction.user.create({
+      data: createUserData,
+      select: { id: true },
+    });
+    const updated = await transaction.customer.update({
+      where: { id: customerId },
+      data: { farmerUserId: user.id },
+      include: includeRecentLeadsAndPortalUser,
+    });
+    return { customer: updated, createdUser: true, linkedExistingUser: false };
+  }),
   deleteMany: (where = {}) => prisma.customer.deleteMany({ where }),
 };

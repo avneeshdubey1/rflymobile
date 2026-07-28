@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const customerRepository = require('../src/repositories/customerRepository');
 const userRepository = require('../src/repositories/userRepository');
 const auditLogService = require('./auditLogService');
+const { hashPassword } = require('./passwordService');
 const { normalizePhone } = require('./identityService');
 const i18nService = require('./i18nService');
 
@@ -15,6 +16,7 @@ function safeCustomer(customer) {
     village: customer.village,
     district: customer.district,
     hasFarmerPortalUser: Boolean(customer.farmerUserId),
+    farmerPortalUserId: customer.farmerUserId || null,
     staffConfirmedAt: customer.staffConfirmedAt,
     createdAt: customer.createdAt,
     updatedAt: customer.updatedAt,
@@ -126,8 +128,58 @@ async function openServiceContext(customerId, actorId) {
   return customer;
 }
 
+function localFarmerEmail(customer) {
+  return `farmer-${customer.id}@farmer.local`;
+}
+
+async function enableFarmerPortalAccess(customerId, actorId) {
+  const customer = await customerRepository.findById(customerId);
+  if (!customer) {
+    const error = new Error('Customer not found');
+    error.status = 404;
+    throw error;
+  }
+  const passwordHash = await hashPassword(crypto.randomBytes(48).toString('base64url'));
+  const preferredLanguage = i18nService.normalizeLanguage(customer.preferredLanguage || 'ta');
+  const result = await customerRepository.enableFarmerPortalAccess(customer.id, {
+    name: customer.displayName,
+    email: localFarmerEmail(customer),
+    phone: customer.phone,
+    passwordHash,
+    role: 'FARMER',
+    preferredLanguage,
+    village: customer.village || null,
+    district: customer.district || null,
+    active: true,
+  });
+  if (!result) {
+    const error = new Error('Customer not found');
+    error.status = 404;
+    throw error;
+  }
+  await auditLogService.record({
+    entityType: 'Customer',
+    entityId: customer.id,
+    action: result.createdUser ? 'FARMER_PORTAL_USER_CREATED' : 'FARMER_PORTAL_USER_LINKED',
+    actorId,
+    afterState: {
+      status: 'PORTAL_ACCESS_ENABLED',
+      farmerUserId: result.customer.farmerUserId,
+      createdUser: result.createdUser,
+      linkedExistingUser: result.linkedExistingUser,
+      phoneFingerprint: crypto.createHash('sha256').update(customer.phone).digest('hex').slice(0, 12),
+    },
+  });
+  return {
+    customer: safeCustomer(result.customer),
+    createdUser: result.createdUser,
+    linkedExistingUser: result.linkedExistingUser,
+  };
+}
+
 module.exports = {
   createForSales,
+  enableFarmerPortalAccess,
   ensureForFarmerUser,
   getServiceContext,
   openServiceContext,

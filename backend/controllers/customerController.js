@@ -31,6 +31,18 @@ exports.serviceContext = async (req, res) => {
   }
 };
 
+exports.enablePortalAccess = async (req, res) => {
+  try {
+    const result = await customerService.enableFarmerPortalAccess(req.params.customerId, req.auth.userId);
+    return res.status(result.createdUser ? 201 : 200).json({ success: true, ...result });
+  } catch (error) {
+    return res.status(error.status || 500).json({
+      error: error.status === 404 || error.status === 409 ? error.message : 'Failed to enable farmer portal access',
+      ...(error.code ? { code: error.code } : {}),
+    });
+  }
+};
+
 exports.createLeadForCustomer = async (req, res) => {
   try {
     const customer = await customerService.getServiceContext(req.params.customerId);

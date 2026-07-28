@@ -173,6 +173,25 @@ function MarketingDashboard() {
     }
   };
 
+  const enableFarmerPortalAccess = async (customer) => {
+    if (!customer || customer.hasFarmerPortalUser) return;
+    setCustomerStatus('enabling');
+    try {
+      const response = await apiFetch(`/api/customers/sales/${customer.id}/portal-access`, { method: 'POST' });
+      const data = await readJson(response);
+      if (!response.ok) {
+        setCustomerStatus(data.error || 'Could not enable Farmer portal access.');
+        return;
+      }
+      setCustomers((current) => current.map((entry) => (entry.id === data.customer.id ? data.customer : entry)));
+      if (selectedCustomer?.id === data.customer.id) setSelectedCustomer(data.customer);
+      setCustomerStatus(data.createdUser ? 'Farmer portal access enabled. The farmer can now log in with OTP.' : 'Farmer portal access is already linked.');
+      await fetchCustomers(customerSearch);
+    } catch {
+      setCustomerStatus('Could not enable Farmer portal access.');
+    }
+  };
+
   const newLeads = leads.filter((lead) => ['NEW', 'MANUAL_CALL_REQUIRED'].includes(lead.status));
   const navItems = [
     { id: 'process', label: 'Process Leads', icon: 'clipboard', badge: newLeads.length || null },
@@ -206,7 +225,7 @@ function MarketingDashboard() {
           <div className="panel">
             <div className="panel-header"><div className="panel-header__title"><div className="panel-title-row"><span className="panel-title-icon"><OpsIcon name="users" /></span><h2>Registered customers</h2></div><p>Search by name, phone, village, or district before raising a request during a call.</p></div></div>
             <div className="panel-body">
-              {customerStatus && !['searching', 'saving', 'opening'].includes(customerStatus) && <div role="status" className={customerStatus.includes('Could') ? 'notice notice--error' : 'notice notice--success'}>{customerStatus}</div>}
+              {customerStatus && !['searching', 'saving', 'opening', 'enabling'].includes(customerStatus) && <div role="status" className={customerStatus.includes('Could') ? 'notice notice--error' : 'notice notice--success'}>{customerStatus}</div>}
               <form className="row-group" onSubmit={handleCustomerSearch}>
                 <div className="input-group"><label htmlFor="customer-search">Search customers</label><input id="customer-search" type="search" value={customerSearch} onChange={(event) => setCustomerSearch(event.target.value)} placeholder="Name, phone, village or district" /></div>
                 <div className="form-actions"><button type="submit" className="action-btn" disabled={customerStatus === 'searching'}><OpsIcon name="search" /> {customerStatus === 'searching' ? 'Searching…' : 'Search'}</button></div>
@@ -220,7 +239,10 @@ function MarketingDashboard() {
                       <span className="data-row__meta">{customer.phone} · {customer.village || 'Village not set'}{customer.district ? `, ${customer.district}` : ''}</span>
                       <span className={`status-badge status-badge--${customer.hasFarmerPortalUser ? 'success' : 'info'}`}>{customer.hasFarmerPortalUser ? 'Farmer portal user' : 'Staff-confirmed'}</span>
                     </div>
-                    <button type="button" className="action-btn" onClick={() => void openCustomerServiceView(customer)} disabled={customerStatus === 'opening'}>Open service view</button>
+                    <div className="data-row__actions">
+                      {!customer.hasFarmerPortalUser && <button type="button" className="action-btn" onClick={() => void enableFarmerPortalAccess(customer)} disabled={customerStatus === 'enabling'}>{customerStatus === 'enabling' ? 'Enabling...' : 'Enable portal'}</button>}
+                      <button type="button" className="action-btn" onClick={() => void openCustomerServiceView(customer)} disabled={customerStatus === 'opening'}>Open service view</button>
+                    </div>
                   </article>
                 ))}
               </div>
@@ -243,6 +265,12 @@ function MarketingDashboard() {
         <section className="panel panel--raised manual-form-panel">
           <div className="panel-header"><div className="panel-header__title"><div className="panel-title-row"><span className="panel-title-icon"><OpsIcon name="plus" /></span><h2>{selectedCustomer ? `Service view: ${selectedCustomer.displayName}` : 'Enter phone enquiry'}</h2></div><p>{selectedCustomer ? 'You are still signed in as Sales. Requests created here are audited as staff-assisted customer work.' : 'Record the caller’s details and exact farm location. The server applies the same strict service-area decision as the public form.'}</p></div>{selectedCustomer && <button type="button" className="action-btn" onClick={() => { setSelectedCustomer(null); setManualLead(blankManualLead); setManualStatus(''); }}>Clear customer</button>}</div>
           <div className="panel-body">
+            {selectedCustomer && (
+              <div className="notice notice--info">
+                <span>{selectedCustomer.hasFarmerPortalUser ? 'Farmer portal access is enabled. The farmer can log in with OTP.' : 'Portal access is not enabled for this farmer yet.'}</span>
+                {!selectedCustomer.hasFarmerPortalUser && <button type="button" className="action-btn" onClick={() => void enableFarmerPortalAccess(selectedCustomer)} disabled={customerStatus === 'enabling'}>{customerStatus === 'enabling' ? 'Enabling...' : 'Enable portal access'}</button>}
+              </div>
+            )}
             {manualStatus === 'success' && <div role="status" className="notice notice--success">Lead created and sent through the normal scheduling workflow.</div>}
             {manualStatus === 'manual-queue' && <div role="status" className="notice notice--success">Lead created. Fleet has been notified to schedule it manually.</div>}
             {manualStatus === 'declined' && <div role="status" className="notice notice--warning">This farm is outside the active service area. A contact-only declined enquiry was recorded; no lead or schedule was created.</div>}
