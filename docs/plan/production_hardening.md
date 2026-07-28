@@ -1,7 +1,7 @@
 # Production Hardening Register
 
 **Status:** mandatory pre-production work; the application is not production-ready.
-**Last reviewed:** July 26, 2026
+**Last reviewed:** July 28, 2026
 **Evidence rule:** a checkbox is complete only after test, staging, or operational evidence proves it. Local tests and Compose rendering are not production approval.
 
 ## Locked product and deployment decisions
@@ -113,3 +113,4 @@ These results prove only the current local baseline. Phase 1 source implementati
 | July 26, 2026 | Phase 1 strict-intake source implementation | Prisma validation, syntax checks, locale parsing, frontend lint/build, and production Compose rendering | Passed locally; disposable database/migration/browser and staging evidence remain pending because Docker Desktop was unavailable. Not production approval. |
 | July 26, 2026 | Phase 1 strict-intake evidence replay | Docker `rfly-postgres`, disposable `rfly_phase1_migration_20260726` migration replay, backend suite, browser audit | Passed locally: 11/11 migrations applied from empty database, backend 80/80, browser audit 30/30 after allowing expected strict-decline 422 console noise in the audit harness. Staging and production gates remain open. |
 | July 26, 2026 | Lightweight LMV fleet and scheduling | Temporary Docker PostgreSQL `rfly-postgres-lmv-test`, Prisma validation, backend suite, frontend lint/build, browser audit | Passed locally: backend 83/83 and browser audit 30/30. Existing `rfly-postgres` container was unavailable because Docker Desktop could not start its old bind mount. Staging and client LMV master-data gates remain open. |
+| July 28, 2026 | CX-01 phone-first Sales/customer mapping | Canonical SPEC, placeholders, delivery plan, and atomic work item review | Docs-only mapping completed. No code behaviour changed. Sales-assisted farmer work must preserve customer self-request, avoid Farmer-session impersonation, and audit staff-scoped actions. |

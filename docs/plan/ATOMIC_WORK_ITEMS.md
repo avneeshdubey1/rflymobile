@@ -1,7 +1,7 @@
 # Atomic Delivery Work Items
 
 **Status:** canonical execution index
-**Last reviewed:** July 26, 2026
+**Last reviewed:** July 28, 2026
 **Purpose:** split the remaining delivery plan into small, bounded handoffs suitable for a smaller coding agent. This file does not change the approved product specification or authorize production deployment.
 
 ## How to assign one card
@@ -85,8 +85,8 @@ All code packages + named owners ─> client acceptance ─> production promotio
 | ID | Small outcome | Depends / stop condition | Done when |
 |---|---|---|---|
 | CX-01 | Map the current Sales intake, Farmer, and Business identity paths; document the smallest safe replacement seams. | — | No code change; impacted routes/models are listed. |
-| CX-02 | Add canonical-phone customer lookup service for Sales intake only. | CX-01 | Lookup cannot expose unrelated customer records. |
-| CX-03 | Add Sales UI lookup/confirmation and clear service-area result. | CX-02 | Phone-first workflow works without requiring a portal account. |
+| CX-02 | Add canonical-phone customer lookup/create service for Sales intake only. Preserve public/Farmer request creation. Sales-created customer records are staff-confirmed for internal service handling and do not grant external portal access. | CX-01 | Lookup cannot expose unrelated customer records; Sales can create/find a customer by canonical phone without OTP and every mutation is audited. |
+| CX-03 | Add Sales UI searchable customer table, create-customer flow, staff-scoped Farmer Service View entry, and clear service-area result. | CX-02 | Phone-first workflow works without requiring a portal account; Sales remains in the employee session and cannot receive a Farmer session. |
 | PORTAL-01 | Record approved Farmer linking and Business membership rules. | G-03 | Stop if the client has not chosen the rule. |
 | PORTAL-02 | Add minimal explicit portal-link/membership data model and migration. | PORTAL-01 | Schema is scoped to record linkage, not self-registration. |
 | PORTAL-03 | Add repositories and server filters for Farmer-owned request/invoice/settlement reads. | PORTAL-02 | Cross-customer access tests fail safely. |

@@ -1,7 +1,7 @@
 # Production Target Technical Specification
 
 **Status:** approved future-state contract
-**Last reviewed:** July 26, 2026
+**Last reviewed:** July 28, 2026
 **Important:** this specification supersedes legacy product guidance. Phase 1 source changes retire the legacy intake paths and add strict intake enforcement, but the migration and staging acceptance evidence remain required before any production claim.
 
 ## 1. Scope and baseline
@@ -62,6 +62,28 @@ Names below express the required business relationships. Final Prisma naming may
 - BusinessMembership: explicit business-user-to-organization membership and read permission.
 - ServiceRequest/Lead: an accepted in-area request, linked to a customer and optionally business organization.
 - DeclinedEnquiry: a separate, non-schedulable contact-only record for out-of-area intake.
+
+#### CX-01 current-state map and replacement seams
+
+Current source is still lead-centric:
+
+- `Lead` stores `farmerName` and `farmerPhone` directly, with no canonical Customer table.
+- Sales phone intake enters a `MANUAL_SALES` Lead through `POST /api/leads/ingest/manual`.
+- Public booking enters a `WEBSITE` Lead through `POST /api/leads/ingest/website`.
+- Authenticated Farmer booking enters through `POST /api/leads/new` and uses the signed-in Farmer user's name and phone.
+- Farmer portal login and signup currently use Firebase phone proof in `POST /api/auth/farmer/login` and `POST /api/auth/farmer/complete-signup`.
+- Business login and recovery currently use the Business user role paths under `/api/auth/business/*`; organization membership/linkage is not yet modelled.
+- Sales UI currently has a manual phone-enquiry form in `frontend/src/pages/MarketingDashboard.jsx`, but no searchable registered-customer table or staff-scoped farmer service context.
+
+The smallest safe replacement seam is:
+
+1. Add a canonical-phone Customer lookup/create service for Sales only.
+2. Let Sales search registered customers by safe identifiers and create a staff-confirmed Customer/Farmer record during a call without OTP.
+3. Preserve the customer's own public/Farmer request option; do not remove the Farmer request surface.
+4. Add a staff-scoped "Farmer Service View" that lets Sales raise a request on behalf of a selected customer while retaining the Sales user's own session, role, CSRF, and audit identity.
+5. Do not issue a real Farmer session to Sales and do not silently impersonate the Farmer. Every staff-assisted action records the Sales actor, selected customer, and safe reason/context.
+6. Continue strict service-area validation for Sales-assisted, public website, and authenticated Farmer-created requests.
+7. Keep OTP out of this Sales-assisted path. OTP is required only when the Farmer is proving phone possession for their own external portal access or for an approved phone-link/invitation flow.
 
 DeclinedEnquiry may store only contact name, canonical phone, source channel, generic decline reason, created time, expiry time, and non-sensitive staff/system identifiers. It must not store the rejected address, coordinates, distance, acreage, route, appeal, payment, or assignment. A daily idempotent purge removes it after 30 days.
 

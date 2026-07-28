@@ -1,7 +1,7 @@
 # Production Readiness Delivery Plan
 
 **Status:** approved planning baseline
-**Last reviewed:** July 26, 2026
+**Last reviewed:** July 28, 2026
 **Plan status:** Phase 1 strict-intake source implementation and local evidence replay are recorded in the July 26 history entries; all later packages and production acceptance remain pending. This document remains the planning contract, not production approval.
 
 Use [ATOMIC_WORK_ITEMS.md](ATOMIC_WORK_ITEMS.md) to select one small, ordered implementation handoff. It refines this plan's delivery packages; it does not authorize skipped gates or change the approved product contract.
@@ -17,7 +17,7 @@ The codebase is not yet at that target. Phase 1 source removes Google Form/surve
 - Sales phone intake is primary; the public booking form is secondary.
 - Google Form/surveyor intake is retired.
 - Every intake channel uses strict service-area validation. Out-of-area requests become 30-day contact-only declined enquiries; appeals and transport-fee negotiation are retired.
-- Farmer and Business accounts are optional, read-only status portals. Business accounts represent farm groups or companies with explicit record linkage.
+- Farmer and Business accounts are optional, read-only status portals. Business accounts represent farm groups or companies with explicit record linkage. The Farmer's own request option remains available; phone-first means Sales can also create/find the customer and raise a request during a call.
 - A job reserves one pilot, one drone, and one LMV. The pilot is the LMV driver. The first LMV release stays lightweight: registration, optional label, centre, status, capacity placeholder, and notes. Vehicle capacity is recorded for future use, but the initial rule is one crew per LMV.
 - Operational completion immediately releases drone and LMV resources. Billing begins afterward and cannot block fleet reuse.
 - Billing is vendor-neutral. Sales approves final acreage and releases an internal invoice draft; Admin can correct or oversee it.
@@ -95,6 +95,8 @@ Research sources: [Firebase phone authentication](https://firebase.google.com/do
 ### 4. Phone-first customer experience, internal OTP, and communications
 
 - Improve Sales call intake with customer lookup, canonical phone identity, location capture, and clear service-area result.
+- Add a Sales-only searchable registered-customer table and a staff-scoped Farmer Service View. If the farmer already exists, Sales opens that service view and raises the request on behalf of the farmer; if the farmer does not exist, Sales can create a staff-confirmed customer/Farmer record during the call without OTP.
+- Keep Sales in the employee session while acting for a selected customer. Do not issue a Farmer session to Sales, silently impersonate the Farmer, or remove the customer's own public/Farmer request flow.
 - Implement isolated Farmer and Business status portal reads.
 - Add server-owned purpose-bound OTP challenges and delivery-attempt records for Farmer portal authentication, approved Farmer linking/invitation, and Business recovery. Preserve opaque application sessions; do not accept Firebase tokens after cutover.
 - Add the provider-neutral delivery port, disabled/test adapters, configuration validation, signed idempotent callback boundary, provider-budget visibility, and staff follow-up tasks. After client confirmation, add the selected WhatsApp and/or SMS adapters; do not enable a real provider before its account/template/eligibility gate passes.
