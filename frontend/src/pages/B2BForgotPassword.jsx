@@ -1,10 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { signInWithPhoneNumber, signOut } from 'firebase/auth';
 import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
-import { auth, authReady } from '../lib/firebase';
-import { clearPhoneRecaptcha, getPhoneRecaptcha, normalizeIndianPhone } from '../lib/firebasePhone';
 import OtpInput from '../components/OtpInput';
 import LanguageSelector from '../components/LanguageSelector';
 import { apiFetch, readJson } from '../services/apiClient';
@@ -15,55 +12,31 @@ export default function B2BForgotPassword() {
   const [step, setStep] = useState(1);
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
-  const [confirmation, setConfirmation] = useState(null);
+  const [challengeId, setChallengeId] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [recovery, setRecovery] = useState({ challengeId: '', resetToken: '' });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-
-  useEffect(() => () => clearPhoneRecaptcha(), []);
 
   const sendOtp = async (event) => {
     event.preventDefault();
     setBusy(true);
     setError('');
     try {
-      await authReady;
-      const result = await signInWithPhoneNumber(auth, normalizeIndianPhone(phone), getPhoneRecaptcha());
-      setConfirmation(result);
-      setStep(2);
-    } catch {
-      clearPhoneRecaptcha();
-      setError(t('unable_to_send_otp', 'Unable to send OTP. Please check the number and try again.'));
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const verifyOtp = async (event) => {
-    event.preventDefault();
-    setBusy(true);
-    setError('');
-    try {
-      const credential = await confirmation.confirm(otp.trim());
-      const idToken = await credential.user.getIdToken();
-      const response = await apiFetch('/api/auth/business/recovery/verify-phone', {
+      const response = await apiFetch('/api/auth/business/recovery/request-otp', {
         method: 'POST',
         authFailure: 'ignore',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ idToken }),
+        body: JSON.stringify({ phone }),
       });
       const data = await readJson(response);
-      if (!response.ok || !data.success || !data.challengeId || !data.resetToken) {
-        throw new Error('PHONE_RECOVERY_FAILED');
-      }
-      setRecovery({ challengeId: data.challengeId, resetToken: data.resetToken });
-      setStep(3);
-    } catch {
-      setError(t('otp_verification_failed', 'OTP verification failed. Please try again.'));
+      if (!response.ok || !data.challengeId) throw new Error(data.error || 'OTP request failed.');
+      setChallengeId(data.challengeId);
+      setOtp('');
+      setStep(2);
+    } catch (failure) {
+      setError(failure?.message || t('unable_to_send_otp', 'Unable to send OTP. Please check the number and try again.'));
     } finally {
-      if (auth?.currentUser) await signOut(auth).catch(() => undefined);
       setBusy(false);
     }
   };
@@ -81,7 +54,7 @@ export default function B2BForgotPassword() {
         method: 'POST',
         authFailure: 'ignore',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...recovery, newPassword }),
+        body: JSON.stringify({ otpChallengeId: challengeId, code: otp.trim(), newPassword }),
       });
       const data = await readJson(response);
       if (!response.ok || !data.success) throw new Error(data.error || t('recovery_complete_failed', 'Failed to reset password.'));
@@ -96,11 +69,11 @@ export default function B2BForgotPassword() {
 
   const useAnotherNumber = () => {
     setStep(1);
-    setConfirmation(null);
+    setChallengeId('');
     setOtp('');
-    setRecovery({ challengeId: '', resetToken: '' });
+    setNewPassword('');
+    setConfirmPassword('');
     setError('');
-    clearPhoneRecaptcha();
   };
 
   return (
@@ -128,8 +101,7 @@ export default function B2BForgotPassword() {
                 <label htmlFor="login-phone">{t('mobile_number', 'Mobile number')}</label>
                 <input id="login-phone" inputMode="numeric" autoComplete="tel" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="9876543210" maxLength="16" required disabled={busy} />
               </div>
-              <div id="recaptcha-container" />
-              <button className="submit-btn login-submit" disabled={busy}>{busy ? t('sending_otp', 'Sending OTP…') : t('send_otp', 'Send OTP')}</button>
+              <button className="submit-btn login-submit" disabled={busy}>{busy ? t('sending_otp', 'Sending OTP...') : t('send_otp', 'Send OTP')}</button>
             </form>
           </>}
 
@@ -137,31 +109,22 @@ export default function B2BForgotPassword() {
             <h2>{t('enter_otp', 'Enter OTP')}</h2>
             <p className="subtitle" style={{ marginBottom: '1.6rem' }}>{t('otp_sent_to', 'We sent a 6-digit code to')} {phone}</p>
             {error && <div className="alert error" role="alert">{error}</div>}
-            <form className="login-form" onSubmit={verifyOtp}>
+            <form className="login-form" onSubmit={resetPassword}>
               <div className="input-group">
                 <label>{t('otp_label', 'OTP Code')}</label>
                 <OtpInput value={otp} onChange={setOtp} length={6} disabled={busy} label={t('otp_label', 'OTP Code')} />
               </div>
-              <button className="submit-btn login-submit" disabled={busy || otp.length !== 6}>{busy ? t('verifying', 'Verifying…') : t('verify', 'Verify')}</button>
-              <button type="button" className="login-btn button-wide" style={{ marginTop: '0.65rem' }} onClick={useAnotherNumber} disabled={busy}>{t('use_another_number', 'Use another number')}</button>
-            </form>
-          </>}
-
-          {step === 3 && <>
-            <h2>{t('set_new_password', 'Set new password')}</h2>
-            <p className="subtitle" style={{ marginBottom: '1.6rem' }}>{t('identity_verified_password', 'Your identity has been verified. You can now set a new password.')}</p>
-            {error && <div className="alert error" role="alert">{error}</div>}
-            <form className="login-form" onSubmit={resetPassword}>
               <div className="input-group">
                 <label htmlFor="new-password">{t('new_password', 'New Password')}</label>
                 <input id="new-password" type="password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} placeholder={t('enter_new_password', 'Enter new password')} required disabled={busy} minLength="12" maxLength="128" autoComplete="new-password" />
-                <span className="field-hint">{t('password_length_hint', 'Use 12–128 characters.')}</span>
+                <span className="field-hint">{t('password_length_hint', 'Use 12-128 characters.')}</span>
               </div>
               <div className="input-group">
                 <label htmlFor="confirm-password">{t('confirm_password', 'Confirm new password')}</label>
                 <input id="confirm-password" type="password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} required disabled={busy} minLength="12" maxLength="128" autoComplete="new-password" />
               </div>
-              <button className="submit-btn login-submit" disabled={busy || !newPassword || !recovery.resetToken}>{busy ? t('updating', 'Updating…') : t('reset_password', 'Reset Password')}</button>
+              <button className="submit-btn login-submit" disabled={busy || otp.length !== 6 || !newPassword}>{busy ? t('updating', 'Updating...') : t('reset_password', 'Reset Password')}</button>
+              <button type="button" className="login-btn button-wide" style={{ marginTop: '0.65rem' }} onClick={useAnotherNumber} disabled={busy}>{t('use_another_number', 'Use another number')}</button>
             </form>
           </>}
 

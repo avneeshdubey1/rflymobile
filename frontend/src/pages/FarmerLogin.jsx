@@ -1,37 +1,38 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { signInWithPhoneNumber, signOut } from 'firebase/auth';
-import { auth, authReady } from '../lib/firebase';
-import { clearPhoneRecaptcha, getPhoneRecaptcha, normalizeIndianPhone } from '../lib/firebasePhone';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/useAuth';
 import OtpInput from '../components/OtpInput';
-import { useTranslation } from 'react-i18next';
-
 import LanguageSelector from '../components/LanguageSelector';
 import { apiFetch, readJson } from '../services/apiClient';
 
 export default function FarmerLogin() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const { login } = useAuth();
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
-  const [confirmation, setConfirmation] = useState(null);
+  const [challengeId, setChallengeId] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-
-  useEffect(() => () => clearPhoneRecaptcha(), []);
 
   const sendOtp = async (event) => {
     event.preventDefault();
     setBusy(true);
     setError('');
     try {
-      await authReady;
-      const result = await signInWithPhoneNumber(auth, normalizeIndianPhone(phone), getPhoneRecaptcha());
-      setConfirmation(result);
-    } catch {
-      clearPhoneRecaptcha();
-      setError(t('unable_to_send_otp', 'Unable to send OTP. Please check the number and try again.'));
+      const response = await apiFetch('/api/auth/farmer/request-otp', {
+        method: 'POST',
+        authFailure: 'ignore',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone }),
+      });
+      const data = await readJson(response);
+      if (!response.ok || !data.challengeId) throw new Error(data.error || 'OTP request failed.');
+      setChallengeId(data.challengeId);
+      setOtp('');
+    } catch (failure) {
+      setError(failure?.message || t('unable_to_send_otp', 'Unable to send OTP. Please check the number and try again.'));
     } finally {
       setBusy(false);
     }
@@ -42,13 +43,11 @@ export default function FarmerLogin() {
     setBusy(true);
     setError('');
     try {
-      const credential = await confirmation.confirm(otp.trim());
-      const idToken = await credential.user.getIdToken();
       const response = await apiFetch('/api/auth/farmer/login', {
         method: 'POST',
         authFailure: 'ignore',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ idToken }),
+        body: JSON.stringify({ challengeId, code: otp.trim() }),
       });
       const data = await readJson(response);
       if (!response.ok) throw new Error(data.error || 'Login failed.');
@@ -57,12 +56,15 @@ export default function FarmerLogin() {
     } catch {
       setError(t('otp_verification_failed', 'OTP verification failed. Please try again.'));
     } finally {
-      if (auth?.currentUser) await signOut(auth).catch(() => undefined);
       setBusy(false);
     }
   };
 
-  const { t } = useTranslation();
+  const useAnotherNumber = () => {
+    setChallengeId('');
+    setOtp('');
+    setError('');
+  };
 
   return (
     <main className="login-container">
@@ -80,18 +82,19 @@ export default function FarmerLogin() {
         <div className="panel login-card">
           <p className="eyebrow eyebrow--accent">{t('farmer_login_eyebrow', 'FARMER LOGIN')}</p>
           <h2>{t('welcome_back', 'Welcome back')}</h2>
-          <p className="subtitle" style={{ marginBottom: '1.6rem' }}>{t('login_mobile_instruction', 'Use the mobile number registered with your Farmer account.')}</p>
-          
+          <p className="subtitle" style={{ marginBottom: '1.6rem' }}>
+            {t('login_mobile_instruction', 'Use the mobile number registered with your Farmer account.')}
+          </p>
+
           {error && <div className="alert error" role="alert">{error}</div>}
-          
-          {!confirmation ? (
+
+          {!challengeId ? (
             <form className="login-form" onSubmit={sendOtp}>
               <div className="input-group">
                 <label htmlFor="login-phone">{t('mobile_number', 'Mobile number')}</label>
                 <input id="login-phone" inputMode="numeric" autoComplete="tel" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="9876543210" maxLength="16" required disabled={busy} />
               </div>
-              <div id="recaptcha-container" />
-              <button className="submit-btn login-submit" disabled={busy}>{busy ? t('sending', 'Sending…') : t('send_otp', 'Send OTP')}</button>
+              <button className="submit-btn login-submit" disabled={busy}>{busy ? t('sending', 'Sending...') : t('send_otp', 'Send OTP')}</button>
             </form>
           ) : (
             <form className="login-form" onSubmit={verifyOtp}>
@@ -99,11 +102,11 @@ export default function FarmerLogin() {
                 <label>{t('otp_label', '6-digit OTP')}</label>
                 <OtpInput value={otp} onChange={setOtp} length={6} disabled={busy} label={t('otp_label', '6-digit OTP')} />
               </div>
-              <button className="submit-btn login-submit" disabled={busy || otp.length !== 6}>{busy ? t('verifying', 'Verifying…') : t('login', 'Login')}</button>
-              <button type="button" className="login-btn button-wide" style={{ marginTop: '0.65rem' }} onClick={() => { setConfirmation(null); setOtp(''); clearPhoneRecaptcha(); }} disabled={busy}>{t('use_another_number', 'Use another number')}</button>
+              <button className="submit-btn login-submit" disabled={busy || otp.length !== 6}>{busy ? t('verifying', 'Verifying...') : t('login', 'Login')}</button>
+              <button type="button" className="login-btn button-wide" style={{ marginTop: '0.65rem' }} onClick={useAnotherNumber} disabled={busy}>{t('use_another_number', 'Use another number')}</button>
             </form>
           )}
-          
+
           <div style={{ marginTop: '1.5rem', textAlign: 'center', display: 'grid', gap: '0.5rem' }}>
             <p>{t('public_booking_link_prompt')} <Link to="/request" style={{ fontWeight: 'bold' }}>{t('public_booking_link')}</Link></p>
             <p>{t('new_to_here', 'New to here?')} <Link to="/farmer/register" style={{ fontWeight: 'bold' }}>{t('create_account', 'Farmer Registration')}</Link></p>

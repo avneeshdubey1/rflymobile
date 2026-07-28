@@ -83,11 +83,22 @@ function loadEnvironment(env = process.env) {
   }
   const upiWebhookSecret = String(env.UPI_WEBHOOK_SECRET || '').trim();
   const recoveryHashSecret = String(env.RECOVERY_HASH_SECRET || '').trim();
+  const otpHashSecret = String(env.OTP_HASH_SECRET || '').trim();
+  const otpDeliveryProvider = String(env.OTP_DELIVERY_PROVIDER || (nodeEnv === 'production' ? 'disabled' : 'cli')).trim().toLowerCase();
   if (nodeEnv === 'production' && upiWebhookSecret && upiWebhookSecret.length < 32) {
     throw new ConfigurationError('UPI_WEBHOOK_SECRET must contain at least 32 characters in production');
   }
   if (nodeEnv === 'production' && recoveryHashSecret.length < 32) {
     throw new ConfigurationError('RECOVERY_HASH_SECRET must contain at least 32 characters in production');
+  }
+  if (!['disabled', 'test', 'cli'].includes(otpDeliveryProvider)) {
+    throw new ConfigurationError('OTP_DELIVERY_PROVIDER must be disabled, test, or cli');
+  }
+  if (nodeEnv === 'production' && ['test', 'cli'].includes(otpDeliveryProvider)) {
+    throw new ConfigurationError('OTP_DELIVERY_PROVIDER cannot be test or cli in production');
+  }
+  if (nodeEnv === 'production' && otpDeliveryProvider !== 'disabled' && otpHashSecret.length < 32) {
+    throw new ConfigurationError('OTP_HASH_SECRET must contain at least 32 characters in production when OTP delivery is enabled');
   }
 
   const sessionIdleTimeoutMs = integer(env.SESSION_IDLE_TIMEOUT_MS, 30 * 60_000, 'SESSION_IDLE_TIMEOUT_MS', { min: 60_000, max: 24 * 60 * 60_000 });
@@ -120,7 +131,13 @@ function loadEnvironment(env = process.env) {
       hashSecret: recoveryHashSecret,
       codeTtlMs: integer(env.RECOVERY_CODE_TTL_MS, 10 * 60_000, 'RECOVERY_CODE_TTL_MS', { min: 60_000, max: 60 * 60_000 }),
       maxAttempts: integer(env.RECOVERY_MAX_ATTEMPTS, 5, 'RECOVERY_MAX_ATTEMPTS', { min: 1, max: 20 }),
-      firebaseProofMaxAgeMs: integer(env.FIREBASE_RECOVERY_MAX_AUTH_AGE_MS, 5 * 60_000, 'FIREBASE_RECOVERY_MAX_AUTH_AGE_MS', { min: 60_000, max: 60 * 60_000 }),
+    }),
+    otp: Object.freeze({
+      hashSecret: otpHashSecret,
+      codeTtlMs: integer(env.OTP_CODE_TTL_MS, 5 * 60_000, 'OTP_CODE_TTL_MS', { min: 60_000, max: 30 * 60_000 }),
+      maxAttempts: integer(env.OTP_MAX_ATTEMPTS, 5, 'OTP_MAX_ATTEMPTS', { min: 1, max: 10 }),
+      resendCooldownMs: integer(env.OTP_RESEND_COOLDOWN_MS, 30_000, 'OTP_RESEND_COOLDOWN_MS', { min: 30_000, max: 10 * 60_000 }),
+      deliveryProvider: otpDeliveryProvider,
     }),
     intake: Object.freeze({
       // Declined enquiries have a fixed, approved 30-day lifetime. The purge

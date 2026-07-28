@@ -13,7 +13,7 @@ The product coordinates one agricultural drone-service company per isolated depl
 3. A pilot, drone, and LMV are scheduled as one operational crew.
 4. Billing is evidence-backed and separate from mission completion.
 
-Current code remains a baseline, not proof of the complete target. Phase 1 removes active appeal, Google Form, and Bhumeet/mock intake paths from source; immediate-payment, LMV, billing-evidence, and phone-verification work remain later packages. No code should claim the target is complete merely because this document exists.
+Current code remains a baseline, not proof of the complete target. Phase 1 removes active appeal, Google Form, and Bhumeet/mock intake paths from source; LMV, customer/portal isolation, and internal OTP/Firebase-retirement packages have local source/test evidence. Billing-evidence, live provider delivery, production worker/webhook/fallback, import, and staging work remain later packages. No code should claim the target is complete merely because this document exists.
 
 ## 2. Platform and deployment contract
 
@@ -71,8 +71,8 @@ Current source is still lead-centric:
 - Sales phone intake enters a `MANUAL_SALES` Lead through `POST /api/leads/ingest/manual`.
 - Public booking enters a `WEBSITE` Lead through `POST /api/leads/ingest/website`.
 - Authenticated Farmer booking enters through `POST /api/leads/new` and uses the signed-in Farmer user's name and phone.
-- Farmer portal login and signup currently use Firebase phone proof in `POST /api/auth/farmer/login` and `POST /api/auth/farmer/complete-signup`.
-- Business login and recovery currently use the Business user role paths under `/api/auth/business/*`; organization membership/linkage is not yet modelled.
+- Farmer portal login now uses the application-owned OTP request/verify flow under `/api/auth/farmer/request-otp` and `/api/auth/farmer/login`; Firebase proof is removed. Farmer self-registration is retired until an approved invitation/link workflow exists.
+- Business login and recovery use the Business user role paths under `/api/auth/business/*`; Business recovery now uses application-owned OTP under `/api/auth/business/recovery/request-otp` and `/api/auth/business/recovery/complete`. Organization membership/linkage has local portal-isolation implementation.
 - Sales UI currently has a manual phone-enquiry form in `frontend/src/pages/MarketingDashboard.jsx`, but no searchable registered-customer table or staff-scoped farmer service context.
 
 The smallest safe replacement seam is:

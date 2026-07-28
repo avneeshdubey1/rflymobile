@@ -5,6 +5,7 @@ const { hashPassword, validatePassword } = require('./passwordService');
 const { normalizeEmail, normalizePhone, phoneVariants } = require('./identityService');
 const recoveryDeliveryService = require('./recoveryDeliveryService');
 const authAuditService = require('./authAuditService');
+const phoneVerificationService = require('./phoneVerificationService');
 
 let developmentHashSecret;
 const GENERIC_MESSAGE = 'If the account is eligible, recovery instructions have been sent.';
@@ -152,36 +153,6 @@ async function requestEmployeeRecovery({ identifier, requestedChannel }, config)
   return { success: true, message: GENERIC_MESSAGE, challengeId };
 }
 
-async function createBusinessPhoneGrant({ phone, externalProofHash }, config) {
-  if (!String(externalProofHash || '').trim()) throw new RecoveryError();
-  const candidate = await userRepository.findIdentityByPhone(phoneVariants(phone), 'BUSINESS');
-  const user = eligible(candidate, new Set(['BUSINESS'])) ? candidate : null;
-  const businessRoles = new Set(['BUSINESS']);
-
-  const challengeId = crypto.randomUUID();
-  const resetToken = crypto.randomBytes(48).toString('base64url');
-  let challenge;
-  try {
-    challenge = await passwordRecoveryRepository.createReplacingOpenForUser({
-      id: challengeId,
-      userId: user?.id || null,
-      expectedAuthVersion: user?.authVersion ?? null,
-      externalProofHash: String(externalProofHash).trim(),
-      identifierHash: hmac(config, `phone:${normalizePhone(phone)}`),
-      channel: 'FIREBASE_PHONE',
-      deliveryStatus: 'VERIFIED',
-      codeHash: codeHash(config, challengeId, resetToken),
-      maxAttempts: config.recovery.maxAttempts,
-      expiresAt: new Date(Date.now() + config.recovery.codeTtlMs),
-    }, businessRoles);
-  } catch (error) {
-    if (error.code === 'P2002') throw new RecoveryError();
-    throw error;
-  }
-  await auditChallenge(challenge, 'RECOVERY_PHONE_VERIFIED', { channel: challenge.channel, status: 'OPEN' });
-  return { success: true, challengeId, resetToken };
-}
-
 async function failChallenge(challenge, reason) {
   const updated = await passwordRecoveryRepository.recordFailedAttempt(challenge.id, challenge.maxAttempts);
   await auditChallenge(challenge, 'RECOVERY_ATTEMPT_FAILED', {
@@ -189,6 +160,38 @@ async function failChallenge(challenge, reason) {
     status: updated?.revokedAt ? 'REVOKED' : 'OPEN',
   }, reason);
   throw new RecoveryError();
+}
+
+async function requestBusinessPhoneRecovery({ phone }, config) {
+  return phoneVerificationService.issueChallenge({
+    phone,
+    purpose: phoneVerificationService.PURPOSES.BUSINESS_RECOVERY,
+  }, config);
+}
+
+async function completeBusinessOtpRecovery({ otpChallengeId, code, newPassword }, config) {
+  validatePassword(newPassword);
+  const challenge = await phoneVerificationService.verifyChallenge({
+    challengeId: otpChallengeId,
+    code,
+    purpose: phoneVerificationService.PURPOSES.BUSINESS_RECOVERY,
+    allowedRoles: new Set(['BUSINESS']),
+  }, config);
+  if (!challenge.userId) throw new RecoveryError();
+  await userRepository.resetPassword(
+    challenge.userId,
+    await hashPassword(newPassword),
+    'PASSWORD_RECOVERY',
+  );
+  await authAuditService.record({
+    entityType: 'User',
+    entityId: challenge.userId,
+    action: 'PASSWORD_RECOVERED',
+    actorId: challenge.userId,
+    reason: 'BUSINESS_PHONE_OTP_RECOVERY',
+    state: { sessionsRevoked: true },
+  });
+  return { userId: challenge.userId };
 }
 
 async function completeRecovery({ challengeId, code, newPassword, allowedRoles }, config) {
@@ -246,7 +249,8 @@ module.exports = {
   EMPLOYEE_ROLES,
   GENERIC_MESSAGE,
   RecoveryError,
+  completeBusinessOtpRecovery,
   completeRecovery,
-  createBusinessPhoneGrant,
+  requestBusinessPhoneRecovery,
   requestEmployeeRecovery,
 };

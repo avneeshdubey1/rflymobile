@@ -74,6 +74,29 @@ enum PaymentStatus {
   FAILED
 }
 
+enum PhoneVerificationPurpose {
+  FARMER_PORTAL_AUTH
+  FARMER_PHONE_LINK
+  BUSINESS_RECOVERY
+}
+
+enum OtpDeliveryChannel {
+  DISABLED
+  TEST
+  CLI
+  WHATSAPP
+  SMS
+}
+
+enum OtpDeliveryStatus {
+  QUEUED
+  SENT
+  MOCKED
+  FAILED
+  DEAD_LETTER
+  DISABLED
+}
+
 model OperatingCenter {
   id        String   @id @default(uuid())
   name      String                          // "Tenkasi HQ", "Kanyakumari Branch"
@@ -126,6 +149,7 @@ model User {
   authSessions         AuthSession[]
   recoveryChallenges   PasswordRecoveryChallenge[]
   businessMemberships  BusinessMembership[]
+  phoneVerificationChallenges PhoneVerificationChallenge[]
 }
 
 model Customer {
@@ -142,9 +166,68 @@ model Customer {
   updatedAt         DateTime  @updatedAt
 
   leads             Lead[]
+  phoneVerificationChallenges PhoneVerificationChallenge[]
 
   @@index([displayName])
   @@index([createdAt])
+}
+
+model PhoneVerificationChallenge {
+  id                String                   @id @default(uuid())
+  user              User?                    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userId            String?
+  customer          Customer?                @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  customerId        String?
+  phoneHash         String
+  recipientLast4    String?
+  purpose           PhoneVerificationPurpose
+  codeHash          String
+  attempts          Int                      @default(0)
+  maxAttempts       Int                      @default(5)
+  expiresAt         DateTime
+  resendAvailableAt DateTime
+  consumedAt        DateTime?
+  revokedAt         DateTime?
+  createdAt         DateTime                 @default(now())
+  updatedAt         DateTime                 @updatedAt
+
+  deliveries        VerificationDeliveryAttempt[]
+  outboxMessages    OtpDeliveryOutbox[]
+
+  @@index([phoneHash, purpose, createdAt])
+  @@index([userId, purpose, revokedAt])
+  @@index([expiresAt])
+}
+
+model VerificationDeliveryAttempt {
+  id                String                     @id @default(uuid())
+  challenge         PhoneVerificationChallenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  challengeId       String
+  channel           OtpDeliveryChannel
+  status            OtpDeliveryStatus
+  providerReference String?
+  failureReason     String?
+  createdAt         DateTime                   @default(now())
+
+  @@index([challengeId, createdAt])
+}
+
+model OtpDeliveryOutbox {
+  id                String                     @id @default(uuid())
+  challenge         PhoneVerificationChallenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  challengeId       String
+  channel           OtpDeliveryChannel
+  status            OtpDeliveryStatus          @default(QUEUED)
+  idempotencyKey    String                     @unique
+  attempts          Int                        @default(0)
+  nextAttemptAt     DateTime                   @default(now())
+  processedAt       DateTime?
+  lastError         String?
+  createdAt         DateTime                   @default(now())
+  updatedAt         DateTime                   @updatedAt
+
+  @@index([status, nextAttemptAt])
+  @@index([challengeId])
 }
 
 model BusinessOrganization {

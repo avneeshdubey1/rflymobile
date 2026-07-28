@@ -1,6 +1,5 @@
 const userRepository = require('../src/repositories/userRepository');
 const { hashPassword, INVALID_ACCOUNT_PASSWORD_HASH, needsRehash, verifyPassword } = require('../services/passwordService');
-const { verifiedFirebasePhoneProof } = require('../services/firebasePhoneService');
 const { normalizeEmail, normalizePhone, phoneVariants, validateEmail } = require('../services/identityService');
 const { establishSession, publicUser, SessionError } = require('../services/sessionService');
 const recoveryService = require('../services/recoveryService');
@@ -86,28 +85,25 @@ exports.businessLogin = async (req, res) => {
   }
 };
 
-exports.verifyRecoveryPhone = async (req, res) => {
+exports.requestRecoveryOtp = async (req, res) => {
   try {
-    const config = req.app.get('config');
-    const proof = await verifiedFirebasePhoneProof(req.body.idToken, {
-      maxAuthAgeMs: config.recovery.firebaseProofMaxAgeMs,
-    });
-    const result = await recoveryService.createBusinessPhoneGrant(proof, config);
+    const result = await recoveryService.requestBusinessPhoneRecovery({
+      phone: req.body.phone || req.body.mobile,
+    }, req.app.get('config'));
     return res.status(202).json(result);
   } catch (error) {
-    console.error('Business recovery verification failed', { error: error.name, code: error.code });
-    const status = error.status === 503 ? 503 : 401;
-    return res.status(status).json({ error: status === 503 ? error.message : 'Invalid or expired phone verification' });
+    console.error('Business recovery OTP request failed', { error: error.name, code: error.code });
+    const status = /phone/i.test(error.message || '') ? 400 : error.status || 500;
+    return res.status(status).json({ error: status === 400 ? error.message : 'Unable to request verification code' });
   }
 };
 
 exports.completeRecovery = async (req, res) => {
   try {
-    const result = await recoveryService.completeRecovery({
-      challengeId: req.body.challengeId,
-      code: req.body.resetToken,
+    const result = await recoveryService.completeBusinessOtpRecovery({
+      otpChallengeId: req.body.otpChallengeId || req.body.challengeId,
+      code: req.body.code,
       newPassword: req.body.newPassword,
-      allowedRoles: new Set(['BUSINESS']),
     }, req.app.get('config'));
     disconnectUserSockets(req.app.get('io'), result.userId);
     return res.json({ success: true, message: 'Password updated successfully. Please sign in again.' });

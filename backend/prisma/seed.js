@@ -4,6 +4,9 @@ const { hashPassword, validatePassword } = require('../services/passwordService'
 const prisma = new PrismaClient();
 
 async function clearDatabase() {
+  await prisma.otpDeliveryOutbox.deleteMany();
+  await prisma.verificationDeliveryAttempt.deleteMany();
+  await prisma.phoneVerificationChallenge.deleteMany();
   await prisma.passwordRecoveryChallenge.deleteMany();
   await prisma.authSession.deleteMany();
   await prisma.declinedEnquiry.deleteMany();

@@ -1,7 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { signOut } from 'firebase/auth';
 import i18n from '../i18n';
-import { auth } from '../lib/firebase';
 import { AuthContext } from './authContext';
 import { clearQueuedActions } from '../services/offlineActionQueue';
 import { apiFetch, AUTH_EXPIRED_EVENT, getCsrfToken, readJson } from '../services/apiClient';
@@ -109,7 +107,6 @@ export const AuthProvider = ({ children }) => {
         // 24 hours and cannot replay under a different account.
       }
     }
-    if (auth?.currentUser) await signOut(auth).catch(() => undefined);
     clearLocalIdentity();
     channelRef.current?.postMessage({ type: 'logout' });
     return { serverConfirmed };

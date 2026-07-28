@@ -1,9 +1,8 @@
-const crypto = require('crypto');
 const userRepository = require('../src/repositories/userRepository');
 const authSessionRepository = require('../src/repositories/authSessionRepository');
 const { hashPassword, INVALID_ACCOUNT_PASSWORD_HASH, needsRehash, verifyPassword } = require('../services/passwordService');
-const { verifiedFirebasePhone } = require('../services/firebasePhoneService');
-const { normalizeEmail, phoneVariants } = require('../services/identityService');
+const phoneVerificationService = require('../services/phoneVerificationService');
+const { normalizeEmail } = require('../services/identityService');
 const authAuditService = require('../services/authAuditService');
 const {
   clearSessionCookies,
@@ -62,11 +61,13 @@ exports.login = async (req, res) => {
 
 exports.farmerLogin = async (req, res) => {
   try {
-    const phone = await verifiedFirebasePhone(req.body.idToken);
-    const user = await userRepository.findByPhoneForAuthentication(phoneVariants(phone), 'FARMER');
-    if (!user) {
-      return res.status(404).json({ error: 'No Farmer account is registered for this phone number', code: 'FARMER_NOT_REGISTERED' });
-    }
+    const challenge = await phoneVerificationService.verifyChallenge({
+      challengeId: req.body.challengeId,
+      code: req.body.code,
+      purpose: phoneVerificationService.PURPOSES.FARMER_PORTAL_AUTH,
+      allowedRoles: FARMER_ROLES,
+    }, req.app.get('config'));
+    const user = challenge.userId ? await userRepository.findByPhoneForAuthentication([challenge.user.phone], 'FARMER') : null;
     if (!accountCanLogin(user, FARMER_ROLES)) {
       return res.status(401).json({ error: 'This account cannot sign in' });
     }
@@ -75,43 +76,39 @@ exports.farmerLogin = async (req, res) => {
     return res.json({ success: true, user: publicUser(created.session.user) });
   } catch (error) {
     console.error('Farmer login failed', { error: error.name, code: error.code });
-    const status = error.status === 503 ? 503 : 401;
-    return res.status(status).json({ error: status === 503 ? error.message : 'Invalid or expired phone verification' });
+    return res.status(error.status === 429 ? 429 : 401).json({ error: 'Invalid or expired phone verification', ...(error.code ? { code: error.code } : {}) });
+  }
+};
+
+exports.requestFarmerOtp = async (req, res) => {
+  try {
+    const result = await phoneVerificationService.issueChallenge({
+      phone: req.body.phone,
+      purpose: phoneVerificationService.PURPOSES.FARMER_PORTAL_AUTH,
+    }, req.app.get('config'));
+    return res.status(202).json(result);
+  } catch (error) {
+    const status = /phone/i.test(error.message || '') ? 400 : error.status || 500;
+    return res.status(status).json({ error: status === 400 ? error.message : 'Unable to request verification code' });
+  }
+};
+
+exports.resendFarmerOtp = async (req, res) => {
+  try {
+    const result = await phoneVerificationService.resendChallenge({
+      challengeId: req.body.challengeId,
+    }, req.app.get('config'));
+    return res.status(202).json(result);
+  } catch (error) {
+    return res.status(error.status || 400).json({ error: error.message || 'Unable to resend verification code', ...(error.code ? { code: error.code } : {}) });
   }
 };
 
 exports.completeFarmerSignup = async (req, res) => {
-  try {
-    const name = String(req.body.name || '').trim();
-    const village = String(req.body.village || '').trim();
-    const district = String(req.body.district || '').trim();
-    if (!req.body.idToken || !name || !village || !district) {
-      return res.status(400).json({ error: 'Name, village and district are required' });
-    }
-    const phone = await verifiedFirebasePhone(req.body.idToken);
-    if (await userRepository.findByPhoneForAuthentication(phoneVariants(phone))) {
-      return res.status(409).json({ error: 'A user is already registered with this phone number', code: 'PHONE_ALREADY_REGISTERED' });
-    }
-
-    const user = await userRepository.create({
-      name,
-      phone,
-      village,
-      district,
-      role: 'FARMER',
-      email: `${phone.slice(1)}@farmer.local`,
-      passwordHash: await hashPassword(crypto.randomBytes(48).toString('base64url')),
-      phoneVerifiedAt: new Date(),
-    });
-    const credentialSnapshot = await userRepository.findIdentityById(user.id);
-    const created = await establishSession(req, res, credentialSnapshot, { allowedRoles: FARMER_ROLES });
-    await recordSessionCreated(created.session);
-    return res.status(201).json({ success: true, user: publicUser(created.session.user) });
-  } catch (error) {
-    console.error('Farmer signup failed', { error: error.name, code: error.code });
-    const status = error.status || (error.code === 'P2002' ? 409 : 500);
-    return res.status(status).json({ error: status === 503 ? error.message : status === 409 ? 'This phone number is already registered' : 'Signup failed' });
-  }
+  return res.status(410).json({
+    error: 'Farmer self-registration is retired. Sales or Admin must create or link farmer access.',
+    code: 'FARMER_SELF_REGISTRATION_RETIRED',
+  });
 };
 
 exports.me = async (req, res) => res.json({ success: true, user: publicUser(req.authUser) });

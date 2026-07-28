@@ -26,6 +26,8 @@ function createApp({ config = loadEnvironment() } = {}) {
   const limits = createRateLimiters(config);
   app.use([
     '/api/auth/login',
+    '/api/auth/farmer/request-otp',
+    '/api/auth/farmer/resend-otp',
     '/api/auth/farmer/login',
     '/api/auth/farmer/complete-signup',
     '/api/auth/business/login',

@@ -6,12 +6,15 @@ const prisma = require('../src/lib/prisma');
 const userRepository = require('../src/repositories/userRepository');
 const { hashPassword } = require('../services/passwordService');
 const recoveryDeliveryService = require('../services/recoveryDeliveryService');
+const otpDeliveryAdapter = require('../services/otpDeliveryAdapter');
+const phoneVerificationService = require('../services/phoneVerificationService');
 const {
   EMPLOYEE_ROLES,
   GENERIC_MESSAGE,
   RecoveryError,
+  completeBusinessOtpRecovery,
   completeRecovery,
-  createBusinessPhoneGrant,
+  requestBusinessPhoneRecovery,
   requestEmployeeRecovery,
 } = require('../services/recoveryService');
 
@@ -20,6 +23,8 @@ const config = loadEnvironment({
   ...process.env,
   NODE_ENV: 'test',
   RECOVERY_HASH_SECRET: crypto.randomBytes(48).toString('base64url'),
+  OTP_HASH_SECRET: crypto.randomBytes(48).toString('base64url'),
+  OTP_DELIVERY_PROVIDER: 'test',
 });
 const deliveries = new Map();
 const challengeIds = new Set();
@@ -239,32 +244,43 @@ test('concurrent sibling completion permits one reset and revokes every sibling'
   assert.equal(rows.filter((row) => row.revokedAt).length, 1);
 });
 
-test('a Firebase external proof can create at most one business recovery grant', async () => {
+test('business phone OTP recovery consumes one app-owned challenge and rejects replay', async () => {
   const phone = `+9198${String(Date.now()).slice(-8)}`;
   const user = await createUser('business-proof', {
     phone,
     phoneVerifiedAt: new Date(),
     role: 'BUSINESS',
   });
-  const externalProofHash = crypto.randomBytes(32).toString('hex');
-  const first = await createBusinessPhoneGrant({ phone, externalProofHash }, config);
-  challengeIds.add(first.challengeId);
+  const issued = await requestBusinessPhoneRecovery({ phone }, config);
+  challengeIds.add(issued.challengeId);
+  const message = otpDeliveryAdapter.getLastMessageForTests(issued.challengeId);
+  assert.ok(message?.code);
 
-  await assert.rejects(
-    createBusinessPhoneGrant({ phone, externalProofHash }, config),
-    RecoveryError,
-  );
-  const rows = await prisma.passwordRecoveryChallenge.findMany({
-    where: { userId: user.id, externalProofHash },
+  const completed = await completeBusinessOtpRecovery({
+    otpChallengeId: issued.challengeId,
+    code: message.code,
+    newPassword: `Business-${crypto.randomBytes(24).toString('base64url')}`,
+  }, config);
+  assert.equal(completed.userId, user.id);
+
+  await assert.rejects(completeBusinessOtpRecovery({
+    otpChallengeId: issued.challengeId,
+    code: message.code,
+    newPassword: `Replay-${crypto.randomBytes(24).toString('base64url')}`,
+  }, config), phoneVerificationService.OtpError);
+
+  const rows = await prisma.phoneVerificationChallenge.findMany({
+    where: { userId: user.id, purpose: 'BUSINESS_RECOVERY' },
   });
   assert.equal(rows.length, 1);
-  assert.equal(rows[0].id, first.challengeId);
-  assert.equal(rows[0].revokedAt, null);
+  assert.equal(rows[0].id, issued.challengeId);
+  assert.ok(rows[0].consumedAt);
 });
 
 test.after(async () => {
   await recoveryDeliveryService.waitForIdleForTests();
   recoveryDeliveryService.clearTestAdapter();
+  otpDeliveryAdapter.clearLastMessagesForTests();
   const trackedUserIds = [...userIds];
   const trackedChallengeIds = [...challengeIds];
   await prisma.auditLog.deleteMany({
@@ -282,6 +298,15 @@ test.after(async () => {
         { id: { in: trackedChallengeIds } },
       ],
     },
+  });
+  await prisma.otpDeliveryOutbox.deleteMany({
+    where: { challenge: { userId: { in: trackedUserIds } } },
+  });
+  await prisma.verificationDeliveryAttempt.deleteMany({
+    where: { challenge: { userId: { in: trackedUserIds } } },
+  });
+  await prisma.phoneVerificationChallenge.deleteMany({
+    where: { userId: { in: trackedUserIds } },
   });
   await prisma.authSession.deleteMany({ where: { userId: { in: trackedUserIds } } });
   await prisma.user.deleteMany({ where: { id: { in: trackedUserIds } } });
