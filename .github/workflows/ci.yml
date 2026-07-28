@@ -3,7 +3,7 @@ name: application-and-container-gates
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [main, dev-ing]
 
 permissions:
   contents: read

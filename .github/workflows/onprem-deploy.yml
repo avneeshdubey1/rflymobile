@@ -1,0 +1,42 @@
+name: onprem-auto-deploy
+
+on:
+  workflow_run:
+    workflows: [application-and-container-gates]
+    branches: [main]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: onprem-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: deploy main to office on-prem server
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: [self-hosted, linux, rfly-onprem]
+    timeout-minutes: 30
+    environment: onprem-production
+    steps:
+      - name: Checkout CI-passed source
+        if: github.event_name == 'workflow_run'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Checkout manually selected source
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/checkout@v4
+
+      - name: Show source revision
+        run: git rev-parse HEAD
+
+      - name: Deploy isolated on-prem stack
+        env:
+          DEPLOY_ENV: /opt/client-demo-app/deployment.env
+          DEPLOY_CHANGELOG: /opt/client-demo-app/deployment-notes/CHANGELOG.md
+        run: bash deploy/onprem-selfhosted-deploy.sh
