@@ -9,3 +9,5 @@ Start with [the deployment runbook](../docs/operations/deployment.md). `example.
 The stack is not a TLS terminator. The frontend port binds to loopback by default and must sit behind an approved HTTPS load balancer or host reverse proxy. The backend rejects requests not marked as HTTPS by that trusted proxy chain.
 
 The `release-image-evidence` GitHub Actions workflow can publish backend, migration, and frontend images to GHCR with source-linked digests, SBOM artifacts, and vulnerability-scan artifacts. Treat those artifacts as release inputs, not production approval. Staging/production deployment still requires the chosen host, domain, TLS, backup, monitoring, alert, and rollback owners.
+
+For the shared office server demo described in `docs/SERVER_HANDOFF_FOR_CODEX.md`, use [the on-premises demo runbook](../docs/operations/onprem-demo-deployment.md), `compose.onprem-demo.yml`, and `deploy/onprem-demo.env.example`. That path publishes only the demo frontend on port `8088` and must not modify the existing Jitsi/Nginx/SRS workloads.

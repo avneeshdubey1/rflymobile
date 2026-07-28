@@ -1,0 +1,22 @@
+# Demo-only override for the shared office server described in
+# docs/SERVER_HANDOFF_FOR_CODEX.md.
+#
+# Use only with compose.production.yml:
+#   docker compose --env-file /opt/client-demo-app/deployment.env \
+#     -f compose.production.yml -f compose.onprem-demo.yml up --detach --build
+#
+# This override intentionally supports a direct HTTP demo on host port 8088
+# without changing the existing Jitsi/Nginx installation. Do not use it as a
+# production or internet-facing security baseline.
+
+services:
+  backend:
+    environment:
+      NODE_ENV: development
+      ENFORCE_HTTPS: "false"
+      TRUST_PROXY_HOPS: ${TRUST_PROXY_HOPS:-1}
+      OTP_DELIVERY_PROVIDER: ${OTP_DELIVERY_PROVIDER:-disabled}
+
+  frontend:
+    ports:
+      - "${APP_BIND_ADDRESS:-0.0.0.0}:${APP_PORT:-8088}:8080"

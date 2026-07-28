@@ -20,6 +20,9 @@ function normalizeEmail(email) {
 }
 
 async function wipeOperationalData() {
+  await prisma.otpDeliveryOutbox.deleteMany();
+  await prisma.verificationDeliveryAttempt.deleteMany();
+  await prisma.phoneVerificationChallenge.deleteMany();
   await prisma.passwordRecoveryChallenge.deleteMany();
   await prisma.authSession.deleteMany();
   await prisma.declinedEnquiry.deleteMany();
@@ -32,7 +35,11 @@ async function wipeOperationalData() {
   await prisma.assignment.deleteMany();
   await prisma.auditLog.deleteMany();
   await prisma.lead.deleteMany();
+  await prisma.businessMembership.deleteMany();
+  await prisma.businessOrganization.deleteMany();
+  await prisma.customer.deleteMany();
   await prisma.drone.deleteMany();
+  await prisma.lMV.deleteMany();
   await prisma.user.deleteMany();
   await prisma.pricingConfig.deleteMany();
   await prisma.operatingCenter.deleteMany();
