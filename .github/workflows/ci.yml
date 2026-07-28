@@ -126,8 +126,10 @@ jobs:
             -H 'X-Forwarded-Proto: https' \
             http://127.0.0.1:18080/api/health | grep -q '"status":"ok"'
 
-          test -z "$(docker compose --env-file "$DEPLOY_ENV" -f compose.production.yml port db 5432)"
-          test -z "$(docker compose --env-file "$DEPLOY_ENV" -f compose.production.yml port backend 5000)"
+          db_port="$(docker compose --env-file "$DEPLOY_ENV" -f compose.production.yml port db 5432 2>/dev/null || true)"
+          backend_port="$(docker compose --env-file "$DEPLOY_ENV" -f compose.production.yml port backend 5000 2>/dev/null || true)"
+          test -z "$db_port"
+          test -z "$backend_port"
 
           backend_user="$(docker image inspect "field-operations-backend:ci-${GITHUB_SHA}" --format '{{.Config.User}}')"
           frontend_user="$(docker image inspect "field-operations-frontend:ci-${GITHUB_SHA}" --format '{{.Config.User}}')"
