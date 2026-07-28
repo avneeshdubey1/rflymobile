@@ -18,10 +18,10 @@ RUN apk add --no-cache gettext \
 COPY --from=build --chown=nginx:nginx /workspace/dist /srv/app
 COPY --chown=nginx:nginx docker/nginx.conf.template /etc/nginx/nginx.conf.template
 COPY docker/entrypoint.sh /usr/local/bin/frontend-entrypoint
-RUN chmod 0555 /usr/local/bin/frontend-entrypoint
+RUN chmod 0444 /usr/local/bin/frontend-entrypoint
 USER nginx
 EXPOSE 8080
 HEALTHCHECK --interval=20s --timeout=5s --start-period=10s --retries=5 \
   CMD ["wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1:8080/healthz"]
-ENTRYPOINT ["/usr/local/bin/frontend-entrypoint"]
+ENTRYPOINT ["/bin/sh", "/usr/local/bin/frontend-entrypoint"]
 CMD ["nginx", "-c", "/tmp/nginx.conf", "-g", "daemon off;"]

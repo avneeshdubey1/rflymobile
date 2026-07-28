@@ -24,9 +24,9 @@ RUN apt-get update \
     && apt-get install --yes --no-install-recommends ca-certificates openssl \
     && rm -rf /var/lib/apt/lists/*
 COPY docker/entrypoint.sh /usr/local/bin/operations-entrypoint
-RUN chmod 0555 /usr/local/bin/operations-entrypoint \
+RUN chmod 0444 /usr/local/bin/operations-entrypoint \
     && chown node:node /app
-ENTRYPOINT ["/usr/local/bin/operations-entrypoint"]
+ENTRYPOINT ["/bin/sh", "/usr/local/bin/operations-entrypoint"]
 
 FROM runtime-base AS runtime
 COPY --from=production-dependencies --chown=node:node /workspace/node_modules ./node_modules
