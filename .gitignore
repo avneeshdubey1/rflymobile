@@ -10,6 +10,7 @@ backend/scripts/resetLocalAdminPassword.local.js
 # Dependencies and package-manager caches
 node_modules/
 **/node_modules/
+electron/node-bin/
 .npm/
 .yarn/
 .pnpm-store/
@@ -43,33 +44,30 @@ pnpm-debug.log*
 *.seed
 *.stackdump
 
-# Generated reports, evidence, and presentation material
-# Keep only reviewed canonical/source Markdown under docs trackable.
-/docs/*
-!/docs/plan/
-!/docs/plan/**
-!/docs/AGENTS.md
-!/docs/CONTEXT.md
-!/docs/SPEC.md
-!/docs/product_decisions_and_production_handoff.md
-!/docs/deferred/
-!/docs/deferred/bhumeet.md
-!/docs/operations/
-!/docs/operations/*.md
-/docs/test-evidence/
-/docs/browser_acceptance_audit_*.md
-/docs/demo_acceptance_report_*.md
-/docs/ui_correction_report_*.md
-/docs/server_side_hardening_report*.md
-/docs/hardening_pause_handoff_*.md
-/docs/current_codebase_overview.md
-/docs/credentials.md
-/docs/*.json
-/docs/**/*.json
+# Internal planning, generated reports, evidence, and presentation material
+docs/
+.agents/
+.codex/
+.vscode/
+AGENTS.md
+*context*.md
+*placeholder*.md
+*hardening*.md
+*handoff*.md
+*implementation_plan*.md
+*use_case*.md
+*history*.md
+START_SERVER_INSTRUCTIONS.txt
+OTP_SETUP.md
+parse.js
+presentation/
+backend/flush-test-user.js
+backend/test-db.js
+backend/test-parser.js
+frontend/src/assets/react.svg
+frontend/src/assets/vite.svg
 *.pem
 *.key
-docs.zip
-presentation/
 *.ppt
 *.pptx
 *.key
@@ -90,10 +88,5 @@ DaaS-RFLY-b2b-development/
 PaaS_Demo-main_OLD__emp/
 
 # Scratch/context files created while coding
-chatgpt_context.md
-detailed_srs_context.md
-implementation_plan.md
-project_context.md
-OTP_SETUP.md
-START_SERVER_INSTRUCTIONS.txt
-parse.js
+*-startup.log
+*-startup.err.log
