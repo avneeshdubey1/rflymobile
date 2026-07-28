@@ -7,11 +7,12 @@ import { apiFetch } from '../services/apiClient';
 
 export default function LanguageSelector({ style, className }) {
   const { user } = useAuth();
-  const { i18n } = useTranslation();
+  const { i18n, t } = useTranslation();
   const [language, setLanguage] = useState(() => localStorage.getItem('preferredLanguage') || 'en');
   const [isOpen, setIsOpen] = useState(false);
 
   const currentLangLabel = supportedLanguages.find(l => l.code === language)?.label || 'English';
+  const rootClassName = ['language-selector', className].filter(Boolean).join(' ');
 
   useEffect(() => {
     localStorage.setItem('preferredLanguage', language);
@@ -38,57 +39,29 @@ export default function LanguageSelector({ style, className }) {
   };
 
   return (
-    <div className={`language-selector ${className || ''}`} style={{ position: 'relative', ...style }}>
+    <div className={rootClassName} style={{ position: 'relative', ...style }}>
       <button 
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.5rem',
-          padding: '0.5rem 1rem',
-          background: 'var(--surface-raised)',
-          border: '1px solid var(--border-subtle)',
-          borderRadius: 'var(--radius-sm)',
-          cursor: 'pointer',
-          color: 'var(--text-main)',
-          fontSize: '0.9rem'
-        }}
+        className="language-selector__trigger"
+        aria-label={t('preferred_language', 'Preferred language')}
+        aria-expanded={isOpen}
+        aria-haspopup="listbox"
       >
         <OpsIcon name="globe" size={16} />
         <span>{currentLangLabel}</span>
       </button>
 
       {isOpen && (
-        <div style={{
-          position: 'absolute',
-          top: '100%',
-          right: 0,
-          marginTop: '0.25rem',
-          background: 'var(--surface-raised)',
-          border: '1px solid var(--border-subtle)',
-          borderRadius: 'var(--radius-sm)',
-          boxShadow: 'var(--shadow-md)',
-          zIndex: 100,
-          minWidth: '150px',
-          overflow: 'hidden'
-        }}>
+        <div className="language-selector__menu" role="listbox" aria-label={t('preferred_language', 'Preferred language')}>
           {supportedLanguages.map(lang => (
             <button
               key={lang.code}
               type="button"
               onClick={() => handleSelect(lang.code)}
-              style={{
-                display: 'block',
-                width: '100%',
-                padding: '0.75rem 1rem',
-                textAlign: 'left',
-                background: lang.code === language ? 'var(--surface-sunken)' : 'transparent',
-                border: 'none',
-                cursor: 'pointer',
-                color: 'var(--text-main)',
-                borderBottom: '1px solid var(--border-subtle)'
-              }}
+              className={`language-selector__option${lang.code === language ? ' language-selector__option--active' : ''}`}
+              role="option"
+              aria-selected={lang.code === language}
             >
               {lang.label}
             </button>
