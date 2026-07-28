@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../context/useAuth';
 import OperationsShell from '../components/OperationsShell';
 import OpsIcon from '../components/OpsIcon';
@@ -18,6 +18,7 @@ export default function FarmerDashboard() {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState('services');
   const [leads, setLeads] = useState([]);
+  const [portalSummary, setPortalSummary] = useState({ total: 0, active: 0, completed: 0, payments: 0 });
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState(null);
   
@@ -39,6 +40,25 @@ export default function FarmerDashboard() {
     waterBodyNearby: false,
     terrainType: ''
   });
+
+  const loadPortal = useCallback(async (signal) => {
+    try {
+      const response = await apiFetch('/api/portal/farmer/summary', { signal });
+      const data = await readJson(response);
+      if (!response.ok) throw new Error(data.error || t('request_error'));
+      setLeads(data.portal?.leads || []);
+      setPortalSummary(data.portal?.totals || { total: 0, active: 0, completed: 0, payments: 0 });
+    } catch (error) {
+      if (error.name !== 'AbortError' && !signal?.aborted) setNotice({ kind: 'error', message: error.message || t('request_error') });
+    }
+  }, [t]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const initialLoad = window.setTimeout(() => void loadPortal(controller.signal), 0);
+    return () => { window.clearTimeout(initialLoad); controller.abort(); };
+  }, [loadPortal]);
+
   const useCurrentLocation = () => {
     if (!navigator.geolocation) {
       setNotice({ kind: 'error', message: t('service_location_unavailable') });
@@ -97,7 +117,7 @@ export default function FarmerDashboard() {
       
       setNotice({ kind: 'success', message: t('request_received_for_review') });
       setForm({ ...form, acreage: '', cropType: '', latitude: '', longitude: '' });
-      setLeads([data.lead, ...leads]);
+      await loadPortal();
       setActiveTab('services');
     } catch (err) {
       setNotice({ kind: 'error', message: err.message });
@@ -129,37 +149,45 @@ export default function FarmerDashboard() {
       )}
 
       {activeTab === 'services' && (
-        <section className="panel panel--raised">
-          <div className="panel-header">
-            <div className="panel-header__title">
-              <div className="panel-title-row">
-                <span className="panel-title-icon"><OpsIcon name="drone" /></span>
-                <h2>{t('Recent Requests')}</h2>
-              </div>
-              <p>{t('Your requested services will appear here.')}</p>
-            </div>
-          </div>
-          {leads.length > 0 ? (
-            <div className="data-stack">
-              {leads.map(lead => (
-                <div className="data-row" key={lead.id}>
-                  <div className="data-row__main">
-                    <span className="data-row__title">{lead.acreage} {t('Acres')} - {lead.cropType || t('Crop')}</span>
-                    <span className="data-row__meta">{new Date(lead.createdAt).toLocaleDateString()} • {lead.farmerAddress}</span>
-                    <span className={`status-badge status-badge--${statusTone(lead.status)}`}>{statusLabel(lead.status)}</span>
-                  </div>
+        <>
+          <section className="metric-grid">
+            <article className="metric-card"><div className="metric-card__top"><span>{t('Active Services')}</span><span className="metric-card__icon"><OpsIcon name="activeServices" /></span></div><strong className="metric-card__value">{portalSummary.active}</strong></article>
+            <article className="metric-card"><div className="metric-card__top"><span>{t('Complete Services')}</span><span className="metric-card__icon"><OpsIcon name="complete" /></span></div><strong className="metric-card__value">{portalSummary.completed}</strong></article>
+            <article className="metric-card"><div className="metric-card__top"><span>{t('Total Requests')}</span><span className="metric-card__icon"><OpsIcon name="request" /></span></div><strong className="metric-card__value">{portalSummary.total}</strong></article>
+            <article className="metric-card"><div className="metric-card__top"><span>{t('Payments')}</span><span className="metric-card__icon"><OpsIcon name="wallet" /></span></div><strong className="metric-card__value">{portalSummary.payments}</strong></article>
+          </section>
+          <section className="panel panel--raised">
+            <div className="panel-header">
+              <div className="panel-header__title">
+                <div className="panel-title-row">
+                  <span className="panel-title-icon"><OpsIcon name="drone" /></span>
+                  <h2>{t('Recent Requests')}</h2>
                 </div>
-              ))}
-            </div>
-          ) : (
-            <div className="panel-body">
-              <div className="empty-state empty-state--center">
-                <strong>{t('No active requests found')}</strong>
-                <span>{t("Click on 'Request Drone' to book your first service.")}</span>
+                <p>{t('Your requested services will appear here.')}</p>
               </div>
             </div>
-          )}
-        </section>
+            {leads.length > 0 ? (
+              <div className="data-stack">
+                {leads.map(lead => (
+                  <div className="data-row" key={lead.id}>
+                    <div className="data-row__main">
+                      <span className="data-row__title">{lead.acreage} {t('Acres')} - {lead.cropType || t('Crop')}</span>
+                      <span className="data-row__meta">{new Date(lead.createdAt).toLocaleDateString()} • {lead.farmerAddress || lead.matchedCenter?.name || t('Location received')}</span>
+                      <span className={`status-badge status-badge--${statusTone(lead.status)}`}>{statusLabel(lead.status)}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="panel-body">
+                <div className="empty-state empty-state--center">
+                  <strong>{t('No active requests found')}</strong>
+                  <span>{t("Click on 'Request Drone' to book your first service.")}</span>
+                </div>
+              </div>
+            )}
+          </section>
+        </>
       )}
 
       {activeTab === 'new-request' && (

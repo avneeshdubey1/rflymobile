@@ -32,6 +32,7 @@ function searchableWhere(query) {
 module.exports = {
   create: (data) => prisma.customer.create({ data }),
   findById: (id) => prisma.customer.findUnique({ where: { id }, include: includeRecentLeads }),
+  findByFarmerUserId: (farmerUserId) => prisma.customer.findUnique({ where: { farmerUserId }, include: includeRecentLeads }),
   findByPhone: (phone) => prisma.customer.findUnique({ where: { phone }, include: includeRecentLeads }),
   search: ({ query, take = 25 } = {}) => prisma.customer.findMany({
     where: searchableWhere(query),

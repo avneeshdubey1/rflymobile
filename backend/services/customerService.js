@@ -88,6 +88,29 @@ async function getServiceContext(customerId) {
   return safeCustomer(customer);
 }
 
+async function ensureForFarmerUser(user) {
+  const existingByUser = await customerRepository.findByFarmerUserId(user.id);
+  if (existingByUser) return existingByUser;
+  if (!user.phone) return null;
+  const existingByPhone = await customerRepository.findByPhone(user.phone);
+  if (existingByPhone) {
+    if (existingByPhone.farmerUserId === user.id) return existingByPhone;
+    if (!existingByPhone.farmerUserId) {
+      return customerRepository.update(existingByPhone.id, { farmerUserId: user.id });
+    }
+    return null;
+  }
+  return customerRepository.create({
+    displayName: validateName(user.name),
+    phone: user.phone,
+    preferredLanguage: i18nService.normalizeLanguage(user.preferredLanguage || 'ta'),
+    village: optionalText(user.village, 'Village'),
+    district: optionalText(user.district, 'District'),
+    farmerUserId: user.id,
+    staffConfirmedAt: user.phoneVerifiedAt || new Date(),
+  });
+}
+
 async function openServiceContext(customerId, actorId) {
   const customer = await getServiceContext(customerId);
   await auditLogService.record({
@@ -105,6 +128,7 @@ async function openServiceContext(customerId, actorId) {
 
 module.exports = {
   createForSales,
+  ensureForFarmerUser,
   getServiceContext,
   openServiceContext,
   searchForSales,

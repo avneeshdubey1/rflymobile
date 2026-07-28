@@ -16,6 +16,8 @@ async function clearDatabase() {
   await prisma.assignment.deleteMany();
   await prisma.auditLog.deleteMany();
   await prisma.lead.deleteMany();
+  await prisma.businessMembership.deleteMany();
+  await prisma.businessOrganization.deleteMany();
   await prisma.customer.deleteMany();
   await prisma.drone.deleteMany();
   await prisma.lMV.deleteMany();

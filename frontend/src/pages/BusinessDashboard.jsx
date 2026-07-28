@@ -1,13 +1,42 @@
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import OperationsShell from "../components/OperationsShell";
 import OpsIcon from '../components/OpsIcon';
 import { useAuth } from "../context/useAuth";
+import { apiFetch, readJson } from "../services/apiClient";
+
+const statusLabel = (status) => String(status || 'UNKNOWN').replaceAll('_', ' ').toLowerCase();
+const statusTone = (status) => {
+  if (['COMPLETED', 'PROCESSED'].includes(status)) return 'success';
+  if (['CANCELLED', 'REJECTED'].includes(status)) return 'danger';
+  if (['IN_PROGRESS', 'SCHEDULED', 'PILOT_ACCEPTED'].includes(status)) return 'info';
+  return 'warning';
+};
 
 export default function BusinessDashboard() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState('over');
+  const [portal, setPortal] = useState({ organizations: [], totals: { active: 0, completed: 0, total: 0, payments: 0 } });
+  const [notice, setNotice] = useState('');
+
+  const loadPortal = useCallback(async (signal) => {
+    try {
+      const response = await apiFetch('/api/portal/business/summary', { signal });
+      const data = await readJson(response);
+      if (!response.ok) throw new Error(data.error || 'Could not load linked business requests.');
+      setPortal(data.portal || { organizations: [], totals: { active: 0, completed: 0, total: 0, payments: 0 } });
+      setNotice('');
+    } catch (error) {
+      if (error.name !== 'AbortError' && !signal?.aborted) setNotice(error.message || 'Could not load linked business requests.');
+    }
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const initialLoad = window.setTimeout(() => void loadPortal(controller.signal), 0);
+    return () => { window.clearTimeout(initialLoad); controller.abort(); };
+  }, [loadPortal]);
   
   const navItems = [
     { id: 'over', label: 'Overview', icon: 'overview' },
@@ -18,6 +47,7 @@ export default function BusinessDashboard() {
   
   // Safe fallback if user fields are missing
   const business = user || {};
+  const linkedLeads = portal.organizations.flatMap((organization) => organization.leads.map((lead) => ({ ...lead, organizationName: organization.name })));
 
   const handleLogout = async () => {
     await logout();
@@ -62,6 +92,8 @@ export default function BusinessDashboard() {
         </div>
       </header>
 
+      {notice && <div role="alert" className="notice notice--error"><span>{notice}</span></div>}
+
       {activeTab === "over" && (
         <>
           <section className="metric-grid">
@@ -72,7 +104,7 @@ export default function BusinessDashboard() {
                   <OpsIcon name="activeServices" />
                 </span>
               </div>
-              <strong className="metric-card__value">0</strong>
+              <strong className="metric-card__value">{portal.totals.active}</strong>
             </article>
 
             <article className="metric-card">
@@ -82,7 +114,7 @@ export default function BusinessDashboard() {
                   <OpsIcon name="complete" />
                 </span>
               </div>
-              <strong className="metric-card__value">0</strong>
+              <strong className="metric-card__value">{portal.totals.completed}</strong>
             </article>
 
             <article className="metric-card">
@@ -92,7 +124,7 @@ export default function BusinessDashboard() {
                   <OpsIcon name="request" />
                 </span>
               </div>
-              <strong className="metric-card__value">0</strong>
+              <strong className="metric-card__value">{portal.totals.total}</strong>
             </article>
 
             <article className="metric-card">
@@ -102,7 +134,7 @@ export default function BusinessDashboard() {
                   <OpsIcon name="invoices" />
                 </span>
               </div>
-              <strong className="metric-card__value">0</strong>
+              <strong className="metric-card__value">{portal.totals.payments}</strong>
             </article>
           </section>
 
@@ -114,13 +146,27 @@ export default function BusinessDashboard() {
                   View all <span>›</span>
                 </button>
               </div>
-              <div className="recent-empty">
-                <div className="recent-icon">
-                  <OpsIcon name="search" size={68} />
+              {linkedLeads.length ? (
+                <div className="data-stack">
+                  {linkedLeads.slice(0, 5).map((lead) => (
+                    <div className="data-row" key={lead.id}>
+                      <div className="data-row__main">
+                        <span className="data-row__title">{lead.acreage} Acres - {lead.cropType || 'Crop'}</span>
+                        <span className="data-row__meta">{lead.organizationName} · {new Date(lead.createdAt).toLocaleDateString()}</span>
+                      </div>
+                      <span className={`status-badge status-badge--${statusTone(lead.status)}`}>{statusLabel(lead.status)}</span>
+                    </div>
+                  ))}
                 </div>
-                <h5>No requests yet</h5>
-                <p>You haven't made any service requests yet.</p>
-              </div>
+              ) : (
+                <div className="recent-empty">
+                  <div className="recent-icon">
+                    <OpsIcon name="search" size={68} />
+                  </div>
+                  <h5>No requests yet</h5>
+                  <p>You have no explicitly linked service requests yet.</p>
+                </div>
+              )}
             </section>
 
             <section className="recent-card">
@@ -147,14 +193,44 @@ export default function BusinessDashboard() {
           <div className="request-header">
             <h2>Requests</h2>
           </div>
-          <div className="request-empty">
-            <div className="request-empty__icon">
-              <OpsIcon name="clipboard" size={70} />
+          {!portal.organizations.length && (
+            <div className="request-empty">
+              <div className="request-empty__icon">
+                <OpsIcon name="clipboard" size={70} />
+              </div>
+              <h3>No linked organization</h3>
+              <p>
+                Linked requests will appear here after an Admin/Sales-approved organization membership is created.
+              </p>
             </div>
-            <h3>No requests found</h3>
-            <p>
-              Linked requests will appear here after the Sales team records them.
-            </p>
+          )}
+          <div className="data-stack">
+            {portal.organizations.map((organization) => (
+              <article className="panel panel--raised" key={organization.id}>
+                <div className="panel-header">
+                  <div className="panel-header__title">
+                    <p className="eyebrow">Linked organization</p>
+                    <h3>{organization.name}</h3>
+                    <p>{organization.totals.total} linked request{organization.totals.total === 1 ? '' : 's'}</p>
+                  </div>
+                </div>
+                {organization.leads.length ? (
+                  <div className="data-stack">
+                    {organization.leads.map((lead) => (
+                      <div className="data-row" key={lead.id}>
+                        <div className="data-row__main">
+                          <span className="data-row__title">{lead.acreage} Acres - {lead.cropType || 'Crop'}</span>
+                          <span className="data-row__meta">{new Date(lead.createdAt).toLocaleDateString()} · {lead.matchedCenter?.name || 'Centre pending'}</span>
+                          <span className={`status-badge status-badge--${statusTone(lead.status)}`}>{statusLabel(lead.status)}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="panel-body"><div className="empty-state"><strong>No requests linked</strong><span>Only explicitly linked work is visible here.</span></div></div>
+                )}
+              </article>
+            ))}
           </div>
         </section>
       )}

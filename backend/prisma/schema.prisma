@@ -125,6 +125,7 @@ model User {
   notifications        Notification[]
   authSessions         AuthSession[]
   recoveryChallenges   PasswordRecoveryChallenge[]
+  businessMemberships  BusinessMembership[]
 }
 
 model Customer {
@@ -144,6 +145,39 @@ model Customer {
 
   @@index([displayName])
   @@index([createdAt])
+}
+
+model BusinessOrganization {
+  id          String   @id @default(uuid())
+  name        String
+  phone       String?
+  email       String?
+  gstNo       String?
+  address     String?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  memberships BusinessMembership[]
+  leads       Lead[]
+
+  @@index([name])
+  @@index([active])
+}
+
+model BusinessMembership {
+  id             String               @id @default(uuid())
+  organization   BusinessOrganization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organizationId String
+  user           User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId         String
+  active         Boolean              @default(true)
+  createdByUserId String?
+  createdAt      DateTime             @default(now())
+
+  @@unique([organizationId, userId])
+  @@index([userId, active])
+  @@index([organizationId, active])
 }
 
 model AuthSession {
@@ -220,6 +254,8 @@ model Lead {
   id               String        @id @default(uuid())
   customer         Customer?     @relation(fields: [customerId], references: [id])
   customerId       String?
+  businessOrganization BusinessOrganization? @relation(fields: [businessOrganizationId], references: [id])
+  businessOrganizationId String?
   farmerName       String
   farmerPhone      String
   farmerAddress    String?
@@ -256,6 +292,7 @@ model Lead {
   chatSessions     ChatSession[]
 
   @@index([customerId, createdAt])
+  @@index([businessOrganizationId, createdAt])
 }
 
 // This is deliberately not a Lead: a declined request must never become

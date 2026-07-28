@@ -1,4 +1,5 @@
 const intakeService = require('../services/intakeService');
+const customerService = require('../services/customerService');
 const whatsappService = require('../services/whatsappService');
 const { parseCoordinates } = require('../services/locationParser');
 const logger = require('../services/loggerService');
@@ -131,12 +132,14 @@ exports.manual = async (req, res) => {
 exports.farmer = async (req, res) => {
   try {
     if (!req.authUser.phone) return res.status(409).json({ code: 'FARMER_PHONE_UNAVAILABLE' });
+    const customer = await customerService.ensureForFarmerUser(req.authUser);
     return await submit(req, res, {
       intakeChannel: 'WEBSITE',
       actorId: req.auth.userId,
       farmerName: req.authUser.name,
       farmerPhone: req.authUser.phone,
       preferredLanguage: req.authUser.preferredLanguage || 'ta',
+      customerId: customer?.id || null,
     });
   } catch (error) {
     return res.status(400).json({ error: error.message || 'Failed to submit service request' });
