@@ -4,7 +4,7 @@ ARG NODE_IMAGE=node:24-bookworm-slim
 FROM ${NODE_IMAGE} AS build
 WORKDIR /workspace
 COPY package.json package-lock.json ./
-RUN --mount=type=cache,target=/root/.npm \
+RUN --mount=type=cache,id=rfly-frontend-npm,target=/root/.npm,sharing=locked \
     npm ci && npm cache clean --force
 COPY . .
 ARG VITE_API_URL=/

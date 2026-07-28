@@ -6,14 +6,14 @@ FROM ${NODE_IMAGE} AS production-dependencies
 WORKDIR /workspace
 COPY package.json package-lock.json ./
 COPY prisma ./prisma
-RUN --mount=type=cache,target=/root/.npm \
+RUN --mount=type=cache,id=rfly-backend-prod-npm,target=/root/.npm,sharing=locked \
     npm ci --omit=dev && npm cache clean --force
 
 FROM ${NODE_IMAGE} AS migration-dependencies
 WORKDIR /workspace
 COPY package.json package-lock.json ./
 COPY prisma ./prisma
-RUN --mount=type=cache,target=/root/.npm \
+RUN --mount=type=cache,id=rfly-backend-migration-npm,target=/root/.npm,sharing=locked \
     npm ci && npm cache clean --force
 
 FROM ${NODE_IMAGE} AS runtime-base
