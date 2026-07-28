@@ -5,6 +5,7 @@ deploy_env="${DEPLOY_ENV:-/opt/client-demo-app/deployment.env}"
 deploy_changelog="${DEPLOY_CHANGELOG:-/opt/client-demo-app/deployment-notes/CHANGELOG.md}"
 compose_env=".deploy-runtime.env"
 compose_files=(-f compose.production.yml -f compose.onprem-demo.yml)
+secret_stage_dir="${DEPLOY_SECRET_STAGE_DIR:-${RUNNER_WORKSPACE:-$(pwd)/..}/_rfly-deploy-secrets}"
 
 cleanup() {
   rm -f "$compose_env"
@@ -51,8 +52,51 @@ require_env_file_path() {
   [ -r "$file_path" ] || fail "Required file from $var_name is not readable: $file_path"
 }
 
+rewrite_env_value() {
+  local var_name="$1"
+  local var_value="$2"
+  local temp_env="${compose_env}.tmp"
+
+  awk -F= -v key="$var_name" -v value="$var_value" '
+    BEGIN { updated = 0 }
+    $1 == key { print key "=" value; updated = 1; next }
+    { print }
+    END { if (!updated) print key "=" value }
+  ' "$compose_env" > "$temp_env"
+  mv "$temp_env" "$compose_env"
+}
+
+stage_secret_file() {
+  local var_name="$1"
+  local target_name="$2"
+  local source_path="${!var_name:-}"
+  local target_path="${secret_stage_dir}/${target_name}"
+
+  [ -n "$source_path" ] || fail "Required deployment variable is not set: $var_name"
+  [ -r "$source_path" ] || fail "Required file from $var_name is not readable: $source_path"
+
+  cp "$source_path" "$target_path" || fail "Could not stage secret file from $var_name into Docker-visible runner workspace"
+  chmod 0400 "$target_path" || fail "Could not secure staged secret file for $var_name"
+  [ -r "$target_path" ] || fail "Staged secret file is not readable: $target_path"
+
+  rewrite_env_value "$var_name" "$target_path"
+  export "${var_name}=${target_path}"
+}
+
 compose() {
   docker compose --env-file "$compose_env" "${compose_files[@]}" "$@"
+}
+
+verify_docker_can_mount_file() {
+  local file_path="$1"
+  local image="${POSTGRES_IMAGE:-postgres:16-alpine}"
+
+  docker run --rm \
+    --mount "type=bind,src=${file_path},dst=/run/secret-check,readonly" \
+    --entrypoint /bin/sh \
+    "$image" \
+    -c 'test -r /run/secret-check' \
+    >/dev/null || fail "Docker cannot bind-mount staged secret file: $file_path"
 }
 
 wait_for_http() {
@@ -115,9 +159,18 @@ require_env_file_path DB_PASSWORD_FILE
 require_env_file_path RECOVERY_HASH_SECRET_FILE
 require_env_file_path OTP_HASH_SECRET_FILE
 
+mkdir -p "$secret_stage_dir" || fail "Could not create Docker-visible secret staging directory: $secret_stage_dir"
+[ -d "$secret_stage_dir" ] || fail "Secret staging path is not a directory: $secret_stage_dir"
+[ -w "$secret_stage_dir" ] || fail "Secret staging directory is not writable by $(id -un): $secret_stage_dir"
+chmod 0700 "$secret_stage_dir" || fail "Could not secure secret staging directory: $secret_stage_dir"
+stage_secret_file DB_PASSWORD_FILE db_password
+stage_secret_file RECOVERY_HASH_SECRET_FILE recovery_hash_secret
+stage_secret_file OTP_HASH_SECRET_FILE otp_hash_secret
+
 if ! docker info >/dev/null 2>&1; then
   fail "Docker is not available to the self-hosted runner. Add the runner user to the docker group or configure approved non-interactive Docker access."
 fi
+verify_docker_can_mount_file "$DB_PASSWORD_FILE"
 
 if docker ps --format '{{.Names}}' | grep -Fxq 'srs'; then
   echo "Verified existing srs container is running."
