@@ -22,6 +22,13 @@ require_file() {
   [ -r "$file" ] || fail "Required file is not readable: $file"
 }
 
+require_env_file_path() {
+  local var_name="$1"
+  local file_path="${!var_name:-}"
+  [ -n "$file_path" ] || fail "Required deployment variable is not set: $var_name"
+  [ -r "$file_path" ] || fail "Required file from $var_name is not readable: $file_path"
+}
+
 compose() {
   docker compose --env-file "$compose_env" "${compose_files[@]}" "$@"
 }
@@ -41,8 +48,17 @@ wait_for_http() {
 require_file "$deploy_env"
 require_file compose.production.yml
 require_file compose.onprem-demo.yml
-cp "$deploy_env" "$compose_env"
+sed -e 's/\r$//' -e 's/[[:space:]]*$//' "$deploy_env" > "$compose_env"
 chmod 0600 "$compose_env"
+
+set -a
+# shellcheck disable=SC1090
+. "./$compose_env"
+set +a
+
+require_env_file_path DB_PASSWORD_FILE
+require_env_file_path RECOVERY_HASH_SECRET_FILE
+require_env_file_path OTP_HASH_SECRET_FILE
 
 if ! docker info >/dev/null 2>&1; then
   fail "Docker is not available to the self-hosted runner. Add the runner user to the docker group or configure approved non-interactive Docker access."
