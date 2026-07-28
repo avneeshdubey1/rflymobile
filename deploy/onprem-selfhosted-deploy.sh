@@ -5,8 +5,7 @@ deploy_env="${DEPLOY_ENV:-/opt/client-demo-app/deployment.env}"
 deploy_changelog="${DEPLOY_CHANGELOG:-/opt/client-demo-app/deployment-notes/CHANGELOG.md}"
 compose_env=".deploy-runtime.env"
 compose_files=(-f compose.production.yml -f compose.onprem-demo.yml)
-runner_user="$(id -un)"
-secret_stage_dir="${DEPLOY_SECRET_STAGE_DIR:-/home/${runner_user}/actions-runner/.rfly-deploy-secrets}"
+secret_stage_dir="${DEPLOY_SECRET_STAGE_DIR:-/opt/client-demo-app/.rfly-deploy-secrets}"
 
 cleanup() {
   rm -f "$compose_env"
@@ -146,8 +145,10 @@ require_env_file_path DB_PASSWORD_FILE
 require_env_file_path RECOVERY_HASH_SECRET_FILE
 require_env_file_path OTP_HASH_SECRET_FILE
 
-mkdir -p "$secret_stage_dir"
-chmod 0700 "$secret_stage_dir"
+mkdir -p "$secret_stage_dir" || fail "Could not create secret staging directory: $secret_stage_dir"
+[ -d "$secret_stage_dir" ] || fail "Secret staging path is not a directory: $secret_stage_dir"
+[ -w "$secret_stage_dir" ] || fail "Secret staging directory is not writable by $(id -un): $secret_stage_dir"
+chmod 0700 "$secret_stage_dir" || fail "Could not secure secret staging directory: $secret_stage_dir"
 stage_secret_file DB_PASSWORD_FILE db_password
 stage_secret_file RECOVERY_HASH_SECRET_FILE recovery_hash_secret
 stage_secret_file OTP_HASH_SECRET_FILE otp_hash_secret
@@ -206,7 +207,7 @@ fi
   echo "- deploy_env: ${deploy_env}"
   echo "- host_port: 8088"
   echo "- checks: compose config, build, db health, migration, localhost /healthz, localhost /api/health, srs still running"
-  echo "- rollback: docker compose --env-file ${compose_env} -f compose.production.yml -f compose.onprem-demo.yml down"
+  echo "- rollback: docker compose --env-file ${deploy_env} -f compose.production.yml -f compose.onprem-demo.yml down"
 } >> "$deploy_changelog"
 
 echo "On-prem deployment completed for ${source_sha}."
