@@ -14,8 +14,5 @@ router.post('/:id/complete', authenticate, authorize('PILOT'), assignmentControl
 router.post('/:id/decommission', authenticate, authorize('PILOT'), assignmentController.decommissionMission);
 router.post('/:id/location', authenticate, authorize('PILOT'), assignmentController.recordLocation);
 router.get('/:id/location', authenticate, authorize('ADMIN', 'FLEET_MANAGER'), assignmentController.getLocation);
-router.post('/status', authenticate, authorize('PILOT'), assignmentController.updateMissionStatus);
-router.post('/complete', authenticate, authorize('PILOT'), assignmentController.completeMission);
-router.post('/resolve', authenticate, authorize('ADMIN'), assignmentController.resolveAlert);
 
 module.exports = router;

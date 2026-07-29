@@ -21,10 +21,18 @@ async function createSalesNotifications(type, leadId, message) {
   return createRoleNotifications('SALES', type, leadId, message);
 }
 
+async function closePilotAssignmentNotifications(pilotId, leadId) {
+  return notificationRepository.closePilotAssignmentNotifications(pilotId, leadId);
+}
+
 async function start(assignment) {
   const [, smsAt] = timers();
   await notificationRepository.create({ type: 'PILOT_ASSIGNMENT', recipientId: assignment.pilotId, leadId: assignment.leadId, message: `New assignment ${assignment.id} scheduled for ${assignment.scheduledDate.toISOString()}.` });
-  const escalation = await notificationEscalationRepository.create({ assignmentId: assignment.id, stage: 'PUSH_SENT', nextActionAt: new Date(Date.now() + smsAt) });
+  const escalation = await notificationEscalationRepository.startForAssignment({
+    assignmentId: assignment.id,
+    stage: 'PUSH_SENT',
+    nextActionAt: new Date(Date.now() + smsAt),
+  });
   await auditLogRepository.create({ entityType: 'Assignment', entityId: assignment.id, action: 'PILOT_PUSH_SENT', afterState: { escalationId: escalation.id } });
   return escalation;
 }
@@ -43,4 +51,12 @@ async function createCallTask(escalation, now) {
   return notificationEscalationRepository.update(escalation.id, { stage: 'CALL_TASK_CREATED', nextActionAt: new Date(now.getTime() + (reassignAt - callAt)) });
 }
 
-module.exports = { timers, start, sendSms, createCallTask, createFleetNotifications, createSalesNotifications };
+module.exports = {
+  timers,
+  start,
+  sendSms,
+  createCallTask,
+  createFleetNotifications,
+  createSalesNotifications,
+  closePilotAssignmentNotifications,
+};

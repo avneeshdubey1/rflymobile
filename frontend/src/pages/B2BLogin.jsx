@@ -45,8 +45,8 @@ export default function B2BLogin() {
         <div className="login-context__brand logo">Daas</div>
         <div className="login-context__copy">
           <p className="hero-kicker">{t('business_portal', 'Business Portal')}</p>
-          <h1>{t('business_login_heading', 'Manage your drone operations.')}</h1>
-          <p>{t('business_login_subheading', 'Login to your B2B account to request drone services, manage operations, and view invoices.')}</p>
+          <h1>{t('business_login_heading', 'Track your linked service requests.')}</h1>
+          <p>{t('business_login_subheading', 'Login to view only the drone-service work explicitly linked to your organization.')}</p>
         </div>
       </section>
 
@@ -75,7 +75,7 @@ export default function B2BLogin() {
           
           <div style={{ marginTop: '1.5rem', textAlign: 'center', display: 'grid', gap: '0.5rem' }}>
             <p>{t('new_to_here', 'New to here?')} <Link to="/farmer/register" style={{ fontWeight: 'bold' }}>{t('farmer_registration', 'Farmer Registration')}</Link></p>
-            <p>{t('new_business_question', 'New Business?')} <Link to="/business/register" style={{ fontWeight: 'bold' }}>{t('business_registration', 'Business Registration')}</Link></p>
+            <p>{t('new_business_question', 'Need business access?')} <Link to="/business/register" style={{ fontWeight: 'bold' }}>{t('business_registration', 'Contact Sales')}</Link></p>
             <p className="muted">{t('employee_q', 'Employee?')} <Link to="/login" style={{ color: 'inherit' }}>{t('employee_login', 'Employee login')}</Link></p>
           </div>
         </div>

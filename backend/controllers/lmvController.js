@@ -82,6 +82,9 @@ exports.updateStatus = async (req, res) => {
     if (!validStatuses.has(req.body.status)) return res.status(400).json({ error: 'Invalid LMV status' });
     const before = await lmvRepository.findById(req.body.lmvId || req.params.id);
     if (!before) return res.status(404).json({ error: 'LMV not found' });
+    if (req.body.status === 'ASSIGNED' && before.status !== 'ASSIGNED') {
+      return res.status(409).json({ error: 'ASSIGNED status is controlled by mission scheduling' });
+    }
     if (before.status === 'ASSIGNED' && req.body.status !== 'ASSIGNED') await assertNoActiveAssignment(before.id);
     if (['MAINTENANCE', 'OUT_OF_SERVICE'].includes(req.body.status)) await assertNoActiveAssignment(before.id);
     const lmv = await lmvRepository.update(before.id, { status: req.body.status });

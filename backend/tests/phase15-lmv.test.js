@@ -129,6 +129,27 @@ test('manual scheduling requires an eligible same-centre LMV and releases it on 
   });
   assert.equal(blocked.status, 409);
 
+  const manualDroneReservation = await fetch(`${baseUrl}/api/drones/update-status`, {
+    method: 'POST',
+    headers: auth(fleetManager),
+    body: JSON.stringify({ droneId: drone.id, status: 'ASSIGNED', reason: 'bypass attempt' }),
+  });
+  const manualLmvReservation = await fetch(`${baseUrl}/api/lmvs/update-status`, {
+    method: 'POST',
+    headers: auth(fleetManager),
+    body: JSON.stringify({ lmvId: maintenanceLmv.id, status: 'ASSIGNED', reason: 'bypass attempt' }),
+  });
+  assert.deepEqual([manualDroneReservation.status, manualLmvReservation.status], [409, 409]);
+
+  await prisma.user.update({ where: { id: pilot.id }, data: { active: false } });
+  const inactivePilot = await fetch(`${baseUrl}/api/assignments/manual`, {
+    method: 'POST',
+    headers: auth(fleetManager),
+    body: JSON.stringify({ leadId: lead.id, pilotId: pilot.id, droneId: drone.id, lmvId: lmv.id, scheduledDate }),
+  });
+  assert.equal(inactivePilot.status, 409);
+  await prisma.user.update({ where: { id: pilot.id }, data: { active: true } });
+
   const createdResponse = await fetch(`${baseUrl}/api/assignments/manual`, {
     method: 'POST',
     headers: auth(fleetManager),
@@ -154,12 +175,26 @@ test('manual scheduling requires an eligible same-centre LMV and releases it on 
   });
   assert.equal(maintenanceWhileActive.status, 409);
 
+  const droneAvailableWhileActive = await fetch(`${baseUrl}/api/drones/update-status`, {
+    method: 'POST',
+    headers: auth(fleetManager),
+    body: JSON.stringify({ droneId: drone.id, status: 'AVAILABLE', reason: 'test' }),
+  });
+  const droneMaintenanceWhileActive = await fetch(`${baseUrl}/api/drones/update-status`, {
+    method: 'POST',
+    headers: auth(fleetManager),
+    body: JSON.stringify({ droneId: drone.id, status: 'MAINTENANCE', reason: 'test' }),
+  });
+  assert.deepEqual([droneAvailableWhileActive.status, droneMaintenanceWhileActive.status], [409, 409]);
+
   assert.equal((await fetch(`${baseUrl}/api/assignments/${created.mission.id}/accept`, { method: 'POST', headers: auth(pilot), body: '{}' })).status, 200);
   assert.equal((await fetch(`${baseUrl}/api/assignments/${created.mission.id}/start`, { method: 'POST', headers: auth(pilot), body: '{}' })).status, 200);
   const completed = await fetch(`${baseUrl}/api/assignments/${created.mission.id}/complete`, { method: 'POST', headers: auth(pilot), body: JSON.stringify({ actualAcreage: 3 }) });
   assert.equal(completed.status, 200, await completed.text());
   const paymentRows = await prisma.paymentRecord.findMany({ where: { assignmentId: created.mission.id }, select: { id: true } });
   ids.payments.push(...paymentRows.map((payment) => payment.id));
+  assert.equal(paymentRows.length, 0);
+  assert.equal((await prisma.drone.findUnique({ where: { id: drone.id } })).status, 'AVAILABLE');
   assert.equal((await prisma.lMV.findUnique({ where: { id: lmv.id } })).status, 'AVAILABLE');
 });
 

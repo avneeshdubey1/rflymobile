@@ -7,17 +7,15 @@ const app = require('../app');
 const prisma = require('../src/lib/prisma');
 const { issueToken } = require('../middleware/auth');
 const { installChatSocket } = require('../sockets/chatSocket');
-const { closeInactiveSessions } = require('../services/chatLifecycleService');
 
 let server;
 let io;
 let baseUrl;
 let admin;
-let pilot;
+let fleet;
 let sales;
-let adminSocket;
-let pilotSocket;
-let sessionId;
+let pilot;
+const sockets = [];
 const runId = `${process.pid}-${Date.now()}`;
 const ids = { users: [], sessions: [], messages: [] };
 
@@ -26,19 +24,24 @@ const auth = (user) => ({ Authorization: `Bearer ${issueToken(user)}`, 'Content-
 function connect(user) {
   return new Promise((resolve, reject) => {
     const socket = createClient(baseUrl, { auth: { token: issueToken(user) }, transports: ['websocket'] });
-    socket.once('connect', () => resolve(socket));
+    socket.once('connect', () => {
+      sockets.push(socket);
+      resolve(socket);
+    });
     socket.once('connect_error', reject);
   });
 }
 
 function acknowledge(socket, event, payload) {
   return new Promise((resolve, reject) => {
-    socket.emit(event, payload, (result) => result?.success ? resolve(result) : reject(new Error(result?.error || 'Socket request failed')));
+    socket.emit(event, payload, (result) => result?.success
+      ? resolve(result)
+      : reject(new Error(result?.error || 'Socket request failed')));
   });
 }
 
-function nextEvent(socket, event) {
-  return new Promise((resolve) => socket.once(event, resolve));
+async function json(response) {
+  return { status: response.status, body: await response.json() };
 }
 
 test.before(async () => {
@@ -48,99 +51,127 @@ test.before(async () => {
   server.listen(0);
   await new Promise((resolve) => server.once('listening', resolve));
   baseUrl = `http://127.0.0.1:${server.address().port}`;
-  [admin, pilot, sales] = await Promise.all([
+  [admin, fleet, sales, pilot] = await Promise.all([
     prisma.user.create({ data: { name: 'Phase 6 Admin', email: `phase6-admin-${runId}@example.test`, passwordHash: 'test', role: 'ADMIN' } }),
-    prisma.user.create({ data: { name: 'Phase 6 Pilot', email: `phase6-pilot-${runId}@example.test`, passwordHash: 'test', role: 'PILOT' } }),
+    prisma.user.create({ data: { name: 'Phase 6 Fleet', email: `phase6-fleet-${runId}@example.test`, passwordHash: 'test', role: 'FLEET_MANAGER' } }),
     prisma.user.create({ data: { name: 'Phase 6 Sales', email: `phase6-sales-${runId}@example.test`, passwordHash: 'test', role: 'SALES' } }),
+    prisma.user.create({ data: { name: 'Phase 6 Pilot', email: `phase6-pilot-${runId}@example.test`, passwordHash: 'test', role: 'PILOT' } }),
   ]);
-  ids.users.push(admin.id, pilot.id, sales.id);
+  ids.users.push(admin.id, fleet.id, sales.id, pilot.id);
 });
 
-test('Admin and Pilot exchange Socket.io messages with a persisted read receipt', async () => {
+test('participant lists and chat initiation follow Admin > Fleet > Sales > Pilot', async () => {
+  const participantResponses = await Promise.all([admin, fleet, sales, pilot].map((user) => (
+    fetch(`${baseUrl}/api/chat/participants`, { headers: auth(user) }).then(json)
+  )));
+  assert.deepEqual(
+    participantResponses.map(({ status }) => status),
+    [200, 200, 200, 200],
+  );
+  const rankedActors = [admin, fleet, sales, pilot];
+  const rank = { ADMIN: 4, FLEET_MANAGER: 3, SALES: 2, PILOT: 1 };
+  participantResponses.forEach(({ body }, index) => {
+    const actor = rankedActors[index];
+    assert.equal(body.participants.every((participant) => rank[participant.role] < rank[actor.role]), true);
+    const returnedIds = new Set(body.participants.map((participant) => participant.id));
+    [admin, fleet, sales, pilot].forEach((candidate) => {
+      assert.equal(
+        returnedIds.has(candidate.id),
+        rank[candidate.role] < rank[actor.role],
+        `${actor.role} participant visibility was wrong for ${candidate.role}`,
+      );
+    });
+  });
+
+  const forbidden = await Promise.all([
+    [pilot, admin],
+    [sales, fleet],
+    [fleet, admin],
+  ].map(([actor, target]) => fetch(`${baseUrl}/api/chat/sessions`, {
+    method: 'POST',
+    headers: auth(actor),
+    body: JSON.stringify({ participantId: target.id }),
+  })));
+  assert.deepEqual(forbidden.map((response) => response.status), [403, 403, 403]);
+});
+
+test('a subordinate can reply only after the supervisor sends the first message', async () => {
   const createdResponse = await fetch(`${baseUrl}/api/chat/sessions`, {
-    method: 'POST', headers: auth(admin), body: JSON.stringify({ participantId: pilot.id }),
+    method: 'POST',
+    headers: auth(sales),
+    body: JSON.stringify({ participantId: pilot.id }),
   });
   const created = await createdResponse.json();
-  assert.equal(createdResponse.status, 201);
-  sessionId = created.session.id;
-  ids.sessions.push(sessionId);
+  assert.equal(createdResponse.status, 201, JSON.stringify(created));
+  ids.sessions.push(created.session.id);
 
-  const salesResponse = await fetch(`${baseUrl}/api/chat/sessions`, { headers: auth(sales) });
-  assert.equal(salesResponse.status, 403);
-
-  adminSocket = await connect(admin);
-  pilotSocket = await connect(pilot);
+  const [salesSocket, pilotSocket] = await Promise.all([connect(sales), connect(pilot)]);
   await Promise.all([
-    acknowledge(adminSocket, 'chat:join', { sessionId }),
-    acknowledge(pilotSocket, 'chat:join', { sessionId }),
+    acknowledge(salesSocket, 'chat:join', { sessionId: created.session.id }),
+    acknowledge(pilotSocket, 'chat:join', { sessionId: created.session.id }),
   ]);
-  const incoming = nextEvent(pilotSocket, 'chat:message');
-  const sent = await acknowledge(adminSocket, 'chat:send', { sessionId, content: 'Please confirm the drone battery status.' });
-  ids.messages.push(sent.message.id);
-  const broadcast = await incoming;
-  assert.equal(broadcast.id, sent.message.id);
-  assert.equal(broadcast.content, 'Please confirm the drone battery status.');
+  await assert.rejects(
+    () => acknowledge(pilotSocket, 'chat:send', { sessionId: created.session.id, content: 'Trying to start upward.' }),
+    /supervisor's first message/,
+  );
 
-  const readBroadcast = nextEvent(adminSocket, 'chat:read');
-  const read = await acknowledge(pilotSocket, 'chat:read', { sessionId });
-  const notified = await readBroadcast;
-  assert.deepEqual(read.messageIds, [sent.message.id]);
-  assert.deepEqual(notified.messageIds, [sent.message.id]);
-  const [message, session] = await Promise.all([
-    prisma.chatMessage.findUnique({ where: { id: sent.message.id } }),
-    prisma.chatSession.findUnique({ where: { id: sessionId } }),
-  ]);
-  assert.ok(message.readAt);
-  assert.ok(session.firstResponseReadAt);
+  const opened = await acknowledge(salesSocket, 'chat:send', {
+    sessionId: created.session.id,
+    content: 'Please confirm the field arrival time.',
+  });
+  ids.messages.push(opened.message.id);
+  const reply = await acknowledge(pilotSocket, 'chat:send', {
+    sessionId: created.session.id,
+    content: 'Arrival confirmed.',
+  });
+  ids.messages.push(reply.message.id);
+  assert.equal(reply.message.senderId, pilot.id);
 });
 
-test('read chats auto-close, unread chats stay open, and only Admin can close manually', async () => {
-  const invalidResponse = await fetch(`${baseUrl}/api/chat/sessions`, {
-    method: 'POST', headers: auth(pilot), body: JSON.stringify({ participantId: pilot.id }),
+test('Fleet can start downward, but only Admin can close any chat', async () => {
+  const createdResponse = await fetch(`${baseUrl}/api/chat/sessions`, {
+    method: 'POST',
+    headers: auth(fleet),
+    body: JSON.stringify({ participantId: pilot.id }),
   });
-  assert.equal(invalidResponse.status, 403);
+  const created = await createdResponse.json();
+  assert.equal(createdResponse.status, 201, JSON.stringify(created));
+  ids.sessions.push(created.session.id);
 
-  process.env.CHAT_AUTO_CLOSE_AFTER_MS = '5';
-  await prisma.chatSession.update({ where: { id: sessionId }, data: { lastActivityAt: new Date(Date.now() - 1000) } });
-  const closed = await closeInactiveSessions(new Date());
-  assert.equal(closed.some((session) => session.id === sessionId), true);
-  const session = await prisma.chatSession.findUnique({ where: { id: sessionId } });
-  assert.equal(session.status, 'CLOSED');
-  await assert.rejects(() => acknowledge(adminSocket, 'chat:send', { sessionId, content: 'This should not send.' }), /closed/);
-
-  const unreadResponse = await fetch(`${baseUrl}/api/chat/sessions`, {
-    method: 'POST', headers: auth(admin), body: JSON.stringify({ participantId: pilot.id }),
-  });
-  const unreadCreated = await unreadResponse.json();
-  assert.equal(unreadResponse.status, 201);
-  const unreadSessionId = unreadCreated.session.id;
-  ids.sessions.push(unreadSessionId);
-  await Promise.all([
-    acknowledge(adminSocket, 'chat:join', { sessionId: unreadSessionId }),
-    acknowledge(pilotSocket, 'chat:join', { sessionId: unreadSessionId }),
+  const [adminSocket, fleetSocket, pilotSocket] = await Promise.all([
+    connect(admin),
+    connect(fleet),
+    connect(pilot),
   ]);
-  const unreadMessage = await acknowledge(adminSocket, 'chat:send', { sessionId: unreadSessionId, content: 'This message must remain available until it is read.' });
-  ids.messages.push(unreadMessage.message.id);
-  await prisma.chatSession.update({ where: { id: unreadSessionId }, data: { lastActivityAt: new Date(Date.now() - 1000) } });
-  const unreadCloseAttempt = await closeInactiveSessions(new Date());
-  assert.equal(unreadCloseAttempt.some((item) => item.id === unreadSessionId), false);
-  assert.equal((await prisma.chatSession.findUnique({ where: { id: unreadSessionId } })).status, 'OPEN');
+  await Promise.all([
+    acknowledge(adminSocket, 'chat:join', { sessionId: created.session.id }),
+    acknowledge(fleetSocket, 'chat:join', { sessionId: created.session.id }),
+    acknowledge(pilotSocket, 'chat:join', { sessionId: created.session.id }),
+  ]);
 
-  await assert.rejects(() => acknowledge(pilotSocket, 'chat:close', { sessionId: unreadSessionId }), /Only an Admin/);
-  const closedBroadcast = nextEvent(pilotSocket, 'chat:closed');
-  const manualClose = await acknowledge(adminSocket, 'chat:close', { sessionId: unreadSessionId });
-  const pilotNotified = await closedBroadcast;
-  assert.equal(manualClose.status, 'CLOSED');
-  assert.equal(pilotNotified.sessionId, unreadSessionId);
-  assert.equal((await prisma.chatSession.findUnique({ where: { id: unreadSessionId } })).status, 'CLOSED');
-  assert.ok(await prisma.auditLog.findFirst({ where: { entityId: unreadSessionId, action: 'CHAT_SESSION_ADMIN_CLOSED' } }));
-  delete process.env.CHAT_AUTO_CLOSE_AFTER_MS;
+  await assert.rejects(
+    () => acknowledge(fleetSocket, 'chat:close', { sessionId: created.session.id }),
+    /Only an Admin/,
+  );
+  await assert.rejects(
+    () => acknowledge(pilotSocket, 'chat:close', { sessionId: created.session.id }),
+    /Only an Admin/,
+  );
+
+  const adminSessions = await fetch(`${baseUrl}/api/chat/sessions`, { headers: auth(admin) }).then(json);
+  assert.equal(adminSessions.status, 200);
+  assert.equal(adminSessions.body.sessions.some((session) => session.id === created.session.id), true);
+
+  const closed = await acknowledge(adminSocket, 'chat:close', { sessionId: created.session.id });
+  assert.equal(closed.status, 'CLOSED');
+  assert.equal((await prisma.chatSession.findUnique({ where: { id: created.session.id } })).status, 'CLOSED');
+  assert.ok(await prisma.auditLog.findFirst({
+    where: { entityId: created.session.id, action: 'CHAT_SESSION_ADMIN_CLOSED', actorId: admin.id },
+  }));
 });
 
 test.after(async () => {
-  delete process.env.CHAT_AUTO_CLOSE_AFTER_MS;
-  adminSocket?.disconnect();
-  pilotSocket?.disconnect();
+  sockets.forEach((socket) => socket.disconnect());
   await prisma.auditLog.deleteMany({ where: { entityId: { in: [...ids.sessions, ...ids.messages] } } });
   await prisma.chatMessage.deleteMany({ where: { sessionId: { in: ids.sessions } } });
   await prisma.chatSession.deleteMany({ where: { id: { in: ids.sessions } } });

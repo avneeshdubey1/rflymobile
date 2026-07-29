@@ -48,6 +48,13 @@ test('a fleet manager can turn a manual-scheduling lead into an assignment, then
   ids.assignments.push(created.mission.id);
 
   const rescheduledDate = new Date('2026-08-11T09:00:00.000Z');
+  const invalidPilotResponse = await fetch(`${baseUrl}/api/assignments/${created.mission.id}/reschedule`, {
+    method: 'PUT',
+    headers: auth(fleetManager),
+    body: JSON.stringify({ scheduledDate: rescheduledDate, pilotId: sales.id, reason: 'Invalid role attempt' }),
+  });
+  assert.equal(invalidPilotResponse.status, 409);
+
   const rescheduleResponse = await fetch(`${baseUrl}/api/assignments/${created.mission.id}/reschedule`, {
     method: 'PUT', headers: auth(fleetManager), body: JSON.stringify({ scheduledDate: rescheduledDate, reason: 'Farmer requested another day' }),
   });

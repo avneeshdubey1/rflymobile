@@ -4,7 +4,6 @@ const { Server } = require('socket.io');
 const { loadEnvironment } = require('./config/environment');
 const app = require('./app');
 const { startNotificationEscalationJob } = require('./jobs/notificationEscalationJob');
-const { startChatAutoCloseJob } = require('./jobs/chatAutoCloseJob');
 const { startDeclinedEnquiryPurgeJob } = require('./jobs/declinedEnquiryPurgeJob');
 const { installChatSocket } = require('./sockets/chatSocket');
 const { installLocationSocket } = require('./sockets/locationSocket');
@@ -27,10 +26,8 @@ server.listen(config.port, () => {
 });
 
 const notificationEscalationJob = startNotificationEscalationJob();
-const chatAutoCloseJob = startChatAutoCloseJob();
 const declinedEnquiryPurgeJob = startDeclinedEnquiryPurgeJob(config.intake.declinedEnquiryPurgeIntervalMs);
 process.on('SIGTERM', () => {
   clearInterval(notificationEscalationJob);
-  clearInterval(chatAutoCloseJob);
   clearInterval(declinedEnquiryPurgeJob);
 });

@@ -125,14 +125,13 @@ const backendProcess = startProcess(process.execPath, ['server.js'], {
     NODE_ENV: 'test',
     DATABASE_URL: databaseUrl,
     PORT: '5100',
+    CORS_ALLOWED_ORIGINS: frontendUrl,
     RECOVERY_HASH_SECRET: recoveryHashSecret,
     WHATSAPP_API_KEY: '',
     WEATHER_API_KEY: '',
     UPI_GATEWAY_KEY: '',
     UPI_WEBHOOK_SECRET: '',
     NOTIFICATION_CASCADE_TIMERS_MS: '86400000,172800000,259200000,345600000',
-    CHAT_AUTO_CLOSE_AFTER_MS: '86400000',
-    CHAT_AUTO_CLOSE_INTERVAL_MS: '86400000',
   },
 });
 const frontendBuildEnv = { ...process.env, VITE_API_URL: backendUrl, VITE_GPS_PING_INTERVAL_MS: '500' };
@@ -182,7 +181,7 @@ async function login(page, user, expectedPath) {
   await page.goto(`${frontendUrl}/login`, { waitUntil: 'domcontentloaded' });
   await page.locator('input[name="email"]').fill(user.email);
   await page.locator('input[type="password"]').fill(testPassword);
-  await page.getByRole('button', { name: 'Login' }).click();
+  await page.getByRole('button', { name: 'Login', exact: true }).click();
   await page.waitForURL(`**${expectedPath}`, { timeout: 10_000 });
 }
 
@@ -341,7 +340,7 @@ try {
     await page.goto(`${frontendUrl}/login`, { waitUntil: 'domcontentloaded' });
     await page.locator('input[name="email"]').fill(roleUsers.ADMIN.email);
     await page.locator('input[type="password"]').fill('incorrect-' + unique);
-    await page.getByRole('button', { name: 'Login' }).click();
+    await page.getByRole('button', { name: 'Login', exact: true }).click();
     await page.getByText(/Invalid email or password|Login failed/).waitFor();
     const body = await page.locator('body').innerText();
     assert.ok(!/Password:\s*\S+/i.test(body), 'The login screen discloses a demo password');
@@ -397,7 +396,7 @@ try {
     const [salesUsers, pilotDroneMutation, fleetUserMutation] = await Promise.all([
       api('/api/users/all', { session: salesSession }),
       api('/api/drones/update-status', { session: pilotSession, method: 'POST', body: { droneId: assignmentList.data.missions[0].droneId, status: 'MAINTENANCE' } }),
-      api('/api/users/add', { session: fleetSession, method: 'POST', body: { email: `forbidden-${unique}@example.invalid`, name: 'Forbidden User', role: 'PILOT', password: testPassword } }),
+      api('/api/users/add', { session: fleetSession, method: 'POST', body: { email: `forbidden-${unique}@example.invalid`, name: 'Forbidden User', role: 'PILOT', password: testPassword, homeCenterId: roleUsers.PILOT.homeCenterId } }),
     ]);
     assert.deepEqual([salesUsers.response.status, pilotDroneMutation.response.status, fleetUserMutation.response.status], [403, 403, 201]);
   });
@@ -490,11 +489,13 @@ try {
     await inputs.nth(0).fill('Browser Created Pilot');
     await inputs.nth(1).fill(`browser-created-${unique}@example.invalid`);
     await inputs.nth(2).fill(crypto.randomBytes(18).toString('base64url'));
+    await page.locator('#new-user-center').selectOption(roleUsers.PILOT.homeCenterId);
     const responsePromise = page.waitForResponse((response) => response.url().endsWith('/api/users/add') && response.request().method() === 'POST');
     await page.getByRole('button', { name: 'Create Account' }).click();
     const response = await responsePromise;
     assert.equal(response.status(), 201, await response.text());
     await page.getByText('Browser Created Pilot', { exact: true }).waitFor();
+    await page.getByText(/Operating center:/).last().waitFor();
   });
 
   const adminSession = await apiLogin(roleUsers.ADMIN);
@@ -564,8 +565,8 @@ try {
     assert.equal(data.lead.status, 'COMPLETED');
     await page.waitForTimeout(750);
     assert.equal(locationStatuses.includes(409), false, `GPS transition race returned 409: ${locationStatuses.join(', ')}`);
-    state.paymentLeadName = state.inRangeLead.farmerName;
-    return { assignmentId: state.autoAssignment.id, finalStatus: data.lead.status, paymentCreated: Boolean(data.payment) };
+    assert.equal(Object.hasOwn(data, 'payment'), false, 'Mission completion exposed the retired immediate-payment result');
+    return { assignmentId: state.autoAssignment.id, finalStatus: data.lead.status, paymentCreated: false };
   });
 
   await runCase('PILOT-02', 'Pilot offline action queues and synchronizes after reconnection', async (page, context) => {
@@ -586,21 +587,11 @@ try {
     return { assignmentId: scheduled.id };
   });
 
-  await runCase('PAY-01', 'Sales sees completed mission payment and records cash collection', async (page) => {
-    assert.ok(state.paymentLeadName, 'Pilot completion did not produce a payment setup');
+  await runCase('BILLING-01', 'Incomplete immediate-payment UI and APIs remain retired after mission completion', async (page) => {
     await login(page, roleUsers.SALES, '/marketing');
-    await page.getByRole('button', { name: /Payment Collection/ }).click();
-    const payment = page.locator('article').filter({ hasText: state.paymentLeadName });
-    await payment.waitFor();
-    const fallbackResponse = page.waitForResponse((response) => response.url().includes('/generate-link'));
-    await payment.getByRole('button', { name: 'Try UPI link' }).click();
-    const fallback = await fallbackResponse;
-    assert.equal(fallback.status(), 200);
-    await page.getByText(/No UPI provider is configured/i).waitFor();
-    const cashResponse = page.waitForResponse((response) => response.url().includes('/mark-cash'));
-    await payment.getByRole('button', { name: 'Mark cash collected' }).click();
-    const cash = await cashResponse;
-    assert.equal(cash.status(), 200, await cash.text());
+    assert.equal(await page.getByRole('button', { name: /Payment Collection/i }).count(), 0);
+    const retired = await api('/api/payments/pending', { session: await apiLogin(roleUsers.SALES) });
+    assert.equal(retired.response.status, 404);
   });
 
   await runCase('CRM-01', 'Admin opens the full lifecycle timeline for the completed lead', async (page) => {
@@ -621,7 +612,7 @@ try {
     const pilotPage = await pilotContext.newPage();
     try {
       await login(adminPage, roleUsers.ADMIN, '/admin');
-      await adminPage.getByRole('button', { name: /Pilot Support Chat/ }).click();
+      await adminPage.getByRole('button', { name: /Team Command Chat/ }).click();
       await adminPage.getByText(/Live/).first().waitFor({ timeout: 10_000 });
       await adminPage.locator('#chat-participant').selectOption(roleUsers.PILOT.id);
       await adminPage.getByRole('button', { name: 'Open chat' }).click();
@@ -634,6 +625,7 @@ try {
       await login(pilotPage, roleUsers.PILOT, '/pilot');
       await pilotPage.getByRole('button', { name: 'Support desk' }).click();
       await pilotPage.getByText(/Live/).first().waitFor({ timeout: 10_000 });
+      assert.equal(await pilotPage.locator('#chat-participant').count(), 0, 'Pilot was allowed to start an upward chat');
       await pilotPage.getByRole('button', { name: /Admin User/ }).click();
       await pilotPage.getByText(message, { exact: true }).waitFor();
       const reply = `Pilot reply ${unique}`;
@@ -643,13 +635,57 @@ try {
       adminPage.once('dialog', (dialog) => dialog.accept());
       await adminPage.getByRole('button', { name: 'Close chat' }).click();
       await adminPage.getByText(/Chat closed for both participants/i).waitFor();
-      await pilotPage.getByText(/closed by an administrator/i).waitFor({ timeout: 10_000 });
+      await pilotPage.getByText(/closed by Admin/i).waitFor({ timeout: 10_000 });
     } finally { await pilotContext.close(); }
+  });
+
+  await runCase('CHAT-02', 'Fleet starts a lower-role chat while upward initiation and non-Admin closure stay blocked', async (fleetPage) => {
+    await login(fleetPage, roleUsers.FLEET_MANAGER, '/fleet-manager');
+    await fleetPage.getByRole('button', { name: /Team Chat/ }).click();
+    await fleetPage.getByText(/Live/).first().waitFor({ timeout: 10_000 });
+    const participantOptions = await fleetPage.locator('#chat-participant option').allTextContents();
+    assert.equal(participantOptions.some((label) => /admin/i.test(label)), false);
+    assert.equal(participantOptions.some((label) => /pilot/i.test(label)), true);
+    await fleetPage.locator('#chat-participant').selectOption(roleUsers.PILOT.id);
+    await fleetPage.getByRole('button', { name: 'Open chat' }).click();
+    await fleetPage.getByText(/New chat opened|Opened the existing chat/).waitFor();
+    assert.equal(await fleetPage.getByRole('button', { name: 'Close chat' }).count(), 0);
+    const message = `Fleet instruction ${unique}`;
+    await fleetPage.locator('input[placeholder*="Type a message"]').fill(message);
+    await fleetPage.getByRole('button', { name: 'Send' }).click();
+    await fleetPage.getByText(message, { exact: true }).waitFor();
+
+    const fleetSession = await apiLogin(roleUsers.FLEET_MANAGER);
+    const forbidden = await api('/api/chat/sessions', {
+      session: fleetSession,
+      method: 'POST',
+      body: { participantId: roleUsers.ADMIN.id },
+    });
+    assert.equal(forbidden.response.status, 403);
+  }, { allowedConsoleErrors: [/403 \(Forbidden\)/] });
+
+  await runCase('PORTAL-UI-01', 'Business public self-registration is visibly retired and cannot submit an account', async (page) => {
+    await page.goto(`${frontendUrl}/business/register`, { waitUntil: 'domcontentloaded' });
+    await page.getByText(/Public self-registration is unavailable/i).waitFor();
+    assert.equal(await page.getByRole('button', { name: /Register Business/i }).count(), 0);
+    const response = await api('/api/auth/business/register', {
+      method: 'POST',
+      body: {
+        businessName: 'Browser Unapproved Business',
+        contactPerson: 'Browser Contact',
+        email: `browser-unapproved-${unique}@example.invalid`,
+        mobile: '9000012398',
+        address: 'Must not persist',
+        gstNo: 'UNAPPROVED',
+        password: testPassword,
+      },
+    });
+    assert.equal(response.response.status, 404);
   });
 
   await runCase('UI-01', 'Admin workspace remains usable without page overflow on mobile', async (page) => {
     await login(page, roleUsers.ADMIN, '/admin');
-    const tabs = ['Fleet Overview', 'User Management', 'CRM Logbook', 'Pilot Support Chat', 'Payment Collection', 'Live Pilot GPS'];
+    const tabs = ['Fleet Overview', 'User Management', 'CRM Logbook', 'Team Command Chat', 'Live Pilot GPS'];
     const dimensions = {};
     for (const tab of tabs) {
       await page.getByRole('button', { name: new RegExp(tab, 'i') }).click();
@@ -661,7 +697,7 @@ try {
 
   await runCase('UI-02', 'Sales workspace remains usable without page overflow on mobile', async (page) => {
     await login(page, roleUsers.SALES, '/marketing');
-    const tabs = ['Process Leads', 'Enter New Lead', 'Operational alerts', 'Payment Collection', 'CRM Logbook'];
+    const tabs = ['Process Leads', 'Enter New Lead', 'Operational alerts', 'Team Chat', 'CRM Logbook'];
     const dimensions = {};
     for (const tab of tabs) {
       await page.getByRole('button', { name: new RegExp(tab, 'i') }).click();
@@ -686,14 +722,14 @@ try {
     await page.getByText('My spraying tasks').waitFor();
     const missions = await assertNoPageOverflow(page, 'Pilot missions');
     await page.getByRole('button', { name: 'Support desk' }).click();
-    await page.getByText(/Admin–Pilot support chat/i).waitFor();
+    await page.getByText(/Supervisor messages/i).waitFor();
     const support = await assertNoPageOverflow(page, 'Pilot support chat');
     return { missions, support };
   }, { viewport: { width: 390, height: 844 } });
 
   await runCase('UI-05', 'Employee login remains contained on mobile', async (page) => {
     await page.goto(`${frontendUrl}/login`, { waitUntil: 'domcontentloaded' });
-    await page.getByRole('button', { name: 'Login' }).waitFor();
+    await page.getByRole('button', { name: 'Login', exact: true }).waitFor();
     return assertNoPageOverflow(page, 'Employee login');
   }, { viewport: { width: 390, height: 844 } });
 

@@ -17,7 +17,7 @@ export default function BusinessDashboard() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState('over');
-  const [portal, setPortal] = useState({ organizations: [], totals: { active: 0, completed: 0, total: 0, payments: 0 } });
+  const [portal, setPortal] = useState({ organizations: [], totals: { active: 0, completed: 0, total: 0 } });
   const [notice, setNotice] = useState('');
 
   const loadPortal = useCallback(async (signal) => {
@@ -25,7 +25,7 @@ export default function BusinessDashboard() {
       const response = await apiFetch('/api/portal/business/summary', { signal });
       const data = await readJson(response);
       if (!response.ok) throw new Error(data.error || 'Could not load linked business requests.');
-      setPortal(data.portal || { organizations: [], totals: { active: 0, completed: 0, total: 0, payments: 0 } });
+      setPortal(data.portal || { organizations: [], totals: { active: 0, completed: 0, total: 0 } });
       setNotice('');
     } catch (error) {
       if (error.name !== 'AbortError' && !signal?.aborted) setNotice(error.message || 'Could not load linked business requests.');
@@ -41,7 +41,6 @@ export default function BusinessDashboard() {
   const navItems = [
     { id: 'over', label: 'Overview', icon: 'overview' },
     { id: 'users', label: 'Requests', icon: 'requests' },
-    { id: 'not', label: 'Notification', icon: 'notification' },
     { id: 'sp', label: 'Settings/Profile', icon: 'settings' },
   ];
   
@@ -57,15 +56,11 @@ export default function BusinessDashboard() {
   const pageInfo = {
     over: {
       title: "Overview",
-      description: "View your business overview, active services, recent requests and invoices.",
+      description: "View active and completed service requests explicitly linked to your organization.",
     },
     users: {
       title: "Requests",
       description: "View service requests explicitly linked to this business account.",
-    },
-    not: {
-      title: "Notifications",
-      description: "Stay updated with the latest notifications and service updates.",
     },
     sp: {
       title: "Settings / Profile",
@@ -127,25 +122,11 @@ export default function BusinessDashboard() {
               <strong className="metric-card__value">{portal.totals.total}</strong>
             </article>
 
-            <article className="metric-card">
-              <div className="metric-card__top">
-                <span>Total Invoices</span>
-                <span className="metric-card__icon">
-                  <OpsIcon name="invoices" />
-                </span>
-              </div>
-              <strong className="metric-card__value">{portal.totals.payments}</strong>
-            </article>
           </section>
 
           <div className="overview-bottom">
             <section className="recent-card">
-              <div className="recent-header">
-                <h3>Recent Requests</h3>
-                <button className="view-all-btn">
-                  View all <span>›</span>
-                </button>
-              </div>
+              <div className="recent-header"><h3>Recent Requests</h3></div>
               {linkedLeads.length ? (
                 <div className="data-stack">
                   {linkedLeads.slice(0, 5).map((lead) => (
@@ -167,22 +148,6 @@ export default function BusinessDashboard() {
                   <p>You have no explicitly linked service requests yet.</p>
                 </div>
               )}
-            </section>
-
-            <section className="recent-card">
-              <div className="recent-header">
-                <h3>Recent Invoices</h3>
-                <button className="view-all-btn">
-                  View all <span>›</span>
-                </button>
-              </div>
-              <div className="recent-empty">
-                <div className="recent-icon">
-                  <OpsIcon name="invoice" size={68} />
-                </div>
-                <h5>No invoices yet</h5>
-                <p>You don't have any invoices yet.</p>
-              </div>
             </section>
           </div>
         </>
@@ -235,24 +200,6 @@ export default function BusinessDashboard() {
         </section>
       )}
       
-      {activeTab === "not" && (
-        <section className="panel-card">
-          <div className="panel-header">
-            <h2>Notifications</h2>
-          </div>
-          <div className="empty-state">
-            <span className="empty-state__icon">
-              <OpsIcon name="notification" size={64} />
-            </span>
-            <h3>No Notifications Yet</h3>
-            <p>
-              You don't have any notifications at the moment.
-              Updates about your requests, services and invoices
-              will appear here.
-            </p>
-          </div>
-        </section>
-      )}
       
       {activeTab === "sp" && (
         <section className="settings-page">

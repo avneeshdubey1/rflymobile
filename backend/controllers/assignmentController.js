@@ -39,7 +39,9 @@ exports.createManualAssignment = async (req, res) => {
     let lead = storedLead;
     if (!['PROCESSED', 'NEEDS_MANUAL_SCHEDULING'].includes(lead.status)) return res.status(409).json({ error: 'Only processed or manual-scheduling leads can be assigned' });
     lead = await revalidateForScheduling(lead, { actorId: req.auth.userId });
-    if (pilot.role !== 'PILOT' || pilot.homeCenterId !== lead.matchedCenterId) return res.status(409).json({ error: 'Pilot must belong to the lead operating centre' });
+    if (pilot.role !== 'PILOT' || !pilot.active || pilot.archivedAt || pilot.homeCenterId !== lead.matchedCenterId) {
+      return res.status(409).json({ error: 'Pilot must be active and belong to the lead operating centre' });
+    }
     if (drone.status !== 'AVAILABLE' || drone.homeCenterId !== lead.matchedCenterId) return res.status(409).json({ error: 'Drone must be available at the lead operating centre' });
     if (lmv.status !== 'AVAILABLE' || lmv.homeCenterId !== lead.matchedCenterId) return res.status(409).json({ error: 'LMV must be available at the lead operating centre' });
     const scheduledDate = req.body.scheduledDate ? new Date(req.body.scheduledDate) : new Date();
@@ -77,8 +79,6 @@ exports.acceptMission = stateHandler('accept');
 exports.startMission = stateHandler('start');
 exports.completeMission = stateHandler('complete');
 exports.decommissionMission = stateHandler('decommission');
-exports.updateMissionStatus = async (_req, res) => res.status(400).json({ error: 'Use /:id/accept or /:id/start; status cannot be set directly' });
-exports.resolveAlert = async (_req, res) => res.status(501).json({ error: 'Alert resolution is implemented with Admin workflows' });
 
 exports.recordLocation = async (req, res) => {
   try {
@@ -106,7 +106,14 @@ exports.rescheduleAssignment = async (req, res) => {
     const newPilotId = req.body.pilotId || before.pilotId;
     const newLmvId = req.body.lmvId || before.lmvId;
     if (!newLmvId) return res.status(400).json({ error: 'LMV is required for rescheduling' });
-    const lmv = await lmvRepository.findById(newLmvId);
+    const [pilot, lmv] = await Promise.all([
+      userRepository.findById(newPilotId),
+      lmvRepository.findById(newLmvId),
+    ]);
+    if (!pilot || pilot.role !== 'PILOT' || !pilot.active || pilot.archivedAt
+      || pilot.homeCenterId !== before.lead.matchedCenterId) {
+      return res.status(409).json({ error: 'Pilot must be active and belong to the lead operating centre' });
+    }
     if (!lmv || lmv.homeCenterId !== before.lead.matchedCenterId) return res.status(409).json({ error: 'LMV must belong to the lead operating centre' });
     if (newLmvId !== before.lmvId && lmv.status !== 'AVAILABLE') return res.status(409).json({ error: 'LMV must be available at the lead operating centre' });
     
@@ -126,11 +133,9 @@ exports.rescheduleAssignment = async (req, res) => {
     try {
       await whatsappService.sendMissionScheduled(lead, assignment.scheduledDate);
       if (newPilotId !== before.pilotId) {
-        // Stop old pilot notifications? We should ideally stop it, but for now we just start new ones.
-        await notificationCascadeService.start(assignment);
-      } else {
-        await notificationCascadeService.start(assignment);
+        await notificationCascadeService.closePilotAssignmentNotifications(before.pilotId, before.leadId);
       }
+      await notificationCascadeService.start(assignment);
     } catch(err) {
       console.error("Reschedule notifications failed:", err);
     }

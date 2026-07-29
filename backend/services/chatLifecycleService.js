@@ -1,14 +1,13 @@
 const chatRepository = require('../src/repositories/chatRepository');
 const userRepository = require('../src/repositories/userRepository');
 const auditLogService = require('./auditLogService');
-const prisma = require('../src/lib/prisma');
 
-const CHAT_AUTO_CLOSE_MS = 24 * 60 * 60_000;
-
-function autoCloseAfterMs() {
-  const configured = Number(process.env.CHAT_AUTO_CLOSE_AFTER_MS);
-  return Number.isFinite(configured) && configured > 0 ? configured : CHAT_AUTO_CLOSE_MS;
-}
+const roleRank = Object.freeze({
+  ADMIN: 4,
+  FLEET_MANAGER: 3,
+  SALES: 2,
+  PILOT: 1,
+});
 
 function isParticipant(session, userId) {
   return session.participants.some(p => p.id === userId);
@@ -23,12 +22,11 @@ async function requireParticipant(sessionId, actor) {
 
 async function createOrFindDirectSession(actor, targetUserId) {
   const participant = await userRepository.findById(targetUserId);
-  if (!participant) throw new Error('Chat participant not found');
-
-  if (actor.role === 'ADMIN' || (actor.role === 'FLEET_MANAGER' && participant.role === 'PILOT') || (actor.role === 'PILOT' && participant.role === 'ADMIN')) {
-      // Allowed
-  } else {
-      throw new Error('You do not have permission to start a direct chat with this user.');
+  if (!participant || participant.active === false || participant.archivedAt || !roleRank[participant.role]) {
+    throw new Error('Chat participant not found');
+  }
+  if (!roleRank[actor.role] || roleRank[actor.role] <= roleRank[participant.role]) {
+    throw new Error('A chat must be started by a higher-authority operational role');
   }
 
   const existing = await chatRepository.findOpenDirect(actor.userId, targetUserId);
@@ -39,46 +37,17 @@ async function createOrFindDirectSession(actor, targetUserId) {
   return { session, created: true };
 }
 
-async function createOrFindLeadSession(actor, leadId) {
-  if (actor.role !== 'FARMER' && actor.role !== 'ADMIN') {
-      throw new Error('Only Farmers (or Admins) can initiate a lead context chat.');
-  }
-  
-  const lead = await prisma.lead.findUnique({ where: { id: leadId }, include: { assignment: true } });
-  if (!lead) throw new Error('Lead not found');
-  
-  const participantIds = [actor.userId];
-  if (lead.assignment) {
-      participantIds.push(lead.assignment.pilotId);
-  }
-  
-  const existing = await chatRepository.findOpenByLead(leadId);
-  if (existing) {
-     if (!isParticipant(existing, actor.userId) && actor.role !== 'ADMIN') {
-         throw new Error('Not authorized for this chat.');
-     }
-     return { session: existing, created: false };
-  }
-
-  const session = await chatRepository.createSession({ leadId }, participantIds);
-  await auditLogService.record({ entityType: 'ChatSession', entityId: session.id, action: 'CHAT_SESSION_OPENED', actorId: actor.userId, afterState: { type: 'LEAD', leadId, participants: participantIds, status: session.status } });
-  return { session, created: true };
-}
-
 async function listSessions(actor) {
-  const sessions = await chatRepository.findForParticipant(actor.userId);
-  if (actor.role === 'FARMER') {
-      // Filter out archived ones for farmers
-      return sessions.filter(s => !s.archivedAt);
-  }
-  return sessions;
+  return actor.role === 'ADMIN'
+    ? chatRepository.findAll()
+    : chatRepository.findForParticipant(actor.userId);
 }
 
 async function listParticipants(actor) {
-  if (actor.role === 'ADMIN') return userRepository.findAll({}); // Admin sees everyone
-  if (actor.role === 'FLEET_MANAGER') return userRepository.findAll({ role: 'PILOT' });
-  if (actor.role === 'PILOT') return userRepository.findAll({ role: 'ADMIN' });
-  return [];
+  const actorRank = roleRank[actor.role];
+  if (!actorRank) return [];
+  const users = await userRepository.findAll({ active: true, archivedAt: null });
+  return users.filter((user) => roleRank[user.role] && roleRank[user.role] < actorRank);
 }
 
 async function listMessages(sessionId, actor) {
@@ -89,6 +58,13 @@ async function listMessages(sessionId, actor) {
 async function sendMessage(sessionId, actor, content) {
   const session = await requireParticipant(sessionId, actor);
   if (session.status !== 'OPEN') throw new Error('This chat session is closed');
+  const actorRank = roleRank[actor.role];
+  const superiorIds = session.participants
+    .filter((participant) => roleRank[participant.role] > actorRank)
+    .map((participant) => participant.id);
+  if (superiorIds.length && !session.messages.some((message) => superiorIds.includes(message.senderId))) {
+    throw new Error("Wait for your supervisor's first message before replying");
+  }
   const normalized = String(content || '').trim();
   if (!normalized) throw new Error('A message cannot be empty');
   if (normalized.length > 4000) throw new Error('A message must be 4000 characters or fewer');
@@ -133,32 +109,16 @@ async function closeSession(sessionId, actor, closedAt = new Date()) {
     afterState: { status: 'CLOSED', closedAt },
   });
   
-  // If it's a lead chat, schedule it for archiving (auto-hide for farmer in 1 week)
-  if (session.leadId) {
-     const archiveDate = new Date(closedAt.getTime() + 7 * 24 * 60 * 60_1000);
-     await chatRepository.archiveSession(session.id, archiveDate);
-  }
-
   return { sessionId: session.id, status: 'CLOSED', closedAt, alreadyClosed: false };
 }
 
-async function closeInactiveSessions(now = new Date()) {
-  const cutoff = new Date(now.getTime() - autoCloseAfterMs());
-  const expired = await chatRepository.findExpiredOpen(cutoff);
-  const closed = [];
-  for (const session of expired) {
-    const result = await chatRepository.closeIfOpen(session.id, now);
-    if (!result.count) continue;
-    await auditLogService.record({ entityType: 'ChatSession', entityId: session.id, action: 'CHAT_SESSION_AUTO_CLOSED', beforeState: { status: 'OPEN', lastActivityAt: session.lastActivityAt }, afterState: { status: 'CLOSED', closedAt: now } });
-    
-    if (session.leadId) {
-        const archiveDate = new Date(now.getTime() + 7 * 24 * 60 * 60_1000);
-        await chatRepository.archiveSession(session.id, archiveDate);
-    }
-    
-    closed.push(session);
-  }
-  return closed;
-}
-
-module.exports = { autoCloseAfterMs, createOrFindDirectSession, createOrFindLeadSession, listSessions, listParticipants, listMessages, sendMessage, markMessagesRead, closeSession, closeInactiveSessions, requireParticipant };
+module.exports = {
+  createOrFindDirectSession,
+  listSessions,
+  listParticipants,
+  listMessages,
+  sendMessage,
+  markMessagesRead,
+  closeSession,
+  requireParticipant,
+};

@@ -5,6 +5,13 @@ import OpsIcon from './OpsIcon';
 import { apiFetch, readJson } from '../services/apiClient';
 import { createAuthenticatedSocket } from '../services/authenticatedSocket';
 
+const roleRank = Object.freeze({
+  admin: 4,
+  'fleet-manager': 3,
+  sales: 2,
+  pilot: 1,
+});
+
 function getChatTitle(session, userId) {
   if (session.lead) {
       return `Request from ${session.lead.farmerName}`;
@@ -24,6 +31,40 @@ function ChatPanel() {
   const [draft, setDraft] = useState('');
   const [participantId, setParticipantId] = useState('');
   const [connection, setConnection] = useState('Connecting…');
+  const canStartChat = (participants.length > 0);
+  const actorRank = roleRank[user?.role] || 0;
+  const superiorIds = (selectedSession?.participants || [])
+    .filter((participant) => (roleRank[String(participant.role || '').toLowerCase().replaceAll('_', '-')] || 0) > actorRank)
+    .map((participant) => participant.id);
+  const canSend = Boolean(
+    selectedSession?.status === 'OPEN'
+    && (
+      user?.role === 'admin'
+      || superiorIds.length === 0
+      || messages.some((message) => superiorIds.includes(message.senderId))
+    )
+  );
+  const chatCopy = {
+    admin: {
+      title: 'Operations command chat',
+      description: 'Start chats with Fleet, Sales, or Pilot staff. Only Admin can close a conversation.',
+    },
+    'fleet-manager': {
+      title: 'Fleet team chat',
+      description: 'Start chats with Sales or Pilot staff. Reply to Admin conversations; only Admin can close chats.',
+    },
+    sales: {
+      title: 'Sales team chat',
+      description: 'Start chats with Pilots. Reply to Fleet or Admin conversations; only Admin can close chats.',
+    },
+    pilot: {
+      title: 'Supervisor messages',
+      description: 'Respond to conversations opened by a supervisor. Pilots cannot start or close chats.',
+    },
+  }[user?.role] || {
+    title: 'Operations chat',
+    description: 'Role-scoped operational communication.',
+  };
 
   const request = useCallback(async (path, options = {}) => {
     const response = await apiFetch(path, options);
@@ -70,7 +111,7 @@ function ChatPanel() {
     socket.on('chat:read', updateReadState);
     socket.on('chat:closed', (payload) => {
       updateClosedState(payload);
-      toast.success('This chat was closed by an administrator.');
+      toast.success('This chat was closed by Admin.');
     });
     return () => socket.disconnect();
   }, [loadSessions, user, updateClosedState, updateReadState]);
@@ -121,7 +162,7 @@ function ChatPanel() {
 
   const sendMessage = async (event) => {
     event.preventDefault();
-    if (!selectedSession || !draft.trim()) return;
+    if (!selectedSession || !draft.trim() || !canSend) return;
     try { await socketRequest('chat:send', { sessionId: selectedSession.id, content: draft }); setDraft(''); }
     catch (error) { toast.error(error.message); }
   };
@@ -143,17 +184,21 @@ function ChatPanel() {
   return (
     <section className="panel panel--raised chat-panel">
       <div className="panel-header">
-        <div className="panel-header__title"><div className="panel-title-row"><span className="panel-title-icon"><OpsIcon name="chat" /></span><h2>Admin–Pilot support chat</h2></div><p>Unread chats stay open. Fully read inactive chats close after 24 hours.</p></div>
+        <div className="panel-header__title"><div className="panel-title-row"><span className="panel-title-icon"><OpsIcon name="chat" /></span><h2>{chatCopy.title}</h2></div><p>{chatCopy.description}</p></div>
         <span className={`connection-state ${connection === 'Live' ? 'connection-state--live' : ''}`}>{connection}</span>
       </div>
 
       <div className="chat-layout">
         <aside className="chat-sidebar">
-          <form className="chat-create" onSubmit={createSession}>
-            <label className="field-label" htmlFor="chat-participant">Start a chat</label>
-            <select id="chat-participant" value={participantId} onChange={(event) => setParticipantId(event.target.value)}><option value="">Choose a participant</option>{participants.map((participant) => <option key={participant.id} value={participant.id}>{participant.name}</option>)}</select>
-            <button className="submit-btn" type="submit">Open chat</button>
-          </form>
+          {canStartChat ? (
+            <form className="chat-create" onSubmit={createSession}>
+              <label className="field-label" htmlFor="chat-participant">Start a chat with a lower role</label>
+              <select id="chat-participant" value={participantId} onChange={(event) => setParticipantId(event.target.value)}><option value="">Choose a participant</option>{participants.map((participant) => <option key={participant.id} value={participant.id}>{participant.name} — {String(participant.role || '').replaceAll('_', ' ').toLowerCase()}</option>)}</select>
+              <button className="submit-btn" type="submit">Open chat</button>
+            </form>
+          ) : (
+            <div className="notice notice--info">New chats must be opened by a higher-authority role.</div>
+          )}
           <p className="eyebrow">Conversations</p>
           <div className="chat-session-list section-gap">
             {!sessions.length && <div className="empty-state"><strong>No chats yet</strong><span>Choose a participant to start one.</span></div>}
@@ -170,13 +215,13 @@ function ChatPanel() {
           {selectedSession && <>
             <div className="chat-conversation__header"><div><strong>{getChatTitle(selectedSession, user?.id)}</strong> <span className={`status-badge ${selectedSession.status === 'OPEN' ? 'status-badge--success' : ''}`}>{selectedSession.status.toLowerCase()}</span></div>{user?.role === 'admin' && selectedSession.status === 'OPEN' && <button className="action-btn" type="button" onClick={() => void closeSelectedSession()}>Close chat</button>}</div>
             <div className="chat-messages">
-              {!messages.length && <div className="empty-state empty-state--center"><strong>No messages yet</strong><span>Send the first operational update below.</span></div>}
+              {!messages.length && <div className="empty-state empty-state--center"><strong>No messages yet</strong><span>{superiorIds.length ? 'Wait for the supervisor who opened this chat to send the first message.' : 'Send the first operational update below.'}</span></div>}
               {messages.map((message) => {
                 const mine = message.senderId === user?.id;
                 return <div className={`chat-bubble ${mine ? 'chat-bubble--mine' : ''}`} key={message.id}><p>{message.content}</p><small>{new Date(message.sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}{mine && (message.readAt ? ' · Read' : ' · Sent')}</small></div>;
               })}
             </div>
-            <form className="chat-compose" onSubmit={sendMessage}><input value={draft} maxLength="4000" disabled={selectedSession.status !== 'OPEN'} onChange={(event) => setDraft(event.target.value)} placeholder={selectedSession.status === 'OPEN' ? 'Type a message…' : 'This chat is closed'} /><button className="submit-btn" disabled={selectedSession.status !== 'OPEN'} type="submit">Send</button></form>
+            <form className="chat-compose" onSubmit={sendMessage}><input value={draft} maxLength="4000" disabled={!canSend} onChange={(event) => setDraft(event.target.value)} placeholder={selectedSession.status !== 'OPEN' ? 'This chat is closed' : canSend ? 'Type a message…' : 'Waiting for the supervisor’s first message'} /><button className="submit-btn" disabled={!canSend} type="submit">Send</button></form>
           </>}
         </div>
       </div>

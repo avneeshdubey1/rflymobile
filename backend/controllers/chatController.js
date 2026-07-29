@@ -1,7 +1,11 @@
 const chatLifecycleService = require('../services/chatLifecycleService');
 
 function respondError(res, error) {
-  const status = /not found/.test(error.message) ? 404 : /not a participant|do not have permission|must be between|Only Admins and Pilots|Only an Admin/.test(error.message) ? 403 : 400;
+  const status = /not found/.test(error.message)
+    ? 404
+    : /not a participant|do not have permission|must be started by|Only an Admin|supervisor's first message/.test(error.message)
+      ? 403
+      : 400;
   return res.status(status).json({ error: error.message });
 }
 
@@ -17,13 +21,7 @@ exports.getSessions = async (req, res) => {
 
 exports.createSession = async (req, res) => {
   try {
-    const { type, participantId, leadId } = req.body;
-    let result;
-    if (type === 'LEAD') {
-        result = await chatLifecycleService.createOrFindLeadSession(req.auth, leadId);
-    } else {
-        result = await chatLifecycleService.createOrFindDirectSession(req.auth, participantId);
-    }
+    const result = await chatLifecycleService.createOrFindDirectSession(req.auth, req.body.participantId);
     return res.status(result.created ? 201 : 200).json({ success: true, ...result });
   } catch (error) { return respondError(res, error); }
 };

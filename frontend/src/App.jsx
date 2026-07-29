@@ -20,7 +20,6 @@ import Settings from "./pages/Settings";
 import B2BLogin from "./pages/B2BLogin";
 import B2BRegister from "./pages/B2BRegister";
 import B2BForgotPassword from "./pages/B2BForgotPassword";
-import BusinessRegistrationSuccess from "./pages/BusinessRegistrationSuccess";
 
 import BusinessDashboard from "./pages/BusinessDashboard";
 
@@ -43,7 +42,6 @@ function App() {
           <Route path="/business/login" element={<B2BLogin />} />
           <Route path="/business/register" element={<B2BRegister />} />
           <Route path="/business/forgot-password" element={<B2BForgotPassword />} />
-          <Route path="/business/success" element={<BusinessRegistrationSuccess />} />
           
           {/* Protected Admin Routes */}
           <Route element={<ProtectedRoute allowedRoles={['admin']} />}>

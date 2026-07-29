@@ -3,7 +3,7 @@ const { authenticate, authorize } = require('../middleware/auth');
 const chatController = require('../controllers/chatController');
 
 const router = express.Router();
-router.use(authenticate, authorize('ADMIN', 'PILOT'));
+router.use(authenticate, authorize('ADMIN', 'FLEET_MANAGER', 'SALES', 'PILOT'));
 router.get('/participants', chatController.getParticipants);
 router.get('/sessions', chatController.getSessions);
 router.post('/sessions', chatController.createSession);

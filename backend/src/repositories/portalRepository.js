@@ -22,17 +22,6 @@ const leadSummarySelect = {
       hasDiscrepancy: true,
     },
   },
-  payments: {
-    select: {
-      id: true,
-      amount: true,
-      method: true,
-      status: true,
-      createdAt: true,
-      resolvedAt: true,
-    },
-    orderBy: { createdAt: 'desc' },
-  },
 };
 
 module.exports = {

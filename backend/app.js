@@ -31,11 +31,9 @@ function createApp({ config = loadEnvironment() } = {}) {
     '/api/auth/farmer/login',
     '/api/auth/farmer/complete-signup',
     '/api/auth/business/login',
-    '/api/auth/business/register',
   ], limits.login);
   app.use(['/api/auth/recovery', '/api/auth/business/recovery'], limits.recovery);
   app.use('/api/leads/ingest/website', limits.publicIntake);
-  app.use(/^\/api\/payments\/[^/]+\/webhook\/?$/, limits.webhook);
   app.use('/api', limits.general);
 
   app.use(express.json({ limit: config.jsonBodyLimitBytes, strict: true }));
@@ -43,7 +41,6 @@ function createApp({ config = loadEnvironment() } = {}) {
   app.use('/api/auth', require('./routes/authRoutes'));
   app.use('/api/leads', require('./routes/leadRoutes'));
   app.use('/api/assignments', require('./routes/assignmentRoutes'));
-  app.use('/api/payments', require('./routes/paymentRoutes'));
   app.use('/api/chat', require('./routes/chatRoutes'));
   app.use('/api/audit-log', require('./routes/auditLogRoutes'));
   app.use('/api/health', require('./routes/healthRoutes'));

@@ -6,7 +6,6 @@ const auditLogRepository = require('../src/repositories/auditLogRepository');
 const notificationEscalationRepository = require('../src/repositories/notificationEscalationRepository');
 const notificationCascadeService = require('./notificationCascadeService');
 const whatsappService = require('./whatsappService');
-const paymentService = require('./paymentService');
 
 async function getAssignedMission(assignmentId, actorId) {
   const assignment = await assignmentRepository.findById(assignmentId);
@@ -47,8 +46,8 @@ async function complete(assignmentId, actorId, actualAcreage) {
   const result = await transition(assignment, 'COMPLETED', { completedAt: new Date(), actualAcreage: Number(actualAcreage) }, 'MISSION_COMPLETED', actorId);
   await droneRepository.update(assignment.droneId, { status: 'AVAILABLE' });
   if (assignment.lmvId) await lmvRepository.update(assignment.lmvId, { status: 'AVAILABLE' });
-  const payment = await paymentService.createPendingPayment(result.assignment.id);
-  return { ...result, payment };
+  await whatsappService.sendMissionCompleted(result.lead, Number(actualAcreage));
+  return result;
 }
 
 async function decommission(assignmentId, actorId, reason) {

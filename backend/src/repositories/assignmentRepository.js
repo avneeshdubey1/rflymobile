@@ -35,6 +35,14 @@ module.exports = {
     where: { lmvId, lead: { status: { in: ['SCHEDULED', 'PILOT_ACCEPTED', 'IN_PROGRESS'] } } },
     include: defaultInclude,
   }),
+  findActiveForDrone: (droneId) => prisma.assignment.findMany({
+    where: { droneId, lead: { status: { in: ['SCHEDULED', 'PILOT_ACCEPTED', 'IN_PROGRESS'] } } },
+    include: defaultInclude,
+  }),
+  findActiveForPilot: (pilotId) => prisma.assignment.findMany({
+    where: { pilotId, lead: { status: { in: ['SCHEDULED', 'PILOT_ACCEPTED', 'IN_PROGRESS'] } } },
+    include: defaultInclude,
+  }),
   countForPilotBetween: (pilotId, start, end) => prisma.assignment.count({ where: { pilotId, scheduledDate: { gte: start, lt: end } } }),
   deleteAll: () => prisma.assignment.deleteMany(),
   createScheduleChange: (data) => prisma.scheduleChangeLog.create({ data }),

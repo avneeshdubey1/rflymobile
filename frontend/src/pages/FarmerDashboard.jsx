@@ -18,7 +18,7 @@ export default function FarmerDashboard() {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState('services');
   const [leads, setLeads] = useState([]);
-  const [portalSummary, setPortalSummary] = useState({ total: 0, active: 0, completed: 0, payments: 0 });
+  const [portalSummary, setPortalSummary] = useState({ total: 0, active: 0, completed: 0 });
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState(null);
   
@@ -34,7 +34,6 @@ export default function FarmerDashboard() {
     chemicalBrand: '',
     sprayPurpose: [],
     hasChemical: true,
-    chemicalProofUrl: '',
     expectedDate: '',
     expectedTime: '',
     waterBodyNearby: false,
@@ -47,7 +46,7 @@ export default function FarmerDashboard() {
       const data = await readJson(response);
       if (!response.ok) throw new Error(data.error || t('request_error'));
       setLeads(data.portal?.leads || []);
-      setPortalSummary(data.portal?.totals || { total: 0, active: 0, completed: 0, payments: 0 });
+      setPortalSummary(data.portal?.totals || { total: 0, active: 0, completed: 0 });
     } catch (error) {
       if (error.name !== 'AbortError' && !signal?.aborted) setNotice({ kind: 'error', message: error.message || t('request_error') });
     }
@@ -94,7 +93,6 @@ export default function FarmerDashboard() {
         chemicalBrand: form.chemicalBrand,
         sprayPurpose: Array.isArray(form.sprayPurpose) ? form.sprayPurpose.join(', ') : form.sprayPurpose,
         hasChemical: form.hasChemical,
-        chemicalProofUrl: form.chemicalProofUrl,
         expectedDate: form.expectedDate,
         expectedTime: form.expectedTime,
         waterBodyNearby: form.waterBodyNearby,
@@ -154,7 +152,6 @@ export default function FarmerDashboard() {
             <article className="metric-card"><div className="metric-card__top"><span>{t('Active Services')}</span><span className="metric-card__icon"><OpsIcon name="activeServices" /></span></div><strong className="metric-card__value">{portalSummary.active}</strong></article>
             <article className="metric-card"><div className="metric-card__top"><span>{t('Complete Services')}</span><span className="metric-card__icon"><OpsIcon name="complete" /></span></div><strong className="metric-card__value">{portalSummary.completed}</strong></article>
             <article className="metric-card"><div className="metric-card__top"><span>{t('Total Requests')}</span><span className="metric-card__icon"><OpsIcon name="request" /></span></div><strong className="metric-card__value">{portalSummary.total}</strong></article>
-            <article className="metric-card"><div className="metric-card__top"><span>{t('Payments')}</span><span className="metric-card__icon"><OpsIcon name="wallet" /></span></div><strong className="metric-card__value">{portalSummary.payments}</strong></article>
           </section>
           <section className="panel panel--raised">
             <div className="panel-header">
@@ -315,19 +312,6 @@ export default function FarmerDashboard() {
                   </div>
                 </div>
 
-                {form.hasChemical && (
-                  <div className="input-group" style={{ padding: '0.85rem', background: 'var(--surface-muted)', borderRadius: 'var(--radius-sm)', border: '1px dashed var(--border-strong)' }}>
-                    <label>{t('Upload proof of chemical (Optional)')}</label>
-                    <input type="file" disabled={busy} style={{ background: 'transparent', border: 'none', padding: '0.5rem 0' }} onChange={e => {
-                      if (e.target.files.length) {
-                        setForm({...form, chemicalProofUrl: 'https://example.com/dummy-proof.jpg'});
-                      } else {
-                        setForm({...form, chemicalProofUrl: ''});
-                      }
-                    }} />
-                    <span className="field-hint" style={{ marginTop: '0.25rem', display: 'block' }}>{t('Uploading proof avoids manual confirmation calls.')}</span>
-                  </div>
-                )}
               </div>
             </div>
 

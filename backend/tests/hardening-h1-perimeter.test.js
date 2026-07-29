@@ -133,27 +133,26 @@ test('retired Google Form endpoints are not exposed in production', async () => 
   } finally { await runtime.close(); }
 });
 
-test('UPI webhook authentication, freshness, and event replay checks fail closed', async () => {
-  const config = loadEnvironment(productionEnvironment({ UPI_WEBHOOK_SECRET: 'a-secure-upi-webhook-secret-value' }));
-  const runtime = await start(createApp({ config }));
-  const path = '/api/payments/nonexistent-payment/webhook';
+test('retired immediate-payment and UPI webhook routes are not exposed', async () => {
+  const runtime = await start(createApp({ config: loadEnvironment(productionEnvironment()) }));
+  const paths = [
+    '/api/payments/pending',
+    '/api/payments/nonexistent-assignment/generate-link',
+    '/api/payments/nonexistent-payment/mark-cash',
+    '/api/payments/nonexistent-payment/webhook',
+  ];
   const baseHeaders = {
     'Content-Type': 'application/json',
     Origin: 'https://operations.example.test',
     'X-Forwarded-Proto': 'https',
-    'X-UPI-Webhook-Secret': 'a-secure-upi-webhook-secret-value',
   };
   try {
-    const absentMetadata = await fetch(`${runtime.baseUrl}${path}`, { method: 'POST', headers: baseHeaders, body: JSON.stringify({ status: 'COMPLETED' }) });
-    assert.equal(absentMetadata.status, 400);
-    assert.equal((await absentMetadata.json()).code, 'WEBHOOK_REPLAY_METADATA_INVALID');
-
-    const eventHeaders = { ...baseHeaders, 'X-Webhook-Id': `h1-${Date.now()}`, 'X-Webhook-Timestamp': String(Date.now()) };
-    const first = await fetch(`${runtime.baseUrl}${path}`, { method: 'POST', headers: eventHeaders, body: JSON.stringify({ status: 'COMPLETED' }) });
-    assert.equal(first.status, 404);
-    const replay = await fetch(`${runtime.baseUrl}${path}`, { method: 'POST', headers: eventHeaders, body: JSON.stringify({ status: 'COMPLETED' }) });
-    assert.equal(replay.status, 409);
-    assert.equal((await replay.json()).code, 'WEBHOOK_REPLAYED');
+    const responses = await Promise.all(paths.map((path) => fetch(`${runtime.baseUrl}${path}`, {
+      method: path.endsWith('/pending') ? 'GET' : 'POST',
+      headers: baseHeaders,
+      body: path.endsWith('/pending') ? undefined : '{}',
+    })));
+    assert.deepEqual(responses.map((response) => response.status), [404, 404, 404, 404]);
   } finally { await runtime.close(); }
 });
 

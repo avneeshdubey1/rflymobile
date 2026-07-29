@@ -1,56 +1,9 @@
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router';
+import { Link } from 'react-router';
+import { useTranslation } from 'react-i18next';
 import LanguageSelector from '../components/LanguageSelector';
-import toast from 'react-hot-toast';
-import { apiFetch, readJson } from '../services/apiClient';
 
 export default function B2BRegister() {
-  const navigate = useNavigate();
-  
-  const [formData, setFormData] = useState({
-    businessName: '',
-    contactPerson: '',
-    email: '',
-    mobile: '',
-    address: '',
-    gstNo: '',
-    password: ''
-  });
-  
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
-
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.id]: e.target.value });
-  };
-
-  const handleSubmit = async (event) => {
-    event.preventDefault();
-    
-    setBusy(true);
-    setError('');
-    try {
-      const response = await apiFetch('/api/auth/business/register', {
-        method: 'POST',
-        authFailure: 'ignore',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
-      });
-      
-      const data = await readJson(response);
-      
-      if (!response.ok) {
-        throw new Error(data.error || 'Registration failed.');
-      }
-      
-      toast.success('Registration submitted for approval!');
-      navigate('/business/success', { replace: true });
-    } catch (failure) {
-      setError(failure?.message || 'Registration failed.');
-    } finally {
-      setBusy(false);
-    }
-  };
+  const { t } = useTranslation();
 
   return (
     <main className="login-container">
@@ -58,56 +11,26 @@ export default function B2BRegister() {
       <section className="login-context">
         <div className="login-context__brand logo">Daas</div>
         <div className="login-context__copy">
-          <p className="hero-kicker">Business Portal</p>
-          <h1>Request drone services instantly.</h1>
-          <p>Register your business to access drone services, manage requests, and monitor your operations anytime.</p>
+          <p className="hero-kicker">{t('business_portal', 'Business Portal')}</p>
+          <h1>{t('business_registration_staff_heading', 'Business access is enabled by the operations team.')}</h1>
+          <p>{t('business_registration_staff_description', 'A staff member must first link your account to an approved organization and its service requests.')}</p>
         </div>
       </section>
 
-      <section className="login-form-pane" style={{ overflowY: 'auto' }}>
+      <section className="login-form-pane">
         <div className="panel login-card">
-          <p className="eyebrow eyebrow--accent">BUSINESS REGISTRATION</p>
-          <h2>Create your account</h2>
-          <p className="subtitle" style={{ marginBottom: '1.6rem' }}>Register your business to access our B2B services.</p>
-          
-          {error && <div className="alert error" role="alert">{error}</div>}
-          
-          <form className="login-form" onSubmit={handleSubmit}>
-            <div className="input-group">
-              <label htmlFor="businessName">Business Name</label>
-              <input id="businessName" type="text" value={formData.businessName} onChange={handleChange} placeholder="ABC Pvt Ltd" required disabled={busy} />
-            </div>
-            <div className="input-group">
-              <label htmlFor="contactPerson">Contact Person</label>
-              <input id="contactPerson" type="text" value={formData.contactPerson} onChange={handleChange} placeholder="John Doe" required disabled={busy} />
-            </div>
-            <div className="input-group">
-              <label htmlFor="gstNo">GST Number</label>
-              <input id="gstNo" type="text" value={formData.gstNo} onChange={handleChange} placeholder="Enter GST Number" required disabled={busy} />
-            </div>
-            <div className="input-group">
-              <label htmlFor="email">Email</label>
-              <input id="email" type="email" value={formData.email} onChange={handleChange} placeholder="company@example.com" required disabled={busy} />
-            </div>
-            <div className="input-group">
-              <label htmlFor="mobile">Mobile Number</label>
-              <input id="mobile" inputMode="numeric" autoComplete="tel" value={formData.mobile} onChange={handleChange} placeholder="9876543210" maxLength="16" required disabled={busy} />
-            </div>
-            <div className="input-group">
-              <label htmlFor="address">Business Address</label>
-              <textarea id="address" value={formData.address} onChange={handleChange} placeholder="Enter your complete business address" required disabled={busy} style={{ width: '100%', padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #ccc', resize: 'vertical' }} />
-            </div>
-            <div className="input-group">
-              <label htmlFor="password">Password</label>
-              <input id="password" type="password" value={formData.password} onChange={handleChange} placeholder="Create a password" required disabled={busy} />
-            </div>
-            
-            <button className="submit-btn login-submit" disabled={busy}>{busy ? 'Registering…' : 'Register Business'}</button>
-          </form>
-          
+          <p className="eyebrow eyebrow--accent">{t('business_registration', 'BUSINESS REGISTRATION')}</p>
+          <h2>{t('contact_sales_to_start', 'Contact Sales to start')}</h2>
+          <p className="subtitle" style={{ marginBottom: '1.6rem' }}>
+            {t('business_self_registration_retired', 'Public self-registration is unavailable. This prevents an unapproved account from seeing company or farm-group records.')}
+          </p>
+          <div className="alert info">
+            {t('business_phone_first_note', 'The team can still record a service request by phone while business portal access is being arranged.')}
+          </div>
           <div style={{ marginTop: '1.5rem', textAlign: 'center', display: 'grid', gap: '0.5rem' }}>
-            <p>Already have a business account? <Link to="/business/login" style={{ fontWeight: 'bold' }}>Login here</Link></p>
-            <p className="muted">Farmer? <Link to="/farmer/register" style={{ color: 'inherit' }}>Farmer Registration</Link></p>
+            <p><Link to="/request" style={{ fontWeight: 'bold' }}>{t('public_booking_link', 'Public booking form')}</Link></p>
+            <p>{t('already_registered', 'Already registered?')} <Link to="/business/login" style={{ fontWeight: 'bold' }}>{t('login_here', 'Login here')}</Link></p>
+            <p>{t('farmer_q', 'Farmer?')} <Link to="/farmer/login" style={{ color: 'inherit' }}>{t('farmer_login', 'Farmer login')}</Link></p>
           </div>
         </div>
       </section>

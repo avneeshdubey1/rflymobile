@@ -18,7 +18,6 @@ router.post('/recovery/request', recoveryController.request);
 router.post('/recovery/complete', recoveryController.complete);
 
 router.post('/business/login', businessAuthController.businessLogin);
-router.post('/business/register', businessAuthController.registerBusiness);
 router.post('/business/recovery/request-otp', businessAuthController.requestRecoveryOtp);
 router.post('/business/recovery/complete', businessAuthController.completeRecovery);
 

@@ -2,9 +2,9 @@ import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../context/useAuth';
 import OperationsShell from '../components/OperationsShell';
 import OpsIcon from '../components/OpsIcon';
-import PendingPaymentsPanel from '../components/PendingPaymentsPanel';
 import LogbookTimelinePanel from '../components/LogbookTimelinePanel';
 import LocationLink from '../components/LocationLink';
+import ChatPanel from '../components/ChatPanel';
 import { createAuthenticatedSocket } from '../services/authenticatedSocket';
 import { apiFetch, readJson } from '../services/apiClient';
 
@@ -198,7 +198,7 @@ function MarketingDashboard() {
     { id: 'customers', label: 'Customers', icon: 'users', badge: selectedCustomer ? '1' : null },
     { id: 'manual', label: 'Enter New Lead', icon: 'plus' },
     { id: 'alerts', label: 'Operational alerts', icon: 'alert', badge: alerts.length || null },
-    { id: 'payments', label: 'Payment Collection', icon: 'wallet' },
+    { id: 'chat', label: 'Team Chat', icon: 'chat' },
     { id: 'logbook', label: 'CRM Logbook', icon: 'list' },
   ];
 
@@ -294,7 +294,7 @@ function MarketingDashboard() {
         </section>
       )}
 
-      {activeTab === 'payments' && <PendingPaymentsPanel />}
+      {activeTab === 'chat' && <ChatPanel />}
       {activeTab === 'logbook' && <LogbookTimelinePanel />}
     </OperationsShell>
   );

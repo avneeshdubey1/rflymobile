@@ -12,6 +12,17 @@ const include = {
 
 module.exports = {
   create: (data) => prisma.notificationEscalation.create({ data, include }),
+  startForAssignment: (data) => prisma.notificationEscalation.upsert({
+    where: { assignmentId: data.assignmentId },
+    create: data,
+    update: {
+      stage: data.stage,
+      nextActionAt: data.nextActionAt,
+      reassignCount: 0,
+      closedAt: null,
+    },
+    include,
+  }),
   findDue: (now) => prisma.notificationEscalation.findMany({ where: { closedAt: null, nextActionAt: { lte: now } }, include, orderBy: { nextActionAt: 'asc' } }),
   findByAssignmentId: (assignmentId) => prisma.notificationEscalation.findUnique({ where: { assignmentId }, include }),
   update: (id, data) => prisma.notificationEscalation.update({ where: { id }, data, include }),

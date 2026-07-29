@@ -9,6 +9,7 @@ import { useAuth } from '../context/useAuth';
 import OperationsShell from '../components/OperationsShell';
 import OpsIcon from '../components/OpsIcon';
 import LiveLocationPanel from '../components/LiveLocationPanel';
+import ChatPanel from '../components/ChatPanel';
 import { apiFetch, readJson } from '../services/apiClient';
 
 const localizer = dateFnsLocalizer({ format, parse, startOfWeek, getDay, locales: { 'en-US': enUS } });
@@ -166,20 +167,27 @@ function FleetManagerDashboard() {
     } catch (error) { showNotice('error', error.message); }
   };
 
-  const handleResolveMaintenance = async (droneId, action) => {
+  const updateDroneStatus = async (droneId, status) => {
     try {
-      await request('/api/drones/resolve-maintenance', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ droneId, action }) });
-      showNotice('success', action === 'approve' ? 'Maintenance approved.' : 'Maintenance rejected.');
+      await request('/api/drones/update-status', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ droneId, status, reason: 'Fleet status update' }) });
+      showNotice('success', 'Drone status updated.');
       await fetchData();
     } catch (error) { showNotice('error', error.message); }
   };
-  
-  const requestMaintenance = async (droneId) => {
+
+  const updatePilotOperatingCenter = async (pilotId, homeCenterId) => {
     try {
-      await request('/api/drones/request-maintenance', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ droneId, reason: 'Fleet manager request' }) });
-      showNotice('success', 'Maintenance requested.');
+      await request(`/api/users/${pilotId}/operating-center`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ homeCenterId }),
+      });
+      showNotice('success', 'Pilot operating center updated.');
       await fetchData();
-    } catch (error) { showNotice('error', error.message); }
+    } catch (error) {
+      showNotice('error', error.message);
+      await fetchData();
+    }
   };
 
   const navItems = [
@@ -187,6 +195,7 @@ function FleetManagerDashboard() {
     { id: 'pilots', label: 'Pilots', icon: 'users' },
     { id: 'drones', label: 'Drones', icon: 'drone' },
     { id: 'lmvs', label: 'LMVs', icon: 'vehicle' },
+    { id: 'chat', label: 'Team Chat', icon: 'chat' },
     { id: 'location', label: 'Live Pilot GPS', icon: 'location' },
   ];
 
@@ -236,7 +245,7 @@ function FleetManagerDashboard() {
           {notice && <div role="alert" className={`notice notice--${notice.kind}`}><span>{notice.message}</span><button type="button" className="notice__close" onClick={() => setNotice(null)} aria-label="Dismiss message">×</button></div>}
           <div className="panel panel--raised">
             <div className="panel-header"><div className="panel-header__title"><div className="panel-title-row"><span className="panel-title-icon"><OpsIcon name="users" /></span><h2>Registered Pilots</h2></div><p>{pilots.length} pilot(s).</p></div></div>
-            <div className="data-stack">{pilots.map((pilot) => <div className="data-row" key={pilot.id}><div className="data-row__main"><span className="data-row__title">{pilot.name}</span><span className="data-row__meta">{pilot.email} | Center: {pilot.homeCenter?.name || 'N/A'}</span><span className={`status-badge status-badge--${pilot.active ? 'success' : 'danger'}`}>{pilot.active ? 'Active' : 'Pending Admin Approval'}</span></div></div>)}</div>
+            <div className="data-stack">{pilots.map((pilot) => <div className="data-row" key={pilot.id}><div className="data-row__main"><span className="data-row__title">{pilot.name}</span><span className="data-row__meta">{pilot.email} | Center: {pilot.homeCenter?.name || 'Not assigned'}</span><span className={`status-badge status-badge--${pilot.active ? 'success' : 'danger'}`}>{pilot.active ? 'Active' : 'Pending Admin Approval'}</span></div><div className="data-row__actions"><label className="field-label" htmlFor={`pilot-center-${pilot.id}`}>Operating center</label><select id={`pilot-center-${pilot.id}`} aria-label={`Operating center for ${pilot.name}`} value={pilot.homeCenterId || ''} onChange={(event) => void updatePilotOperatingCenter(pilot.id, event.target.value)}><option value="" disabled>Select center</option>{centers.filter((center) => center.active).map((center) => <option key={center.id} value={center.id}>{center.name}</option>)}</select></div></div>)}</div>
           </div>
           <div className="panel panel--raised">
             <div className="panel-header"><div className="panel-header__title"><div className="panel-title-row"><span className="panel-title-icon"><OpsIcon name="plus" /></span><h2>Add Pilot</h2></div><p>Register a new pilot. Requires admin activation.</p></div></div>
@@ -256,7 +265,7 @@ function FleetManagerDashboard() {
           {notice && <div role="alert" className={`notice notice--${notice.kind}`}><span>{notice.message}</span><button type="button" className="notice__close" onClick={() => setNotice(null)} aria-label="Dismiss message">×</button></div>}
           <div className="panel panel--raised">
             <div className="panel-header"><div className="panel-header__title"><div className="panel-title-row"><span className="panel-title-icon"><OpsIcon name="drone" /></span><h2>Fleet Aircraft</h2></div><p>{drones.length} drone(s).</p></div></div>
-            <div className="data-stack">{drones.map((drone) => <div className="data-row" key={drone.id}><div className="data-row__main"><span className="data-row__title">{drone.model} - {drone.serialNumber}</span><span className="data-row__meta">Center: {drone.homeCenter?.name || 'N/A'}</span><span className="status-badge">{readableStatus(drone.status)}</span></div><div className="data-row__actions">{drone.status === 'AVAILABLE' && <button className="action-btn" type="button" onClick={() => requestMaintenance(drone.id)}>Request Maintenance</button>}{drone.status === 'MAINTENANCE' && drone.maintenanceRequest && <button className="action-btn" type="button" onClick={() => handleResolveMaintenance(drone.id, 'approve')}>Approve Maintenance</button>}</div></div>)}</div>
+            <div className="data-stack">{drones.map((drone) => <div className="data-row" key={drone.id}><div className="data-row__main"><span className="data-row__title">{drone.model} - {drone.serialNumber}</span><span className="data-row__meta">Center: {drone.homeCenter?.name || 'N/A'}</span><span className="status-badge">{readableStatus(drone.status)}</span></div><div className="data-row__actions">{drone.status === 'AVAILABLE' && <button className="action-btn" type="button" onClick={() => updateDroneStatus(drone.id, 'MAINTENANCE')}>Send to Maintenance</button>}{drone.status === 'MAINTENANCE' && <button className="action-btn" type="button" onClick={() => updateDroneStatus(drone.id, 'AVAILABLE')}>Return to Available</button>}</div></div>)}</div>
           </div>
           <div className="panel panel--raised">
             <div className="panel-header"><div className="panel-header__title"><div className="panel-title-row"><span className="panel-title-icon"><OpsIcon name="plus" /></span><h2>Add Drone</h2></div><p>Register new aircraft.</p></div></div>
@@ -292,6 +301,7 @@ function FleetManagerDashboard() {
       )}
 
       {activeSection === 'location' && <section id="location" className="section-gap"><LiveLocationPanel /></section>}
+      {activeSection === 'chat' && <ChatPanel />}
     </OperationsShell>
   );
 }

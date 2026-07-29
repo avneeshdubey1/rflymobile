@@ -1,5 +1,7 @@
 const userRepository = require('../src/repositories/userRepository');
 const auditLogRepository = require('../src/repositories/auditLogRepository');
+const assignmentRepository = require('../src/repositories/assignmentRepository');
+const operatingCenterRepository = require('../src/repositories/operatingCenterRepository');
 const { hashPassword, validatePassword } = require('../services/passwordService');
 const { normalizePhone } = require('../services/identityService');
 const { disconnectUserSockets } = require('../middleware/auth');
@@ -29,13 +31,23 @@ exports.addUser = async (req, res) => {
     if (req.auth.role === 'FLEET_MANAGER' && role !== 'PILOT') {
       return res.status(403).json({ error: 'Fleet Managers can only add pilots' });
     }
+    const homeCenterId = String(req.body.homeCenterId || '').trim() || null;
+    if (role === 'PILOT' && !homeCenterId) {
+      return res.status(400).json({ error: 'An active operating center is required for every pilot' });
+    }
+    if (homeCenterId) {
+      const center = await operatingCenterRepository.findById(homeCenterId);
+      if (!center || !center.active) {
+        return res.status(400).json({ error: 'The selected operating center is not active' });
+      }
+    }
     const isActive = req.auth.role === 'ADMIN';
 
     const user = await userRepository.create({
       email,
       name,
       phone,
-      homeCenterId: req.body.homeCenterId || null,
+      homeCenterId,
       role,
       passwordHash,
       active: isActive,
@@ -49,6 +61,38 @@ exports.addUser = async (req, res) => {
     const validationError = /required|between|valid/i.test(error.message || '');
     const message = error.code === 'P2002' ? 'That work email or mobile is already registered' : validationError ? error.message : 'Failed to add user';
     res.status(error.code === 'P2002' ? 409 : validationError ? 400 : 500).json({ error: message });
+  }
+};
+
+exports.updatePilotOperatingCenter = async (req, res) => {
+  try {
+    const pilot = await userRepository.findById(req.params.id);
+    if (!pilot) return res.status(404).json({ error: 'Pilot not found' });
+    if (pilot.role !== 'PILOT') return res.status(409).json({ error: 'Operating center assignment is available only for pilots' });
+
+    const homeCenterId = String(req.body.homeCenterId || '').trim();
+    if (!homeCenterId) return res.status(400).json({ error: 'An active operating center is required for every pilot' });
+    const center = await operatingCenterRepository.findById(homeCenterId);
+    if (!center || !center.active) return res.status(400).json({ error: 'The selected operating center is not active' });
+    if (pilot.homeCenterId === homeCenterId) return res.json({ success: true, user: pilot, unchanged: true });
+
+    const activeAssignments = await assignmentRepository.findActiveForPilot(pilot.id);
+    if (activeAssignments.length) {
+      return res.status(409).json({ error: 'A pilot with an active assignment cannot be moved to another operating center' });
+    }
+
+    const updated = await userRepository.update(pilot.id, { homeCenterId });
+    await auditLogRepository.create({
+      entityType: 'User',
+      entityId: pilot.id,
+      action: 'PILOT_OPERATING_CENTER_CHANGED',
+      actorId: req.auth.userId,
+      beforeState: { role: pilot.role, homeCenterId: pilot.homeCenterId },
+      afterState: { role: updated.role, homeCenterId: updated.homeCenterId },
+    });
+    return res.json({ success: true, user: updated });
+  } catch {
+    return res.status(500).json({ error: 'Failed to update the pilot operating center' });
   }
 };
 exports.deleteUser = async (req, res) => {

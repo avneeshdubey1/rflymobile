@@ -5,9 +5,8 @@ function summarizeLeads(leads = []) {
     if (['SCHEDULED', 'PILOT_ACCEPTED', 'IN_PROGRESS'].includes(lead.status)) summary.active += 1;
     if (lead.status === 'COMPLETED') summary.completed += 1;
     summary.total += 1;
-    summary.payments += lead.payments?.length || 0;
     return summary;
-  }, { active: 0, completed: 0, total: 0, payments: 0 });
+  }, { active: 0, completed: 0, total: 0 });
   return { leads, totals };
 }
 
@@ -18,7 +17,7 @@ async function farmerPortal(user) {
     throw error;
   }
   const customer = await portalRepository.findCustomerByFarmerUserId(user.id);
-  if (!customer) return { customer: null, leads: [], totals: { active: 0, completed: 0, total: 0, payments: 0 } };
+  if (!customer) return { customer: null, leads: [], totals: { active: 0, completed: 0, total: 0 } };
   const leads = await portalRepository.findFarmerLeads(customer.id);
   return { customer, ...summarizeLeads(leads) };
 }
@@ -38,8 +37,7 @@ async function businessPortal(user) {
     active: summary.active + organization.totals.active,
     completed: summary.completed + organization.totals.completed,
     total: summary.total + organization.totals.total,
-    payments: summary.payments + organization.totals.payments,
-  }), { active: 0, completed: 0, total: 0, payments: 0 });
+  }), { active: 0, completed: 0, total: 0 });
   return { organizations, totals };
 }
 
