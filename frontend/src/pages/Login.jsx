@@ -31,7 +31,7 @@ function Login() {
       if (!response.ok || !data.success) { setError(data.error || data.message || t('login_failed', 'Login failed')); return; }
 
       login(data.user);
-      navigate(location.state?.from || homeForRole(data.user.role), { replace: true });
+      navigate(homeForRole(data.user.role), { replace: true });
     } catch {
       setError(t('server_error_try_again', 'Server error. Please try again.'));
     } finally {
@@ -60,7 +60,6 @@ function Login() {
 
           {error && <div role="alert" className="alert error">{error}</div>}
           {location.state?.recoveryComplete && <div role="status" className="notice">{t('password_reset_login_notice', 'Password reset complete. Sign in with your new password.')}</div>}
-
           <form onSubmit={handleLogin} className="login-form">
             <div className="input-group">
               <label htmlFor="login-email">{t('work_email', 'Work Email')}</label>
@@ -73,7 +72,7 @@ function Login() {
             </div>
             <button type="submit" className="submit-btn login-submit" disabled={busy}>{busy ? t('logging_in', 'Logging in…') : t('login', 'Login')}</button>
           </form>
-          <button type="button" className="back-link" onClick={() => navigate('/')}>{t('return_to_service', '← Return to service request')}</button>
+          <button type="button" className="back-link" onClick={() => navigate('/farmer/login')}>{t('return_to_farmer_login', '← Return to farmer login')}</button>
         </div>
       </section>
     </main>

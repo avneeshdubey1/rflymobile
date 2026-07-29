@@ -230,10 +230,10 @@ try {
   await waitForUrl(frontendUrl);
   browser = await chromium.launch({ executablePath: edgePath, headless: true });
 
-  await runCase('PUB-01', 'Root opens the public booking page and all six languages switch visibly', async (page) => {
+  await runCase('PUB-01', 'Root opens the farmer login page and all six languages switch visibly', async (page) => {
     await page.goto(`${frontendUrl}/`, { waitUntil: 'domcontentloaded' });
-    await page.waitForURL('**/request');
-    await page.getByRole('heading', { name: 'Request a drone service', exact: true }).waitFor();
+    await page.waitForURL('**/farmer/login');
+    await page.getByRole('heading', { name: /Request drone services instantly|Welcome back/i }).first().waitFor();
     const selector = page.locator('.language-selector');
     const trigger = selector.locator('button').first();
     const labels = {};
@@ -247,6 +247,11 @@ try {
     }
     assert.equal(new Set(Object.values(labels)).size, 6, 'Every language should visibly change the selector label');
     return { labels };
+  });
+
+  await runCase('PUB-01B', 'Public request page remains available as a secondary intake channel', async (page) => {
+    await page.goto(`${frontendUrl}/request`, { waitUntil: 'domcontentloaded' });
+    await page.getByRole('heading', { name: 'Request a drone service', exact: true }).waitFor();
   });
 
   await runCase('PUB-02', 'Narrow mobile landing page has no horizontal overflow', async (page) => {

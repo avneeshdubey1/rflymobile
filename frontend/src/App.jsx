@@ -31,7 +31,7 @@ function App() {
       <BrowserRouter>
         <Routes>
           {/* Public Routes */}
-          <Route path="/" element={<Navigate to="/request" replace />} />
+          <Route path="/" element={<Navigate to="/farmer/login" replace />} />
           <Route path="/request" element={<LandingPage />} />
           <Route path="/login" element={<Login />} />
           <Route path="/forgot-password" element={<EmployeeForgotPassword />} />
@@ -51,17 +51,17 @@ function App() {
           </Route>
 
           {/* Protected Sales/Marketing Routes */}
-          <Route element={<ProtectedRoute allowedRoles={['admin', 'sales']} />}>
+          <Route element={<ProtectedRoute allowedRoles={['sales']} />}>
             <Route path="/marketing" element={<MarketingDashboard />} />
           </Route>
 
           {/* Protected Pilot Routes */}
-          <Route element={<ProtectedRoute allowedRoles={['admin', 'pilot']} />}>
+          <Route element={<ProtectedRoute allowedRoles={['pilot']} />}>
             <Route path="/pilot" element={<PilotDashboard />} />
           </Route>
 
           {/* Protected Fleet Manager Routes */}
-          <Route element={<ProtectedRoute allowedRoles={['admin', 'fleet-manager']} />}>
+          <Route element={<ProtectedRoute allowedRoles={['fleet-manager']} />}>
             <Route path="/fleet-manager" element={<FleetManagerDashboard />} />
           </Route>
 
