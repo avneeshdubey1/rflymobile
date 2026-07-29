@@ -10,6 +10,7 @@ const logger = require('./loggerService');
 
 const ACCEPTED_CHANNELS = new Set(['WEBSITE', 'MANUAL_SALES']);
 const MAX_TEXT_LENGTH = 120;
+const DEFAULT_ACREAGE_SAFETY_LIMIT = 10_000;
 
 function isCoordinate(value, minimum, maximum) {
   return typeof value === 'number' && Number.isFinite(value) && value >= minimum && value <= maximum;
@@ -52,11 +53,16 @@ function optionalDate(value) {
 async function validateAcreage(value) {
   const acreage = Number(value);
   if (!Number.isFinite(acreage) || acreage <= 0) throw new Error('Acreage must be a positive number');
-  const maximum = await pricingConfigRepository.findByKey('MAX_LEAD_ACREAGE');
-  if (!maximum || !Number.isFinite(maximum.value) || maximum.value <= 0) {
-    throw new Error('The maximum acreage configuration is unavailable; contact operations');
+  const safetyLimit = Number(process.env.LEAD_ACREAGE_SAFETY_LIMIT || DEFAULT_ACREAGE_SAFETY_LIMIT);
+  if (!Number.isFinite(safetyLimit) || safetyLimit <= 0) {
+    throw new Error('The acreage safety limit is unavailable; contact operations');
   }
-  if (acreage > maximum.value) throw new Error(`Acreage must not exceed ${maximum.value}`);
+  const configuredMaximum = await pricingConfigRepository.findByKey('MAX_LEAD_ACREAGE');
+  const businessLimit = Number(configuredMaximum?.value);
+  const maximum = Number.isFinite(businessLimit) && businessLimit > 0
+    ? Math.min(businessLimit, safetyLimit)
+    : safetyLimit;
+  if (acreage > maximum) throw new Error(`Acreage must not exceed ${maximum}`);
   return acreage;
 }
 

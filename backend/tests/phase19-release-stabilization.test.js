@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const app = require('../app');
 const prisma = require('../src/lib/prisma');
 const { issueToken } = require('../middleware/auth');
+const { validateAcreage } = require('../services/intakeService');
 
 let server;
 let baseUrl;
@@ -77,6 +78,27 @@ test('Admin cannot create a centerless pilot and Fleet can maintain pilot center
   assert.ok(await prisma.auditLog.findFirst({
     where: { entityType: 'User', entityId: pilot.id, action: 'PILOT_OPERATING_CENTER_CHANGED', actorId: fleet.id },
   }));
+});
+
+test('fresh Admin-only databases accept valid acreage through the configured safety ceiling', async () => {
+  const previousConfig = await prisma.pricingConfig.findUnique({ where: { key: 'MAX_LEAD_ACREAGE' } });
+  const previousSafetyLimit = process.env.LEAD_ACREAGE_SAFETY_LIMIT;
+  try {
+    await prisma.pricingConfig.deleteMany({ where: { key: 'MAX_LEAD_ACREAGE' } });
+    process.env.LEAD_ACREAGE_SAFETY_LIMIT = '10000';
+    assert.equal(await validateAcreage(30), 30);
+    await assert.rejects(() => validateAcreage(10001), /must not exceed 10000/);
+  } finally {
+    if (previousSafetyLimit === undefined) delete process.env.LEAD_ACREAGE_SAFETY_LIMIT;
+    else process.env.LEAD_ACREAGE_SAFETY_LIMIT = previousSafetyLimit;
+    if (previousConfig) {
+      await prisma.pricingConfig.upsert({
+        where: { key: previousConfig.key },
+        create: { key: previousConfig.key, value: previousConfig.value },
+        update: { value: previousConfig.value },
+      });
+    }
+  }
 });
 
 test('an active pilot cannot move centers; completion releases fleet without creating immediate payment', async () => {
