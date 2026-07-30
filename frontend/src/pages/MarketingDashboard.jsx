@@ -5,11 +5,19 @@ import OpsIcon from '../components/OpsIcon';
 import LogbookTimelinePanel from '../components/LogbookTimelinePanel';
 import LocationLink from '../components/LocationLink';
 import ChatPanel from '../components/ChatPanel';
+import CustomerProfileFields from '../components/CustomerProfileFields';
 import { createAuthenticatedSocket } from '../services/authenticatedSocket';
 import { apiFetch, readJson } from '../services/apiClient';
 
 const blankManualLead = { farmerName: '', phone: '', village: '', cropType: '', acres: '', latitude: '', longitude: '' };
-const blankCustomer = { displayName: '', phone: '', village: '', district: '', preferredLanguage: 'ta' };
+const blankCustomer = {
+  displayName: '', phone: '', preferredLanguage: 'ta', ownership: '', totalAcres: '',
+  village: '', mandal: '', district: '', state: '',
+  kharifCrop: '', kharifOtherCrop: '', kharifAcres: '', kharifTanks: '', kharifSprayings: '',
+  rabiCrop: '', rabiOtherCrop: '', rabiAcres: '', rabiTanks: '', rabiSprayings: '',
+  summerCrop: '', summerOtherCrop: '', summerAcres: '', summerTanks: '', summerSprayings: '',
+  subscriptionCardNumber: '', subscriptionYear: '', remarks: '',
+};
 
 function MarketingDashboard() {
   const { user, logout } = useAuth();
@@ -24,6 +32,7 @@ function MarketingDashboard() {
   const [newCustomer, setNewCustomer] = useState(blankCustomer);
   const [customerStatus, setCustomerStatus] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [editingCustomer, setEditingCustomer] = useState(null);
   const [selectedLead, setSelectedLead] = useState(null);
   const [extraDetails, setExtraDetails] = useState({ mandal: '', district: '', fertilizerShop: '', expectedSpraying: '', soilType: '', pesticideBrand: '', cropAge: '' });
   const [processStatus, setProcessStatus] = useState('');
@@ -173,6 +182,30 @@ function MarketingDashboard() {
     }
   };
 
+  const handleCustomerUpdate = async (event) => {
+    event.preventDefault();
+    if (!editingCustomer) return;
+    setCustomerStatus('saving');
+    try {
+      const response = await apiFetch(`/api/customers/sales/${editingCustomer.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editingCustomer),
+      });
+      const data = await readJson(response);
+      if (!response.ok) {
+        setCustomerStatus(data.error || 'Could not update customer.');
+        return;
+      }
+      setEditingCustomer(null);
+      setSelectedCustomer((current) => current?.id === data.customer.id ? data.customer : current);
+      setCustomerStatus('Customer details updated.');
+      await fetchCustomers(customerSearch);
+    } catch {
+      setCustomerStatus('Could not update customer.');
+    }
+  };
+
   const enableFarmerPortalAccess = async (customer) => {
     if (!customer || customer.hasFarmerPortalUser) return;
     setCustomerStatus('enabling');
@@ -223,11 +256,11 @@ function MarketingDashboard() {
       {activeTab === 'customers' && (
         <section className="lead-workbench">
           <div className="panel">
-            <div className="panel-header"><div className="panel-header__title"><div className="panel-title-row"><span className="panel-title-icon"><OpsIcon name="users" /></span><h2>Registered customers</h2></div><p>Search by name, phone, village, or district before raising a request during a call.</p></div></div>
+            <div className="panel-header"><div className="panel-header__title"><div className="panel-title-row"><span className="panel-title-icon"><OpsIcon name="users" /></span><h2>Registered customers</h2></div><p>Search by name, phone, location, subscription card, or seasonal crop before raising a request.</p></div></div>
             <div className="panel-body">
               {customerStatus && !['searching', 'saving', 'opening', 'enabling'].includes(customerStatus) && <div role="status" className={customerStatus.includes('Could') ? 'notice notice--error' : 'notice notice--success'}>{customerStatus}</div>}
               <form className="row-group" onSubmit={handleCustomerSearch}>
-                <div className="input-group"><label htmlFor="customer-search">Search customers</label><input id="customer-search" type="search" value={customerSearch} onChange={(event) => setCustomerSearch(event.target.value)} placeholder="Name, phone, village or district" /></div>
+                <div className="input-group"><label htmlFor="customer-search">Search customers</label><input id="customer-search" type="search" value={customerSearch} onChange={(event) => setCustomerSearch(event.target.value)} placeholder="Name, phone, location, crop or subscription card" /></div>
                 <div className="form-actions"><button type="submit" className="action-btn" disabled={customerStatus === 'searching'}><OpsIcon name="search" /> {customerStatus === 'searching' ? 'Searching…' : 'Search'}</button></div>
               </form>
               <div className="data-stack">
@@ -236,16 +269,27 @@ function MarketingDashboard() {
                   <article className="data-row" key={customer.id}>
                     <div className="data-row__main">
                       <span className="data-row__title">{customer.displayName}</span>
-                      <span className="data-row__meta">{customer.phone} · {customer.village || 'Village not set'}{customer.district ? `, ${customer.district}` : ''}</span>
+                      <span className="data-row__meta">{customer.phone} · {customer.village || 'Village not set'}{customer.mandal ? `, ${customer.mandal}` : ''}{customer.district ? `, ${customer.district}` : ''}</span>
+                      <span className="data-row__meta">{customer.ownership ? `${customer.ownership.toLowerCase()} · ` : ''}{customer.totalAcres ?? 'Acreage not recorded'}{customer.totalAcres != null ? ' total acres' : ''}</span>
+                      <span className="data-row__meta">Crops: {[customer.kharifCrop, customer.rabiCrop, customer.summerCrop].filter(Boolean).join(', ') || 'Not recorded'}</span>
                       <span className={`status-badge status-badge--${customer.hasFarmerPortalUser ? 'success' : 'info'}`}>{customer.hasFarmerPortalUser ? 'Farmer portal user' : 'Staff-confirmed'}</span>
                     </div>
                     <div className="data-row__actions">
+                      <button type="button" className="action-btn" onClick={() => { setEditingCustomer({ ...customer }); setCustomerStatus(''); }}>Edit details</button>
                       {!customer.hasFarmerPortalUser && <button type="button" className="action-btn" onClick={() => void enableFarmerPortalAccess(customer)} disabled={customerStatus === 'enabling'}>{customerStatus === 'enabling' ? 'Enabling...' : 'Enable portal'}</button>}
                       <button type="button" className="action-btn" onClick={() => void openCustomerServiceView(customer)} disabled={customerStatus === 'opening'}>Open service view</button>
                     </div>
                   </article>
                 ))}
               </div>
+              {editingCustomer && (
+                <form className="form-stack workflow-card" onSubmit={handleCustomerUpdate}>
+                  <div className="subsection-header"><div><p className="eyebrow">Customer master</p><h3>Edit {editingCustomer.displayName}</h3></div><button type="button" className="action-btn" onClick={() => setEditingCustomer(null)}>Cancel</button></div>
+                  <div className="input-group"><label htmlFor="edit-customer-name">Customer / farmer name</label><input id="edit-customer-name" type="text" minLength="2" maxLength="120" value={editingCustomer.displayName} onChange={(event) => setEditingCustomer({ ...editingCustomer, displayName: event.target.value })} required /></div>
+                  <CustomerProfileFields value={editingCustomer} onChange={setEditingCustomer} idPrefix="edit-customer" />
+                  <div className="form-actions"><button type="submit" className="submit-btn" disabled={customerStatus === 'saving'}>{customerStatus === 'saving' ? 'Saving…' : 'Save customer details'}</button></div>
+                </form>
+              )}
             </div>
           </div>
           <div className="panel panel--raised">
@@ -253,8 +297,8 @@ function MarketingDashboard() {
             <form className="panel-body form-stack" onSubmit={handleCustomerCreate}>
               <div className="input-group"><label htmlFor="customer-name">Customer / farmer name</label><input id="customer-name" type="text" minLength="2" maxLength="120" value={newCustomer.displayName} onChange={(event) => setNewCustomer({ ...newCustomer, displayName: event.target.value })} required /></div>
               <div className="input-group"><label htmlFor="customer-phone">Phone number</label><input id="customer-phone" type="tel" minLength="7" maxLength="20" value={newCustomer.phone} onChange={(event) => setNewCustomer({ ...newCustomer, phone: event.target.value.replace(/[^\d+\s().-]/g, '') })} required /></div>
-              <div className="row-group"><div className="input-group"><label htmlFor="customer-village">Village</label><input id="customer-village" type="text" maxLength="120" value={newCustomer.village} onChange={(event) => setNewCustomer({ ...newCustomer, village: event.target.value })} /></div><div className="input-group"><label htmlFor="customer-district">District</label><input id="customer-district" type="text" maxLength="120" value={newCustomer.district} onChange={(event) => setNewCustomer({ ...newCustomer, district: event.target.value })} /></div></div>
               <div className="input-group"><label htmlFor="customer-language">Preferred language</label><select id="customer-language" value={newCustomer.preferredLanguage} onChange={(event) => setNewCustomer({ ...newCustomer, preferredLanguage: event.target.value })}><option value="ta">Tamil</option><option value="en">English</option><option value="ml">Malayalam</option><option value="hi">Hindi</option></select></div>
+              <CustomerProfileFields value={newCustomer} onChange={setNewCustomer} idPrefix="new-customer" />
               <div className="form-actions"><button type="submit" className="submit-btn" disabled={customerStatus === 'saving'}>{customerStatus === 'saving' ? 'Saving…' : 'Create and open service view'}</button></div>
             </form>
           </div>

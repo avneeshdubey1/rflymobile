@@ -159,8 +159,30 @@ model Customer {
   displayName       String
   phone             String    @unique
   preferredLanguage String    @default("ta")
+  ownership         String?
+  totalAcres        Float?
   village           String?
+  mandal            String?
   district          String?
+  state             String?
+  kharifCrop        String?
+  kharifOtherCrop   String?
+  kharifAcres       Float?
+  kharifTanks       Float?
+  kharifSprayings   Int?
+  rabiCrop          String?
+  rabiOtherCrop     String?
+  rabiAcres         Float?
+  rabiTanks         Float?
+  rabiSprayings     Int?
+  summerCrop        String?
+  summerOtherCrop   String?
+  summerAcres       Float?
+  summerTanks       Float?
+  summerSprayings   Int?
+  subscriptionCardNumber String?
+  subscriptionYear  String?
+  remarks           String?
   farmerUserId      String?   @unique
   createdByUserId   String?
   staffConfirmedAt  DateTime?

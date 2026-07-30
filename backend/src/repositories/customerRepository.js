@@ -37,7 +37,13 @@ function searchableWhere(query) {
       { displayName: { contains: value, mode: 'insensitive' } },
       { phone: { contains: value } },
       { village: { contains: value, mode: 'insensitive' } },
+      { mandal: { contains: value, mode: 'insensitive' } },
       { district: { contains: value, mode: 'insensitive' } },
+      { state: { contains: value, mode: 'insensitive' } },
+      { subscriptionCardNumber: { contains: value, mode: 'insensitive' } },
+      { kharifCrop: { contains: value, mode: 'insensitive' } },
+      { rabiCrop: { contains: value, mode: 'insensitive' } },
+      { summerCrop: { contains: value, mode: 'insensitive' } },
     ],
   };
 }

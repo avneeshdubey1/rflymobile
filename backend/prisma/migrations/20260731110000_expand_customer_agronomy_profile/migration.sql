@@ -1,0 +1,25 @@
+-- Extend the existing staff-confirmed Customer master record.
+-- This migration is additive and preserves all existing customers and portal links.
+ALTER TABLE "Customer"
+ADD COLUMN "ownership" TEXT,
+ADD COLUMN "totalAcres" DOUBLE PRECISION,
+ADD COLUMN "mandal" TEXT,
+ADD COLUMN "state" TEXT,
+ADD COLUMN "kharifCrop" TEXT,
+ADD COLUMN "kharifOtherCrop" TEXT,
+ADD COLUMN "kharifAcres" DOUBLE PRECISION,
+ADD COLUMN "kharifTanks" DOUBLE PRECISION,
+ADD COLUMN "kharifSprayings" INTEGER,
+ADD COLUMN "rabiCrop" TEXT,
+ADD COLUMN "rabiOtherCrop" TEXT,
+ADD COLUMN "rabiAcres" DOUBLE PRECISION,
+ADD COLUMN "rabiTanks" DOUBLE PRECISION,
+ADD COLUMN "rabiSprayings" INTEGER,
+ADD COLUMN "summerCrop" TEXT,
+ADD COLUMN "summerOtherCrop" TEXT,
+ADD COLUMN "summerAcres" DOUBLE PRECISION,
+ADD COLUMN "summerTanks" DOUBLE PRECISION,
+ADD COLUMN "summerSprayings" INTEGER,
+ADD COLUMN "subscriptionCardNumber" TEXT,
+ADD COLUMN "subscriptionYear" TEXT,
+ADD COLUMN "remarks" TEXT;

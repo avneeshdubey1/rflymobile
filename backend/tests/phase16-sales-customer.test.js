@@ -92,6 +92,13 @@ test('Sales customer lookup APIs are denied to non-Sales roles', async () => {
 
   const deniedPortalEnable = await request('/api/customers/sales/missing/portal-access', { method: 'POST', authorization: fleetAuthorization });
   assert.equal(deniedPortalEnable.response.status, 403);
+
+  const deniedProfileUpdate = await request('/api/customers/sales/missing', {
+    method: 'PATCH',
+    authorization: fleetAuthorization,
+    body: { village: 'Not allowed' },
+  });
+  assert.equal(deniedProfileUpdate.response.status, 403);
 });
 
 test('Sales can create and search staff-confirmed customers without issuing Farmer sessions', async () => {
@@ -102,13 +109,34 @@ test('Sales can create and search staff-confirmed customers without issuing Farm
       displayName: 'Phase 16 Phone Customer',
       phone: '9333333331',
       village: 'Phase Village',
+      mandal: 'Phase Mandal',
       district: 'Phase District',
+      state: 'Tamil Nadu',
+      ownership: 'OWNER',
+      totalAcres: 18.5,
+      kharifCrop: 'Paddy',
+      kharifAcres: 10,
+      kharifTanks: 4.5,
+      kharifSprayings: 2,
+      rabiCrop: 'Groundnut',
+      rabiAcres: 8.5,
+      summerCrop: 'Sugar cane',
+      summerSprayings: 1,
+      subscriptionCardNumber: 'PHASE-CARD-16',
+      subscriptionYear: '2026-27',
+      remarks: 'Prefers morning calls',
       preferredLanguage: 'ta',
     },
   });
   assert.equal(created.response.status, 201, JSON.stringify(created.data));
   assert.equal(created.data.created, true);
   assert.equal(created.data.customer.displayName, 'Phase 16 Phone Customer');
+  assert.equal(created.data.customer.ownership, 'OWNER');
+  assert.equal(created.data.customer.totalAcres, 18.5);
+  assert.equal(created.data.customer.mandal, 'Phase Mandal');
+  assert.equal(created.data.customer.kharifCrop, 'Paddy');
+  assert.equal(created.data.customer.kharifSprayings, 2);
+  assert.equal(created.data.customer.subscriptionCardNumber, 'PHASE-CARD-16');
   assert.equal(created.data.customer.hasFarmerPortalUser, false);
   assert.equal(Object.hasOwn(created.data.customer, 'passwordHash'), false);
   ids.customers.push(created.data.customer.id);
@@ -126,8 +154,38 @@ test('Sales can create and search staff-confirmed customers without issuing Farm
   assert.equal(search.response.status, 200, JSON.stringify(search.data));
   assert.equal(search.data.customers.some((customer) => customer.id === created.data.customer.id), true);
 
+  const cropSearch = await request('/api/customers/sales?q=Groundnut', { authorization: salesAuthorization });
+  assert.equal(cropSearch.response.status, 200, JSON.stringify(cropSearch.data));
+  assert.equal(cropSearch.data.customers.some((customer) => customer.id === created.data.customer.id), true);
+
+  const updated = await request(`/api/customers/sales/${created.data.customer.id}`, {
+    method: 'PATCH',
+    authorization: adminAuthorization,
+    body: {
+      ownership: 'TENANT',
+      totalAcres: 20,
+      summerCrop: 'Maize',
+      summerAcres: 2,
+      summerTanks: 1,
+      summerSprayings: 3,
+      remarks: 'Updated after client call',
+    },
+  });
+  assert.equal(updated.response.status, 200, JSON.stringify(updated.data));
+  assert.equal(updated.data.customer.ownership, 'TENANT');
+  assert.equal(updated.data.customer.totalAcres, 20);
+  assert.equal(updated.data.customer.summerSprayings, 3);
+
+  const invalidUpdate = await request(`/api/customers/sales/${created.data.customer.id}`, {
+    method: 'PATCH',
+    authorization: salesAuthorization,
+    body: { totalAcres: -1 },
+  });
+  assert.equal(invalidUpdate.response.status, 400, JSON.stringify(invalidUpdate.data));
+
   const audit = await prisma.auditLog.findMany({ where: { entityType: 'Customer', entityId: created.data.customer.id } });
   assert.equal(audit.some((entry) => entry.action === 'SALES_CUSTOMER_CREATED'), true);
+  assert.equal(audit.some((entry) => entry.action === 'SALES_CUSTOMER_PROFILE_UPDATED'), true);
   assert.equal(JSON.stringify(audit).match(/9333333331|password|otp|latitude|longitude/i), null);
 });
 

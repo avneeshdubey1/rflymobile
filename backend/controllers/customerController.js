@@ -22,6 +22,18 @@ exports.create = async (req, res) => {
   }
 };
 
+exports.update = async (req, res) => {
+  try {
+    const customer = await customerService.updateForSales(req.params.customerId, req.body, req.auth.userId);
+    return res.json({ success: true, customer });
+  } catch (error) {
+    const status = error.status || (/required|between|valid|must|cannot|number|whole/i.test(error.message || '') ? 400 : 500);
+    return res.status(status).json({
+      error: status < 500 ? error.message : 'Failed to update customer',
+    });
+  }
+};
+
 exports.serviceContext = async (req, res) => {
   try {
     const customer = await customerService.openServiceContext(req.params.customerId, req.auth.userId);

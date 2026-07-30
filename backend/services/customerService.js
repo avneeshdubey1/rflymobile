@@ -13,8 +13,30 @@ function safeCustomer(customer) {
     displayName: customer.displayName,
     phone: customer.phone,
     preferredLanguage: customer.preferredLanguage,
+    ownership: customer.ownership,
+    totalAcres: customer.totalAcres,
     village: customer.village,
+    mandal: customer.mandal,
     district: customer.district,
+    state: customer.state,
+    kharifCrop: customer.kharifCrop,
+    kharifOtherCrop: customer.kharifOtherCrop,
+    kharifAcres: customer.kharifAcres,
+    kharifTanks: customer.kharifTanks,
+    kharifSprayings: customer.kharifSprayings,
+    rabiCrop: customer.rabiCrop,
+    rabiOtherCrop: customer.rabiOtherCrop,
+    rabiAcres: customer.rabiAcres,
+    rabiTanks: customer.rabiTanks,
+    rabiSprayings: customer.rabiSprayings,
+    summerCrop: customer.summerCrop,
+    summerOtherCrop: customer.summerOtherCrop,
+    summerAcres: customer.summerAcres,
+    summerTanks: customer.summerTanks,
+    summerSprayings: customer.summerSprayings,
+    subscriptionCardNumber: customer.subscriptionCardNumber,
+    subscriptionYear: customer.subscriptionYear,
+    remarks: customer.remarks,
     hasFarmerPortalUser: Boolean(customer.farmerUserId),
     farmerPortalUserId: customer.farmerUserId || null,
     staffConfirmedAt: customer.staffConfirmedAt,
@@ -38,6 +60,66 @@ function optionalText(value, field, maximum = 120) {
   return text;
 }
 
+function optionalNonNegativeNumber(value, field) {
+  if (value === undefined || value === null || value === '') return null;
+  const number = Number(value);
+  if (!Number.isFinite(number) || number < 0) throw new Error(`${field} must be a non-negative number`);
+  return number;
+}
+
+function optionalNonNegativeInteger(value, field) {
+  const number = optionalNonNegativeNumber(value, field);
+  if (number === null) return null;
+  if (!Number.isInteger(number)) throw new Error(`${field} must be a whole number`);
+  return number;
+}
+
+function optionalOwnership(value) {
+  const ownership = optionalText(value, 'Ownership', 30);
+  if (!ownership) return null;
+  const normalized = ownership.toUpperCase();
+  if (!['OWNER', 'TENANT'].includes(normalized)) throw new Error('Ownership must be OWNER or TENANT');
+  return normalized;
+}
+
+function customerProfileInput(input, { partial = false } = {}) {
+  const text = (key, label, maximum = 120) => (
+    partial && input[key] === undefined ? undefined : optionalText(input[key], label, maximum)
+  );
+  const number = (key, label) => (
+    partial && input[key] === undefined ? undefined : optionalNonNegativeNumber(input[key], label)
+  );
+  const integer = (key, label) => (
+    partial && input[key] === undefined ? undefined : optionalNonNegativeInteger(input[key], label)
+  );
+  return {
+    ownership: partial && input.ownership === undefined ? undefined : optionalOwnership(input.ownership),
+    totalAcres: number('totalAcres', 'Total acres'),
+    village: text('village', 'Village'),
+    mandal: text('mandal', 'Mandal'),
+    district: text('district', 'District'),
+    state: text('state', 'State'),
+    kharifCrop: text('kharifCrop', 'Kharif crop'),
+    kharifOtherCrop: text('kharifOtherCrop', 'Other Kharif crop'),
+    kharifAcres: number('kharifAcres', 'Kharif acres'),
+    kharifTanks: number('kharifTanks', 'Kharif tanks'),
+    kharifSprayings: integer('kharifSprayings', 'Kharif sprayings'),
+    rabiCrop: text('rabiCrop', 'Rabi crop'),
+    rabiOtherCrop: text('rabiOtherCrop', 'Other Rabi crop'),
+    rabiAcres: number('rabiAcres', 'Rabi acres'),
+    rabiTanks: number('rabiTanks', 'Rabi tanks'),
+    rabiSprayings: integer('rabiSprayings', 'Rabi sprayings'),
+    summerCrop: text('summerCrop', 'Summer crop'),
+    summerOtherCrop: text('summerOtherCrop', 'Other Summer crop'),
+    summerAcres: number('summerAcres', 'Summer acres'),
+    summerTanks: number('summerTanks', 'Summer tanks'),
+    summerSprayings: integer('summerSprayings', 'Summer sprayings'),
+    subscriptionCardNumber: text('subscriptionCardNumber', 'Subscription card number', 80),
+    subscriptionYear: text('subscriptionYear', 'Subscription year', 20),
+    remarks: text('remarks', 'Remarks', 1000),
+  };
+}
+
 async function findLinkedFarmer(phone) {
   return userRepository.findIdentityByPhone(phone, 'FARMER');
 }
@@ -59,8 +141,7 @@ async function createForSales(input, actorId) {
     displayName,
     phone,
     preferredLanguage,
-    village: optionalText(input.village, 'Village'),
-    district: optionalText(input.district, 'District'),
+    ...customerProfileInput(input),
     farmerUserId: linkedFarmer?.id || null,
     createdByUserId: actorId,
     staffConfirmedAt: new Date(),
@@ -78,6 +159,32 @@ async function createForSales(input, actorId) {
     },
   });
   return { customer: safeCustomer(customer), created: true };
+}
+
+async function updateForSales(customerId, input, actorId) {
+  const existing = await customerRepository.findById(customerId);
+  if (!existing) {
+    const error = new Error('Customer not found');
+    error.status = 404;
+    throw error;
+  }
+  const changes = customerProfileInput(input, { partial: true });
+  if (input.displayName !== undefined) changes.displayName = validateName(input.displayName);
+  if (input.preferredLanguage !== undefined) changes.preferredLanguage = i18nService.normalizeLanguage(input.preferredLanguage);
+  const definedChanges = Object.fromEntries(Object.entries(changes).filter(([, value]) => value !== undefined));
+  if (!Object.keys(definedChanges).length) throw new Error('At least one customer field is required');
+  const customer = await customerRepository.update(customerId, definedChanges);
+  await auditLogService.record({
+    entityType: 'Customer',
+    entityId: customer.id,
+    action: 'SALES_CUSTOMER_PROFILE_UPDATED',
+    actorId,
+    afterState: {
+      changedFields: Object.keys(definedChanges).sort(),
+      profileStatus: 'STAFF_CONFIRMED',
+    },
+  });
+  return safeCustomer(customer);
 }
 
 async function getServiceContext(customerId) {
@@ -185,4 +292,5 @@ module.exports = {
   openServiceContext,
   searchForSales,
   safeCustomer,
+  updateForSales,
 };
