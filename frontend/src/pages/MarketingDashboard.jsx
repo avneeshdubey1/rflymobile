@@ -4,6 +4,7 @@ import OperationsShell from '../components/OperationsShell';
 import OpsIcon from '../components/OpsIcon';
 import LocationLink from '../components/LocationLink';
 import CustomerProfileFields from '../components/CustomerProfileFields';
+import SalesLocationPicker from '../components/SalesLocationPicker';
 import { createAuthenticatedSocket } from '../services/authenticatedSocket';
 import { apiFetch, readJson } from '../services/apiClient';
 
@@ -34,6 +35,7 @@ function MarketingDashboard() {
   const [extraDetails, setExtraDetails] = useState({ mandal: '', district: '', fertilizerShop: '', expectedSpraying: '', soilType: '', pesticideBrand: '', cropAge: '' });
   const [processStatus, setProcessStatus] = useState('');
   const [showToast, setShowToast] = useState('');
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
 
   const fetchData = useCallback(async (signal) => {
     try {
@@ -223,7 +225,6 @@ function MarketingDashboard() {
     { id: 'customers', label: 'Customer Registration', icon: 'users', badge: selectedCustomer ? '1' : null },
     { id: 'manual', label: 'Enter New Lead', icon: 'plus' },
     { id: 'process', label: 'Access Leads', icon: 'clipboard', badge: newLeads.length || null },
-    { id: 'profile', label: 'Profile', icon: 'users' },
   ];
   const pageCopy = {
     customers: ['Customer onboarding', 'Customer Registration', 'Register customers, maintain their farm profile, and open their service view.'],
@@ -237,7 +238,7 @@ function MarketingDashboard() {
     <OperationsShell roleLabel="Sales Dashboard" navItems={navItems} activeTab={activeTab} onTabChange={setActiveTab} user={user} onLogout={logout}>
       <header className="page-header">
         <div className="page-header__copy"><p className="eyebrow">{eyebrow}</p><h1>{title}</h1><p>{description}</p></div>
-        <div className="page-header__actions"><button className="action-btn" type="button" onClick={() => void fetchData()}><OpsIcon name="refresh" /> Refresh data</button></div>
+        <div className="page-header__actions"><div className="profile-menu"><button type="button" className="profile-trigger" aria-label="Open employee profile menu" aria-expanded={showProfileMenu} onClick={() => setShowProfileMenu((open) => !open)}>{user?.name?.charAt(0)?.toUpperCase() || 'S'}</button>{showProfileMenu && <div className="profile-dropdown"><div className="profile-dropdown__header"><div className="profile-avatar">{user?.name?.charAt(0)?.toUpperCase() || 'S'}</div><div><h4>{user?.name || 'Sales employee'}</h4><p>Sales Executive</p></div></div><hr /><button type="button" className="dropdown-item" onClick={() => { setActiveTab('profile'); setShowProfileMenu(false); }}><OpsIcon name="users" /> My Profile</button><button type="button" className="dropdown-item" onClick={() => { void fetchData(); setShowProfileMenu(false); }}><OpsIcon name="refresh" /> Refresh data</button><button type="button" className="dropdown-item logout" onClick={() => void logout()}><OpsIcon name="logout" /> Sign Out</button></div>}</div></div>
       </header>
 
       {showToast && <div role="status" className="notice notice--warning"><span>{showToast}</span><button className="notice__close" type="button" aria-label="Dismiss message" onClick={() => setShowToast('')}>×</button></div>}
@@ -314,7 +315,7 @@ function MarketingDashboard() {
               <div className="input-group"><label htmlFor="manual-phone">Phone number</label><input id="manual-phone" type="tel" minLength="7" maxLength="20" value={manualLead.phone} onChange={(event) => setManualLead({ ...manualLead, phone: event.target.value.replace(/[^\d+\s().-]/g, '') })} disabled={Boolean(selectedCustomer)} required /></div>
               <div className="input-group"><label htmlFor="manual-location">Village / location description</label><input id="manual-location" type="text" maxLength="500" value={manualLead.village} onChange={(event) => setManualLead({ ...manualLead, village: event.target.value })} required /></div>
               <div className="row-group"><div className="input-group"><label htmlFor="manual-crop">Crop type</label><input id="manual-crop" type="text" maxLength="120" value={manualLead.cropType} onChange={(event) => setManualLead({ ...manualLead, cropType: event.target.value })} required /></div><div className="input-group"><label htmlFor="manual-acres">Estimated acres</label><input id="manual-acres" type="number" min="0.01" step="0.01" value={manualLead.acres} onChange={(event) => setManualLead({ ...manualLead, acres: event.target.value })} required /></div></div>
-              <div className="row-group"><div className="input-group"><label htmlFor="manual-latitude">Farm latitude</label><input id="manual-latitude" type="number" min="-90" max="90" step="any" inputMode="decimal" value={manualLead.latitude} onChange={(event) => setManualLead({ ...manualLead, latitude: event.target.value })} required /></div><div className="input-group"><label htmlFor="manual-longitude">Farm longitude</label><input id="manual-longitude" type="number" min="-180" max="180" step="any" inputMode="decimal" value={manualLead.longitude} onChange={(event) => setManualLead({ ...manualLead, longitude: event.target.value })} required /></div></div>
+              <div className="input-group"><label>Precise farm location</label><SalesLocationPicker latitude={manualLead.latitude} longitude={manualLead.longitude} onChange={(location) => setManualLead((current) => ({ ...current, ...location }))} /><input type="hidden" name="latitude" value={manualLead.latitude} required /><input type="hidden" name="longitude" value={manualLead.longitude} required /></div>
               <div className="form-actions"><button type="submit" className="submit-btn" disabled={manualStatus === 'processing'}>{manualStatus === 'processing' ? 'Checking service area…' : 'Create lead'}</button></div>
             </form>
           </div>

@@ -415,8 +415,8 @@ try {
     await page.locator('#manual-location').fill('Browser Audit Village');
     await page.locator('#manual-crop').fill('Groundnut');
     await page.locator('#manual-acres').fill('3');
-    await page.locator('#manual-latitude').fill('8.959');
-    await page.locator('#manual-longitude').fill('77.311');
+    await page.locator('.sales-location-picker__map .leaflet-container').click({ position: { x: 180, y: 180 } });
+    await page.locator('input[name="latitude"]').evaluate((input) => input.value && input.value.length > 0);
     const responsePromise = page.waitForResponse((response) => response.url().endsWith('/api/leads/ingest/manual') && response.request().method() === 'POST');
     await page.getByRole('button', { name: 'Create lead' }).click();
     const response = await responsePromise;
@@ -432,8 +432,9 @@ try {
     await page.locator('#manual-location').fill('Out of Area Village');
     await page.locator('#manual-crop').fill('Paddy');
     await page.locator('#manual-acres').fill('4');
-    await page.locator('#manual-latitude').fill('13.0827');
-    await page.locator('#manual-longitude').fill('80.2707');
+    await page.locator('#sales-location-search').fill('Chennai, Tamil Nadu');
+    await page.getByRole('button', { name: 'Search map' }).click();
+    await page.getByText(/Found .*Chennai/i).waitFor({ timeout: 15_000 });
     const responsePromise = page.waitForResponse((response) => response.url().endsWith('/api/leads/ingest/manual') && response.request().method() === 'POST');
     await page.getByRole('button', { name: 'Create lead' }).click();
     const response = await responsePromise;
@@ -707,13 +708,16 @@ try {
     for (const hiddenModule of ['Operational alerts', 'Team Chat', 'CRM Logbook', 'Payment Collection']) {
       assert.equal(await page.getByRole('button', { name: new RegExp(hiddenModule, 'i') }).count(), 0, `${hiddenModule} must not be exposed in Sales navigation`);
     }
-    const tabs = ['Customer Registration', 'Enter New Lead', 'Access Leads', 'Profile'];
+    const tabs = ['Customer Registration', 'Enter New Lead', 'Access Leads'];
     const dimensions = {};
     for (const tab of tabs) {
       await page.getByRole('button', { name: new RegExp(tab, 'i') }).click();
       await page.waitForTimeout(120);
       dimensions[tab] = await assertNoPageOverflow(page, `Sales ${tab}`);
     }
+    await page.getByRole('button', { name: /Open employee profile menu/i }).click();
+    await page.getByRole('button', { name: /My Profile/i }).click();
+    dimensions.Profile = await assertNoPageOverflow(page, 'Sales Profile');
     return dimensions;
   }, { viewport: { width: 390, height: 844 } });
 
