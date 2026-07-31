@@ -82,6 +82,7 @@ function FarmDetails() {
     const { user, logout } = useAuth();
     const [busy, setBusy] = useState(false);
     const [farmerFound, setFarmerFound] = useState(false);
+    const [customerId, setCustomerId] = useState(null);
     const [farmerMessage, setFarmerMessage] = useState("");
     const [notice, setNotice] = useState(null);
     const [mapKey, setMapKey] = useState(0); // forces TerrainMap to remount/reset
@@ -97,6 +98,10 @@ function FarmDetails() {
         const normalizedPhone = localMobileNumber(form.phone);
         if (normalizedPhone.length !== 10) {
             showNotice("error", "Mobile number must be exactly 10 digits.");
+            return;
+        }
+        if (!farmerFound || !customerId) {
+            showNotice("error", "Select a registered customer by entering their mobile number first.");
             return;
         }
         if (!form.season) {
@@ -183,7 +188,7 @@ function FarmDetails() {
 
                 remarks: form.remarks
             };
-            const response = await fetch(`${API}/api/leads/new`, {
+            const response = await fetch(`${API}/api/customers/sales/${encodeURIComponent(customerId)}/leads`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -199,6 +204,7 @@ function FarmDetails() {
             showNotice("success", "Your Spraying service request has been submitted successfully!");
             setForm(initialForm);
             setFarmerFound(false);
+            setCustomerId(null);
             setFarmerMessage("");
             setMapKey((prev) => prev + 1);
         } catch (err) {
@@ -213,6 +219,7 @@ function FarmDetails() {
     const searchFarmer = async (phone) => {
         if (phone.length !== 10) {
             setFarmerFound(false);
+            setCustomerId(null);
             setFarmerMessage("");
             return;
         }
@@ -226,6 +233,7 @@ function FarmDetails() {
             );
             if (farmer) {
                 setFarmerFound(true);
+                setCustomerId(farmer.id);
                 setFarmerMessage("");
 
                 setForm((prev) => ({
@@ -274,6 +282,7 @@ function FarmDetails() {
             }
             else {
                 setFarmerFound(false);
+                setCustomerId(null);
                 setFarmerMessage("Farmer is not registered.");
 
                 setForm((prev) => ({
@@ -314,6 +323,7 @@ function FarmDetails() {
         }
         catch (error) {
             setFarmerFound(false);
+            setCustomerId(null);
             setFarmerMessage(error.message || "Customer lookup failed.");
         }
     };
