@@ -138,5 +138,7 @@ module.exports = {
   }, active ? 'ACCOUNT_REACTIVATED' : 'ACCOUNT_DEACTIVATED'),
   archive: (id) => updateSecuritySensitive(id, { active: false, archivedAt: new Date() }, 'ACCOUNT_ARCHIVED'),
   delete: (id) => updateSecuritySensitive(id, { active: false, archivedAt: new Date() }, 'ACCOUNT_ARCHIVED'),
+  hardDelete: (id) => prisma.user.delete({ where: { id }, select: safeSelect }),
+  count: (where = {}) => prisma.user.count({ where }),
   deleteAll: () => prisma.user.deleteMany(),
 };

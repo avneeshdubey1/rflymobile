@@ -570,6 +570,11 @@ useEffect(() => {
                       <span className={`status-badge status-badge--${account.active ? 'success' : 'danger'}`} style={{ marginLeft: '0.5rem' }}>{account.active ? 'Active' : 'Disabled'}</span>
                       {account.role === 'PILOT' && <label className="input-group"><span>Operating center</span><select value={account.homeCenterId || ''} onChange={(event) => void updatePilotCenter(account.id, event.target.value)}><option value="" disabled>Select center</option>{centers.filter((center) => center.active).map((center) => <option key={center.id} value={center.id}>{center.name}</option>)}</select></label>}
                     </div>
+                    {account.role === 'ADMIN' && account.id === user?.id && (
+                      <div className="data-row__actions">
+                        <button className="action-btn" type="button" onClick={() => { setPasswordTarget(account); setPassword(''); }}>Change my password</button>
+                      </div>
+                    )}
                     {account.role !== 'ADMIN' && account.id !== user?.id && (
                       <div className="data-row__actions">
                         <button className="action-btn" type="button" onClick={() => toggleUserActive(account.id)}>{account.active ? 'Deactivate login' : 'Reactivate login'}</button>
@@ -613,7 +618,6 @@ useEffect(() => {
                 </div>
                 <div className="input-group"><label htmlFor="new-user-password">Temporary Password</label><input id="new-user-password" type="password" value={newUser.password} onChange={(event) => setNewUser({ ...newUser, password: event.target.value })} required minLength={12} maxLength={128} autoComplete="new-password" /><span className="field-hint">Use 12–128 characters and share it through an approved channel.</span></div>
                 <div className="input-group"><label htmlFor="new-user-role">Role</label><select id="new-user-role" value={newUser.role} onChange={(event) => setNewUser({ ...newUser, role: event.target.value })}>
-                  <option value="ADMIN">Administrator</option>
                   <option value="PILOT">Pilot</option><option value="SALES">Sales Executive</option><option value="FLEET_MANAGER">Fleet Manager</option></select></div>
                 {newUser.role === 'PILOT' && <div className="input-group"><label htmlFor="new-user-center">Operating center</label><select id="new-user-center" value={newUser.homeCenterId} onChange={(event) => setNewUser({ ...newUser, homeCenterId: event.target.value })} required><option value="">Select active center</option>{centers.filter((center) => center.active).map((center) => <option key={center.id} value={center.id}>{center.name}</option>)}</select></div>}
                 <div className="form-actions"><button type="submit" className="submit-btn">Create Account</button></div>

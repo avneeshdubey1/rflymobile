@@ -87,6 +87,29 @@ test('Admin account creation hashes the password and no API response exposes cre
   assert.equal(JSON.stringify({ listed: listed.data, assignments: assignments.data }).includes('passwordHash'), false);
 });
 
+test('the installation Admin is unique and protected while an unlinked employee can be permanently deleted', async () => {
+  const secondAdmin = await request('/api/users/add', {
+    method: 'POST',
+    headers: auth(admin),
+    body: JSON.stringify({ name: 'Second Admin', email: `second-admin-${runId}@example.test`, role: 'ADMIN', password: testPassword }),
+  });
+  assert.equal(secondAdmin.response.status, 409);
+
+  const deleteAdmin = await request(`/api/users/delete/${admin.id}`, { method: 'DELETE', headers: auth(admin) });
+  assert.equal(deleteAdmin.response.status, 409);
+  const deactivateAdmin = await request('/api/users/toggle-active', {
+    method: 'POST',
+    headers: auth(admin),
+    body: JSON.stringify({ userId: admin.id }),
+  });
+  assert.equal(deactivateAdmin.response.status, 409);
+
+  const deleted = await request(`/api/users/delete/${createdUserId}`, { method: 'DELETE', headers: auth(admin) });
+  assert.equal(deleted.response.status, 200, JSON.stringify(deleted.data));
+  assert.equal(await prisma.user.findUnique({ where: { id: createdUserId } }), null);
+  createdUserId = null;
+});
+
 test('public intake rejects invalid phone and acreage before persistence', async () => {
   const before = await prisma.lead.count();
   const [phone, acreage] = await Promise.all([

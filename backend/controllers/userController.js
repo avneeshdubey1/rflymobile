@@ -25,6 +25,9 @@ exports.addUser = async (req, res) => {
     const name = String(req.body.name || '').trim();
     if (name.length < 2 || name.length > 120 || !roles.has(role)) return res.status(400).json({ error: 'A name and valid role are required' });
     const email = normalizeEmail(req.body.email);
+    if (role === 'ADMIN' && await userRepository.count({ role: 'ADMIN' }) > 0) {
+      return res.status(409).json({ error: 'This installation already has its single Admin account' });
+    }
     const phone = req.body.phone ? normalizePhone(req.body.phone) : null;
     validatePassword(req.body.password);
     const passwordHash = await hashPassword(req.body.password);
@@ -98,7 +101,10 @@ exports.updatePilotOperatingCenter = async (req, res) => {
 exports.deleteUser = async (req, res) => {
   try {
     if (req.params.id === req.auth.userId) return res.status(409).json({ error: 'You cannot delete your own account' });
-    const user = await userRepository.delete(req.params.id);
+    const existing = await userRepository.findById(req.params.id);
+    if (!existing) return res.status(404).json({ error: 'User not found' });
+    if (existing.role === 'ADMIN') return res.status(409).json({ error: 'The installation Admin account cannot be deleted' });
+    const user = await userRepository.hardDelete(req.params.id);
     disconnectUserSockets(req.app.get('io'), user.id);
     await auditLogRepository.create({ entityType: 'User', entityId: user.id, action: 'DELETED', actorId: req.auth.userId, beforeState: user });
     res.json({ success: true });
@@ -123,6 +129,7 @@ exports.toggleActive = async (req, res) => {
     if (req.body.userId === req.auth.userId) return res.status(409).json({ error: 'You cannot deactivate your own account' });
     const user = await userRepository.findById(req.body.userId);
     if (!user) return res.status(404).json({ error: 'User not found' });
+    if (user.role === 'ADMIN') return res.status(409).json({ error: 'The installation Admin account cannot be deactivated' });
     const updatedUser = await userRepository.setActive(user.id, !user.active);
     disconnectUserSockets(req.app.get('io'), user.id);
     await auditLogRepository.create({ entityType: 'User', entityId: user.id, action: 'TOGGLE_ACTIVE', actorId: req.auth.userId, beforeState: user, afterState: updatedUser });
