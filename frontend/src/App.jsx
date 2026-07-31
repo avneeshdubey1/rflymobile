@@ -30,7 +30,7 @@ function App() {
       <BrowserRouter>
         <Routes>
           {/* Public Routes */}
-          <Route path="/" element={<Navigate to="/farmer/login" replace />} />
+          <Route path="/" element={<Navigate to="/login" replace />} />
           <Route path="/request" element={<LandingPage />} />
           <Route path="/login" element={<Login />} />
           <Route path="/forgot-password" element={<EmployeeForgotPassword />} />

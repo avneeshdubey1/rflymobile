@@ -229,10 +229,10 @@ try {
   await waitForUrl(frontendUrl);
   browser = await chromium.launch({ executablePath: edgePath, headless: true });
 
-  await runCase('PUB-01', 'Root opens the farmer login page and all six languages switch visibly', async (page) => {
+  await runCase('PUB-01', 'Root opens the employee login page and all six languages switch visibly', async (page) => {
     await page.goto(`${frontendUrl}/`, { waitUntil: 'domcontentloaded' });
-    await page.waitForURL('**/farmer/login');
-    await page.getByRole('heading', { name: /Request drone services instantly|Welcome back/i }).first().waitFor();
+    await page.waitForURL('**/login');
+    await page.getByRole('heading', { name: /One workspace for every field decision|Operations console/i }).first().waitFor();
     const selector = page.locator('.language-selector');
     const trigger = selector.locator('button').first();
     const labels = {};
