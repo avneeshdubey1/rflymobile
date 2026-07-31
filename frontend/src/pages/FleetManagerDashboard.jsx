@@ -9,8 +9,6 @@ import { useAuth } from '../context/useAuth';
 import OperationsShell from '../components/OperationsShell';
 import OpsIcon from '../components/OpsIcon';
 import LiveLocationPanel from '../components/LiveLocationPanel';
-import BhumeetLogbook from '../components/BhumeetLogbook';
-import AcreageTrend from '../components/AcreageTrend';
 import { API_URL as API } from '../config';
 
 const localizer = dateFnsLocalizer({ format, parse, startOfWeek, getDay, locales: { 'en-US': enUS } });
@@ -159,8 +157,6 @@ function FleetManagerDashboard() {
     { id: 'pilots', label: 'Pilots', icon: 'users' },
     { id: 'drones', label: 'Drones', icon: 'drone' },
     { id: 'location', label: 'Live Pilot GPS', icon: 'location' },
-    { id: 'bhumeet', label: 'Bhumeet Logs', icon: 'list' },
-    { id: 'acreage', label: 'Acreage Trend', icon: 'database' },
   ];
 
   return (
@@ -242,8 +238,6 @@ function FleetManagerDashboard() {
       )}
 
       {activeSection === 'location' && <section id="location" className="section-gap"><LiveLocationPanel /></section>}
-      {activeSection === 'bhumeet' && <section id="bhumeet" className="section-gap"><BhumeetLogbook /></section>}
-      {activeSection === 'acreage' && <section id="acreage" className="section-gap"><AcreageTrend /></section>}
     </OperationsShell>
   );
 }
