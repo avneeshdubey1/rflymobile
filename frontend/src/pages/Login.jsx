@@ -13,6 +13,7 @@ function Login() {
   const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -67,7 +68,10 @@ function Login() {
             </div>
             <div className="input-group">
               <label htmlFor="login-password">{t('password', 'Password')}</label>
-              <input id="login-password" name="password" type="password" placeholder={t('enter_password', 'Enter your password')} value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="current-password" required disabled={busy} />
+              <div className="password-field">
+                <input id="login-password" name="password" type={showPassword ? 'text' : 'password'} placeholder={t('enter_password', 'Enter your password')} value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="current-password" required disabled={busy} />
+                <button type="button" onClick={() => setShowPassword((visible) => !visible)} disabled={busy} aria-label={showPassword ? 'Hide password' : 'Show password'}>{showPassword ? 'Hide' : 'Show'}</button>
+              </div>
               <div style={{ textAlign: 'right', marginTop: '0.25rem' }}><Link to="/forgot-password" style={{ fontSize: '0.85rem', color: 'var(--accent)' }}>{t('forgot_password', 'Forgot password?')}</Link></div>
             </div>
             <button type="submit" className="submit-btn login-submit" disabled={busy}>{busy ? t('logging_in', 'Logging in…') : t('login', 'Login')}</button>

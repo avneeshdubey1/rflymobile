@@ -403,7 +403,7 @@ try {
 
   await runCase('SALES-01', 'Sales queue includes an in-range public request awaiting review', async (page) => {
     await login(page, roleUsers.SALES, '/marketing');
-    await page.getByText('Process Leads', { exact: true }).first().waitFor();
+    await page.getByRole('button', { name: /Access Leads/ }).click();
     await page.getByText(state.inRangeLead.farmerName, { exact: true }).waitFor();
   });
 
@@ -603,7 +603,7 @@ try {
 
   await runCase('CRM-01', 'Admin opens the full lifecycle timeline for the completed lead', async (page) => {
     await login(page, roleUsers.ADMIN, '/admin');
-    await page.getByRole('button', { name: /CRM Logbook/ }).click();
+    await page.getByRole('button', { name: /Lead Details/ }).click();
     await page.getByLabel('Search logbook').fill(state.inRangeLead.farmerName);
     const row = page.locator('tbody tr').filter({ hasText: state.inRangeLead.farmerName });
     await row.click();
@@ -692,7 +692,7 @@ try {
 
   await runCase('UI-01', 'Admin workspace remains usable without page overflow on mobile', async (page) => {
     await login(page, roleUsers.ADMIN, '/admin');
-    const tabs = ['Fleet Overview', 'User Management', 'CRM Logbook', 'Team Command Chat', 'Live Pilot GPS'];
+    const tabs = ['Fleet Overview', 'My Team', 'Lead Details', 'Team Command Chat', 'Live Pilot GPS'];
     const dimensions = {};
     for (const tab of tabs) {
       await page.getByRole('button', { name: new RegExp(tab, 'i') }).click();
@@ -704,7 +704,10 @@ try {
 
   await runCase('UI-02', 'Sales workspace remains usable without page overflow on mobile', async (page) => {
     await login(page, roleUsers.SALES, '/marketing');
-    const tabs = ['Process Leads', 'Enter New Lead', 'Operational alerts', 'Team Chat', 'CRM Logbook'];
+    for (const hiddenModule of ['Operational alerts', 'Team Chat', 'CRM Logbook', 'Payment Collection']) {
+      assert.equal(await page.getByRole('button', { name: new RegExp(hiddenModule, 'i') }).count(), 0, `${hiddenModule} must not be exposed in Sales navigation`);
+    }
+    const tabs = ['Customer Registration', 'Enter New Lead', 'Access Leads', 'Profile'];
     const dimensions = {};
     for (const tab of tabs) {
       await page.getByRole('button', { name: new RegExp(tab, 'i') }).click();

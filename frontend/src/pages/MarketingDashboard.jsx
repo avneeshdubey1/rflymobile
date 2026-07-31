@@ -2,9 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../context/useAuth';
 import OperationsShell from '../components/OperationsShell';
 import OpsIcon from '../components/OpsIcon';
-import LogbookTimelinePanel from '../components/LogbookTimelinePanel';
 import LocationLink from '../components/LocationLink';
-import ChatPanel from '../components/ChatPanel';
 import CustomerProfileFields from '../components/CustomerProfileFields';
 import { createAuthenticatedSocket } from '../services/authenticatedSocket';
 import { apiFetch, readJson } from '../services/apiClient';
@@ -21,9 +19,8 @@ const blankCustomer = {
 
 function MarketingDashboard() {
   const { user, logout } = useAuth();
-  const [activeTab, setActiveTab] = useState('process');
+  const [activeTab, setActiveTab] = useState('customers');
   const [leads, setLeads] = useState([]);
-  const [alerts, setAlerts] = useState([]);
   const [dataError, setDataError] = useState('');
   const [manualLead, setManualLead] = useState(blankManualLead);
   const [manualStatus, setManualStatus] = useState('');
@@ -40,14 +37,10 @@ function MarketingDashboard() {
 
   const fetchData = useCallback(async (signal) => {
     try {
-      const [leadResponse, alertResponse] = await Promise.all([
-        apiFetch('/api/leads/pending', { signal }),
-        apiFetch('/api/assignments/sales-alerts', { signal }),
-      ]);
-      const [leadData, alertData] = await Promise.all([readJson(leadResponse), readJson(alertResponse)]);
-      if (!leadResponse.ok || !alertResponse.ok) throw new Error(leadData.error || alertData.error || 'Could not refresh Sales data.');
+      const leadResponse = await apiFetch('/api/leads/pending', { signal });
+      const leadData = await readJson(leadResponse);
+      if (!leadResponse.ok) throw new Error(leadData.error || 'Could not refresh Sales data.');
       setLeads(leadData.leads || []);
-      setAlerts(alertData.alerts || []);
       setDataError('');
     } catch (error) {
       if (error.name !== 'AbortError' && !signal?.aborted) setDataError('Could not refresh Sales data. Check the connection and try again.');
@@ -227,31 +220,28 @@ function MarketingDashboard() {
 
   const newLeads = leads.filter((lead) => ['NEW', 'MANUAL_CALL_REQUIRED'].includes(lead.status));
   const navItems = [
-    { id: 'process', label: 'Process Leads', icon: 'clipboard', badge: newLeads.length || null },
-    { id: 'customers', label: 'Customers', icon: 'users', badge: selectedCustomer ? '1' : null },
+    { id: 'customers', label: 'Customer Registration', icon: 'users', badge: selectedCustomer ? '1' : null },
     { id: 'manual', label: 'Enter New Lead', icon: 'plus' },
-    { id: 'alerts', label: 'Operational alerts', icon: 'alert', badge: alerts.length || null },
-    { id: 'chat', label: 'Team Chat', icon: 'chat' },
-    { id: 'logbook', label: 'CRM Logbook', icon: 'list' },
+    { id: 'process', label: 'Access Leads', icon: 'clipboard', badge: newLeads.length || null },
+    { id: 'profile', label: 'Profile', icon: 'users' },
   ];
+  const pageCopy = {
+    customers: ['Customer onboarding', 'Customer Registration', 'Register customers, maintain their farm profile, and open their service view.'],
+    manual: ['Service request', 'Enter a new lead', 'Record a phone request and validate the farm against the active service area.'],
+    process: ['Lead access', 'Incoming leads', 'Review accepted public requests and send complete details to scheduling.'],
+    profile: ['Account', 'Profile', 'View the employee identity and role currently operating this Sales workspace.'],
+  };
+  const [eyebrow, title, description] = pageCopy[activeTab] || pageCopy.customers;
 
   return (
-    <OperationsShell roleLabel="Sales operations" navItems={navItems} activeTab={activeTab} onTabChange={setActiveTab} user={user} onLogout={logout}>
+    <OperationsShell roleLabel="Sales Dashboard" navItems={navItems} activeTab={activeTab} onTabChange={setActiveTab} user={user} onLogout={logout}>
       <header className="page-header">
-        <div className="page-header__copy"><p className="eyebrow">Sales desk</p><h1>Phone-first service intake</h1><p>Record the call, verify the farm location, and create a request only when it is inside an active service area.</p></div>
+        <div className="page-header__copy"><p className="eyebrow">{eyebrow}</p><h1>{title}</h1><p>{description}</p></div>
         <div className="page-header__actions"><button className="action-btn" type="button" onClick={() => void fetchData()}><OpsIcon name="refresh" /> Refresh data</button></div>
       </header>
 
       {showToast && <div role="status" className="notice notice--warning"><span>{showToast}</span><button className="notice__close" type="button" aria-label="Dismiss message" onClick={() => setShowToast('')}>×</button></div>}
       {dataError && <div role="alert" className="notice notice--error"><span>{dataError}</span></div>}
-
-      {activeTab === 'alerts' && (
-        <section className="subsection">
-          <div className="subsection-header"><div><p className="eyebrow">Mission exceptions</p><h2>Operational alerts</h2></div><span className="status-badge status-badge--danger">{alerts.length} open</span></div>
-          {!alerts.length && <div className="empty-state"><strong>No mission alerts</strong><span>There are no discrepancies or decommission events awaiting follow-up.</span></div>}
-          <div className="alert-grid">{alerts.map((alert) => <article key={alert.id} className="workflow-card workflow-card--danger"><div className="mission-card__header"><div><h3>{alert.lead?.farmerName || 'Mission alert'}</h3><p className="workflow-card__meta">Pilot: {alert.pilot?.name || 'Unassigned'}</p></div><span className="status-badge status-badge--danger">Follow up</span></div><p>{alert.decommissionedMidMission ? `Drone decommissioned: ${alert.decommissionReason || 'No reason supplied'}` : `Acreage discrepancy: ${alert.discrepancyNote || 'Review the mission logbook.'}`}</p></article>)}</div>
-        </section>
-      )}
 
       {activeTab === 'customers' && (
         <section className="lead-workbench">
@@ -338,8 +328,15 @@ function MarketingDashboard() {
         </section>
       )}
 
-      {activeTab === 'chat' && <ChatPanel />}
-      {activeTab === 'logbook' && <LogbookTimelinePanel />}
+      {activeTab === 'profile' && (
+        <section className="panel panel--raised profile-summary">
+          <div className="panel-header"><div className="panel-header__title"><p className="eyebrow">Employee profile</p><h2>{user?.name || 'Sales employee'}</h2><p>Your authenticated work identity.</p></div></div>
+          <div className="panel-body data-stack">
+            <div className="data-row"><div className="data-row__main"><span className="data-row__title">Work email</span><span className="data-row__meta">{user?.email || 'Not available'}</span></div></div>
+            <div className="data-row"><div className="data-row__main"><span className="data-row__title">Role</span><span className="status-badge status-badge--success">Sales Executive</span></div></div>
+          </div>
+        </section>
+      )}
     </OperationsShell>
   );
 }

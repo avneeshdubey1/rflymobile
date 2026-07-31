@@ -210,18 +210,18 @@ function AdminDashboard() {
   const standbyLmvs = useMemo(() => lmvs.filter((lmv) => ['MAINTENANCE', 'OUT_OF_SERVICE'].includes(lmv.status)), [lmvs]);
   const navItems = [
     { id: 'fleet', label: 'Fleet Overview', icon: 'overview' },
-    { id: 'users', label: 'User Management', icon: 'users' },
-    { id: 'centers', label: 'Operating Centers', icon: 'location' },
-    { id: 'logbook', label: 'CRM Logbook', icon: 'book' },
+    { id: 'centers', label: 'Feasible Regions', icon: 'location' },
+    { id: 'users', label: 'My Team', icon: 'users' },
+    { id: 'logbook', label: 'Lead Details', icon: 'book' },
     { id: 'chat', label: 'Team Command Chat', icon: 'chat' },
     { id: 'location', label: 'Live Pilot GPS', icon: 'location' },
   ];
 
   const pageCopy = {
     fleet: ['Operations overview', 'Fleet readiness', 'Monitor availability, active allocations, and maintenance exceptions.'],
-    users: ['Access administration', 'User management', 'Create and maintain secure operational accounts.'],
-    centers: ['Geo-fencing', 'Operating Centers (HQ)', 'Configure geographic areas of operation.'],
-    logbook: ['Operational history', 'CRM logbook', 'Review each lead’s complete recorded lifecycle.'],
+    users: ['Access administration', 'My Team', 'Create and maintain secure operational accounts.'],
+    centers: ['Geo-fencing', 'Feasible Regions', 'Configure geographic areas of operation.'],
+    logbook: ['Operational history', 'Lead Details', 'Review each lead’s complete recorded lifecycle.'],
     chat: ['Command channel', 'Team command chat', 'Open role-scoped conversations and retain Admin closure authority.'],
     location: ['Live operations', 'Pilot GPS', 'View the latest position for accepted and active missions.'],
   };
