@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router';
+import { Link, useNavigate } from 'react-router-dom';
+import { API_URL } from '../config';
 import { useAuth } from '../context/useAuth';
 import LanguageSelector from '../components/LanguageSelector';
 import { useTranslation } from 'react-i18next';
-import { apiFetch, readJson } from '../services/apiClient';
 
 export default function B2BLogin() {
   const navigate = useNavigate();
@@ -21,18 +21,17 @@ export default function B2BLogin() {
     setBusy(true);
     setError('');
     try {
-      const response = await apiFetch('/api/auth/business/login', {
+      const response = await fetch(`${API_URL}/api/auth/business/login`, {
         method: 'POST',
-        authFailure: 'ignore',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       });
-      const data = await readJson(response);
-      if (!response.ok) throw new Error(data.error || t('login_failed', 'Login failed.'));
-      login(data.user);
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Login failed.');
+      login(data.user, data.token);
       navigate('/business/dashboard', { replace: true });
     } catch (failure) {
-      setError(failure?.message || t('login_failed', 'Login failed.'));
+      setError(failure?.message || 'Login failed.');
     } finally {
       setBusy(false);
     }
@@ -44,39 +43,42 @@ export default function B2BLogin() {
       <section className="login-context">
         <div className="login-context__brand logo">Daas</div>
         <div className="login-context__copy">
-          <p className="hero-kicker">{t('business_portal', 'Business Portal')}</p>
-          <h1>{t('business_login_heading', 'Track your linked service requests.')}</h1>
-          <p>{t('business_login_subheading', 'Login to view only the drone-service work explicitly linked to your organization.')}</p>
+          <p className="hero-kicker">Business Portal</p>
+          <h1>Manage your drone operations.</h1>
+          <p>Login to your B2B account to request drone services, manage operations, and view invoices.</p>
         </div>
       </section>
 
       <section className="login-form-pane">
         <div className="panel login-card">
-          <p className="eyebrow eyebrow--accent">{t('business_login', 'BUSINESS LOGIN')}</p>
-          <h2>{t('welcome_back', 'Welcome back')}</h2>
-          <p className="subtitle" style={{ marginBottom: '1.6rem' }}>{t('business_login_instruction', 'Access your business dashboard using your email and password.')}</p>
+          <p className="eyebrow eyebrow--accent">BUSINESS LOGIN</p>
+          <h2>Welcome back</h2>
+          <p className="subtitle" style={{ marginBottom: '1.6rem' }}>Access your business dashboard using your email and password.</p>
           
           {error && <div className="alert error" role="alert">{error}</div>}
           
           <form className="login-form" onSubmit={handleEmailLogin}>
             <div className="input-group">
-              <label htmlFor="login-email">{t('email_address', 'Email address')}</label>
-              <input id="login-email" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="company@example.com" autoComplete="username" required disabled={busy} />
+              <label htmlFor="login-email">Email address</label>
+              <input id="login-email" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="company@example.com" required disabled={busy} />
             </div>
             <div className="input-group">
-              <label htmlFor="login-password">{t('password', 'Password')}</label>
-              <input id="login-password" type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder={t('enter_password', 'Enter password')} autoComplete="current-password" required disabled={busy} />
+              <label htmlFor="login-password">Password</label>
+              <input id="login-password" type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Enter password" required disabled={busy} />
               <div style={{ textAlign: 'right', marginTop: '0.25rem' }}>
-                <Link to="/business/forgot-password" style={{ fontSize: '0.85rem', color: 'var(--accent)' }}>{t('forgot_password', 'Forgot password?')}</Link>
+                <Link to="/business/forgot-password" style={{ fontSize: '0.85rem', color: 'var(--accent)' }}>Forgot password?</Link>
               </div>
             </div>
-            <button className="submit-btn login-submit" disabled={busy}>{busy ? t('logging_in', 'Logging in…') : t('login', 'Login')}</button>
+            <button className="submit-btn login-submit" disabled={busy}>{busy ? 'Logging in…' : 'Login'}</button>
           </form>
           
           <div style={{ marginTop: '1.5rem', textAlign: 'center', display: 'grid', gap: '0.5rem' }}>
-            <p>{t('new_to_here', 'New to here?')} <Link to="/farmer/register" style={{ fontWeight: 'bold' }}>{t('farmer_registration', 'Farmer Registration')}</Link></p>
-            <p>{t('new_business_question', 'Need business access?')} <Link to="/business/register" style={{ fontWeight: 'bold' }}>{t('business_registration', 'Contact Sales')}</Link></p>
-            <p className="muted">{t('employee_q', 'Employee?')} <Link to="/login" style={{ color: 'inherit' }}>{t('employee_login', 'Employee login')}</Link></p>
+            <p>New to here? <Link to="/farmer/register" style={{ fontWeight: 'bold' }}>Farmer Registration</Link></p>
+            <p>New Business? <Link to="/business/register" style={{ fontWeight: 'bold' }}>Business Registration</Link></p>
+            
+            <p className="muted">Employee? <Link to="/login" style={{ color: 'inherit' }}>Employee login</Link></p>
+
+            
           </div>
         </div>
       </section>

@@ -1,171 +1,293 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router';
-import LanguageSelector from '../components/LanguageSelector';
-import { apiFetch, readJson } from '../services/apiClient';
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { Eye, EyeOff } from "lucide-react";
+import LanguageSelector from "../components/LanguageSelector";
 
-const emptyForm = {
-  name: '',
-  email: '',
-  phone: '',
-  role: '',
-  homeCenterId: '',
-  password: '',
-  confirmPassword: '',
-};
+export default function EmployeeRegistration() {
+    const navigate = useNavigate();
+    const [error, setError] = useState("");
+    const [busy, setBusy] = useState(false);
+    const [success, setSuccess] = useState("");
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+    const [form, setForm] = useState({
+        name: "",
+        email: "",
+        phone: "",
+        role: "",
+        password: "",
+        confirmPassword: "",
+    });
 
-function EmployeeRegistration() {
-  const navigate = useNavigate();
-  const [form, setForm] = useState(emptyForm);
-  const [centers, setCenters] = useState([]);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+    const handleChange = (e) => {
+        setForm({
+            ...form,
+            [e.target.name]: e.target.value
+        });
+    };
 
-  const passwordsMatch = useMemo(
-    () => !form.confirmPassword || form.password === form.confirmPassword,
-    [form.confirmPassword, form.password],
-  );
+    const passwordsMatch =
+        form.confirmPassword === "" || form.password === form.confirmPassword;
 
-  useEffect(() => {
-    const controller = new AbortController();
-    void (async () => {
-      try {
-        const response = await apiFetch('/api/centers/all', { signal: controller.signal });
-        const data = await readJson(response);
-        if (!response.ok) throw new Error(data.error || 'Operating centers could not be loaded.');
-        setCenters((data.centers || []).filter((center) => center.active));
-      } catch (loadError) {
-        if (loadError.name !== 'AbortError') setError(loadError.message);
-      }
-    })();
-    return () => controller.abort();
-  }, []);
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setError("");
+        if (form.phone.length !== 10) {
+            setError("Mobile number must be exactly 10 digits.");
+            return;
+        }
 
-  const update = (name, value) => {
-    setForm((current) => ({
-      ...current,
-      [name]: value,
-      ...(name === 'role' && value !== 'PILOT' ? { homeCenterId: '' } : {}),
-    }));
-  };
+        if (form.password !== form.confirmPassword) {
+            setError("Passwords do not match");
+            return;
+        }
+        try {
+            setBusy(true);
+            const response = await fetch(
+                "http://localhost:5000/api/auth/register",
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        name: form.name,
+                        employeeId: form.employeeId,
+                        email: form.email,
+                        phone: form.phone,
+                        role: form.role,
+                        department: form.department,
+                        password: form.password
+                    })
+                }
+            );
+            const data = await response.json();
+            if (!response.ok) {
+                throw new Error(data.message || "Registration failed");
+            }
+            setSuccess("Employee account created successfully. Redirecting to login...");
+            setTimeout(() => { navigate("/login"); }, 1500);
+        }
+        catch (error) {
+            setError(error.message || "Registration failed");
+        } finally {
+            setBusy(false);
+        }
+    };
 
-  const handleSubmit = async (event) => {
-    event.preventDefault();
-    setError('');
-    setSuccess('');
-    if (!passwordsMatch) {
-      setError('Passwords do not match.');
-      return;
-    }
-    if (form.role === 'PILOT' && !form.homeCenterId) {
-      setError('Select an operating center for the pilot.');
-      return;
-    }
-
-    setBusy(true);
-    try {
-      const response = await apiFetch('/api/users/add', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: form.name,
-          email: form.email,
-          phone: form.phone,
-          role: form.role,
-          homeCenterId: form.homeCenterId || null,
-          password: form.password,
-        }),
-      });
-      const data = await readJson(response);
-      if (!response.ok) throw new Error(data.error || 'Employee registration failed.');
-      setSuccess(`${data.user.name}'s employee account was created successfully.`);
-      setForm(emptyForm);
-    } catch (submitError) {
-      setError(submitError.message || 'Employee registration failed.');
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <main className="login-container employee-registration">
-      <LanguageSelector style={{ position: 'absolute', top: '1.5rem', right: '1.5rem', zIndex: 50 }} />
-      <section className="login-context">
-        <div className="login-context__brand logo">Daas</div>
-        <div className="login-context__copy">
-          <p className="hero-kicker">Employee portal</p>
-          <h1>Manage drone operations efficiently.</h1>
-          <p>Create approved employee accounts for Sales, Fleet and field operations.</p>
-        </div>
-        <p className="login-context__footer">Only an authenticated Administrator can provision an employee account.</p>
-      </section>
-
-      <section className="login-form-pane">
-        <div className="panel login-card employee-registration__card">
-          <p className="eyebrow">Employee registration</p>
-          <h2>Create employee account</h2>
-          <p className="subtitle">Register role-scoped access for the operations platform.</p>
-
-          {error && <div className="alert error" role="alert">{error}</div>}
-          {success && <div className="notice" role="status">{success}</div>}
-
-          <form className="login-form" onSubmit={handleSubmit}>
-            <div className="employee-grid">
-              <div className="input-group">
-                <label htmlFor="employee-name">Full Name</label>
-                <input id="employee-name" value={form.name} onChange={(event) => update('name', event.target.value)} required minLength={2} maxLength={120} disabled={busy} />
-              </div>
-              <div className="input-group">
-                <label htmlFor="employee-email">Work Email</label>
-                <input id="employee-email" type="email" value={form.email} onChange={(event) => update('email', event.target.value)} required autoComplete="off" disabled={busy} />
-              </div>
-              <div className="input-group">
-                <label htmlFor="employee-phone">Mobile Number</label>
-                <input id="employee-phone" type="tel" inputMode="tel" value={form.phone} onChange={(event) => update('phone', event.target.value)} placeholder="+91 98765 43210" required maxLength={20} disabled={busy} />
-              </div>
-              <div className="input-group">
-                <label htmlFor="employee-role">Role</label>
-                <select id="employee-role" value={form.role} onChange={(event) => update('role', event.target.value)} required disabled={busy}>
-                  <option value="">Select role</option>
-                  <option value="SALES">Sales Executive</option>
-                  <option value="FLEET_MANAGER">Fleet Manager</option>
-                  <option value="PILOT">Pilot</option>
-                </select>
-              </div>
-              {form.role === 'PILOT' && (
-                <div className="input-group employee-grid__wide">
-                  <label htmlFor="employee-center">Operating Center</label>
-                  <select id="employee-center" value={form.homeCenterId} onChange={(event) => update('homeCenterId', event.target.value)} required disabled={busy}>
-                    <option value="">Select operating center</option>
-                    {centers.map((center) => <option key={center.id} value={center.id}>{center.name}</option>)}
-                  </select>
+    return (
+        <main className="login-container">
+            <LanguageSelector
+                style={{
+                    position: "absolute",
+                    top: "1.5rem",
+                    right: "1.5rem",
+                    zIndex: 50
+                }} />
+            <section className="login-context">
+                <div className="login-context__brand logo">Daas</div>
+                <div className="login-context__copy">
+                    <p className="hero-kicker">Employee Portal </p>
+                    <h1> Manage drone operations efficiently.</h1>
+                    <p>
+                        Create employee accounts to manage sales,
+                        pilots, operations and administration.
+                    </p>
                 </div>
-              )}
-              <div className="input-group">
-                <label htmlFor="employee-password">Temporary Password</label>
-                <div className="password-field">
-                  <input id="employee-password" type={showPassword ? 'text' : 'password'} value={form.password} onChange={(event) => update('password', event.target.value)} required minLength={12} maxLength={128} autoComplete="new-password" disabled={busy} />
-                  <button type="button" onClick={() => setShowPassword((visible) => !visible)} aria-label={showPassword ? 'Hide password' : 'Show password'}>{showPassword ? 'Hide' : 'Show'}</button>
+            </section>
+            <section className="login-form-pane">
+                <div className="panel login-card">
+                    <p className="eyebrow eyebrow--accent"> EMPLOYEE REGISTRATION </p>
+                    <h2> Create employee account </h2>
+                    <p className="subtitle">
+                        Register employee access for Daas platform.
+                    </p>
+
+                    {error && (
+                        <div className="alert error" role="alert"> {error} </div>
+                    )}
+                    {success && (
+                        <div className="alert success" role="alert"> {success}</div>
+                    )}
+                    <form className="login-form" onSubmit={handleSubmit}>
+                        <div className="employee-grid">
+                            {/* <div className="input-group">
+                                <label>Full Name</label>
+                                <input
+                                    name="name"
+                                    value={form.name}
+                                    onChange={handleChange}
+                                    placeholder="Enter full name"
+                                    required
+                                    disabled={busy} />
+                            </div> */}
+
+                            <div className="input-group">
+                                <label>Full Name</label>
+                                <input
+                                    name="name"
+                                    value={form.name}
+                                    onChange={(e) => {
+                                        const value = e.target.value.replace(/[^a-zA-Z\s]/g, "");
+                                        setForm({
+                                            ...form,
+                                            name: value,
+                                        });
+                                    }}
+                                    placeholder="Enter full name"
+                                    required
+                                    disabled={busy}
+                                />
+                            </div>
+                            <div className="input-group" style={{ marginTop: "10px" }}>
+                                <label>Email</label>
+                                <input
+                                    type="email"
+                                    name="email"
+                                    value={form.email}
+                                    onChange={handleChange}
+                                    placeholder="employee@daas.com"
+                                    required
+                                    disabled={busy} />
+                            </div>
+                            <div className="input-group" style={{ marginTop: "10px" }}>
+                                <label>Mobile Number</label>
+                                <input
+                                    type="tel"
+                                    name="phone"
+                                    value={form.phone}
+                                    placeholder="9876543210"
+                                    maxLength={10}
+                                    inputMode="numeric"
+                                    onChange={(e) => {
+                                        const phone = e.target.value.replace(/\D/g, "").slice(0, 10);
+                                        setForm({
+                                            ...form,
+                                            phone,
+                                        });
+                                    }}
+                                    required
+                                    disabled={busy}
+                                />
+                                {form.phone && form.phone.length !== 10 && (
+                                    <small style={{ color: "#dc2626", fontSize: "0.85rem" }}>
+                                        Mobile number must be exactly 10 digits.
+                                    </small>
+                                )}
+                            </div>
+                            <div className="input-group" style={{ marginTop: "10px" }}>
+                                <label>  Role </label>
+                                <select
+                                    name="role"
+                                    value={form.role}
+                                    onChange={handleChange}
+                                    required
+                                    disabled={busy}  >
+                                    <option value="">Select Role  </option>
+                                    <option value="ADMIN">Admin  </option>
+                                    <option value="SALES"> Sales Executive </option>
+                                    <option value="PILOT"> Pilot </option>
+                                </select>
+                            </div>
+                            <div className="input-group" style={{ marginTop: "10px" }}>
+                                <label> Password  </label>
+                                <div style={{ position: "relative" }}>
+                                    <input
+                                        type={showPassword ? "text" : "password"}
+                                        name="password"
+                                        value={form.password}
+                                        onChange={handleChange}
+                                        placeholder="Minimum 12 characters"
+                                        minLength="12"
+                                        required
+                                        disabled={busy}
+                                        style={{ paddingRight: "2.5rem", width: "100%" }}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        tabIndex={-1}
+                                        style={{
+                                            position: "absolute",
+                                            right: "0.6rem",
+                                            top: "50%",
+                                            transform: "translateY(-50%)",
+                                            background: "none",
+                                            border: "none",
+                                            cursor: "pointer",
+                                            display: "flex",
+                                            alignItems: "center",
+                                            color: "#6b7280"
+                                        }}
+                                    >
+                                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                    </button>
+                                </div>
+                            </div>
+                            <div className="input-group" style={{ marginTop: "10px" }}>
+                                <label>Confirm Password</label>
+                                <div style={{ position: "relative" }}>
+                                    <input
+                                        type={showConfirmPassword ? "text" : "password"}
+                                        name="confirmPassword"
+                                        value={form.confirmPassword}
+                                        onChange={handleChange}
+                                        placeholder="Confirm password"
+                                        minLength="12"
+                                        required
+                                        disabled={busy}
+                                        style={{ paddingRight: "2.5rem", width: "100%" }}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                        tabIndex={-1}
+                                        style={{
+                                            position: "absolute",
+                                            right: "0.6rem",
+                                            top: "50%",
+                                            transform: "translateY(-50%)",
+                                            background: "none",
+                                            border: "none",
+                                            cursor: "pointer",
+                                            display: "flex",
+                                            alignItems: "center",
+                                            color: "#6b7280"
+                                        }}
+                                    >
+                                        {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                    </button>
+                                </div>
+                                {!passwordsMatch && (
+                                    <small style={{ color: "#dc2626", fontSize: "0.85rem" }}>
+                                        Passwords do not match.
+                                    </small>
+                                )}
+                            </div>
+                        </div>
+                        <button
+                            className="submit-btn login-submit"
+                            disabled={busy || !passwordsMatch} >
+                            {
+                                busy
+                                    ?
+                                    "Registering..."
+                                    :
+                                    "Register Employee"
+                            }
+                        </button>
+                    </form>
+                    <div className="login-footer" style={{ marginTop: "12px" }}>
+                        <p>
+                            Already have an account?
+                            {" "}
+                            <Link to="/login">
+                                Employee Login
+                            </Link>
+                        </p>
+                    </div>
                 </div>
-              </div>
-              <div className="input-group">
-                <label htmlFor="employee-confirm-password">Confirm Password</label>
-                <div className="password-field">
-                  <input id="employee-confirm-password" type={showConfirmPassword ? 'text' : 'password'} value={form.confirmPassword} onChange={(event) => update('confirmPassword', event.target.value)} required minLength={12} maxLength={128} autoComplete="new-password" disabled={busy} aria-invalid={!passwordsMatch} />
-                  <button type="button" onClick={() => setShowConfirmPassword((visible) => !visible)} aria-label={showConfirmPassword ? 'Hide confirmation password' : 'Show confirmation password'}>{showConfirmPassword ? 'Hide' : 'Show'}</button>
-                </div>
-                {!passwordsMatch && <span className="field-error">Passwords do not match.</span>}
-              </div>
-            </div>
-            <button className="submit-btn login-submit" disabled={busy || !passwordsMatch}>{busy ? 'Registering…' : 'Register Employee'}</button>
-          </form>
-          <button type="button" className="back-link" onClick={() => navigate('/admin')}>← Return to Admin workspace</button>
-        </div>
-      </section>
-    </main>
-  );
+            </section>
+        </main>
+    );
 }
-
-export default EmployeeRegistration;

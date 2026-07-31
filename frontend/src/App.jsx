@@ -1,12 +1,10 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router";
+import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 import { AuthProvider } from "./context/AuthContext.jsx";
 import ProtectedRoute from "./components/ProtectedRoute";
 
-import Login from "./pages/Login";
 import LandingPage from "./pages/LandingPage";
-import EmployeeForgotPassword from "./pages/EmployeeForgotPassword";
-import EmployeeRegistration from "./pages/EmployeeRegistration";
+import Login from "./pages/Login";
 import AdminDashboard from "./pages/AdminDashboard";
 import MarketingDashboard from "./pages/MarketingDashboard";
 import PilotDashboard from "./pages/PilotDashboard";
@@ -21,6 +19,8 @@ import Settings from "./pages/Settings";
 import B2BLogin from "./pages/B2BLogin";
 import B2BRegister from "./pages/B2BRegister";
 import B2BForgotPassword from "./pages/B2BForgotPassword";
+import BusinessRegistrationSuccess from "./pages/BusinessRegistrationSuccess";
+import EmployeeRegistration from "./pages/EmployeeRegistration.jsx";
 
 import BusinessDashboard from "./pages/BusinessDashboard";
 
@@ -28,40 +28,40 @@ function App() {
   return (
     <AuthProvider>
       <Toaster position="top-right" />
-      <BrowserRouter>
+      <HashRouter>
         <Routes>
           {/* Public Routes */}
+          {/* <Route path="/" element={<Navigate to="/farmer/login" replace />} /> */}
           <Route path="/" element={<Navigate to="/login" replace />} />
-          <Route path="/request" element={<LandingPage />} />
           <Route path="/login" element={<Login />} />
-          <Route path="/forgot-password" element={<EmployeeForgotPassword />} />
-          <Route path="/farmer/login" element={<FarmerLogin />} />
-          <Route path="/farmer/register" element={<FarmerRegister />} />
+          <Route path="/employee/register" element={<EmployeeRegistration />} />
+          {/* <Route path="/farmer/login" element={<FarmerLogin />} />
+          <Route path="/farmer/register" element={<FarmerRegister />} /> */}
           <Route path="/success" element={<RegistrationSuccess />} />
           
           {/* Business Routes */}
           <Route path="/business/login" element={<B2BLogin />} />
           <Route path="/business/register" element={<B2BRegister />} />
           <Route path="/business/forgot-password" element={<B2BForgotPassword />} />
+          <Route path="/business/success" element={<BusinessRegistrationSuccess />} />
           
           {/* Protected Admin Routes */}
           <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
             <Route path="/admin" element={<AdminDashboard />} />
-            <Route path="/employee/register" element={<EmployeeRegistration />} />
           </Route>
 
           {/* Protected Sales/Marketing Routes */}
-          <Route element={<ProtectedRoute allowedRoles={['sales']} />}>
+          <Route element={<ProtectedRoute allowedRoles={['admin', 'sales']} />}>
             <Route path="/marketing" element={<MarketingDashboard />} />
           </Route>
 
           {/* Protected Pilot Routes */}
-          <Route element={<ProtectedRoute allowedRoles={['pilot']} />}>
+          <Route element={<ProtectedRoute allowedRoles={['admin', 'pilot']} />}>
             <Route path="/pilot" element={<PilotDashboard />} />
           </Route>
 
           {/* Protected Fleet Manager Routes */}
-          <Route element={<ProtectedRoute allowedRoles={['fleet-manager']} />}>
+          <Route element={<ProtectedRoute allowedRoles={['admin', 'fleet-manager']} />}>
             <Route path="/fleet-manager" element={<FleetManagerDashboard />} />
           </Route>
 
@@ -82,7 +82,7 @@ function App() {
 
           <Route path="*" element={<NotFound />} />
         </Routes>
-      </BrowserRouter>
+      </HashRouter>
     </AuthProvider>
   );
 }

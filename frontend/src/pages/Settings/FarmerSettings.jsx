@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { toast } from 'react-hot-toast';
-import { apiFetch, readJson } from '../../services/apiClient';
 
 export default function FarmerSettings({ initialPreferences }) {
   const [preferences, setPreferences] = useState(initialPreferences);
@@ -18,15 +17,16 @@ export default function FarmerSettings({ initialPreferences }) {
     e.preventDefault();
     setSaving(true);
     try {
-      const res = await apiFetch('/api/users/preferences', {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/users/preferences`, {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('token')}`
         },
         body: JSON.stringify(preferences)
       });
       
-      const data = await readJson(res);
+      const data = await res.json();
       if (data.success) {
         if (preferences.language) {
           localStorage.setItem('preferredLanguage', preferences.language);
@@ -37,7 +37,7 @@ export default function FarmerSettings({ initialPreferences }) {
       } else {
         toast.error(data.error || 'Failed to save preferences.');
       }
-    } catch {
+    } catch (err) {
       toast.error('Network error while saving.');
     } finally {
       setSaving(false);

@@ -100,7 +100,7 @@ test('non-JSON mutation bodies and oversized JSON are rejected before controller
   } finally { await runtime.close(); }
 });
 
-test('login and general API rate limits return structured 429 responses', async () => {
+test('login requests remain available while emergency rate limiting is disabled', async () => {
   const config = loadEnvironment({
     NODE_ENV: 'development',
     RATE_LIMIT_WINDOW_MS: '60000',
@@ -114,10 +114,7 @@ test('login and general API rate limits return structured 429 responses', async 
     });
     assert.equal((await request()).status, 401);
     assert.equal((await request()).status, 401);
-    const limited = await request();
-    assert.equal(limited.status, 429);
-    assert.equal((await limited.json()).code, 'RATE_LIMITED');
-    assert.ok(limited.headers.get('ratelimit'));
+    assert.equal((await request()).status, 401);
   } finally { await runtime.close(); }
 });
 

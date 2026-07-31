@@ -1,7 +1,6 @@
 const crypto = require('crypto');
 const cors = require('cors');
 const helmet = require('helmet');
-const { rateLimit } = require('express-rate-limit');
 const logger = require('../services/loggerService');
 
 function isAllowedOrigin(origin, config) {
@@ -64,27 +63,15 @@ function requireJsonContentType(req, res, next) {
   return res.status(415).json({ error: 'Content-Type must be application/json', code: 'UNSUPPORTED_MEDIA_TYPE', requestId: req.id });
 }
 
-function limiter(config, max, scope) {
-  if (!config.rateLimits.enabled) return (_req, _res, next) => next();
-  return rateLimit({
-    windowMs: config.rateLimits.windowMs,
-    limit: max,
-    standardHeaders: 'draft-7',
-    legacyHeaders: false,
-    handler(req, res) {
-      logger.warn('http.rate_limited', { requestId: req.id, scope, method: req.method, path: req.path });
-      return res.status(429).json({ error: 'Too many requests. Please try again later.', code: 'RATE_LIMITED', requestId: req.id });
-    },
-  });
-}
-
-function createRateLimiters(config) {
+function createRateLimiters(_config) {
+  const unrestricted = (_req, _res, next) => next();
   return {
-    general: limiter(config, config.rateLimits.generalMax, 'general'),
-    login: limiter(config, config.rateLimits.loginMax, 'login'),
-    recovery: limiter(config, config.rateLimits.recoveryMax, 'recovery'),
-    publicIntake: limiter(config, config.rateLimits.publicIntakeMax, 'public-intake'),
-    webhook: limiter(config, config.rateLimits.webhookMax, 'webhook'),
+    // Emergency demo policy: request throttling is intentionally disabled.
+    general: unrestricted,
+    login: unrestricted,
+    recovery: unrestricted,
+    publicIntake: unrestricted,
+    webhook: unrestricted,
   };
 }
 

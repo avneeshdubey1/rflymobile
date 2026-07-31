@@ -9,8 +9,9 @@ import { useAuth } from '../context/useAuth';
 import OperationsShell from '../components/OperationsShell';
 import OpsIcon from '../components/OpsIcon';
 import LiveLocationPanel from '../components/LiveLocationPanel';
-import ChatPanel from '../components/ChatPanel';
-import { apiFetch, readJson } from '../services/apiClient';
+import BhumeetLogbook from '../components/BhumeetLogbook';
+import AcreageTrend from '../components/AcreageTrend';
+import { API_URL as API } from '../config';
 
 const localizer = dateFnsLocalizer({ format, parse, startOfWeek, getDay, locales: { 'en-US': enUS } });
 const withDragAndDrop = dragAndDropModule.default ?? dragAndDropModule;
@@ -23,38 +24,33 @@ function FleetManagerDashboard() {
   const [leads, setLeads] = useState([]);
   const [pilots, setPilots] = useState([]);
   const [drones, setDrones] = useState([]);
-  const [lmvs, setLmvs] = useState([]);
   const [assignments, setAssignments] = useState([]);
   const [calendarDate, setCalendarDate] = useState(new Date());
   const [calendarView, setCalendarView] = useState('month');
   const [draggedLead, setDraggedLead] = useState(null);
   const [selectedPilotId, setSelectedPilotId] = useState('');
-  const [selectedCopilotId, setSelectedCopilotId] = useState('');
-  const [selectedLmvId, setSelectedLmvId] = useState('');
   const [notice, setNotice] = useState(null);
   const [loading, setLoading] = useState(true);
   const [centers, setCenters] = useState([]);
   const [newPilot, setNewPilot] = useState({ name: '', email: '', password: '', homeCenterId: '' });
-  const [newDrone, setNewDrone] = useState({ name: '', model: '', serialNumber: '', category: '', manufacturer: '', tankCapacityLitres: '', batteryCapacityMah: '', enduranceMinutes: '', certified: false, serviceType: '', homeCenterId: '' });
-  const [newLmv, setNewLmv] = useState({ registrationNo: '', label: '', homeCenterId: '', capacity: 1, notes: '' });
+  const [newDrone, setNewDrone] = useState({ model: '', serialNumber: '', homeCenterId: '' });
 
   const showNotice = useCallback((kind, message) => setNotice({ kind, message }), []);
   const request = useCallback(async (url, options) => {
-    const response = await apiFetch(url, options);
-    const data = await readJson(response);
+    const response = await fetch(`${API}${url}`, options);
+    const data = await response.json().catch(() => ({}));
     if (!response.ok || !data.success) throw new Error(data.error || 'The request could not be completed');
     return data;
   }, []);
 
   const fetchData = useCallback(async () => {
     try {
-      const [leadData, pilotData, droneData, lmvData, assignmentData, centerData] = await Promise.all([
-        request('/api/leads/pending'), request('/api/users/pilots'), request('/api/drones/all'), request('/api/lmvs/all'), request('/api/assignments/all'), request('/api/centers/all')
+      const [leadData, pilotData, droneData, assignmentData, centerData] = await Promise.all([
+        request('/api/leads/pending'), request('/api/users/pilots'), request('/api/drones/all'), request('/api/assignments/all'), request('/api/centers/all')
       ]);
       setLeads(leadData.leads || []);
       setPilots(pilotData.pilots || []);
       setDrones(droneData.drones || []);
-      setLmvs(lmvData.lmvs || []);
       setAssignments(assignmentData.missions || []);
       setCenters(centerData.centers || []);
     } catch (error) { showNotice('error', error.message); }
@@ -68,10 +64,9 @@ function FleetManagerDashboard() {
 
   const manualQueue = useMemo(() => leads.filter((lead) => lead.status === 'NEEDS_MANUAL_SCHEDULING'), [leads]);
   const availableDrones = useMemo(() => drones.filter((drone) => drone.status === 'AVAILABLE'), [drones]);
-  const availableLmvs = useMemo(() => lmvs.filter((lmv) => lmv.status === 'AVAILABLE'), [lmvs]);
   const events = useMemo(() => assignments.map((assignment) => ({
     id: assignment.id,
-    title: `#${assignment.dailySequence || 1} ${assignment.lead?.farmerName || 'Farmer'} — ${assignment.pilot?.name || 'Pilot'} + ${assignment.copilot?.name || 'Copilot pending'}`,
+    title: `${assignment.lead?.farmerName || 'Farmer'} — ${assignment.pilot?.name || 'Pilot'}`,
     start: new Date(assignment.scheduledDate),
     end: addHours(new Date(assignment.scheduledDate), 2),
     resourceId: assignment.pilotId,
@@ -79,35 +74,23 @@ function FleetManagerDashboard() {
   })), [assignments]);
 
   const getAvailableDrone = useCallback((lead) => drones.find((drone) => drone.status === 'AVAILABLE' && drone.homeCenterId === lead.matchedCenterId), [drones]);
-  const getAvailableLmv = useCallback((lead) => {
-    const selected = selectedLmvId ? lmvs.find((lmv) => lmv.id === selectedLmvId) : null;
-    if (selected && selected.status === 'AVAILABLE' && selected.homeCenterId === lead.matchedCenterId) return selected;
-    return lmvs.find((lmv) => lmv.status === 'AVAILABLE' && lmv.homeCenterId === lead.matchedCenterId);
-  }, [lmvs, selectedLmvId]);
-  const createAssignment = useCallback(async (lead, pilot, copilot, scheduledDate) => {
+  const createAssignment = useCallback(async (lead, pilot, scheduledDate) => {
     if (!pilot) { showNotice('error', 'Drop the request onto a pilot column, or choose a pilot first.'); return; }
-    if (!copilot) { showNotice('error', 'Choose a Copilot for this operational unit.'); return; }
-    if (pilot.id === copilot.id) { showNotice('error', 'Primary Pilot and Copilot must be different people.'); return; }
-    const dayKey = new Date(scheduledDate).toDateString();
-    const existingCrewJob = assignments.find((assignment) => new Date(assignment.scheduledDate).toDateString() === dayKey
-      && assignment.pilotId === pilot.id && assignment.copilotId === copilot.id);
-    const drone = existingCrewJob?.drone || getAvailableDrone(lead);
-    const lmv = existingCrewJob?.lmv || getAvailableLmv(lead);
+    const drone = getAvailableDrone(lead);
     if (!drone) { showNotice('error', `No available drone is at ${lead.matchedCenter?.name || 'this lead’s operating centre'}.`); return; }
     try {
-      if (!lmv) { showNotice('error', 'No available LMV is at this lead operating centre.'); return; }
-      await request('/api/assignments/manual', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ leadId: lead.id, pilotId: pilot.id, copilotId: copilot.id, droneId: drone.id, lmvId: lmv.id, scheduledDate }) });
+      await request('/api/assignments/manual', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ leadId: lead.id, pilotId: pilot.id, droneId: drone.id, scheduledDate }) });
       setDraggedLead(null);
-      showNotice('success', `${lead.farmerName} was added to ${pilot.name} and ${copilot.name}'s daily queue.`);
+      showNotice('success', `${lead.farmerName} is scheduled with ${pilot.name}. The pilot was notified.`);
       await fetchData();
     } catch (error) { showNotice('error', error.message); }
-  }, [assignments, fetchData, getAvailableDrone, getAvailableLmv, request, showNotice]);
+  }, [fetchData, getAvailableDrone, request, showNotice]);
 
   const handleDropFromOutside = useCallback(({ start, resourceId }) => {
     if (!draggedLead) return;
     const targetPilotId = resourceId || selectedPilotId;
-    void createAssignment(draggedLead, pilots.find((pilot) => pilot.id === targetPilotId), pilots.find((pilot) => pilot.id === selectedCopilotId), start);
-  }, [createAssignment, draggedLead, pilots, selectedCopilotId, selectedPilotId]);
+    void createAssignment(draggedLead, pilots.find((pilot) => pilot.id === targetPilotId), start);
+  }, [createAssignment, draggedLead, pilots, selectedPilotId]);
 
   const handleEventDrop = useCallback(({ event, start, resourceId }) => {
     void (async () => {
@@ -116,7 +99,7 @@ function FleetManagerDashboard() {
         await request(`/api/assignments/${event.id}/reschedule`, { 
           method: 'PUT', 
           headers: { 'Content-Type': 'application/json' }, 
-          body: JSON.stringify({ scheduledDate: start.toISOString(), reason: 'Calendar drag-and-drop', pilotId: targetPilotId, copilotId: event.assignment.copilotId })
+          body: JSON.stringify({ scheduledDate: start.toISOString(), reason: 'Calendar drag-and-drop', pilotId: targetPilotId }) 
         });
         showNotice('success', `${event.assignment.lead?.farmerName || 'Assignment'} was rescheduled. Sales has been notified.`);
         await fetchData();
@@ -127,20 +110,8 @@ function FleetManagerDashboard() {
   const scheduleSelectedLead = useCallback((lead) => {
     const scheduledDate = new Date(calendarDate);
     scheduledDate.setHours(9, 0, 0, 0);
-    void createAssignment(lead, pilots.find((pilot) => pilot.id === selectedPilotId), pilots.find((pilot) => pilot.id === selectedCopilotId), scheduledDate);
-  }, [calendarDate, createAssignment, pilots, selectedCopilotId, selectedPilotId]);
-
-  const moveAssignment = useCallback(async (assignment, offset) => {
-    try {
-      await request(`/api/assignments/${assignment.id}/sequence`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ dailySequence: Math.max(1, (assignment.dailySequence || 1) + offset) }),
-      });
-      showNotice('success', 'Daily job order updated.');
-      await fetchData();
-    } catch (error) { showNotice('error', error.message); }
-  }, [fetchData, request, showNotice]);
+    void createAssignment(lead, pilots.find((pilot) => pilot.id === selectedPilotId), scheduledDate);
+  }, [calendarDate, createAssignment, pilots, selectedPilotId]);
 
   const selectSection = (id) => {
     setActiveSection(id);
@@ -161,68 +132,44 @@ function FleetManagerDashboard() {
     e.preventDefault();
     try {
       await request('/api/drones/add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newDrone) });
-      setNewDrone({ name: '', model: '', serialNumber: '', category: '', manufacturer: '', tankCapacityLitres: '', batteryCapacityMah: '', enduranceMinutes: '', certified: false, serviceType: '', homeCenterId: '' });
+      setNewDrone({ model: '', serialNumber: '', homeCenterId: '' });
       showNotice('success', 'Drone registered.');
       await fetchData();
     } catch (error) { showNotice('error', error.message); }
   };
 
-  const handleAddLmv = async (e) => {
-    e.preventDefault();
+  const handleResolveMaintenance = async (droneId, action) => {
     try {
-      await request('/api/lmvs/add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newLmv) });
-      setNewLmv({ registrationNo: '', label: '', homeCenterId: '', capacity: 1, notes: '' });
-      showNotice('success', 'LMV registered.');
+      await request('/api/drones/resolve-maintenance', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ droneId, action }) });
+      showNotice('success', action === 'approve' ? 'Maintenance approved.' : 'Maintenance rejected.');
       await fetchData();
     } catch (error) { showNotice('error', error.message); }
   };
-
-  const updateLmvStatus = async (lmvId, status) => {
+  
+  const requestMaintenance = async (droneId) => {
     try {
-      await request('/api/lmvs/update-status', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lmvId, status, reason: 'Fleet status update' }) });
-      showNotice('success', 'LMV status updated.');
+      await request('/api/drones/request-maintenance', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ droneId, reason: 'Fleet manager request' }) });
+      showNotice('success', 'Maintenance requested.');
       await fetchData();
     } catch (error) { showNotice('error', error.message); }
-  };
-
-  const updateDroneStatus = async (droneId, status) => {
-    try {
-      await request('/api/drones/update-status', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ droneId, status, reason: 'Fleet status update' }) });
-      showNotice('success', 'Drone status updated.');
-      await fetchData();
-    } catch (error) { showNotice('error', error.message); }
-  };
-
-  const updatePilotOperatingCenter = async (pilotId, homeCenterId) => {
-    try {
-      await request(`/api/users/${pilotId}/operating-center`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ homeCenterId }),
-      });
-      showNotice('success', 'Pilot operating center updated.');
-      await fetchData();
-    } catch (error) {
-      showNotice('error', error.message);
-      await fetchData();
-    }
   };
 
   const navItems = [
     { id: 'schedule', label: 'Scheduling board', icon: 'calendar', badge: manualQueue.length || null },
     { id: 'pilots', label: 'Pilots', icon: 'users' },
     { id: 'drones', label: 'Drones', icon: 'drone' },
-    { id: 'lmvs', label: 'LMVs', icon: 'vehicle' },
-    { id: 'chat', label: 'Team Chat', icon: 'chat' },
     { id: 'location', label: 'Live Pilot GPS', icon: 'location' },
+    { id: 'bhumeet', label: 'Bhumeet Logs', icon: 'list' },
+    { id: 'acreage', label: 'Acreage Trend', icon: 'database' },
   ];
 
   return (
-    <OperationsShell roleLabel="Fleet operations" navItems={navItems} activeTab={activeSection} onTabChange={selectSection} user={user} onLogout={logout} onRefresh={fetchData}>
+    <OperationsShell roleLabel="Fleet operations" navItems={navItems} activeTab={activeSection} onTabChange={selectSection} user={user}  onLogout={logout}>
       {activeSection === 'schedule' && (
       <section id="schedule">
         <header className="page-header">
           <div className="page-header__copy"><p className="eyebrow">Fleet manager</p><h1>Exception scheduling calendar</h1><p>Resolve requests that need a human scheduling decision and monitor current allocations.</p></div>
+          <div className="page-header__actions"><button type="button" className="action-btn" onClick={() => void fetchData()}><OpsIcon name="refresh" /> Refresh board</button></div>
         </header>
 
         {notice && <div role="alert" className={`notice notice--${notice.kind}`}><span>{notice.message}</span><button type="button" className="notice__close" onClick={() => setNotice(null)} aria-label="Dismiss message">×</button></div>}
@@ -231,7 +178,6 @@ function FleetManagerDashboard() {
           <article className="metric-card metric-card--accent"><div className="metric-card__top"><span>Manual queue</span><span className="metric-card__icon"><OpsIcon name="alert" /></span></div><strong className="metric-card__value">{manualQueue.length}</strong></article>
           <article className="metric-card"><div className="metric-card__top"><span>Pilots</span><span className="metric-card__icon"><OpsIcon name="users" /></span></div><strong className="metric-card__value">{pilots.length}</strong></article>
           <article className="metric-card metric-card--info"><div className="metric-card__top"><span>Available drones</span><span className="metric-card__icon"><OpsIcon name="drone" /></span></div><strong className="metric-card__value">{availableDrones.length}</strong></article>
-          <article className="metric-card"><div className="metric-card__top"><span>Available LMVs</span><span className="metric-card__icon"><OpsIcon name="vehicle" /></span></div><strong className="metric-card__value">{availableLmvs.length}</strong></article>
           <article className="metric-card"><div className="metric-card__top"><span>Assignments</span><span className="metric-card__icon"><OpsIcon name="calendar" /></span></div><strong className="metric-card__value">{assignments.length}</strong></article>
         </section>
 
@@ -240,8 +186,6 @@ function FleetManagerDashboard() {
             <div className="panel-header"><div className="panel-header__title"><div className="panel-title-row"><span className="panel-title-icon"><OpsIcon name="clipboard" /></span><h2>Manual scheduling queue</h2></div><p>Drag a request onto a pilot’s day or use the picker.</p></div></div>
             <div className="panel-body">
               <div className="input-group"><label htmlFor="pilot-picker">Alternative pilot picker</label><select id="pilot-picker" value={selectedPilotId} onChange={(event) => setSelectedPilotId(event.target.value)}><option value="">Choose a pilot</option>{pilots.map((pilot) => <option key={pilot.id} value={pilot.id}>{pilot.name} — {pilot.homeCenter?.name || 'no centre'}</option>)}</select></div>
-              <div className="input-group"><label htmlFor="copilot-picker">Copilot picker</label><select id="copilot-picker" value={selectedCopilotId} onChange={(event) => setSelectedCopilotId(event.target.value)}><option value="">Choose a Copilot</option>{pilots.filter((pilot) => pilot.id !== selectedPilotId).map((pilot) => <option key={pilot.id} value={pilot.id}>{pilot.name} — {pilot.homeCenter?.name || 'no centre'}</option>)}</select></div>
-              <div className="input-group"><label htmlFor="lmv-picker">LMV picker</label><select id="lmv-picker" value={selectedLmvId} onChange={(event) => setSelectedLmvId(event.target.value)}><option value="">Auto-pick same-centre LMV</option>{availableLmvs.map((lmv) => <option key={lmv.id} value={lmv.id}>{lmv.registrationNo} - {lmv.homeCenter?.name || 'no centre'}</option>)}</select></div>
               <div className="section-gap">
                 {loading && <div className="empty-state"><strong>Loading scheduling data…</strong><span>Checking people, aircraft, and assignments.</span></div>}
                 {!loading && !manualQueue.length && <div className="empty-state"><strong>No scheduling exceptions</strong><span>All verified requests have an assignment path.</span></div>}
@@ -253,9 +197,6 @@ function FleetManagerDashboard() {
           <section className="panel panel--raised">
             <div className="panel-header"><div className="panel-header__title"><div className="panel-title-row"><span className="panel-title-icon"><OpsIcon name="calendar" /></span><h2>Pilot calendar</h2></div><p>Click a date for day view. Drag an assignment to reschedule it.</p></div></div>
             <div className="panel-body"><div className="calendar-wrap"><div className="calendar-stage"><DnDCalendar localizer={localizer} events={events} date={calendarDate} view={calendarView} onNavigate={setCalendarDate} onView={setCalendarView} views={['month', 'week', 'day']} defaultView="month" popup selectable onDrillDown={(date) => { setCalendarDate(date); setCalendarView('day'); }} onSelectSlot={({ start }) => { if (calendarView === 'month') { setCalendarDate(start); setCalendarView('day'); } }} resources={pilots} resourceIdAccessor="id" resourceTitleAccessor="name" onDropFromOutside={handleDropFromOutside} dragFromOutsideItem={() => draggedLead ? { ...draggedLead, start: new Date(), end: addHours(new Date(), 2) } : null} onDragOver={(event) => event.preventDefault()} onEventDrop={handleEventDrop} draggableAccessor={(event) => ['SCHEDULED', 'PILOT_ACCEPTED'].includes(event.assignment?.lead?.status)} eventPropGetter={(event) => ({ style: { backgroundColor: event.assignment?.autoAssigned ? '#2e6b4d' : '#9a6920', border: 0 } })} tooltipAccessor={(event) => `${event.title} (${readableStatus(event.assignment?.lead?.status || event.status)})`} /></div></div></div>
-            <div className="panel-body data-stack">
-              {assignments.map((assignment) => { const reorderable = ['SCHEDULED', 'PILOT_ACCEPTED'].includes(assignment.lead?.status); return <div className="data-row" key={`order-${assignment.id}`}><div className="data-row__main"><span className="data-row__title">Job #{assignment.dailySequence || 1}: {assignment.lead?.farmerName}</span><span className="data-row__meta">{assignment.pilot?.name} + {assignment.copilot?.name || 'Copilot migration pending'} · {new Date(assignment.scheduledDate).toLocaleDateString()} · {assignment.lmv?.registrationNo}</span></div><div className="data-row__actions"><button type="button" className="action-btn" onClick={() => void moveAssignment(assignment, -1)} disabled={!reorderable || (assignment.dailySequence || 1) <= 1}>Move up</button><button type="button" className="action-btn" onClick={() => void moveAssignment(assignment, 1)} disabled={!reorderable}>Move down</button></div></div>; })}
-            </div>
           </section>
         </section>
       </section>
@@ -266,7 +207,7 @@ function FleetManagerDashboard() {
           {notice && <div role="alert" className={`notice notice--${notice.kind}`}><span>{notice.message}</span><button type="button" className="notice__close" onClick={() => setNotice(null)} aria-label="Dismiss message">×</button></div>}
           <div className="panel panel--raised">
             <div className="panel-header"><div className="panel-header__title"><div className="panel-title-row"><span className="panel-title-icon"><OpsIcon name="users" /></span><h2>Registered Pilots</h2></div><p>{pilots.length} pilot(s).</p></div></div>
-            <div className="data-stack">{pilots.map((pilot) => <div className="data-row" key={pilot.id}><div className="data-row__main"><span className="data-row__title">{pilot.name}</span><span className="data-row__meta">{pilot.email} | Center: {pilot.homeCenter?.name || 'Not assigned'}</span><span className={`status-badge status-badge--${pilot.active ? 'success' : 'danger'}`}>{pilot.active ? 'Active' : 'Pending Admin Approval'}</span></div><div className="data-row__actions"><label className="field-label" htmlFor={`pilot-center-${pilot.id}`}>Operating center</label><select id={`pilot-center-${pilot.id}`} aria-label={`Operating center for ${pilot.name}`} value={pilot.homeCenterId || ''} onChange={(event) => void updatePilotOperatingCenter(pilot.id, event.target.value)}><option value="" disabled>Select center</option>{centers.filter((center) => center.active).map((center) => <option key={center.id} value={center.id}>{center.name}</option>)}</select></div></div>)}</div>
+            <div className="data-stack">{pilots.map((pilot) => <div className="data-row" key={pilot.id}><div className="data-row__main"><span className="data-row__title">{pilot.name}</span><span className="data-row__meta">{pilot.email} | Center: {pilot.homeCenter?.name || 'N/A'}</span><span className={`status-badge status-badge--${pilot.active ? 'success' : 'danger'}`}>{pilot.active ? 'Active' : 'Pending Admin Approval'}</span></div></div>)}</div>
           </div>
           <div className="panel panel--raised">
             <div className="panel-header"><div className="panel-header__title"><div className="panel-title-row"><span className="panel-title-icon"><OpsIcon name="plus" /></span><h2>Add Pilot</h2></div><p>Register a new pilot. Requires admin activation.</p></div></div>
@@ -286,18 +227,13 @@ function FleetManagerDashboard() {
           {notice && <div role="alert" className={`notice notice--${notice.kind}`}><span>{notice.message}</span><button type="button" className="notice__close" onClick={() => setNotice(null)} aria-label="Dismiss message">×</button></div>}
           <div className="panel panel--raised">
             <div className="panel-header"><div className="panel-header__title"><div className="panel-title-row"><span className="panel-title-icon"><OpsIcon name="drone" /></span><h2>Fleet Aircraft</h2></div><p>{drones.length} drone(s).</p></div></div>
-            <div className="data-stack">{drones.map((drone) => <div className="data-row" key={drone.id}><div className="data-row__main"><span className="data-row__title">{drone.name ? `${drone.name} · ` : ''}{drone.model} - {drone.serialNumber}</span><span className="data-row__meta">Center: {drone.homeCenter?.name || 'N/A'}{drone.manufacturer ? ` · ${drone.manufacturer}` : ''}{drone.category ? ` · ${drone.category}` : ''}</span><span className="data-row__meta">{drone.tankCapacityLitres ? `${drone.tankCapacityLitres} L tank · ` : ''}{drone.enduranceMinutes ? `${drone.enduranceMinutes} min endurance · ` : ''}{drone.certified ? 'Certified' : 'Certification not recorded'}</span><span className="status-badge">{readableStatus(drone.status)}</span></div><div className="data-row__actions">{drone.status === 'AVAILABLE' && <button className="action-btn" type="button" onClick={() => updateDroneStatus(drone.id, 'MAINTENANCE')}>Send to Maintenance</button>}{drone.status === 'MAINTENANCE' && <button className="action-btn" type="button" onClick={() => updateDroneStatus(drone.id, 'AVAILABLE')}>Return to Available</button>}</div></div>)}</div>
+            <div className="data-stack">{drones.map((drone) => <div className="data-row" key={drone.id}><div className="data-row__main"><span className="data-row__title">{drone.model} - {drone.serialNumber}</span><span className="data-row__meta">Center: {drone.homeCenter?.name || 'N/A'}</span><span className="status-badge">{readableStatus(drone.status)}</span></div><div className="data-row__actions">{drone.status === 'AVAILABLE' && <button className="action-btn" type="button" onClick={() => requestMaintenance(drone.id)}>Request Maintenance</button>}{drone.status === 'MAINTENANCE' && drone.maintenanceRequest && <button className="action-btn" type="button" onClick={() => handleResolveMaintenance(drone.id, 'approve')}>Approve Maintenance</button>}</div></div>)}</div>
           </div>
           <div className="panel panel--raised">
             <div className="panel-header"><div className="panel-header__title"><div className="panel-title-row"><span className="panel-title-icon"><OpsIcon name="plus" /></span><h2>Add Drone</h2></div><p>Register new aircraft.</p></div></div>
             <form className="panel-body form-stack" onSubmit={handleAddDrone}>
-              <div className="input-group"><label>Fleet Name</label><input type="text" value={newDrone.name} onChange={(e) => setNewDrone({ ...newDrone, name: e.target.value })} placeholder="Optional internal name" /></div>
               <div className="input-group"><label>Model Name</label><input type="text" value={newDrone.model} onChange={(e) => setNewDrone({ ...newDrone, model: e.target.value })} required /></div>
               <div className="input-group"><label>Serial Number</label><input type="text" value={newDrone.serialNumber} onChange={(e) => setNewDrone({ ...newDrone, serialNumber: e.target.value })} required /></div>
-              <div className="row-group"><div className="input-group"><label>Category</label><input type="text" value={newDrone.category} onChange={(e) => setNewDrone({ ...newDrone, category: e.target.value })} placeholder="For example, hexacopter" /></div><div className="input-group"><label>Manufacturer</label><input type="text" value={newDrone.manufacturer} onChange={(e) => setNewDrone({ ...newDrone, manufacturer: e.target.value })} /></div></div>
-              <div className="row-group"><div className="input-group"><label>Tank Capacity (litres)</label><input type="number" min="0.01" step="0.01" value={newDrone.tankCapacityLitres} onChange={(e) => setNewDrone({ ...newDrone, tankCapacityLitres: e.target.value })} /></div><div className="input-group"><label>Battery Capacity (mAh)</label><input type="number" min="1" step="1" value={newDrone.batteryCapacityMah} onChange={(e) => setNewDrone({ ...newDrone, batteryCapacityMah: e.target.value })} /></div><div className="input-group"><label>Endurance (minutes)</label><input type="number" min="1" step="1" value={newDrone.enduranceMinutes} onChange={(e) => setNewDrone({ ...newDrone, enduranceMinutes: e.target.value })} /></div></div>
-              <div className="input-group"><label>Service Type</label><input type="text" value={newDrone.serviceType} onChange={(e) => setNewDrone({ ...newDrone, serviceType: e.target.value })} placeholder="Optional operational classification" /></div>
-              <label className="checkbox-row"><input type="checkbox" checked={newDrone.certified} onChange={(e) => setNewDrone({ ...newDrone, certified: e.target.checked })} /> Certification confirmed</label>
               <div className="input-group"><label>Home Center</label><select value={newDrone.homeCenterId} onChange={(e) => setNewDrone({ ...newDrone, homeCenterId: e.target.value })} required><option value="">Select Center</option>{centers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
               <div className="form-actions"><button type="submit" className="submit-btn">Register Drone</button></div>
             </form>
@@ -305,29 +241,9 @@ function FleetManagerDashboard() {
         </section>
       )}
 
-      {activeSection === 'lmvs' && (
-        <section className="user-admin-grid">
-          {notice && <div role="alert" className={`notice notice--${notice.kind}`}><span>{notice.message}</span><button type="button" className="notice__close" onClick={() => setNotice(null)} aria-label="Dismiss message">Ã—</button></div>}
-          <div className="panel panel--raised">
-            <div className="panel-header"><div className="panel-header__title"><div className="panel-title-row"><span className="panel-title-icon"><OpsIcon name="vehicle" /></span><h2>LMV fleet</h2></div><p>{lmvs.length} vehicle(s).</p></div></div>
-            <div className="data-stack">{lmvs.map((lmv) => <div className="data-row" key={lmv.id}><div className="data-row__main"><span className="data-row__title">{lmv.registrationNo}</span><span className="data-row__meta">{lmv.label || 'No label'} | Center: {lmv.homeCenter?.name || 'N/A'} | Capacity: {lmv.capacity}</span><span className="status-badge">{readableStatus(lmv.status)}</span>{lmv.notes && <span className="data-row__meta">{lmv.notes}</span>}</div><div className="data-row__actions">{['MAINTENANCE', 'OUT_OF_SERVICE'].includes(lmv.status) && <button className="action-btn" type="button" onClick={() => updateLmvStatus(lmv.id, 'AVAILABLE')}>Mark available</button>}{lmv.status === 'AVAILABLE' && <button className="action-btn" type="button" onClick={() => updateLmvStatus(lmv.id, 'MAINTENANCE')}>Mark maintenance</button>}</div></div>)}</div>
-          </div>
-          <div className="panel panel--raised">
-            <div className="panel-header"><div className="panel-header__title"><div className="panel-title-row"><span className="panel-title-icon"><OpsIcon name="plus" /></span><h2>Add LMV</h2></div><p>Register the vehicle used by a pilot and drone crew.</p></div></div>
-            <form className="panel-body form-stack" onSubmit={handleAddLmv}>
-              <div className="input-group"><label>Registration Number</label><input type="text" value={newLmv.registrationNo} onChange={(e) => setNewLmv({ ...newLmv, registrationNo: e.target.value })} required /></div>
-              <div className="input-group"><label>Label</label><input type="text" value={newLmv.label} onChange={(e) => setNewLmv({ ...newLmv, label: e.target.value })} placeholder="Optional vehicle name" /></div>
-              <div className="input-group"><label>Home Center</label><select value={newLmv.homeCenterId} onChange={(e) => setNewLmv({ ...newLmv, homeCenterId: e.target.value })} required><option value="">Select Center</option>{centers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
-              <div className="input-group"><label>Capacity</label><input type="number" min="1" value={newLmv.capacity} onChange={(e) => setNewLmv({ ...newLmv, capacity: Number(e.target.value) })} required /></div>
-              <div className="input-group"><label>Notes</label><input type="text" value={newLmv.notes} onChange={(e) => setNewLmv({ ...newLmv, notes: e.target.value })} placeholder="Optional notes" /></div>
-              <div className="form-actions"><button type="submit" className="submit-btn">Register LMV</button></div>
-            </form>
-          </div>
-        </section>
-      )}
-
       {activeSection === 'location' && <section id="location" className="section-gap"><LiveLocationPanel /></section>}
-      {activeSection === 'chat' && <ChatPanel />}
+      {activeSection === 'bhumeet' && <section id="bhumeet" className="section-gap"><BhumeetLogbook /></section>}
+      {activeSection === 'acreage' && <section id="acreage" className="section-gap"><AcreageTrend /></section>}
     </OperationsShell>
   );
 }

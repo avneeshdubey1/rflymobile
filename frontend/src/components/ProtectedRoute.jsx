@@ -1,27 +1,20 @@
-import { Navigate, Outlet, useLocation } from 'react-router';
-import { useTranslation } from 'react-i18next';
+import { Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/useAuth';
-import { homeForRole, loginForPath } from '../utils/authRouting';
 
 const ProtectedRoute = ({ allowedRoles }) => {
-  const { user, status, refreshSession } = useAuth();
-  const location = useLocation();
-  const { t } = useTranslation();
-
-  if (status === 'checking') {
-    return <main className="login-container" role="status" aria-live="polite"><section className="login-form-pane"><div className="panel login-card"><h2>{t('checking_session', 'Checking your session…')}</h2><p className="subtitle">{t('checking_session_detail', 'Please wait while secure access is verified.')}</p></div></section></main>;
-  }
-
-  if (status === 'offline' && !user) {
-    return <main className="login-container"><section className="login-form-pane"><div className="panel login-card"><h2>{t('session_unavailable', 'Unable to verify your session')}</h2><p className="subtitle">{t('session_unavailable_detail', 'Reconnect to the service before opening protected information.')}</p><button type="button" className="submit-btn login-submit" onClick={() => void refreshSession()}>{t('try_again', 'Try again')}</button></div></section></main>;
-  }
+  const { user } = useAuth();
 
   if (!user) {
-    return <Navigate to={loginForPath(location.pathname)} replace state={{ from: location.pathname }} />;
+    return <Navigate to="/login" replace />;
   }
 
   if (allowedRoles && !allowedRoles.includes(user.role)) {
-    return <Navigate to={homeForRole(user.role)} replace />;
+    // If they are logged in but don't have the right role, send them back to their appropriate dashboard
+    if (user.role === 'admin') return <Navigate to="/admin" replace />;
+    if (user.role === 'sales') return <Navigate to="/marketing" replace />;
+    if (user.role === 'pilot') return <Navigate to="/pilot" replace />;
+    if (user.role === 'farmer') return <Navigate to="/farmer/dashboard" replace />;
+    return <Navigate to="/" replace />;
   }
 
   return <Outlet />;

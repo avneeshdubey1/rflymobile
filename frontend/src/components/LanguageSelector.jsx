@@ -3,16 +3,14 @@ import { useAuth } from '../context/useAuth';
 import OpsIcon from './OpsIcon';
 import { useTranslation } from 'react-i18next';
 import { supportedLanguages } from '../i18n';
-import { apiFetch } from '../services/apiClient';
 
 export default function LanguageSelector({ style, className }) {
   const { user } = useAuth();
-  const { i18n, t } = useTranslation();
+  const { i18n } = useTranslation();
   const [language, setLanguage] = useState(() => localStorage.getItem('preferredLanguage') || 'en');
   const [isOpen, setIsOpen] = useState(false);
 
   const currentLangLabel = supportedLanguages.find(l => l.code === language)?.label || 'English';
-  const rootClassName = ['language-selector', className].filter(Boolean).join(' ');
 
   useEffect(() => {
     localStorage.setItem('preferredLanguage', language);
@@ -25,10 +23,11 @@ export default function LanguageSelector({ style, className }) {
     
     if (user) {
       try {
-        await apiFetch('/api/users/preferences', {
+        await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/users/preferences`, {
           method: 'PUT',
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${localStorage.getItem('token')}`
           },
           body: JSON.stringify({ language: code })
         });
@@ -36,32 +35,61 @@ export default function LanguageSelector({ style, className }) {
         console.error('Failed to sync language preference', err);
       }
     }
+    window.location.reload();
   };
 
   return (
-    <div className={rootClassName} style={{ position: 'relative', ...style }}>
+    <div className={`language-selector ${className || ''}`} style={{ position: 'relative', ...style }}>
       <button 
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="language-selector__trigger"
-        aria-label={t('preferred_language', 'Preferred language')}
-        aria-expanded={isOpen}
-        aria-haspopup="listbox"
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.5rem',
+          padding: '0.5rem 1rem',
+          background: 'var(--surface-raised)',
+          border: '1px solid var(--border-subtle)',
+          borderRadius: 'var(--radius-sm)',
+          cursor: 'pointer',
+          color: 'var(--text-main)',
+          fontSize: '0.9rem'
+        }}
       >
         <OpsIcon name="globe" size={16} />
         <span>{currentLangLabel}</span>
       </button>
 
       {isOpen && (
-        <div className="language-selector__menu" role="listbox" aria-label={t('preferred_language', 'Preferred language')}>
+        <div style={{
+          position: 'absolute',
+          top: '100%',
+          right: 0,
+          marginTop: '0.25rem',
+          background: 'var(--surface-raised)',
+          border: '1px solid var(--border-subtle)',
+          borderRadius: 'var(--radius-sm)',
+          boxShadow: 'var(--shadow-md)',
+          zIndex: 100,
+          minWidth: '150px',
+          overflow: 'hidden'
+        }}>
           {supportedLanguages.map(lang => (
             <button
               key={lang.code}
               type="button"
               onClick={() => handleSelect(lang.code)}
-              className={`language-selector__option${lang.code === language ? ' language-selector__option--active' : ''}`}
-              role="option"
-              aria-selected={lang.code === language}
+              style={{
+                display: 'block',
+                width: '100%',
+                padding: '0.75rem 1rem',
+                textAlign: 'left',
+                background: lang.code === language ? 'var(--surface-sunken)' : 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                color: 'var(--text-main)',
+                borderBottom: '1px solid var(--border-subtle)'
+              }}
             >
               {lang.label}
             </button>

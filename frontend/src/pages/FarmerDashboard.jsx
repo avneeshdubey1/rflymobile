@@ -1,14 +1,17 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useAuth } from '../context/useAuth';
 import OperationsShell from '../components/OperationsShell';
 import OpsIcon from '../components/OpsIcon';
+import TerrainMap from '../components/TerrainMap';
+import { API_URL as API } from '../config';
 import { useTranslation } from 'react-i18next';
-import { apiFetch, readJson } from '../services/apiClient';
+import { jsPDF } from "jspdf";
+import generatePDF from '../utils/generatePDF';
 
 const statusLabel = (status) => String(status || 'UNKNOWN').replaceAll('_', ' ').toLowerCase();
 const statusTone = (status) => {
   if (['COMPLETED', 'PROCESSED'].includes(status)) return 'success';
-  if (['CANCELLED', 'REJECTED'].includes(status)) return 'danger';
+  if (['CANCELLED', 'REJECTED', 'OUT_OF_RANGE'].includes(status)) return 'danger';
   if (['IN_PROGRESS', 'SCHEDULED'].includes(status)) return 'info';
   return 'warning';
 };
@@ -17,120 +20,196 @@ export default function FarmerDashboard() {
   const { user, logout } = useAuth();
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState('services');
-  const [leads, setLeads] = useState([]);
-  const [portalSummary, setPortalSummary] = useState({ total: 0, active: 0, completed: 0 });
+  // const [leads, setLeads] = useState([]);
+  const [leads, setLeads] = useState(() => {
+    const savedRequests = localStorage.getItem("farmerRequests");
+    return savedRequests ? JSON.parse(savedRequests) : [];
+  });
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState(null);
-  
-  const [form, setForm] = useState({ 
-    acreage: '', 
-    cropType: '', 
-    village: user?.village || '', 
-    district: user?.district || '', 
-    latitude: '',
-    longitude: '',
+
+  const [form, setForm] = useState({
+    acreage: '',
+    cropType: '',
+    village: user?.village || '',
+    district: user?.district || '',
+    mapsLink: '',
     soilType: '',
     cropAgeWeeks: '',
     chemicalBrand: '',
     sprayPurpose: [],
     hasChemical: true,
+    chemicalProofUrl: '',
     expectedDate: '',
     expectedTime: '',
     waterBodyNearby: false,
     terrainType: ''
   });
 
-  const loadPortal = useCallback(async (signal) => {
-    try {
-      const response = await apiFetch('/api/portal/farmer/summary', { signal });
-      const data = await readJson(response);
-      if (!response.ok) throw new Error(data.error || t('request_error'));
-      setLeads(data.portal?.leads || []);
-      setPortalSummary(data.portal?.totals || { total: 0, active: 0, completed: 0 });
-    } catch (error) {
-      if (error.name !== 'AbortError' && !signal?.aborted) setNotice({ kind: 'error', message: error.message || t('request_error') });
-    }
-  }, [t]);
+  // const submitRequest = async (e) => {
+  //   e.preventDefault();
+  //   setBusy(true);
+  //   setNotice(null);
+  //   try {
+  //     const payload = {
+  //       farmerName: user.name,
+  //       farmerPhone: user.phone,
+  //       acreage: parseFloat(form.acreage),
+  //       cropType: form.cropType,
+  //       village: `${form.village}, ${form.district}`,
+  //       mapsLink: form.mapsLink,
+  //       soilType: form.soilType,
+  //       cropAgeWeeks: form.cropAgeWeeks ? parseInt(form.cropAgeWeeks) : undefined,
+  //       chemicalBrand: form.chemicalBrand,
+  //       sprayPurpose: Array.isArray(form.sprayPurpose) ? form.sprayPurpose.join(', ') : form.sprayPurpose,
+  //       hasChemical: form.hasChemical,
+  //       chemicalProofUrl: form.chemicalProofUrl,
+  //       expectedDate: form.expectedDate,
+  //       expectedTime: form.expectedTime,
+  //       waterBodyNearby: form.waterBodyNearby,
+  //       terrainType: form.terrainType
+  //     };
 
-  useEffect(() => {
-    const controller = new AbortController();
-    const initialLoad = window.setTimeout(() => void loadPortal(controller.signal), 0);
-    return () => { window.clearTimeout(initialLoad); controller.abort(); };
-  }, [loadPortal]);
+  //     const response = await fetch(`${API}/api/leads/new`, {
+  //       method: 'POST',
+  //       headers: { 'Content-Type': 'application/json' },
+  //       body: JSON.stringify(payload)
+  //     });
 
-  const useCurrentLocation = () => {
-    if (!navigator.geolocation) {
-      setNotice({ kind: 'error', message: t('service_location_unavailable') });
-      return;
-    }
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setForm((current) => ({
-          ...current,
-          latitude: position.coords.latitude.toFixed(6),
-          longitude: position.coords.longitude.toFixed(6),
-        }));
-      },
-      () => setNotice({ kind: 'error', message: t('service_location_unavailable') }),
-      { enableHighAccuracy: false, timeout: 10_000, maximumAge: 60_000 },
-    );
-  };
+  //     const data = await response.json();
+  //     if (!response.ok) throw new Error(data.error || 'Failed to submit request.');
+
+  //     setNotice({ kind: 'success', message: 'Your drone service request has been submitted successfully! We will contact you soon.' });
+  //     setForm({ ...form, acreage: '', cropType: '', mapsLink: '' });
+  //     setLeads([data.lead, ...leads]);
+  //     setActiveTab('services');
+  //   } catch (err) {
+  //     setNotice({ kind: 'error', message: err.message });
+  //   } finally {
+  //     setBusy(false);
+  //   }
+  // };
+
+
 
   const submitRequest = async (e) => {
     e.preventDefault();
     setBusy(true);
     setNotice(null);
+
     try {
       const payload = {
+        farmerName: user.name,
+        farmerPhone: user.phone,
         acreage: parseFloat(form.acreage),
         cropType: form.cropType,
-        village: form.village,
-        district: form.district,
-        latitude: Number(form.latitude),
-        longitude: Number(form.longitude),
+        village: `${form.village}, ${form.district}`,
+        mapsLink: form.mapsLink,
         soilType: form.soilType,
         cropAgeWeeks: form.cropAgeWeeks ? parseInt(form.cropAgeWeeks) : undefined,
         chemicalBrand: form.chemicalBrand,
-        sprayPurpose: Array.isArray(form.sprayPurpose) ? form.sprayPurpose.join(', ') : form.sprayPurpose,
+        sprayPurpose: Array.isArray(form.sprayPurpose)
+          ? form.sprayPurpose.join(', ')
+          : form.sprayPurpose,
         hasChemical: form.hasChemical,
+        chemicalProofUrl: form.chemicalProofUrl,
         expectedDate: form.expectedDate,
         expectedTime: form.expectedTime,
         waterBodyNearby: form.waterBodyNearby,
-        terrainType: form.terrainType
+        terrainType: form.terrainType,
+
+        // hardcoded status for demo
+        status: "IN_PROGRESS"
       };
-      
-      const response = await apiFetch('/api/leads/new', {
+
+      const response = await fetch(`${API}/api/leads/new`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json'
+        },
         body: JSON.stringify(payload)
       });
-      
-      const data = await readJson(response);
-      if (data.code === 'OUTSIDE_SERVICE_AREA') {
-        setNotice({ kind: 'warning', message: t('service_area_unavailable') });
-        setForm((current) => ({ ...current, acreage: '', cropType: '', latitude: '', longitude: '' }));
-        return;
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to submit request.');
       }
-      if (!response.ok) throw new Error(data.code === 'LOCATION_REQUIRED' ? t('service_location_required') : (data.error || t('request_error')));
-      
-      setNotice({ kind: 'success', message: t('request_received_for_review') });
-      setForm({ ...form, acreage: '', cropType: '', latitude: '', longitude: '' });
-      await loadPortal();
+
+      setNotice({
+        kind: 'success',
+        message: 'Your drone service request has been submitted successfully! We will contact you soon.'
+      });
+
+      setForm({
+        ...form,
+        acreage: '',
+        cropType: '',
+        mapsLink: ''
+      });
+
+      // Add new request
+      const newLead = {
+        ...data.lead,
+        status: "IN_PROGRESS"
+      };
+
+      const updatedLeads = [newLead, ...leads];
+
+      // Update UI
+      setLeads(updatedLeads);
+
+      // Save for demo after logout/login
+      localStorage.setItem(
+        "farmerRequests",
+        JSON.stringify(updatedLeads)
+      );
+
+      // Move to services tab
       setActiveTab('services');
+
     } catch (err) {
-      setNotice({ kind: 'error', message: err.message });
+      setNotice({
+        kind: 'error',
+        message: err.message
+      });
     } finally {
       setBusy(false);
     }
   };
-
   const navItems = [
     { id: 'services', label: t('My Services'), icon: 'location' },
     { id: 'new-request', label: t('Request Drone'), icon: 'plus' },
+    { id: 'status', label: t('Request Status'), icon: 'drone' }
   ];
 
+  const handleLogout = () => {
+    // setLeads([]);
+    logout();
+  };
+
+  const formatServiceDate = (date) => {
+    if (!date) return "Not selected";
+
+    return new Date(date).toLocaleDateString("en-GB", {
+      day: "numeric",
+      month: "long",
+      year: "numeric"
+    });
+  };
+
+
+  const formatTime = (time) => {
+    const times = {
+      "Morning": "Morning (6 AM - 11 AM)",
+      "Afternoon": "Afternoon (11 AM - 4 PM)",
+      "Evening": "Evening (4 PM - 7 PM)"
+    };
+
+    return times[time] || time || "Any time";
+  };
   return (
-    <OperationsShell roleLabel={t('farmer_workspace', 'Farmer Workspace')} navItems={navItems} activeTab={activeTab} onTabChange={setActiveTab} user={user} onLogout={logout}>
+    <OperationsShell roleLabel={t("Farmer Workspace")} navItems={navItems} activeTab={activeTab} onTabChange={setActiveTab} user={user} onLogout={handleLogout}>
       <header className="page-header">
         <div className="page-header__copy">
           <p className="eyebrow">FARMER PORTAL</p>
@@ -147,44 +226,51 @@ export default function FarmerDashboard() {
       )}
 
       {activeTab === 'services' && (
-        <>
-          <section className="metric-grid">
-            <article className="metric-card"><div className="metric-card__top"><span>{t('Active Services')}</span><span className="metric-card__icon"><OpsIcon name="activeServices" /></span></div><strong className="metric-card__value">{portalSummary.active}</strong></article>
-            <article className="metric-card"><div className="metric-card__top"><span>{t('Complete Services')}</span><span className="metric-card__icon"><OpsIcon name="complete" /></span></div><strong className="metric-card__value">{portalSummary.completed}</strong></article>
-            <article className="metric-card"><div className="metric-card__top"><span>{t('Total Requests')}</span><span className="metric-card__icon"><OpsIcon name="request" /></span></div><strong className="metric-card__value">{portalSummary.total}</strong></article>
-          </section>
-          <section className="panel panel--raised">
-            <div className="panel-header">
-              <div className="panel-header__title">
-                <div className="panel-title-row">
-                  <span className="panel-title-icon"><OpsIcon name="drone" /></span>
-                  <h2>{t('Recent Requests')}</h2>
+        <section className="panel panel--raised">
+          <div className="panel-header">
+            <div className="panel-header__title">
+              <div className="panel-title-row">
+                <span className="panel-title-icon"><OpsIcon name="drone" /></span>
+                <h2>{t('Recent Requests')}</h2>
+              </div>
+              <p>{t('Your requested services will appear here.')}</p>
+            </div>
+          </div>
+          {leads.length > 0 ? (
+            <div className="data-stack">
+              {leads.map(lead => (
+                <div className="data-row" key={lead.id}>
+                  <div className="data-row__main">
+                    <span className="data-row__title">{lead.acreage} {t('Acres')} - {lead.cropType || t('Crop')}</span>
+                    <span className="data-row__meta">{new Date(lead.createdAt).toLocaleDateString()} • {lead.farmerAddress}</span>
+                    {/* <span className={`status-badge status-badge--${statusTone(lead.status)}`}>{statusLabel(lead.status)}</span> */}
+
+                    {/* 22-07 */}
+                    <span className="status-badge status-badge--info">
+                      Processing
+                    </span>
+                    {/* <div style={{ marginTop: "10px" }}>
+                      <button
+                        type="button"
+                        className="action-btn"
+                        onClick={() => generatePDF(lead)}
+                      >
+                        📄 View PDF
+                      </button>
+                    </div> */}
+                  </div>
                 </div>
-                <p>{t('Your requested services will appear here.')}</p>
+              ))}
+            </div>
+          ) : (
+            <div className="panel-body">
+              <div className="empty-state empty-state--center">
+                <strong>{t('No active requests found')}</strong>
+                <span>{t("Click on 'Request Drone' to book your first service.")}</span>
               </div>
             </div>
-            {leads.length > 0 ? (
-              <div className="data-stack">
-                {leads.map(lead => (
-                  <div className="data-row" key={lead.id}>
-                    <div className="data-row__main">
-                      <span className="data-row__title">{lead.acreage} {t('Acres')} - {lead.cropType || t('Crop')}</span>
-                      <span className="data-row__meta">{new Date(lead.createdAt).toLocaleDateString()} • {lead.farmerAddress || lead.matchedCenter?.name || t('Location received')}</span>
-                      <span className={`status-badge status-badge--${statusTone(lead.status)}`}>{statusLabel(lead.status)}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="panel-body">
-                <div className="empty-state empty-state--center">
-                  <strong>{t('No active requests found')}</strong>
-                  <span>{t("Click on 'Request Drone' to book your first service.")}</span>
-                </div>
-              </div>
-            )}
-          </section>
-        </>
+          )}
+        </section>
       )}
 
       {activeTab === 'new-request' && (
@@ -199,7 +285,7 @@ export default function FarmerDashboard() {
             </div>
           </div>
           <form className="panel-body" style={{ padding: '1.5rem', background: 'var(--canvas)' }} onSubmit={submitRequest}>
-            
+
             {/* Section 1: Farm Details */}
             <div style={{ background: 'var(--surface-raised)', padding: '1.25rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', marginBottom: '1.25rem', boxShadow: 'var(--shadow-sm)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.1rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.6rem' }}>
@@ -210,21 +296,21 @@ export default function FarmerDashboard() {
                 <div className="row-group">
                   <div className="input-group">
                     <label>{t('Farm Size (Acres)')}</label>
-                    <input type="number" step="0.1" min="0.1" required disabled={busy} value={form.acreage} onChange={e => setForm({...form, acreage: e.target.value})} placeholder={t('e.g. 2.5')} />
+                    <input type="number" step="0.1" min="0.1" required disabled={busy} value={form.acreage} onChange={e => setForm({ ...form, acreage: e.target.value })} placeholder={t('e.g. 2.5')} />
                   </div>
                   <div className="input-group">
                     <label>{t('Crop Type')}</label>
-                    <input type="text" required disabled={busy} value={form.cropType} onChange={e => setForm({...form, cropType: e.target.value})} placeholder={t('e.g. Paddy, Cotton')} />
+                    <input type="text" required disabled={busy} value={form.cropType} onChange={e => setForm({ ...form, cropType: e.target.value })} placeholder={t('e.g. Paddy, Cotton')} />
                   </div>
                 </div>
                 <div className="row-group">
                   <div className="input-group">
                     <label>{t('Soil Type')}</label>
-                    <input type="text" disabled={busy} value={form.soilType} onChange={e => setForm({...form, soilType: e.target.value})} placeholder={t('e.g. Black soil, Red soil')} />
+                    <input type="text" disabled={busy} value={form.soilType} onChange={e => setForm({ ...form, soilType: e.target.value })} placeholder={t('e.g. Black soil, Red soil')} />
                   </div>
                   <div className="input-group">
                     <label>{t('Crop Age (Weeks)')}</label>
-                    <input type="number" disabled={busy} value={form.cropAgeWeeks} onChange={e => setForm({...form, cropAgeWeeks: e.target.value})} placeholder={t('e.g. 4')} />
+                    <input type="number" disabled={busy} value={form.cropAgeWeeks} onChange={e => setForm({ ...form, cropAgeWeeks: e.target.value })} placeholder={t('e.g. 4')} />
                   </div>
                 </div>
               </div>
@@ -240,15 +326,28 @@ export default function FarmerDashboard() {
                 <div className="row-group">
                   <div className="input-group">
                     <label>{t('Expected Spraying Date')}</label>
-                    <input type="date" disabled={busy} value={form.expectedDate} onChange={e => setForm({...form, expectedDate: e.target.value})} />
+                    <input type="date" disabled={busy} value={form.expectedDate} onChange={e => setForm({ ...form, expectedDate: e.target.value })} />
                   </div>
                   <div className="input-group">
                     <label>{t('Expected Time')}</label>
-                    <select disabled={busy} value={form.expectedTime} onChange={e => setForm({...form, expectedTime: e.target.value})}>
+                    <select disabled={busy} value={form.expectedTime} onChange={e => setForm({ ...form, expectedTime: e.target.value })}>
                       <option value="">{t('Any time')}</option>
-                      <option value="Morning">{t('Morning (6 AM - 11 AM)')}</option>
+                      {/* <option value="Morning">{t('Morning (6 AM - 11 AM)')}</option>
                       <option value="Afternoon">{t('Afternoon (11 AM - 4 PM)')}</option>
-                      <option value="Evening">{t('Evening (4 PM - 7 PM)')}</option>
+                      <option value="Evening">{t('Evening (4 PM - 7 PM)')}</option> */}
+
+                      {/* 22-07 */}
+                      <option value="Morning (6 AM - 11 AM)">
+                        {t('Morning (6 AM - 11 AM)')}
+                      </option>
+
+                      <option value="Afternoon (11 AM - 4 PM)">
+                        {t('Afternoon (11 AM - 4 PM)')}
+                      </option>
+
+                      <option value="Evening (4 PM - 7 PM)">
+                        {t('Evening (4 PM - 7 PM)')}
+                      </option>
                     </select>
                   </div>
                 </div>
@@ -259,11 +358,11 @@ export default function FarmerDashboard() {
                     {['Pest Control', 'Nutrient Spray', 'Weed Control', 'Disease Control'].map(purpose => {
                       const isChecked = Array.isArray(form.sprayPurpose) && form.sprayPurpose.includes(purpose);
                       return (
-                        <label key={purpose} style={{ 
-                          display: 'flex', alignItems: 'center', justifyContent: 'center', 
-                          padding: '0.85rem 0.5rem', 
-                          border: `2px solid ${isChecked ? 'var(--primary)' : 'var(--border)'}`, 
-                          borderRadius: 'var(--radius-sm)', 
+                        <label key={purpose} style={{
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          padding: '0.85rem 0.5rem',
+                          border: `2px solid ${isChecked ? 'var(--primary)' : 'var(--border)'}`,
+                          borderRadius: 'var(--radius-sm)',
                           background: isChecked ? 'var(--primary-soft)' : 'var(--surface)',
                           cursor: busy ? 'not-allowed' : 'pointer',
                           transition: 'all 0.2s ease',
@@ -273,17 +372,17 @@ export default function FarmerDashboard() {
                           userSelect: 'none',
                           lineHeight: '1.2'
                         }}>
-                          <input 
-                            type="checkbox" 
+                          <input
+                            type="checkbox"
                             style={{ display: 'none' }}
                             disabled={busy}
                             checked={isChecked}
                             onChange={(e) => {
                               const current = Array.isArray(form.sprayPurpose) ? form.sprayPurpose : [];
-                              const newPurposes = e.target.checked 
+                              const newPurposes = e.target.checked
                                 ? [...current, purpose]
                                 : current.filter(p => p !== purpose);
-                              setForm({...form, sprayPurpose: newPurposes});
+                              setForm({ ...form, sprayPurpose: newPurposes });
                             }}
                           />
                           {t(purpose)}
@@ -295,23 +394,36 @@ export default function FarmerDashboard() {
 
                 <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem 1.15rem', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', background: 'var(--surface)', cursor: busy ? 'not-allowed' : 'pointer', marginTop: '0.2rem' }}>
                   <span style={{ fontWeight: 650, color: 'var(--text-primary)' }}>{t('Is there a water body nearby?')}</span>
-                  <input type="checkbox" disabled={busy} checked={form.waterBodyNearby} onChange={e => setForm({...form, waterBodyNearby: e.target.checked})} style={{ width: '22px', height: '22px', margin: 0, cursor: 'pointer' }} />
+                  <input type="checkbox" disabled={busy} checked={form.waterBodyNearby} onChange={e => setForm({ ...form, waterBodyNearby: e.target.checked })} style={{ width: '22px', height: '22px', margin: 0, cursor: 'pointer' }} />
                 </label>
 
                 <div className="row-group">
                   <div className="input-group">
                     <label>{t('Chemical/Fertilizer Availability')}</label>
-                    <select required disabled={busy} value={form.hasChemical ? 'yes' : 'no'} onChange={e => setForm({...form, hasChemical: e.target.value === 'yes'})}>
+                    <select required disabled={busy} value={form.hasChemical ? 'yes' : 'no'} onChange={e => setForm({ ...form, hasChemical: e.target.value === 'yes' })}>
                       <option value="yes">{t('Yes, I have it')}</option>
                       <option value="no">{t('No, Daas should procure it')}</option>
                     </select>
                   </div>
                   <div className="input-group">
                     <label>{t('Chemical Brand (if known)')}</label>
-                    <input type="text" disabled={busy} value={form.chemicalBrand} onChange={e => setForm({...form, chemicalBrand: e.target.value})} placeholder={t('e.g. Coragen, Urea')} />
+                    <input type="text" disabled={busy} value={form.chemicalBrand} onChange={e => setForm({ ...form, chemicalBrand: e.target.value })} placeholder={t('e.g. Coragen, Urea')} />
                   </div>
                 </div>
 
+                {form.hasChemical && (
+                  <div className="input-group" style={{ padding: '0.85rem', background: 'var(--surface-muted)', borderRadius: 'var(--radius-sm)', border: '1px dashed var(--border-strong)' }}>
+                    <label>{t('Upload proof of chemical (Optional)')}</label>
+                    <input type="file" disabled={busy} style={{ background: 'transparent', border: 'none', padding: '0.5rem 0' }} onChange={e => {
+                      if (e.target.files.length) {
+                        setForm({ ...form, chemicalProofUrl: 'https://example.com/dummy-proof.jpg' });
+                      } else {
+                        setForm({ ...form, chemicalProofUrl: '' });
+                      }
+                    }} />
+                    <span className="field-hint" style={{ marginTop: '0.25rem', display: 'block' }}>{t('Uploading proof avoids manual confirmation calls.')}</span>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -325,32 +437,115 @@ export default function FarmerDashboard() {
                 <div className="row-group">
                   <div className="input-group">
                     <label>{t('Village Location')}</label>
-                    <input type="text" required disabled={busy} value={form.village} onChange={e => setForm({...form, village: e.target.value})} placeholder={t('Village name')} />
+                    <input type="text" required disabled={busy} value={form.village} onChange={e => setForm({ ...form, village: e.target.value })} placeholder={t('Village name')} />
                   </div>
                   <div className="input-group">
                     <label>{t('District')}</label>
-                    <input type="text" required disabled={busy} value={form.district} onChange={e => setForm({...form, district: e.target.value})} placeholder={t('District name')} />
+                    <input type="text" required disabled={busy} value={form.district} onChange={e => setForm({ ...form, district: e.target.value })} placeholder={t('District name')} />
                   </div>
                 </div>
 
-                <fieldset className="form-stack">
-                  <legend>{t('service_location_title')}</legend>
-                  <span className="field-hint" style={{ marginBottom: '0.8rem', display: 'block' }}>{t('service_location_hint')}</span>
-                  <div className="row-group">
-                    <div className="input-group"><label htmlFor="farmer-latitude">{t('latitude_label')}</label><input id="farmer-latitude" type="number" min="-90" max="90" step="any" inputMode="decimal" required disabled={busy} value={form.latitude} onChange={e => setForm({ ...form, latitude: e.target.value })} /></div>
-                    <div className="input-group"><label htmlFor="farmer-longitude">{t('longitude_label')}</label><input id="farmer-longitude" type="number" min="-180" max="180" step="any" inputMode="decimal" required disabled={busy} value={form.longitude} onChange={e => setForm({ ...form, longitude: e.target.value })} /></div>
+                <div className="input-group">
+                  <label>{t('Precise Farm Location')}</label>
+                  <span className="field-hint" style={{ marginBottom: '0.8rem', display: 'block' }}>{t('Search your area, fetch GPS, or drag the pin. The terrain will be analyzed automatically.')}</span>
+                  <div style={{ borderRadius: 'var(--radius-sm)', overflow: 'hidden', border: '1px solid var(--border)' }}>
+                    <TerrainMap
+                      onLocationChange={(coords) => setForm(prev => ({ ...prev, mapsLink: coords }))}
+                      onTerrainCalculated={(terrain) => setForm(prev => ({ ...prev, terrainType: terrain }))}
+                    />
                   </div>
-                  <button type="button" className="action-btn" onClick={useCurrentLocation} disabled={busy}>{t('use_current_location')}</button>
-                </fieldset>
+                </div>
               </div>
             </div>
-            
+
             <div className="form-actions">
               <button type="submit" className="submit-btn" disabled={busy} style={{ width: '100%', padding: '1rem', fontSize: '1.15rem', borderRadius: 'var(--radius-md)', boxShadow: '0 8px 20px rgba(46, 107, 77, 0.25)' }}>
                 {busy ? t('Submitting...') : t('Submit Request')}
               </button>
             </div>
           </form>
+        </section>
+      )}
+
+      {activeTab === 'status' && (
+        <section className="panel panel--raised">
+          <div className="panel-header">
+            <div className="panel-header__title">
+              <h2>Request Status</h2>
+              <p>Track your drone service request status.</p>
+            </div>
+          </div>
+
+          <div className="data-stack">
+            {leads.length > 0 ? (
+              leads.map(lead => (
+                <div className="data-row" key={lead.id}>
+                  <div className="data-row__main">
+
+                    <span className="data-row__title">
+                      {lead.acreage} Acres - {lead.cropType}
+                    </span>
+
+                    <div style={{ marginTop: "10px" }}>
+                      <p>
+                        <strong>Service Date:</strong> {formatServiceDate(lead.expectedDate)}
+                      </p>
+
+                      <p>
+                        <strong>Preferred Time:</strong> {formatTime(lead.expectedTime)}
+                      </p>
+                    </div>
+
+                    <div style={{ marginTop: "20px" }}>
+
+                      {/* Step 1 */}
+                      <div className="status-step completed">
+                        <span>✓</span>
+                        <div>
+                          <strong>Request Submitted</strong>
+                          <p>Your drone service request has been received</p>
+                        </div>
+                      </div>
+
+
+                      {/* Step 2 */}
+                      <div className="status-step active">
+                        <span>●</span>
+                        <div>
+                          <strong>Processing</strong>
+                          <p>We are assigning a drone pilot</p>
+                        </div>
+                      </div>
+
+
+                      {/* Step 3 */}
+                      <div className="status-step">
+                        <span>○</span>
+                        <div>
+                          <strong>Drone Assigned</strong>
+                          <p>Pilot and drone will be assigned soon</p>
+                        </div>
+                      </div>
+
+
+                      {/* Step 4 */}
+                      <div className="status-step">
+                        <span>○</span>
+                        <div>
+                          <strong>Completed</strong>
+                          <p>Drone spraying completed</p>
+                        </div>
+                      </div>
+
+                    </div>
+
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p>No requests found</p>
+            )}
+          </div>
         </section>
       )}
     </OperationsShell>

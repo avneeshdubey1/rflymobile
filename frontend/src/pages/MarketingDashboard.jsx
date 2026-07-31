@@ -1,330 +1,576 @@
 import { useCallback, useEffect, useState } from 'react';
+import { io } from 'socket.io-client';
 import { useAuth } from '../context/useAuth';
 import OperationsShell from '../components/OperationsShell';
 import OpsIcon from '../components/OpsIcon';
+import PendingPaymentsPanel from '../components/PendingPaymentsPanel';
+import LogbookTimelinePanel from '../components/LogbookTimelinePanel';
 import LocationLink from '../components/LocationLink';
-import CustomerProfileFields from '../components/CustomerProfileFields';
-import SalesLocationPicker from '../components/SalesLocationPicker';
-import { createAuthenticatedSocket } from '../services/authenticatedSocket';
-import { apiFetch, readJson } from '../services/apiClient';
-
-const blankManualLead = { farmerName: '', phone: '', village: '', cropType: '', acres: '', latitude: '', longitude: '' };
-const blankCustomer = {
-  displayName: '', phone: '', preferredLanguage: 'ta', ownership: '', totalAcres: '',
-  village: '', mandal: '', district: '', state: '',
-  kharifCrop: '', kharifOtherCrop: '', kharifAcres: '', kharifTanks: '', kharifSprayings: '',
-  rabiCrop: '', rabiOtherCrop: '', rabiAcres: '', rabiTanks: '', rabiSprayings: '',
-  summerCrop: '', summerOtherCrop: '', summerAcres: '', summerTanks: '', summerSprayings: '',
-  subscriptionCardNumber: '', subscriptionYear: '', remarks: '',
-};
+import { API_URL as API } from '../config';
+import { extractCoordinates } from '../utils/locationPresentation';
+import RegisteredFarmers from "../components/RegisteredFarmers";
+import FarmDetails from '../components/FarmDetails';
+import '../style/profile.css';
+import AdminProfile from '../components/AdminProfile';
+import CustomerRegistration from '../components/CustomerRegistration';
 
 function MarketingDashboard() {
   const { user, logout } = useAuth();
-  const [activeTab, setActiveTab] = useState('customers');
+  const [activeTab, setActiveTab] = useState('farmerRegistration');
   const [leads, setLeads] = useState([]);
+  const [alerts, setAlerts] = useState([]);
+  const [appealFees, setAppealFees] = useState({});
+  const [appealStatus, setAppealStatus] = useState('');
   const [dataError, setDataError] = useState('');
-  const [manualLead, setManualLead] = useState(blankManualLead);
+  const [manualLead, setManualLead] = useState({ farmerName: '', phone: '', village: '', cropType: '', acres: '' });
   const [manualStatus, setManualStatus] = useState('');
-  const [customers, setCustomers] = useState([]);
-  const [customerSearch, setCustomerSearch] = useState('');
-  const [newCustomer, setNewCustomer] = useState(blankCustomer);
-  const [customerStatus, setCustomerStatus] = useState('');
-  const [selectedCustomer, setSelectedCustomer] = useState(null);
-  const [editingCustomer, setEditingCustomer] = useState(null);
   const [selectedLead, setSelectedLead] = useState(null);
   const [extraDetails, setExtraDetails] = useState({ mandal: '', district: '', fertilizerShop: '', expectedSpraying: '', soilType: '', pesticideBrand: '', cropAge: '' });
   const [processStatus, setProcessStatus] = useState('');
-  const [showToast, setShowToast] = useState('');
+  const [showToast, setShowToast] = useState(false);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [confirmModal, setConfirmModal] = useState(null);
+  // const [registeredFarmers, setRegisteredFarmers] = useState([]);
+
+  const [farmerData, setFarmerData] = useState({
+    name: "",
+    phone: "",
+    village: "",
+    district: "",
+    state: "",
+  });
+  const [farmerNotice, setFarmerNotice] = useState(null);
 
   const fetchData = useCallback(async (signal) => {
     try {
-      const leadResponse = await apiFetch('/api/leads/pending', { signal });
-      const leadData = await readJson(leadResponse);
-      if (!leadResponse.ok) throw new Error(leadData.error || 'Could not refresh Sales data.');
-      setLeads(leadData.leads || []);
+      const [leadResponse, alertResponse] = await Promise.all([
+        fetch(`${API}/api/leads/pending`, { signal }),
+        fetch(`${API}/api/assignments/sales-alerts`, { signal }),
+      ]);
+      const [leadData, alertData] = await Promise.all([leadResponse.json(), alertResponse.json()]);
+      if (leadData.success) setLeads(leadData.leads);
+      if (alertData.success) {
+        setAlerts(alertData.alerts || []);
+        if ((alertData.alerts || []).length && activeTab !== 'appeals') setShowToast('A mission needs Sales follow-up.');
+      }
+      if (!leadResponse.ok || !alertResponse.ok) throw new Error(leadData.error || alertData.error || 'Could not refresh Sales data.');
       setDataError('');
     } catch (error) {
       if (error.name !== 'AbortError' && !signal?.aborted) setDataError('Could not refresh Sales data. Check the connection and try again.');
     }
-  }, []);
-
-  const fetchCustomers = useCallback(async (query = '', signal) => {
-    try {
-      const response = await apiFetch(`/api/customers/sales?q=${encodeURIComponent(query || '')}`, { signal });
-      const data = await readJson(response);
-      if (!response.ok) throw new Error(data.error || 'Could not refresh customers.');
-      setCustomers(data.customers || []);
-      setCustomerStatus('');
-    } catch (error) {
-      if (error.name !== 'AbortError' && !signal?.aborted) setCustomerStatus(error.message || 'Could not refresh customers.');
-    }
-  }, []);
+  }, [activeTab]);
 
   useEffect(() => {
     const controller = new AbortController();
     const initialLoad = window.setTimeout(() => void fetchData(controller.signal), 0);
-    const initialCustomers = window.setTimeout(() => void fetchCustomers('', controller.signal), 0);
     const interval = window.setInterval(() => void fetchData(controller.signal), 5000);
-    const socket = createAuthenticatedSocket();
-    socket.on('assignment_rescheduled', (mission) => setShowToast(`Assignment rescheduled for ${mission.farmerName}. Please contact the customer.`));
-    return () => { window.clearTimeout(initialLoad); window.clearTimeout(initialCustomers); window.clearInterval(interval); controller.abort(); socket.disconnect(); };
-  }, [fetchData, fetchCustomers]);
+    const socket = io(API, { transports: ['websocket'] });
+    socket.on('assignment_rescheduled', (mission) => setShowToast(`Assignment rescheduled for ${mission.farmerName}. New time: ${mission.expectedSpraying}. Please inform customer.`));
+    return () => { window.clearTimeout(initialLoad); window.clearInterval(interval); controller.abort(); socket.disconnect(); };
+  }, [fetchData]);
 
   const handleProcess = async (event) => {
     event.preventDefault();
-    if (!selectedLead) return;
     setProcessStatus('processing');
     try {
-      const response = await apiFetch('/api/leads/process', {
+      const response = await fetch(`${API}/api/leads/process`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: selectedLead.id, ...extraDetails }),
+        body: JSON.stringify({ id: selectedLead.id, employeeId: user.id, ...extraDetails }),
       });
-      const data = await readJson(response);
-      if (!response.ok) {
-        setProcessStatus(data.code === 'SERVICE_AREA_REVALIDATION_FAILED'
-          ? 'The active service area no longer covers this request. It was not scheduled.'
-          : (data.error || 'The request could not be processed.'));
-        return;
-      }
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) { setProcessStatus(data.error || 'The lead could not be processed.'); return; }
       setProcessStatus('success');
       setSelectedLead(null);
       setExtraDetails({ mandal: '', district: '', fertilizerShop: '', expectedSpraying: '', soilType: '', pesticideBrand: '', cropAge: '' });
       await fetchData();
-    } catch {
-      setProcessStatus('The request could not be processed.');
-    }
+    } catch { setProcessStatus('The lead could not be processed.'); }
   };
 
   const handleManualLeadSubmit = async (event) => {
     event.preventDefault();
     setManualStatus('processing');
     try {
-      const path = selectedCustomer ? `/api/customers/sales/${selectedCustomer.id}/leads` : '/api/leads/ingest/manual';
-      const response = await apiFetch(path, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(manualLead),
-      });
-      const data = await readJson(response);
-      if (data.code === 'OUTSIDE_SERVICE_AREA') {
-        setManualStatus('declined');
-        setManualLead((current) => ({ ...current, acres: '', cropType: '', latitude: '', longitude: '' }));
-        return;
-      }
-      if (!response.ok) {
-        setManualStatus(data.code === 'LOCATION_REQUIRED' ? 'Enter a valid farm latitude and longitude.' : (data.error || 'Failed to create lead. Please try again.'));
-        return;
-      }
-      setManualStatus(data.assignmentOutcome === 'MANUAL_SCHEDULING' ? 'manual-queue' : 'success');
-      setManualLead(selectedCustomer ? { ...blankManualLead, farmerName: selectedCustomer.displayName, phone: selectedCustomer.phone, village: selectedCustomer.village || '' } : blankManualLead);
+      const coordinates = extractCoordinates({ address: manualLead.village });
+      const payload = coordinates ? { ...manualLead, ...coordinates, village: 'Pinned field location' } : manualLead;
+      const response = await fetch(`${API}/api/leads/ingest/manual`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) { setManualStatus(data.error || 'Failed to create lead. Please try again.'); return; }
+      setManualStatus(data.assignment?.outcome === 'MANUAL_SCHEDULING' ? 'manual-queue' : 'success');
+      setManualLead({ farmerName: '', phone: '', village: '', cropType: '', acres: '' });
       await fetchData();
-      await fetchCustomers(customerSearch);
       window.setTimeout(() => setManualStatus(''), 3000);
-    } catch {
-      setManualStatus('Failed to create lead. Please try again.');
-    }
+    } catch { setManualStatus('Failed to create lead. Please try again.'); }
   };
 
-  const handleCustomerSearch = async (event) => {
-    event.preventDefault();
-    setCustomerStatus('searching');
-    await fetchCustomers(customerSearch);
-  };
-
-  const handleCustomerCreate = async (event) => {
-    event.preventDefault();
-    setCustomerStatus('saving');
+  const createAppeal = async (leadId) => {
     try {
-      const response = await apiFetch('/api/customers/sales', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newCustomer),
-      });
-      const data = await readJson(response);
-      if (!response.ok) {
-        setCustomerStatus(data.error || 'Could not create customer.');
-        return;
-      }
-      setNewCustomer(blankCustomer);
-      setSelectedCustomer(data.customer);
-      setManualLead({ ...blankManualLead, farmerName: data.customer.displayName, phone: data.customer.phone, village: data.customer.village || '' });
-      setCustomerStatus(data.created ? 'Customer created. Service view is ready.' : 'Existing customer opened. Service view is ready.');
-      await fetchCustomers(customerSearch);
-      setActiveTab('manual');
-    } catch {
-      setCustomerStatus('Could not create customer.');
-    }
+      setAppealStatus('processing');
+      const response = await fetch(`${API}/api/leads/${leadId}/appeal`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ farmerMessage: 'Recorded by Sales after farmer follow-up' }) });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || 'Could not record the appeal');
+      setAppealStatus('Farmer appeal recorded and ready for review.');
+      await fetchData();
+    } catch (error) { setAppealStatus(error.message); }
   };
 
-  const openCustomerServiceView = async (customer) => {
-    setCustomerStatus('opening');
+  const reviewAppeal = async (lead, decision) => {
     try {
-      const response = await apiFetch(`/api/customers/sales/${customer.id}/service-context`);
-      const data = await readJson(response);
-      if (!response.ok) {
-        setCustomerStatus(data.error || 'Could not open customer service view.');
-        return;
-      }
-      setSelectedCustomer(data.customer);
-      setManualLead({ ...blankManualLead, farmerName: data.customer.displayName, phone: data.customer.phone, village: data.customer.village || '' });
-      setManualStatus('');
-      setCustomerStatus('');
-      setActiveTab('manual');
-    } catch {
-      setCustomerStatus('Could not open customer service view.');
-    }
+      setAppealStatus('processing');
+      const finalFee = appealFees[lead.id] ?? lead.appeal?.suggestedFee;
+      const response = await fetch(`${API}/api/leads/${lead.id}/appeal/review`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ decision, finalFee, reason: 'Reviewed in the Sales appeal queue' }) });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || 'Could not review the appeal');
+      setAppealStatus(decision === 'APPROVED' ? 'Appeal approved and sent to scheduling.' : 'Appeal rejected and recorded.');
+      await fetchData();
+    } catch (error) { setAppealStatus(error.message); }
   };
 
-  const handleCustomerUpdate = async (event) => {
-    event.preventDefault();
-    if (!editingCustomer) return;
-    setCustomerStatus('saving');
-    try {
-      const response = await apiFetch(`/api/customers/sales/${editingCustomer.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(editingCustomer),
-      });
-      const data = await readJson(response);
-      if (!response.ok) {
-        setCustomerStatus(data.error || 'Could not update customer.');
-        return;
+  // const handleFarmerRegistration = async (e) => {
+  //   e.preventDefault();
+  //   try {
+  //     const payload = {
+  //       ...farmerData,
+  //       registeredBy: user?.email,
+  //       registeredByName: user?.name,
+  //     };
+  //     console.log("Logged-in user:", user);
+  //     console.log("Payload:", payload);
+  //     const response = await fetch(`${API}/api/farmers/register`, {
+  //       method: "POST",
+  //       headers: {
+  //         "Content-Type": "application/json",
+  //       },
+  //       body: JSON.stringify(payload),
+  //     });
+  //     const data = await response.json();
+  //     if (!response.ok) {
+  //       setFarmerNotice({
+  //         type: "error",
+  //         message: data.message || "Customer registration could not be completed.",
+  //       });
+  //       return;
+  //     }
+  //     setFarmerNotice({
+  //       type: "success",
+  //       message: "Customer registered successfully!",
+  //     });
+  //     setFarmerData({
+  //       name: "",
+  //       phone: "",
+  //       village: "",
+  //       district: "",
+  //       state: "",
+  //     });
+  //   } catch (error) {
+  //     console.error(error);
+  //     setFarmerNotice({
+  //       type: "error",
+  //       message: "An unexpected error occurred. Please try again.",
+  //     });
+  //   }
+  // };
+  
+    useEffect(() => {
+      if (!farmerNotice) return;
+      const timer = setTimeout(() => setFarmerNotice(null), 4500);
+      return () => clearTimeout(timer);
+    }, [farmerNotice]);
+  
+    const handleFarmerRegistration = async (e, confirmed = false) => {
+      e.preventDefault();
+      try {
+        const payload = {
+          ...farmerData,
+          registeredBy: user?.email,
+          registeredByName: user?.name,
+          confirmed,
+        };
+        const response = await fetch(`${API}/api/farmers/register`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const data = await response.json();
+  
+        if (!response.ok) {
+          if (data.needsConfirmation) {
+            setConfirmModal({
+              message: data.message,
+              onConfirm: () => {
+                setConfirmModal(null);
+                handleFarmerRegistration(e, true);
+              },
+            });
+            return;
+          }
+          setFarmerNotice({
+            type: "error",
+            message: data.message || "Customer registration could not be completed.",
+          });
+          return;
+        }
+  
+        setFarmerNotice({ type: "success", message: "Customer registered successfully!" });
+        setFarmerData({ name: "", phone: "", village: "", district: "", state: "" });
+      } catch (error) {
+        console.error(error);
+        setFarmerNotice({ type: "error", message: "An unexpected error occurred. Please try again." });
       }
-      setEditingCustomer(null);
-      setSelectedCustomer((current) => current?.id === data.customer.id ? data.customer : current);
-      setCustomerStatus('Customer details updated.');
-      await fetchCustomers(customerSearch);
-    } catch {
-      setCustomerStatus('Could not update customer.');
-    }
-  };
+    };
 
-  const enableFarmerPortalAccess = async (customer) => {
-    if (!customer || customer.hasFarmerPortalUser) return;
-    setCustomerStatus('enabling');
-    try {
-      const response = await apiFetch(`/api/customers/sales/${customer.id}/portal-access`, { method: 'POST' });
-      const data = await readJson(response);
-      if (!response.ok) {
-        setCustomerStatus(data.error || 'Could not enable Farmer portal access.');
-        return;
-      }
-      setCustomers((current) => current.map((entry) => (entry.id === data.customer.id ? data.customer : entry)));
-      if (selectedCustomer?.id === data.customer.id) setSelectedCustomer(data.customer);
-      setCustomerStatus(data.createdUser ? 'Farmer portal access enabled. The farmer can now log in with OTP.' : 'Farmer portal access is already linked.');
-      await fetchCustomers(customerSearch);
-    } catch {
-      setCustomerStatus('Could not enable Farmer portal access.');
-    }
-  };
-
-  const newLeads = leads.filter((lead) => ['NEW', 'MANUAL_CALL_REQUIRED'].includes(lead.status));
+  const newLeads = leads.filter((lead) => lead.status === 'NEW');
+  const appealLeads = leads.filter((lead) => ['OUT_OF_RANGE', 'APPEAL_PENDING'].includes(lead.status));
+  const followUpCount = appealLeads.length + alerts.length;
   const navItems = [
-    { id: 'customers', label: 'Customer Registration', icon: 'users', badge: selectedCustomer ? '1' : null },
+    // { id: 'logbook', label: 'Lead managament', icon: 'book' },
+    // { id: 'process', label: 'Process Leads', icon: 'clipboard', badge: newLeads.length || null },
+    { id: 'farmerRegistration', label: 'Customer Registration', icon: 'user-plus' },
     { id: 'manual', label: 'Enter New Lead', icon: 'plus' },
-    { id: 'process', label: 'Access Leads', icon: 'clipboard', badge: newLeads.length || null },
+    // { id: 'appeals', label: 'Appeals & alerts', icon: 'alert', badge: followUpCount || null },
+    // { id: 'payments', label: 'Payment Collection', icon: 'wallet' },
+    { id: 'profile', label: 'Profile', icon: 'user' },
+    // { id: "registeredFarmers", label: "Registered Customer", icon: "users" },
   ];
   const pageCopy = {
-    customers: ['Customer onboarding', 'Customer Registration', 'Register customers, maintain their farm profile, and open their service view.'],
-    manual: ['Service request', 'Enter a new lead', 'Record a phone request and validate the farm against the active service area.'],
-    process: ['Lead access', 'Incoming leads', 'Review accepted public requests and send complete details to scheduling.'],
+    // process: ['Lead operations', 'Incoming service requests', 'Verify new requests and move complete field information into scheduling.'],
+    manual: ['Service Request', 'Enter a new lead', 'Register a new spraying request with farm and scheduling details.'],
+    // appeals: ['Customer follow-up', 'Appeals & operational alerts', 'Resolve out-of-range requests and mission exceptions that need Sales action.'],
+    // payments: ['Revenue follow-up', 'Payment collection', 'Complete cash collection or retry configured payment methods.'],
+    // logbook: ['Customer history', 'Lead managament', 'Search and review every recorded step in a service request.'],
+    farmerRegistration: [
+      'Customer onboarding',
+      'Customer Registration',
+      'Register new Customers and create their accounts.'
+    ],
+    profile: [
+      'Account',
+      'Profile',
+      'View and update your profile information and account settings.'
+    ],
+    // registeredFarmers: [
+    //   'Customer records',
+    //   'Registered Customers',
+    //   'View all registered Customers and their registration details.'
+    // ],
   };
-  const [eyebrow, title, description] = pageCopy[activeTab] || pageCopy.customers;
+  const [eyebrow, title, description] = pageCopy[activeTab];
+  const toastIsSchedule = typeof showToast === 'string' && showToast.includes('rescheduled');
 
   return (
-    <OperationsShell roleLabel="Sales Dashboard" navItems={navItems} activeTab={activeTab} onTabChange={setActiveTab} user={user} onLogout={logout} onRefresh={() => Promise.all([fetchData(), fetchCustomers(customerSearch)])}>
+    <OperationsShell roleLabel="Sales Dashboard" navItems={navItems} activeTab={activeTab} onTabChange={setActiveTab} >
+      {showToast && <div className={`toast ${toastIsSchedule ? '' : 'toast--alert'}`} onClick={() => { if (toastIsSchedule) setShowToast(false); else { setActiveTab('appeals'); setShowToast(false); } }}><strong>{toastIsSchedule ? 'Schedule updated' : 'Operational follow-up'}</strong><span>{showToast}</span></div>}
+
       <header className="page-header">
         <div className="page-header__copy"><p className="eyebrow">{eyebrow}</p><h1>{title}</h1><p>{description}</p></div>
-      </header>
+        {/* <div className="page-header__actions">
+          <button className="action-btn" type="button" onClick={() => void fetchData()}>
+            <OpsIcon name="refresh" /> Refresh data</button></div> */}
 
-      {showToast && <div role="status" className="notice notice--warning"><span>{showToast}</span><button className="notice__close" type="button" aria-label="Dismiss message" onClick={() => setShowToast('')}>×</button></div>}
-      {dataError && <div role="alert" className="notice notice--error"><span>{dataError}</span></div>}
-
-      {activeTab === 'customers' && (
-        <section className="lead-workbench">
-          <div className="panel">
-            <div className="panel-header"><div className="panel-header__title"><div className="panel-title-row"><span className="panel-title-icon"><OpsIcon name="users" /></span><h2>Registered customers</h2></div><p>Search by name, phone, location, subscription card, or seasonal crop before raising a request.</p></div></div>
-            <div className="panel-body">
-              {customerStatus && !['searching', 'saving', 'opening', 'enabling'].includes(customerStatus) && <div role="status" className={customerStatus.includes('Could') ? 'notice notice--error' : 'notice notice--success'}>{customerStatus}</div>}
-              <form className="row-group" onSubmit={handleCustomerSearch}>
-                <div className="input-group"><label htmlFor="customer-search">Search customers</label><input id="customer-search" type="search" value={customerSearch} onChange={(event) => setCustomerSearch(event.target.value)} placeholder="Name, phone, location, crop or subscription card" /></div>
-                <div className="form-actions"><button type="submit" className="action-btn" disabled={customerStatus === 'searching'}><OpsIcon name="search" /> {customerStatus === 'searching' ? 'Searching…' : 'Search'}</button></div>
-              </form>
-              <div className="data-stack">
-                {!customers.length && <div className="empty-state"><strong>No customers found</strong><span>Create a customer from the call details on the right.</span></div>}
-                {customers.map((customer) => (
-                  <article className="data-row" key={customer.id}>
-                    <div className="data-row__main">
-                      <span className="data-row__title">{customer.displayName}</span>
-                      <span className="data-row__meta">{customer.phone} · {customer.village || 'Village not set'}{customer.mandal ? `, ${customer.mandal}` : ''}{customer.district ? `, ${customer.district}` : ''}</span>
-                      <span className="data-row__meta">{customer.ownership ? `${customer.ownership.toLowerCase()} · ` : ''}{customer.totalAcres ?? 'Acreage not recorded'}{customer.totalAcres != null ? ' total acres' : ''}</span>
-                      <span className="data-row__meta">Crops: {[customer.kharifCrop, customer.rabiCrop, customer.summerCrop].filter(Boolean).join(', ') || 'Not recorded'}</span>
-                      <span className={`status-badge status-badge--${customer.hasFarmerPortalUser ? 'success' : 'info'}`}>{customer.hasFarmerPortalUser ? 'Farmer portal user' : 'Staff-confirmed'}</span>
-                    </div>
-                    <div className="data-row__actions">
-                      <button type="button" className="action-btn" onClick={() => { setEditingCustomer({ ...customer }); setCustomerStatus(''); }}>Edit details</button>
-                      {!customer.hasFarmerPortalUser && <button type="button" className="action-btn" onClick={() => void enableFarmerPortalAccess(customer)} disabled={customerStatus === 'enabling'}>{customerStatus === 'enabling' ? 'Enabling...' : 'Enable portal'}</button>}
-                      <button type="button" className="action-btn" onClick={() => void openCustomerServiceView(customer)} disabled={customerStatus === 'opening'}>Open service view</button>
-                    </div>
-                  </article>
-                ))}
-              </div>
-              {editingCustomer && (
-                <form className="form-stack workflow-card" onSubmit={handleCustomerUpdate}>
-                  <div className="subsection-header"><div><p className="eyebrow">Customer master</p><h3>Edit {editingCustomer.displayName}</h3></div><button type="button" className="action-btn" onClick={() => setEditingCustomer(null)}>Cancel</button></div>
-                  <div className="input-group"><label htmlFor="edit-customer-name">Customer / farmer name</label><input id="edit-customer-name" type="text" minLength="2" maxLength="120" value={editingCustomer.displayName} onChange={(event) => setEditingCustomer({ ...editingCustomer, displayName: event.target.value })} required /></div>
-                  <CustomerProfileFields value={editingCustomer} onChange={setEditingCustomer} idPrefix="edit-customer" />
-                  <div className="form-actions"><button type="submit" className="submit-btn" disabled={customerStatus === 'saving'}>{customerStatus === 'saving' ? 'Saving…' : 'Save customer details'}</button></div>
-                </form>
-              )}
-            </div>
-          </div>
-          <div className="panel panel--raised">
-            <div className="panel-header"><div className="panel-header__title"><p className="eyebrow">Phone call</p><h2>Create customer</h2><p>No OTP is needed for Sales-assisted internal intake. External Farmer portal access remains a separate verified flow.</p></div></div>
-            <form className="panel-body form-stack" onSubmit={handleCustomerCreate}>
-              <div className="input-group"><label htmlFor="customer-name">Customer / farmer name</label><input id="customer-name" type="text" minLength="2" maxLength="120" value={newCustomer.displayName} onChange={(event) => setNewCustomer({ ...newCustomer, displayName: event.target.value })} required /></div>
-              <div className="input-group"><label htmlFor="customer-phone">Phone number</label><input id="customer-phone" type="tel" minLength="7" maxLength="20" value={newCustomer.phone} onChange={(event) => setNewCustomer({ ...newCustomer, phone: event.target.value.replace(/[^\d+\s().-]/g, '') })} required /></div>
-              <div className="input-group"><label htmlFor="customer-language">Preferred language</label><select id="customer-language" value={newCustomer.preferredLanguage} onChange={(event) => setNewCustomer({ ...newCustomer, preferredLanguage: event.target.value })}><option value="ta">Tamil</option><option value="en">English</option><option value="ml">Malayalam</option><option value="hi">Hindi</option></select></div>
-              <CustomerProfileFields value={newCustomer} onChange={setNewCustomer} idPrefix="new-customer" />
-              <div className="form-actions"><button type="submit" className="submit-btn" disabled={customerStatus === 'saving'}>{customerStatus === 'saving' ? 'Saving…' : 'Create and open service view'}</button></div>
-            </form>
-          </div>
-        </section>
-      )}
-
-      {activeTab === 'manual' && (
-        <section className="panel panel--raised manual-form-panel">
-          <div className="panel-header"><div className="panel-header__title"><div className="panel-title-row"><span className="panel-title-icon"><OpsIcon name="plus" /></span><h2>{selectedCustomer ? `Service view: ${selectedCustomer.displayName}` : 'Enter phone enquiry'}</h2></div><p>{selectedCustomer ? 'You are still signed in as Sales. Requests created here are audited as staff-assisted customer work.' : 'Record the caller’s details and exact farm location. The server applies the same strict service-area decision as the public form.'}</p></div>{selectedCustomer && <button type="button" className="action-btn" onClick={() => { setSelectedCustomer(null); setManualLead(blankManualLead); setManualStatus(''); }}>Clear customer</button>}</div>
-          <div className="panel-body">
-            {selectedCustomer && (
-              <div className="notice notice--info">
-                <span>{selectedCustomer.hasFarmerPortalUser ? 'Farmer portal access is enabled. The farmer can log in with OTP.' : 'Portal access is not enabled for this farmer yet.'}</span>
-                {!selectedCustomer.hasFarmerPortalUser && <button type="button" className="action-btn" onClick={() => void enableFarmerPortalAccess(selectedCustomer)} disabled={customerStatus === 'enabling'}>{customerStatus === 'enabling' ? 'Enabling...' : 'Enable portal access'}</button>}
+        <div className="page-header__actions">
+          <div className="profile-menu">
+            <button
+              className="profile-trigger"
+              onClick={() => setShowProfileMenu(!showProfileMenu)}>
+              {user?.name?.charAt(0)?.toUpperCase() || "U"}
+            </button>
+            {showProfileMenu && (
+              <div className="profile-dropdown">
+                <div className="profile-dropdown__header">
+                  <div className="profile-avatar">
+                    {user?.name?.charAt(0)?.toUpperCase() || "U"}
+                  </div>
+                  <div>
+                    <h4>{user?.name || "User"}</h4>
+                    <p>{user?.role || "Sales Operations"}</p>
+                  </div>
+                </div>
+                <hr />
+                <button
+                  className="dropdown-item"
+                  onClick={() => {
+                    setActiveTab("profile");
+                    setShowProfileMenu(false);
+                  }}>
+                  <OpsIcon name="user" />
+                  My Profile
+                </button>
+                <button
+                  className="dropdown-item logout"
+                  onClick={logout}>
+                  <OpsIcon name="logout" />
+                  Sign Out
+                </button>
               </div>
             )}
-            {manualStatus === 'success' && <div role="status" className="notice notice--success">Lead created and sent through the normal scheduling workflow.</div>}
+
+          </div>
+
+        </div>
+      </header>
+      {dataError && <div role="alert" className="notice notice--error"><span>{dataError}</span></div>}
+
+      {/* {activeTab === 'appeals' && (
+        <>
+          {appealStatus && appealStatus !== 'processing' && <div role="status" className={`notice ${appealStatus.includes('Could not') ? 'notice--error' : 'notice--success'}`}><span>{appealStatus}</span><button className="notice__close" type="button" aria-label="Dismiss message" onClick={() => setAppealStatus('')}>×</button></div>}
+          <section className="subsection">
+            <div className="subsection-header"><div><p className="eyebrow eyebrow--accent">Range exceptions</p><h2>Out-of-range appeals</h2></div><span className="status-badge status-badge--warning">{appealLeads.length} waiting</span></div>
+            {!appealLeads.length && <div className="empty-state"><strong>No appeals need review</strong><span>New out-of-range requests will appear here after intake.</span></div>}
+            <div className="appeal-grid">{appealLeads.map((lead) => <article key={lead.id} className="workflow-card workflow-card--warning"><div className="mission-card__header"><div><h3>{lead.farmerName}</h3><p className="workflow-card__meta">{lead.farmerPhone} · {lead.acreage} acres · {lead.distanceFromCenterKm?.toFixed(1) || 'Unknown'} km from the nearest centre</p></div><span className="status-badge status-badge--warning">{lead.status.replaceAll('_', ' ')}</span></div>{lead.status === 'OUT_OF_RANGE' ? <button type="button" className="submit-btn" disabled={appealStatus === 'processing'} onClick={() => void createAppeal(lead.id)}>Record farmer appeal</button> : <div className="button-row"><div className="input-group"><label htmlFor={`appeal-fee-${lead.id}`}>Agreed transport fee</label><input id={`appeal-fee-${lead.id}`} type="number" min="0" step="0.01" value={appealFees[lead.id] ?? lead.appeal?.suggestedFee ?? ''} onChange={(event) => setAppealFees((fees) => ({ ...fees, [lead.id]: event.target.value }))} /></div><button type="button" className="submit-btn" disabled={appealStatus === 'processing'} onClick={() => void reviewAppeal(lead, 'APPROVED')}>Approve appeal</button><button type="button" className="danger-btn" disabled={appealStatus === 'processing'} onClick={() => void reviewAppeal(lead, 'REJECTED')}>Reject appeal</button></div>}</article>)}</div>
+          </section>
+
+          <section className="subsection">
+            <div className="subsection-header"><div><p className="eyebrow">Mission exceptions</p><h2>Operational alerts</h2></div><span className="status-badge status-badge--danger">{alerts.length} open</span></div>
+            {!alerts.length && <div className="empty-state"><strong>No mission alerts</strong><span>There are no discrepancies or decommission events awaiting follow-up.</span></div>}
+            <div className="alert-grid">{alerts.map((alert) => <article key={alert.id} className="workflow-card workflow-card--danger"><div className="mission-card__header"><div><h3>{alert.lead?.farmerName || 'Mission alert'}</h3><p className="workflow-card__meta">Pilot: {alert.pilot?.name || 'Unassigned'}</p></div><span className="status-badge status-badge--danger">Follow up</span></div><p>{alert.decommissionedMidMission ? `Drone decommissioned: ${alert.decommissionReason || 'No reason supplied'}` : `Acreage discrepancy: ${alert.discrepancyNote || 'Review the mission logbook.'}`}</p></article>)}</div>
+          </section>
+        </>
+      )} */}
+
+      {/* {activeTab === 'manual' && (
+        <section className="panel panel--raised manual-form-panel">
+          <div className="panel-header"><div className="panel-header__title"><div className="panel-title-row"><span className="panel-title-icon"><OpsIcon name="plus" /></span><h2>Enter Manual Lead</h2></div><p>A Sales-entered lead is verified and immediately sent through automatic scheduling.</p></div></div>
+          <div className="panel-body">
+            {manualStatus === 'success' && <div role="status" className="notice notice--success">Lead created and automatically scheduled.</div>}
             {manualStatus === 'manual-queue' && <div role="status" className="notice notice--success">Lead created. Fleet has been notified to schedule it manually.</div>}
-            {manualStatus === 'declined' && <div role="status" className="notice notice--warning">This farm is outside the active service area. A contact-only declined enquiry was recorded; no lead or schedule was created.</div>}
-            {manualStatus && !['success', 'manual-queue', 'declined', 'processing'].includes(manualStatus) && <div role="alert" className="notice notice--error">{manualStatus}</div>}
+            {manualStatus && !['success', 'manual-queue', 'processing'].includes(manualStatus) && <div role="alert" className="notice notice--error">{manualStatus}</div>}
             <form className="form-stack" onSubmit={handleManualLeadSubmit}>
-              <div className="input-group"><label htmlFor="manual-farmer-name">Farmer name</label><input id="manual-farmer-name" type="text" minLength="2" maxLength="120" value={manualLead.farmerName} onChange={(event) => setManualLead({ ...manualLead, farmerName: event.target.value })} disabled={Boolean(selectedCustomer)} required /></div>
-              <div className="input-group"><label htmlFor="manual-phone">Phone number</label><input id="manual-phone" type="tel" minLength="7" maxLength="20" value={manualLead.phone} onChange={(event) => setManualLead({ ...manualLead, phone: event.target.value.replace(/[^\d+\s().-]/g, '') })} disabled={Boolean(selectedCustomer)} required /></div>
-              <div className="input-group"><label htmlFor="manual-location">Village / location description</label><input id="manual-location" type="text" maxLength="500" value={manualLead.village} onChange={(event) => setManualLead({ ...manualLead, village: event.target.value })} required /></div>
-              <div className="row-group"><div className="input-group"><label htmlFor="manual-crop">Crop type</label><input id="manual-crop" type="text" maxLength="120" value={manualLead.cropType} onChange={(event) => setManualLead({ ...manualLead, cropType: event.target.value })} required /></div><div className="input-group"><label htmlFor="manual-acres">Estimated acres</label><input id="manual-acres" type="number" min="0.01" step="0.01" value={manualLead.acres} onChange={(event) => setManualLead({ ...manualLead, acres: event.target.value })} required /></div></div>
-              <div className="input-group"><label>Precise farm location</label><SalesLocationPicker latitude={manualLead.latitude} longitude={manualLead.longitude} onChange={(location) => setManualLead((current) => ({ ...current, ...location }))} /><input type="hidden" name="latitude" value={manualLead.latitude} required /><input type="hidden" name="longitude" value={manualLead.longitude} required /></div>
-              <div className="form-actions"><button type="submit" className="submit-btn" disabled={manualStatus === 'processing'}>{manualStatus === 'processing' ? 'Checking service area…' : 'Create lead'}</button></div>
+              <div className="input-group"><label htmlFor="manual-farmer-name">Farmer Name</label><input id="manual-farmer-name" type="text" minLength={2} maxLength={120} value={manualLead.farmerName} onChange={(event) => setManualLead({ ...manualLead, farmerName: event.target.value })} required /></div>
+              <div className="input-group"><label htmlFor="manual-phone">Phone Number</label><input id="manual-phone" type="tel" minLength={7} maxLength={20} value={manualLead.phone} onChange={(event) => setManualLead({ ...manualLead, phone: event.target.value.replace(/[^\d+\s().-]/g, '') })} required /></div>
+              <div className="input-group"><label htmlFor="manual-location">Village / Location</label><input id="manual-location" type="text" value={manualLead.village} onChange={(event) => setManualLead({ ...manualLead, village: event.target.value })} required /></div>
+              <div className="row-group"><div className="input-group"><label htmlFor="manual-crop">Crop Type</label><input id="manual-crop" type="text" maxLength={120} value={manualLead.cropType} onChange={(event) => setManualLead({ ...manualLead, cropType: event.target.value })} required /></div><div className="input-group"><label htmlFor="manual-acres">Estimated Acres</label><input id="manual-acres" type="number" min="0.01" step="0.01" value={manualLead.acres} onChange={(event) => setManualLead({ ...manualLead, acres: event.target.value })} required /></div></div>
+              <div className="form-actions"><button type="submit" className="submit-btn" disabled={manualStatus === 'processing'}>{manualStatus === 'processing' ? 'Creating…' : 'Create Lead'}</button></div>
             </form>
           </div>
         </section>
+      )} */}
+
+      {activeTab === 'manual' && <FarmDetails />}
+      {/* {activeTab === 'process' && (
+        <section className="lead-workbench">
+          <div className="panel">
+            <div className="panel-header"><div className="panel-header__title"><div className="panel-title-row"><span className="panel-title-icon"><OpsIcon name="clipboard" /></span><h2>Pending tasks</h2></div><p>{newLeads.length} new incoming request{newLeads.length === 1 ? '' : 's'}.</p></div></div>
+            <div className="panel-body lead-list">
+              {!newLeads.length && <div className="empty-state"><strong>No pending leads</strong><span>New website requests will appear here.</span></div>}
+              {newLeads.map((lead) => <article key={lead.id} className="lead-card" aria-selected={selectedLead?.id === lead.id}><h3>{lead.farmerName}</h3><p className="lead-card__location"><strong>Location:</strong> <LocationLink latitude={lead.latitude} longitude={lead.longitude} address={lead.farmerAddress} centerName={lead.matchedCenter?.name} farmerName={lead.farmerName} /></p><p><strong>Crop:</strong> {lead.cropType || 'Not supplied'} · {lead.acreage} acres</p><p><strong>Phone:</strong> {lead.farmerPhone}</p><button type="button" className="action-btn lead-card__select" aria-pressed={selectedLead?.id === lead.id} onClick={() => { setSelectedLead(lead); setProcessStatus(''); }}>Review request</button></article>)}
+            </div>
+          </div>
+
+          <div className="panel panel--raised">
+            {selectedLead ? <><div className="panel-header"><div className="panel-header__title"><p className="eyebrow">Selected request</p><h2>{selectedLead.farmerName}</h2><p>Complete field verification before sending this request to scheduling.</p></div><span className="status-badge status-badge--info">New lead</span></div><div className="panel-body">{processStatus === 'success' && <div className="notice notice--success">Lead submitted! Ready for Dispatch.</div>}{processStatus && !['success', 'processing'].includes(processStatus) && <div className="notice notice--error">{processStatus}</div>}<form className="processing-form" onSubmit={handleProcess}><div className="input-group"><label htmlFor="sales-handler">Handling Sales Rep</label><input id="sales-handler" type="text" value={`${user?.name} · ${user?.id}`} disabled /></div><div className="row-group"><div className="input-group"><label htmlFor="lead-mandal">Mandal</label><input id="lead-mandal" type="text" value={extraDetails.mandal} onChange={(event) => setExtraDetails({ ...extraDetails, mandal: event.target.value })} required /></div><div className="input-group"><label htmlFor="lead-district">District</label><input id="lead-district" type="text" value={extraDetails.district} onChange={(event) => setExtraDetails({ ...extraDetails, district: event.target.value })} required /></div></div><div className="row-group"><div className="input-group"><label htmlFor="lead-soil">Soil Type</label><input id="lead-soil" type="text" placeholder="e.g. Red, Black Cotton" value={extraDetails.soilType} onChange={(event) => setExtraDetails({ ...extraDetails, soilType: event.target.value })} required /></div><div className="input-group"><label htmlFor="lead-crop-age">Crop Age (Weeks)</label><input id="lead-crop-age" type="text" placeholder="e.g. 12" value={extraDetails.cropAge} onChange={(event) => setExtraDetails({ ...extraDetails, cropAge: event.target.value })} required /></div></div><div className="input-group"><label htmlFor="lead-brand">Fertilizer / Pesticide Brand</label><input id="lead-brand" type="text" placeholder="e.g. Bayer, Syngenta" value={extraDetails.pesticideBrand} onChange={(event) => setExtraDetails({ ...extraDetails, pesticideBrand: event.target.value })} required /></div><div className="input-group"><label htmlFor="lead-spraying">Expected Spraying Times / Acres</label><input id="lead-spraying" type="text" value={extraDetails.expectedSpraying} onChange={(event) => setExtraDetails({ ...extraDetails, expectedSpraying: event.target.value })} required /></div><div className="form-actions"><button type="submit" className="submit-btn" disabled={processStatus === 'processing'}>{processStatus === 'processing' ? 'Submitting…' : 'Verify and send to scheduling'}</button></div></form></div></> : <div className="panel-body"><div className="empty-state empty-state--center"><span className="panel-title-icon"><OpsIcon name="clipboard" /></span><strong>Select an incoming lead to process</strong><span>Farmer and field details will open here.</span></div></div>}
+          </div>
+        </section>
+      )} */}
+
+      {/* {activeTab === 'payments' && <PendingPaymentsPanel />} */}
+      {/* {activeTab === 'logbook' && <LogbookTimelinePanel />} */}
+      {/* {activeTab === "farmerRegistration" && (
+        <section className="panel panel--raised">
+          <div className="panel-header">
+            <div className="panel-header__title">
+              <div className="panel-title-row">
+                <span className="panel-title-icon">
+                  <OpsIcon name="user-plus" />
+                </span>
+                <h2>Customer Registration</h2>
+              </div>
+              <p>Register a new customer</p>
+            </div>
+          </div>
+
+          <div className="panel-body">
+            {farmerNotice && (
+              <div
+                style={{
+                  marginBottom: "15px",
+                  padding: "12px",
+                  borderRadius: "8px",
+                  backgroundColor:
+                    farmerNotice.type === "success"
+                      ? "#d4edda"
+                      : "#f8d7da",
+                  color:
+                    farmerNotice.type === "success"
+                      ? "#155724"
+                      : "#721c24",
+                  fontWeight: "600",
+                  textAlign: "center"
+                }}
+              >
+                {farmerNotice.message}
+              </div>
+            )}
+            <form onSubmit={handleFarmerRegistration} className="form-stack">
+              <div className="row-group">
+                <div className="input-group">
+                  <label>Full Name</label>
+                  <input
+                    type="text"
+                    placeholder="Enter full name"
+                    value={farmerData.name}
+                    onChange={(e) => {
+                      const value = e.target.value;
+
+                      // Allow only letters and spaces
+                      if (/^[A-Za-z\s]*$/.test(value)) {
+                        setFarmerData({
+                          ...farmerData,
+                          name: value,
+                        });
+                      }
+                    }}
+                    required
+                  />
+                </div>
+                <div className="input-group">
+                  <label>Mobile Number</label>
+                  <input
+                    type="tel"
+                    placeholder="Enter mobile number"
+                    value={farmerData.phone}
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/\D/g, "").slice(0, 10);
+                      setFarmerData({ ...farmerData, phone: value });
+                    }}
+                    maxLength={10}
+                    pattern="[0-9]{10}"
+                    inputMode="numeric"
+                    required
+                  />
+
+                  {farmerData.phone && farmerData.phone.length !== 10 && (
+                    <small className="error-text">
+                      Mobile number must be exactly 10 digits.
+                    </small>
+                  )}
+                </div>
+              </div>
+              <div className="row-group">
+                <div className="input-group">
+                  <label>Village / Town</label>
+                  <input
+                    type="text"
+                    placeholder="Enter village or town"
+                    value={farmerData.village}
+                    onChange={(e) =>
+                      setFarmerData({ ...farmerData, village: e.target.value })
+                    }
+                    required
+                  />
+                </div>
+                <div className="input-group">
+                  <label>District</label>
+                  <input
+                    type="text"
+                    placeholder="Enter district"
+                    value={farmerData.district}
+                    onChange={(e) =>
+                      setFarmerData({ ...farmerData, district: e.target.value })
+                    }
+                    required
+                  />
+                </div>
+              </div>
+              <div className="row-group">
+                <div className="input-group">
+                  <label>State</label>
+                  <input
+                    type="text"
+                    placeholder="Enter state"
+                    value={farmerData.state}
+                    onChange={(e) =>
+                      setFarmerData({ ...farmerData, state: e.target.value })
+                    }
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="form-actions">
+                <button type="submit" className="submit-btn">
+                  Register Customer
+                </button>
+              </div>
+            </form>
+          </div>
+            {confirmModal && (
+            <div
+              style={{
+                position: "fixed",
+                inset: 0,
+                backgroundColor: "rgba(0, 0, 0, 0.45)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                zIndex: 1000,
+              }}
+            >
+              <div
+                style={{
+                  background: "#fff",
+                  borderRadius: "10px",
+                  padding: "24px",
+                  maxWidth: "400px",
+                  width: "90%",
+                  boxShadow: "0 10px 30px rgba(0,0,0,0.2)",
+                }}
+              >
+                <h3 style={{ margin: "0 0 12px", fontSize: "16px", fontWeight: 600 }}>
+                  Confirm Registration
+                </h3>
+                <p style={{ margin: "0 0 20px", color: "#444", fontSize: "14px", lineHeight: 1.5 }}>
+                  {confirmModal.message}
+                </p>
+                <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px" }}>
+                  <button
+                    onClick={() => setConfirmModal(null)}
+                    style={{
+                      padding: "8px 16px",
+                      borderRadius: "6px",
+                      border: "1px solid #ccc",
+                      background: "#fff",
+                      cursor: "pointer",
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={confirmModal.onConfirm}
+                    style={{
+                      padding: "8px 16px",
+                      borderRadius: "6px",
+                      border: "none",
+                      background: "#2f6feb",
+                      color: "#fff",
+                      cursor: "pointer",
+                      fontWeight: 600,
+                    }}
+                  >
+                    Confirm
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </section>
+      )} */}
+{activeTab === "farmerRegistration" && (
+  <CustomerRegistration
+    API={API}
+    user={user}
+    confirmModal={confirmModal}
+    setConfirmModal={setConfirmModal}
+  />
+)}
+
+      {activeTab === "profile" && (
+        <AdminProfile user={user} />
       )}
 
-      {activeTab === 'process' && (
-        <section className="lead-workbench">
-          <div className="panel"><div className="panel-header"><div className="panel-header__title"><div className="panel-title-row"><span className="panel-title-icon"><OpsIcon name="clipboard" /></span><h2>Requests awaiting Sales review</h2></div><p>{newLeads.length} request{newLeads.length === 1 ? '' : 's'} need review.</p></div></div><div className="panel-body lead-list">{!newLeads.length && <div className="empty-state"><strong>No pending requests</strong><span>In-area public requests appear here for Sales review.</span></div>}{newLeads.map((lead) => <article key={lead.id} className="lead-card" aria-selected={selectedLead?.id === lead.id}><h3>{lead.farmerName}</h3><p className="lead-card__location"><strong>Location:</strong> <LocationLink latitude={lead.latitude} longitude={lead.longitude} address={lead.farmerAddress} centerName={lead.matchedCenter?.name} farmerName={lead.farmerName} /></p><p><strong>Crop:</strong> {lead.cropType || 'Not supplied'} · {lead.acreage} acres</p><p><strong>Phone:</strong> {lead.farmerPhone}</p><button type="button" className="action-btn lead-card__select" aria-pressed={selectedLead?.id === lead.id} onClick={() => { setSelectedLead(lead); setProcessStatus(''); }}>Review request</button></article>)}</div></div>
-          <div className="panel panel--raised">{selectedLead ? <><div className="panel-header"><div className="panel-header__title"><p className="eyebrow">Selected request</p><h2>{selectedLead.farmerName}</h2><p>Confirm the service details. The server rechecks the active service area before scheduling.</p></div><span className="status-badge status-badge--info">Awaiting review</span></div><div className="panel-body">{processStatus === 'success' && <div className="notice notice--success">Request accepted and sent to scheduling.</div>}{processStatus && !['success', 'processing'].includes(processStatus) && <div className="notice notice--error">{processStatus}</div>}<form className="processing-form" onSubmit={handleProcess}><div className="row-group"><div className="input-group"><label htmlFor="lead-mandal">Mandal</label><input id="lead-mandal" type="text" value={extraDetails.mandal} onChange={(event) => setExtraDetails({ ...extraDetails, mandal: event.target.value })} required /></div><div className="input-group"><label htmlFor="lead-district">District</label><input id="lead-district" type="text" value={extraDetails.district} onChange={(event) => setExtraDetails({ ...extraDetails, district: event.target.value })} required /></div></div><div className="row-group"><div className="input-group"><label htmlFor="lead-soil">Soil type</label><input id="lead-soil" type="text" value={extraDetails.soilType} onChange={(event) => setExtraDetails({ ...extraDetails, soilType: event.target.value })} required /></div><div className="input-group"><label htmlFor="lead-crop-age">Crop age (weeks)</label><input id="lead-crop-age" type="text" value={extraDetails.cropAge} onChange={(event) => setExtraDetails({ ...extraDetails, cropAge: event.target.value })} required /></div></div><div className="input-group"><label htmlFor="lead-brand">Fertilizer / pesticide brand</label><input id="lead-brand" type="text" value={extraDetails.pesticideBrand} onChange={(event) => setExtraDetails({ ...extraDetails, pesticideBrand: event.target.value })} required /></div><div className="input-group"><label htmlFor="lead-spraying">Expected spraying time / acres</label><input id="lead-spraying" type="text" value={extraDetails.expectedSpraying} onChange={(event) => setExtraDetails({ ...extraDetails, expectedSpraying: event.target.value })} required /></div><div className="form-actions"><button type="submit" className="submit-btn" disabled={processStatus === 'processing'}>{processStatus === 'processing' ? 'Submitting…' : 'Verify and send to scheduling'}</button></div></form></div></> : <div className="panel-body"><div className="empty-state empty-state--center"><span className="panel-title-icon"><OpsIcon name="clipboard" /></span><strong>Select an incoming request</strong><span>Farmer and field details will open here.</span></div></div>}</div>
-        </section>
-      )}
+
+      {/* {activeTab === "registeredFarmers" && (
+        <RegisteredFarmers />
+      )} */}
 
     </OperationsShell>
   );
