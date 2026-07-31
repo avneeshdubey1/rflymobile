@@ -3096,6 +3096,10 @@ tbody tr[aria-selected="true"] {
     white-space: nowrap;
 }
 /* Hardened frontend compatibility additions */
+.sales-location-picker { display: grid; gap: 0.8rem; }
+.sales-location-picker__search { display: grid; grid-template-columns: minmax(240px, 1fr) auto auto; align-items: end; gap: 0.65rem; }
+.sales-location-picker__map { height: 360px; overflow: hidden; border: 1px solid var(--border-strong); border-radius: var(--radius-md); }
+.sales-location-picker .notice { margin-bottom: 0; }
 .employee-registration .login-form-pane { align-items: start; overflow-y: auto; }
 .employee-registration__card { width: min(100%, 760px); margin-block: clamp(3.5rem, 7vh, 6rem) 2rem; }
 .employee-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
@@ -3105,6 +3109,7 @@ tbody tr[aria-selected="true"] {
 .password-field button { position: absolute; right: 0.45rem; top: 50%; transform: translateY(-50%); border: 0; background: transparent; color: var(--primary); font-weight: 700; cursor: pointer; }
 .field-error { color: var(--danger); font-size: 0.82rem; }
 @media (max-width: 720px) {
+  .sales-location-picker__search { grid-template-columns: 1fr; }
   .employee-grid { grid-template-columns: 1fr; }
   .employee-grid__wide { grid-column: auto; }
 }
