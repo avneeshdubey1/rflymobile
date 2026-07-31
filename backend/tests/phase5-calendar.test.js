@@ -9,6 +9,7 @@ let baseUrl;
 const ids = { center: null, users: [], drones: [], lmvs: [], leads: [], assignments: [] };
 let fleetManager;
 let pilot;
+let copilot;
 let sales;
 const runId = `${process.pid}-${Date.now()}`;
 
@@ -20,12 +21,13 @@ test.before(async () => {
   baseUrl = `http://127.0.0.1:${server.address().port}`;
   const center = await prisma.operatingCenter.create({ data: { name: `Phase 5 Centre ${runId}`, latitude: 11, longitude: 76, radiusKm: 50 } });
   ids.center = center.id;
-  [fleetManager, pilot, sales] = await Promise.all([
+  [fleetManager, pilot, copilot, sales] = await Promise.all([
     prisma.user.create({ data: { name: 'Phase 5 Fleet', email: `phase5-fleet-${runId}@example.test`, passwordHash: 'test', role: 'FLEET_MANAGER' } }),
     prisma.user.create({ data: { name: 'Phase 5 Pilot', email: `phase5-pilot-${runId}@example.test`, passwordHash: 'test', role: 'PILOT', homeCenterId: center.id } }),
+    prisma.user.create({ data: { name: 'Phase 5 Copilot', email: `phase5-copilot-${runId}@example.test`, passwordHash: 'test', role: 'PILOT', homeCenterId: center.id } }),
     prisma.user.create({ data: { name: 'Phase 5 Sales', email: `phase5-sales-${runId}@example.test`, passwordHash: 'test', role: 'SALES' } }),
   ]);
-  ids.users.push(fleetManager.id, pilot.id, sales.id);
+  ids.users.push(fleetManager.id, pilot.id, copilot.id, sales.id);
 });
 
 test('a fleet manager can turn a manual-scheduling lead into an assignment, then reschedule it with a Sales notification', async () => {
@@ -39,7 +41,7 @@ test('a fleet manager can turn a manual-scheduling lead into an assignment, then
   ids.lmvs.push(lmv.id);
   const firstDate = new Date('2026-08-10T09:00:00.000Z');
   const createResponse = await fetch(`${baseUrl}/api/assignments/manual`, {
-    method: 'POST', headers: auth(fleetManager), body: JSON.stringify({ leadId: lead.id, pilotId: pilot.id, droneId: drone.id, lmvId: lmv.id, scheduledDate: firstDate }),
+    method: 'POST', headers: auth(fleetManager), body: JSON.stringify({ leadId: lead.id, pilotId: pilot.id, copilotId: copilot.id, droneId: drone.id, lmvId: lmv.id, scheduledDate: firstDate }),
   });
   const created = await createResponse.json();
   assert.equal(createResponse.status, 201);

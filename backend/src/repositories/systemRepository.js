@@ -12,7 +12,7 @@ async function prepareDevelopmentDemo() {
   });
   const leadIds = testLeads.map((lead) => lead.id);
   const testAssignments = await prisma.assignment.findMany({
-    where: { OR: [...(userIds.length ? [{ pilotId: { in: userIds } }] : []), ...(leadIds.length ? [{ leadId: { in: leadIds } }] : [])] },
+    where: { OR: [...(userIds.length ? [{ pilotId: { in: userIds } }, { copilotId: { in: userIds } }] : []), ...(leadIds.length ? [{ leadId: { in: leadIds } }] : [])] },
     select: { id: true },
   });
   const assignmentIds = testAssignments.map((assignment) => assignment.id);

@@ -3,6 +3,20 @@ const assignmentRepository = require('../src/repositories/assignmentRepository')
 const auditLogRepository = require('../src/repositories/auditLogRepository');
 const validStatuses = new Set(['AVAILABLE', 'ASSIGNED', 'MAINTENANCE', 'OUT_OF_SERVICE']);
 
+function optionalText(value, maximum = 120) {
+  if (value === undefined || value === null || String(value).trim() === '') return null;
+  const text = String(value).trim();
+  if (text.length > maximum) throw new Error(`Drone text fields must not exceed ${maximum} characters`);
+  return text;
+}
+
+function optionalPositiveNumber(value, field, { integer = false } = {}) {
+  if (value === undefined || value === null || value === '') return null;
+  const number = Number(value);
+  if (!Number.isFinite(number) || number <= 0 || (integer && !Number.isInteger(number))) throw new Error(`${field} must be a positive ${integer ? 'whole ' : ''}number`);
+  return number;
+}
+
 async function assertNoActiveAssignment(droneId) {
   const active = await assignmentRepository.findActiveForDrone(droneId);
   if (active.length) {
@@ -18,12 +32,25 @@ exports.addDrone = async (req, res) => {
   try {
     const { model, serialNumber, homeCenterId } = req.body;
     if (!model || !serialNumber || !homeCenterId) return res.status(400).json({ error: 'Model, serial number, and home center are required' });
-    const drone = await droneRepository.create({ model, serialNumber, homeCenterId, status: 'AVAILABLE' });
+    const drone = await droneRepository.create({
+      name: optionalText(req.body.name),
+      model: String(model).trim(),
+      serialNumber: String(serialNumber).trim(),
+      category: optionalText(req.body.category, 60),
+      manufacturer: optionalText(req.body.manufacturer),
+      tankCapacityLitres: optionalPositiveNumber(req.body.tankCapacityLitres, 'Tank capacity'),
+      batteryCapacityMah: optionalPositiveNumber(req.body.batteryCapacityMah, 'Battery capacity', { integer: true }),
+      enduranceMinutes: optionalPositiveNumber(req.body.enduranceMinutes, 'Endurance', { integer: true }),
+      certified: req.body.certified === true,
+      serviceType: optionalText(req.body.serviceType),
+      homeCenterId,
+      status: 'AVAILABLE',
+    });
     await auditLogRepository.create({ entityType: 'Drone', entityId: drone.id, action: 'CREATED', actorId: req.auth.userId, afterState: drone });
     res.status(201).json({ success: true, drone });
   } catch (error) {
     if (error.code === 'P2002') return res.status(409).json({ error: 'Serial number already exists' });
-    res.status(500).json({ error: 'Failed to add drone' });
+    res.status(/must|required/i.test(error.message || '') ? 400 : 500).json({ error: /must|required/i.test(error.message || '') ? error.message : 'Failed to add drone' });
   }
 };
 exports.updateStatus = async (req, res) => {

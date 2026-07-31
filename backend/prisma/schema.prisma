@@ -145,6 +145,7 @@ model User {
   address              String?
 
   assignments          Assignment[]     @relation("PilotAssignments")
+  copilotAssignments   Assignment[]     @relation("CopilotAssignments")
   chatSessions         ChatSession[]    @relation("ChatParticipants")
   notifications        Notification[]
   authSessions         AuthSession[]
@@ -329,8 +330,16 @@ model PasswordRecoveryChallenge {
 
 model Drone {
   id                  String       @id @default(uuid())
+  name                String?
   model               String
   serialNumber        String       @unique
+  category            String?
+  manufacturer        String?
+  tankCapacityLitres  Float?
+  batteryCapacityMah  Int?
+  enduranceMinutes    Int?
+  certified           Boolean      @default(false)
+  serviceType         String?
   status              DroneStatus  @default(AVAILABLE)
   homeCenter          OperatingCenter @relation(fields: [homeCenterId], references: [id])
   homeCenterId        String
@@ -434,12 +443,15 @@ model Assignment {
   leadId            String    @unique
   pilot             User      @relation("PilotAssignments", fields: [pilotId], references: [id])
   pilotId           String
+  copilot           User?     @relation("CopilotAssignments", fields: [copilotId], references: [id])
+  copilotId         String?
   drone             Drone     @relation(fields: [droneId], references: [id])
   droneId           String
   lmv               LMV?      @relation(fields: [lmvId], references: [id])
   lmvId             String?
 
   scheduledDate     DateTime
+  dailySequence     Int       @default(1)
   autoAssigned      Boolean   @default(true)   // false if a Fleet Manager manually created/overrode it
   acceptedAt        DateTime?
   startedAt         DateTime?
@@ -466,6 +478,9 @@ model Assignment {
   payments          PaymentRecord[]
   notificationEscalation NotificationEscalation?
   createdAt         DateTime  @default(now())
+
+  @@index([scheduledDate, dailySequence])
+  @@index([copilotId, scheduledDate])
 }
 
 // Persists the notification-cascade clock so a server restart never loses a pilot follow-up.

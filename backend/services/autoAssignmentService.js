@@ -46,7 +46,7 @@ async function autoAssignProcessedLead(leadId, { excludePilotIds = [], now = new
   if (!weatherWindow) return moveToManualScheduling(lead, 'No suitable weather day was found in the next five days.', 'WEATHER_RISK');
 
   const pilots = (await userRepository.findAll({ role: 'PILOT', homeCenterId: lead.matchedCenterId }))
-    .filter((pilot) => !excludePilotIds.includes(pilot.id) && !hasExpired(pilot.pilotLicenseExpiry, now));
+    .filter((pilot) => pilot.active && !pilot.archivedAt && !excludePilotIds.includes(pilot.id) && !hasExpired(pilot.pilotLicenseExpiry, now));
   const drones = (await droneRepository.findAll({ status: 'AVAILABLE', homeCenterId: lead.matchedCenterId }))
     .filter((drone) => !hasExpired(drone.airworthinessExpiry, now));
   const lmvs = await lmvRepository.findEligibleForCenter(lead.matchedCenterId);
@@ -62,9 +62,9 @@ async function autoAssignProcessedLead(leadId, { excludePilotIds = [], now = new
     const conflicts = await assignmentRepository.findScheduledForLmvOnDate(lmv.id, dayStart, dayEnd);
     if (conflicts.length === 0) availableLmvs.push(lmv);
   }
-  if (availablePilots.length === 0 || drones.length === 0 || availableLmvs.length === 0) {
-    const reason = availablePilots.length === 0
-      ? 'No eligible pilot is available; expired licences are excluded.'
+  if (availablePilots.length < 2 || drones.length === 0 || availableLmvs.length === 0) {
+    const reason = availablePilots.length < 2
+      ? 'No eligible two-person Pilot/Copilot crew is available; inactive accounts and expired licences are excluded.'
       : drones.length === 0
         ? 'No eligible drone is available; expired airworthiness is excluded.'
         : 'No eligible LMV is available at the lead operating centre.';
@@ -76,20 +76,21 @@ async function autoAssignProcessedLead(leadId, { excludePilotIds = [], now = new
   const scoredPilots = await Promise.all(availablePilots.map(async (pilot) => ({ pilot, workload: await assignmentRepository.countForPilotBetween(pilot.id, weekStart, weekEnd) })));
   scoredPilots.sort((a, b) => a.workload - b.workload || a.pilot.createdAt - b.pilot.createdAt);
   const pilot = scoredPilots[0].pilot;
+  const copilot = scoredPilots[1].pilot;
   const drone = drones[0];
   const lmv = availableLmvs[0];
   const assignment = await assignmentRepository.create({
-    leadId: lead.id, pilotId: pilot.id, droneId: drone.id, lmvId: lmv.id, scheduledDate: weatherWindow.date, autoAssigned: true, expectedAcreage: lead.acreage,
+    leadId: lead.id, pilotId: pilot.id, copilotId: copilot.id, droneId: drone.id, lmvId: lmv.id, scheduledDate: weatherWindow.date, dailySequence: 1, autoAssigned: true, expectedAcreage: lead.acreage,
     weatherCheckedAt: new Date(), weatherSuitable: weatherWindow.weather.suitable, weatherNote: weatherWindow.weather.note,
   });
   const scheduledLead = await leadRepository.update(lead.id, { status: 'SCHEDULED' });
   await droneRepository.update(drone.id, { status: 'ASSIGNED' });
   await lmvRepository.update(lmv.id, { status: 'ASSIGNED' });
-  await auditLogRepository.create({ entityType: 'Lead', entityId: lead.id, action: 'AUTO_ASSIGNED', beforeState: lead, afterState: scheduledLead, reason: `Pilot ${pilot.id}, drone ${drone.id}, LMV ${lmv.id}, date ${weatherWindow.date.toISOString()}` });
+  await auditLogRepository.create({ entityType: 'Lead', entityId: lead.id, action: 'AUTO_ASSIGNED', beforeState: { status: lead.status }, afterState: { status: scheduledLead.status }, reason: `Two-person crew, drone, and LMV assigned for ${weatherWindow.date.toISOString()}` });
   await whatsappService.sendMissionScheduled(scheduledLead, assignment.scheduledDate);
   if (weatherWindow.weather.suitable === null) await notificationCascadeService.createFleetNotifications('WEATHER_RISK', lead.id, `Weather data was unavailable for automatically scheduled lead ${lead.id}; manual review is required.`);
   await notificationCascadeService.start(assignment);
-  logger.info('assignment.auto_assigned', { leadId: lead.id, assignmentId: assignment.id, pilotId: pilot.id, droneId: drone.id, lmvId: lmv.id, weatherSuitable: weatherWindow.weather.suitable });
+  logger.info('assignment.auto_assigned', { leadId: lead.id, assignmentId: assignment.id, pilotId: pilot.id, copilotId: copilot.id, droneId: drone.id, lmvId: lmv.id, weatherSuitable: weatherWindow.weather.suitable });
   return { outcome: 'SCHEDULED', lead: scheduledLead, assignment };
 }
 

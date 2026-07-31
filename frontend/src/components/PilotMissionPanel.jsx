@@ -148,11 +148,13 @@ function PilotMissionPanel() {
           const cardTone = status === 'COMPLETED' ? 'mission-card--completed' : activeStatuses.has(status) ? 'mission-card--active' : '';
           return (
             <article key={mission.id} className={`mission-card ${cardTone}`}>
-              <div className="mission-card__header"><div><p className="eyebrow">Scheduled mission</p><h3>{details.farmerName || 'Farmer'}{details.cropType ? ` — ${details.cropType}` : ''}</h3></div><span className={`status-badge ${statusTone(status) ? `status-badge--${statusTone(status)}` : ''}`}>{statusLabel(status)}</span></div>
+              <div className="mission-card__header"><div><p className="eyebrow">Daily job #{mission.dailySequence || 1}</p><h3>{details.farmerName || 'Farmer'}{details.cropType ? ` — ${details.cropType}` : ''}</h3></div><span className={`status-badge ${statusTone(status) ? `status-badge--${statusTone(status)}` : ''}`}>{statusLabel(status)}</span></div>
               <div className="mission-card__details">
                 <div className="mission-card__detail"><span>Location</span><strong><LocationLink latitude={details.latitude} longitude={details.longitude} address={details.farmerAddress} centerName={details.matchedCenter?.name} farmerName={details.farmerName} fallback="Mission field location" /></strong></div>
                 <div className="mission-card__detail"><span>Expected area</span><strong>{mission.expectedAcreage} acres</strong></div>
                 <div className="mission-card__detail"><span>Aircraft</span><strong>{mission.drone?.serialNumber || mission.droneId}</strong></div>
+                <div className="mission-card__detail"><span>Crew</span><strong>{mission.pilot?.name || 'Primary Pilot'} + {mission.copilot?.name || 'Legacy assignment'}</strong></div>
+                <div className="mission-card__detail"><span>LMV</span><strong>{mission.lmv?.registrationNo || 'Not recorded'}</strong></div>
               </div>
               <div className="mission-actions">
                 {status === 'SCHEDULED' && <button className="submit-btn" onClick={() => void sendOrQueue({ assignmentId: mission.id, url: `/api/assignments/${mission.id}/accept`, kind: 'mission-state' }, 'PILOT_ACCEPTED')}>Accept mission</button>}

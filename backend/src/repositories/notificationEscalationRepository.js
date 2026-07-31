@@ -5,6 +5,7 @@ const include = {
     include: {
       lead: true,
       pilot: { select: { id: true, name: true, email: true, phone: true, role: true, preferredLanguage: true, homeCenterId: true, pilotLicenseExpiry: true } },
+      copilot: { select: { id: true, name: true, email: true, phone: true, role: true, preferredLanguage: true, homeCenterId: true, pilotLicenseExpiry: true } },
       drone: true,
     },
   },

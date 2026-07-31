@@ -9,6 +9,7 @@ let baseUrl;
 let fleetManager;
 let sales;
 let pilot;
+let copilot;
 const runId = `${process.pid}-${Date.now()}`;
 const ids = { centers: [], users: [], drones: [], lmvs: [], leads: [], assignments: [], payments: [] };
 
@@ -57,12 +58,13 @@ test.before(async () => {
     prisma.operatingCenter.create({ data: { name: `Phase 15 Other ${runId}`, latitude: 12, longitude: 77, radiusKm: 50 } }),
   ]);
   ids.centers.push(center.id, otherCenter.id);
-  [fleetManager, sales, pilot] = await Promise.all([
+  [fleetManager, sales, pilot, copilot] = await Promise.all([
     prisma.user.create({ data: { name: 'Phase 15 Fleet', email: `phase15-fleet-${runId}@example.test`, passwordHash: 'test', role: 'FLEET_MANAGER' } }),
     prisma.user.create({ data: { name: 'Phase 15 Sales', email: `phase15-sales-${runId}@example.test`, passwordHash: 'test', role: 'SALES' } }),
     prisma.user.create({ data: { name: 'Phase 15 Pilot', email: `phase15-pilot-${runId}@example.test`, passwordHash: 'test', role: 'PILOT', homeCenterId: center.id, pilotLicenseExpiry: new Date('2027-01-01') } }),
+    prisma.user.create({ data: { name: 'Phase 15 Copilot', email: `phase15-copilot-${runId}@example.test`, passwordHash: 'test', role: 'PILOT', homeCenterId: center.id, pilotLicenseExpiry: new Date('2027-01-01') } }),
   ]);
-  ids.users.push(fleetManager.id, sales.id, pilot.id);
+  ids.users.push(fleetManager.id, sales.id, pilot.id, copilot.id);
 });
 
 test('LMV management APIs enforce role, validation, and coordinate-free audit', async () => {
@@ -111,21 +113,21 @@ test('manual scheduling requires an eligible same-centre LMV and releases it on 
   const missingLmv = await fetch(`${baseUrl}/api/assignments/manual`, {
     method: 'POST',
     headers: auth(fleetManager),
-    body: JSON.stringify({ leadId: lead.id, pilotId: pilot.id, droneId: drone.id, scheduledDate }),
+    body: JSON.stringify({ leadId: lead.id, pilotId: pilot.id, copilotId: copilot.id, droneId: drone.id, scheduledDate }),
   });
   assert.equal(missingLmv.status, 400);
 
   const wrongCenter = await fetch(`${baseUrl}/api/assignments/manual`, {
     method: 'POST',
     headers: auth(fleetManager),
-    body: JSON.stringify({ leadId: lead.id, pilotId: pilot.id, droneId: drone.id, lmvId: otherLmv.id, scheduledDate }),
+    body: JSON.stringify({ leadId: lead.id, pilotId: pilot.id, copilotId: copilot.id, droneId: drone.id, lmvId: otherLmv.id, scheduledDate }),
   });
   assert.equal(wrongCenter.status, 409);
 
   const blocked = await fetch(`${baseUrl}/api/assignments/manual`, {
     method: 'POST',
     headers: auth(fleetManager),
-    body: JSON.stringify({ leadId: lead.id, pilotId: pilot.id, droneId: drone.id, lmvId: maintenanceLmv.id, scheduledDate }),
+    body: JSON.stringify({ leadId: lead.id, pilotId: pilot.id, copilotId: copilot.id, droneId: drone.id, lmvId: maintenanceLmv.id, scheduledDate }),
   });
   assert.equal(blocked.status, 409);
 
@@ -145,7 +147,7 @@ test('manual scheduling requires an eligible same-centre LMV and releases it on 
   const inactivePilot = await fetch(`${baseUrl}/api/assignments/manual`, {
     method: 'POST',
     headers: auth(fleetManager),
-    body: JSON.stringify({ leadId: lead.id, pilotId: pilot.id, droneId: drone.id, lmvId: lmv.id, scheduledDate }),
+    body: JSON.stringify({ leadId: lead.id, pilotId: pilot.id, copilotId: copilot.id, droneId: drone.id, lmvId: lmv.id, scheduledDate }),
   });
   assert.equal(inactivePilot.status, 409);
   await prisma.user.update({ where: { id: pilot.id }, data: { active: true } });
@@ -153,7 +155,7 @@ test('manual scheduling requires an eligible same-centre LMV and releases it on 
   const createdResponse = await fetch(`${baseUrl}/api/assignments/manual`, {
     method: 'POST',
     headers: auth(fleetManager),
-    body: JSON.stringify({ leadId: lead.id, pilotId: pilot.id, droneId: drone.id, lmvId: lmv.id, scheduledDate }),
+    body: JSON.stringify({ leadId: lead.id, pilotId: pilot.id, copilotId: copilot.id, droneId: drone.id, lmvId: lmv.id, scheduledDate }),
   });
   const created = await createdResponse.json();
   assert.equal(createdResponse.status, 201, JSON.stringify(created));

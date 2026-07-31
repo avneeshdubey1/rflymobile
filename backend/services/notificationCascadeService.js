@@ -27,7 +27,8 @@ async function closePilotAssignmentNotifications(pilotId, leadId) {
 
 async function start(assignment) {
   const [, smsAt] = timers();
-  await notificationRepository.create({ type: 'PILOT_ASSIGNMENT', recipientId: assignment.pilotId, leadId: assignment.leadId, message: `New assignment ${assignment.id} scheduled for ${assignment.scheduledDate.toISOString()}.` });
+  const recipients = [assignment.pilotId, assignment.copilotId].filter(Boolean);
+  await Promise.all(recipients.map((recipientId) => notificationRepository.create({ type: 'PILOT_ASSIGNMENT', recipientId, leadId: assignment.leadId, message: `New crew assignment ${assignment.id}, job ${assignment.dailySequence}, scheduled for ${assignment.scheduledDate.toISOString()}.` })));
   const escalation = await notificationEscalationRepository.startForAssignment({
     assignmentId: assignment.id,
     stage: 'PUSH_SENT',
@@ -39,14 +40,16 @@ async function start(assignment) {
 
 async function sendSms(escalation, now) {
   const [, smsAt, callAt] = timers();
-  await notificationRepository.create({ type: 'PILOT_SMS', recipientId: escalation.assignment.pilotId, leadId: escalation.assignment.leadId, message: `SMS fallback: please accept assignment ${escalation.assignment.id}.` });
+  const recipients = [escalation.assignment.pilotId, escalation.assignment.copilotId].filter(Boolean);
+  await Promise.all(recipients.map((recipientId) => notificationRepository.create({ type: 'PILOT_SMS', recipientId, leadId: escalation.assignment.leadId, message: `SMS fallback: please accept crew assignment ${escalation.assignment.id}.` })));
   await auditLogRepository.create({ entityType: 'Assignment', entityId: escalation.assignment.id, action: 'PILOT_SMS_SENT' });
   return notificationEscalationRepository.update(escalation.id, { stage: 'SMS_SENT', nextActionAt: new Date(now.getTime() + (callAt - smsAt)) });
 }
 
 async function createCallTask(escalation, now) {
   const [, , callAt, reassignAt] = timers();
-  await createFleetNotifications('DISPATCH_CALL_TASK', escalation.assignment.leadId, `Call ${escalation.assignment.pilot.name} about unaccepted assignment ${escalation.assignment.id}. This is a human dispatch task, not an automated call.`);
+  const crewNames = [escalation.assignment.pilot?.name, escalation.assignment.copilot?.name].filter(Boolean).join(' and ');
+  await createFleetNotifications('DISPATCH_CALL_TASK', escalation.assignment.leadId, `Call ${crewNames || 'the assigned crew'} about unaccepted assignment ${escalation.assignment.id}. This is a human dispatch task, not an automated call.`);
   await auditLogRepository.create({ entityType: 'Assignment', entityId: escalation.assignment.id, action: 'DISPATCH_CALL_TASK_CREATED' });
   return notificationEscalationRepository.update(escalation.id, { stage: 'CALL_TASK_CREATED', nextActionAt: new Date(now.getTime() + (reassignAt - callAt)) });
 }

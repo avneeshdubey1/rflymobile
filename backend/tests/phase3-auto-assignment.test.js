@@ -29,7 +29,7 @@ test('auto-assignment schedules an eligible pilot and escalates through reassign
   const center = await createCenter('Phase 3 Cascade Center');
   const managers = await prisma.user.findMany({ where: { role: 'FLEET_MANAGER' }, take: 1 });
   assert.equal(managers.length, 1);
-  const pilots = await Promise.all(['A', 'B'].map(async (suffix) => {
+  const pilots = await Promise.all(['A', 'B', 'C', 'D'].map(async (suffix) => {
     const pilot = await prisma.user.create({ data: { name: `Phase 3 Pilot ${suffix}`, email: `phase3-pilot-${suffix}@example.test`, passwordHash: 'test', role: 'PILOT', homeCenterId: center.id, pilotLicenseExpiry: new Date('2027-01-01') } });
     ids.users.push(pilot.id);
     return pilot;
@@ -71,8 +71,8 @@ test('auto-assignment schedules an eligible pilot and escalates through reassign
 
 test('missing weather data fails open and a lack of candidates lands in the manual queue', async () => {
   const center = await createCenter('Phase 3 Fail-Open Center');
-  const pilot = await prisma.user.create({ data: { name: 'Phase 3 Fail-open Pilot', email: 'phase3-fail-open@example.test', passwordHash: 'test', role: 'PILOT', homeCenterId: center.id, pilotLicenseExpiry: new Date('2027-01-01') } });
-  ids.users.push(pilot.id);
+  const failOpenPilots = await Promise.all(['Primary', 'Copilot'].map((name) => prisma.user.create({ data: { name: `Phase 3 Fail-open ${name}`, email: `phase3-fail-open-${name.toLowerCase()}@example.test`, passwordHash: 'test', role: 'PILOT', homeCenterId: center.id, pilotLicenseExpiry: new Date('2027-01-01') } })));
+  ids.users.push(...failOpenPilots.map((pilot) => pilot.id));
   const drone = await prisma.drone.create({ data: { model: 'Test', serialNumber: 'PHASE3-FAILOPEN', status: 'AVAILABLE', homeCenterId: center.id, airworthinessExpiry: new Date('2027-01-01') } });
   ids.drones.push(drone.id);
   const lmv = await prisma.lMV.create({ data: { registrationNo: `PHASE3-FAILOPEN-LMV-${Date.now()}`, label: 'Phase 3 Fail-open LMV', status: 'AVAILABLE', homeCenterId: center.id } });
@@ -88,7 +88,7 @@ test('missing weather data fails open and a lack of candidates lands in the manu
   const manual = await autoAssignProcessedLead(noCandidateLead.id);
   assert.equal(manual.outcome, 'MANUAL_SCHEDULING');
   assert.equal(manual.lead.status, 'NEEDS_MANUAL_SCHEDULING');
-  assert.match(manual.lead.notes, /No eligible pilot is available/);
+  assert.match(manual.lead.notes, /No eligible two-person Pilot\/Copilot crew is available/);
   weatherService.setForecastProvider(async () => ({ windSpeedKph: 5, precipitationProbability: 5 }));
 });
 

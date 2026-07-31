@@ -8,6 +8,7 @@ router.get('/all', authenticate, authorize('ADMIN', 'FLEET_MANAGER'), assignment
 router.get('/sales-alerts', authenticate, authorize('ADMIN', 'SALES'), assignmentController.getSalesAlerts);
 router.post('/manual', authenticate, authorize('FLEET_MANAGER', 'ADMIN'), assignmentController.createManualAssignment);
 router.put('/:id/reschedule', authenticate, authorize('FLEET_MANAGER', 'ADMIN'), assignmentController.rescheduleAssignment);
+router.patch('/:id/sequence', authenticate, authorize('FLEET_MANAGER', 'ADMIN'), assignmentController.resequenceAssignment);
 router.post('/:id/accept', authenticate, authorize('PILOT'), assignmentController.acceptMission);
 router.post('/:id/start', authenticate, authorize('PILOT'), assignmentController.startMission);
 router.post('/:id/complete', authenticate, authorize('PILOT'), assignmentController.completeMission);

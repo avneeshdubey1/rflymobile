@@ -30,7 +30,7 @@ async function requireAssignment(id) {
 async function recordLocation(assignmentId, actor, latitude, longitude) {
   if (actor?.role !== 'PILOT') throw new Error('Only the assigned pilot can send location updates');
   const assignment = await requireAssignment(assignmentId);
-  if (assignment.pilotId !== actor.userId) throw new Error('This assignment is not assigned to you');
+  if (![assignment.pilotId, assignment.copilotId].filter(Boolean).includes(actor.userId)) throw new Error('This assignment is not assigned to you');
   if (!LIVE_STATUSES.has(assignment.lead.status)) throw new Error('Location updates are available only after acceptance and before completion');
 
   const lat = asCoordinate(latitude, -90, 90, 'Latitude');

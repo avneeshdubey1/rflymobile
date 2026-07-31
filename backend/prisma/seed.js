@@ -97,7 +97,7 @@ async function main() {
   for (const status of ['SCHEDULED', 'PILOT_ACCEPTED', 'IN_PROGRESS', 'COMPLETED']) {
     await prisma.assignment.create({
       data: {
-        leadId: leads[status].id, pilotId: pilot1.id, droneId: drones[0].id, lmvId: lmvs[0].id, scheduledDate: new Date('2026-07-20'), expectedAcreage: 5,
+        leadId: leads[status].id, pilotId: pilot1.id, copilotId: pilot2.id, droneId: drones[0].id, lmvId: lmvs[0].id, scheduledDate: new Date('2026-07-20'), expectedAcreage: 5,
         acceptedAt: status === 'PILOT_ACCEPTED' || status === 'IN_PROGRESS' || status === 'COMPLETED' ? new Date('2026-07-19') : null,
         startedAt: status === 'IN_PROGRESS' || status === 'COMPLETED' ? new Date('2026-07-20T09:00:00Z') : null,
         completedAt: status === 'COMPLETED' ? new Date('2026-07-20T10:00:00Z') : null,

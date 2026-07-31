@@ -458,16 +458,23 @@ try {
     const centerPilot = users.find((user) => user.role === 'PILOT'
       && user.homeCenterId === manualLead.matchedCenterId
       && user.name.startsWith('Browser Audit Pilot')
-      && !assignmentData.data.missions.some((mission) => mission.pilotId === user.id));
+      && !assignmentData.data.missions.some((mission) => mission.pilotId === user.id || mission.copilotId === user.id));
     assert.ok(centerPilot, 'No free same-centre fixture pilot was available for Fleet scheduling');
+    const centerCopilot = users.find((user) => user.role === 'PILOT'
+      && user.id !== centerPilot.id
+      && user.homeCenterId === manualLead.matchedCenterId
+      && user.name.startsWith('Browser Audit Pilot')
+      && !assignmentData.data.missions.some((mission) => mission.pilotId === user.id || mission.copilotId === user.id));
+    assert.ok(centerCopilot, 'No free same-centre fixture Copilot was available for Fleet scheduling');
     await page.locator('#pilot-picker').selectOption(centerPilot.id);
+    await page.locator('#copilot-picker').selectOption(centerCopilot.id);
     const responsePromise = page.waitForResponse((response) => response.url().endsWith('/api/assignments/manual') && response.request().method() === 'POST');
     await card.getByRole('button', { name: /Schedule on selected date/ }).click();
     const response = await responsePromise;
     const data = await response.json();
     assert.equal(response.status(), 201, JSON.stringify(data));
     state.manualAssignment = data.mission;
-    await page.getByRole('alert').getByText(/is scheduled with/i).waitFor();
+    await page.getByRole('alert').getByText(/was added to/i).waitFor();
     return { assignmentId: data.mission.id, pilotId: data.mission.pilotId, droneId: data.mission.droneId };
   });
 
