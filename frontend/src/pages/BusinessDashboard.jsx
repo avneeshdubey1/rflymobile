@@ -76,6 +76,7 @@ export default function BusinessDashboard() {
       onTabChange={setActiveTab}
       user={{ name: business.name || business.contactPerson || 'Business User' }}
       onLogout={handleLogout}
+      onRefresh={loadPortal}
     >
       <header className="page-header">
         <div className="page-header__copy">

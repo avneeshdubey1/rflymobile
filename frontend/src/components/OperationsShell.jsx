@@ -1,17 +1,21 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router';
 import OpsIcon from './OpsIcon';
 
 function initials(name) {
   return String(name || 'User').split(/\s+/).slice(0, 2).map((part) => part[0]).join('').toUpperCase();
 }
 
-function OperationsShell({ roleLabel, navItems, activeTab, onTabChange, user, onLogout, children }) {
+function OperationsShell({ roleLabel, navItems, activeTab, onTabChange, user, onLogout, onRefresh, children }) {
   const [signingOut, setSigningOut] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
   const { t } = useTranslation();
+  const navigate = useNavigate();
 
   const handleSignOut = async () => {
     if (!onLogout || signingOut) return;
+    setAccountOpen(false);
     setSigningOut(true);
     try {
       await onLogout();
@@ -47,21 +51,43 @@ function OperationsShell({ roleLabel, navItems, activeTab, onTabChange, user, on
             </button>
           ))}
         </nav>
-
-        <div className="ops-sidebar__footer">
-          <div className="account-chip">
-            <span className="account-chip__avatar">{initials(user?.name)}</span>
-            <span className="account-chip__text"><strong>{user?.name || roleLabel}</strong><small>{roleLabel}</small></span>
-          </div>
-          <button className="sidebar-signout" type="button" onClick={() => void handleSignOut()} disabled={signingOut || !onLogout}>
-            <OpsIcon name="logout" />
-            <span>{signingOut ? t('signing_out', 'Signing out…') : t('sign_out', 'Sign out')}</span>
-          </button>
-        </div>
       </aside>
 
       <main className="ops-main">
-        <div className="ops-main__inner">{children}</div>
+        <div className="ops-main__inner">
+          <div className="ops-account-menu profile-menu">
+            <button
+              type="button"
+              className="profile-trigger"
+              aria-label="Open account profile menu"
+              aria-expanded={accountOpen}
+              onClick={() => setAccountOpen((open) => !open)}
+            >
+              {initials(user?.name).charAt(0)}
+            </button>
+            {accountOpen && (
+              <div className="profile-dropdown">
+                <div className="profile-dropdown__header">
+                  <div className="profile-avatar">{initials(user?.name)}</div>
+                  <div><h4>{user?.name || roleLabel}</h4><p>{roleLabel}</p></div>
+                </div>
+                <hr />
+                <button type="button" className="dropdown-item" onClick={() => { setAccountOpen(false); navigate('/settings'); }}>
+                  <OpsIcon name="users" /> My Profile
+                </button>
+                {onRefresh && (
+                  <button type="button" className="dropdown-item" onClick={() => { setAccountOpen(false); void onRefresh(); }}>
+                    <OpsIcon name="refresh" /> Refresh data
+                  </button>
+                )}
+                <button type="button" className="dropdown-item logout" onClick={() => void handleSignOut()} disabled={signingOut || !onLogout}>
+                  <OpsIcon name="logout" /> {signingOut ? t('signing_out', 'Signing out…') : t('sign_out', 'Sign out')}
+                </button>
+              </div>
+            )}
+          </div>
+          {children}
+        </div>
       </main>
     </div>
   );

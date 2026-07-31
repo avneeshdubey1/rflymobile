@@ -35,7 +35,6 @@ function MarketingDashboard() {
   const [extraDetails, setExtraDetails] = useState({ mandal: '', district: '', fertilizerShop: '', expectedSpraying: '', soilType: '', pesticideBrand: '', cropAge: '' });
   const [processStatus, setProcessStatus] = useState('');
   const [showToast, setShowToast] = useState('');
-  const [showProfileMenu, setShowProfileMenu] = useState(false);
 
   const fetchData = useCallback(async (signal) => {
     try {
@@ -230,15 +229,13 @@ function MarketingDashboard() {
     customers: ['Customer onboarding', 'Customer Registration', 'Register customers, maintain their farm profile, and open their service view.'],
     manual: ['Service request', 'Enter a new lead', 'Record a phone request and validate the farm against the active service area.'],
     process: ['Lead access', 'Incoming leads', 'Review accepted public requests and send complete details to scheduling.'],
-    profile: ['Account', 'Profile', 'View the employee identity and role currently operating this Sales workspace.'],
   };
   const [eyebrow, title, description] = pageCopy[activeTab] || pageCopy.customers;
 
   return (
-    <OperationsShell roleLabel="Sales Dashboard" navItems={navItems} activeTab={activeTab} onTabChange={setActiveTab} user={user} onLogout={logout}>
+    <OperationsShell roleLabel="Sales Dashboard" navItems={navItems} activeTab={activeTab} onTabChange={setActiveTab} user={user} onLogout={logout} onRefresh={() => Promise.all([fetchData(), fetchCustomers(customerSearch)])}>
       <header className="page-header">
         <div className="page-header__copy"><p className="eyebrow">{eyebrow}</p><h1>{title}</h1><p>{description}</p></div>
-        <div className="page-header__actions"><div className="profile-menu"><button type="button" className="profile-trigger" aria-label="Open employee profile menu" aria-expanded={showProfileMenu} onClick={() => setShowProfileMenu((open) => !open)}>{user?.name?.charAt(0)?.toUpperCase() || 'S'}</button>{showProfileMenu && <div className="profile-dropdown"><div className="profile-dropdown__header"><div className="profile-avatar">{user?.name?.charAt(0)?.toUpperCase() || 'S'}</div><div><h4>{user?.name || 'Sales employee'}</h4><p>Sales Executive</p></div></div><hr /><button type="button" className="dropdown-item" onClick={() => { setActiveTab('profile'); setShowProfileMenu(false); }}><OpsIcon name="users" /> My Profile</button><button type="button" className="dropdown-item" onClick={() => { void fetchData(); setShowProfileMenu(false); }}><OpsIcon name="refresh" /> Refresh data</button><button type="button" className="dropdown-item logout" onClick={() => void logout()}><OpsIcon name="logout" /> Sign Out</button></div>}</div></div>
       </header>
 
       {showToast && <div role="status" className="notice notice--warning"><span>{showToast}</span><button className="notice__close" type="button" aria-label="Dismiss message" onClick={() => setShowToast('')}>×</button></div>}
@@ -329,15 +326,6 @@ function MarketingDashboard() {
         </section>
       )}
 
-      {activeTab === 'profile' && (
-        <section className="panel panel--raised profile-summary">
-          <div className="panel-header"><div className="panel-header__title"><p className="eyebrow">Employee profile</p><h2>{user?.name || 'Sales employee'}</h2><p>Your authenticated work identity.</p></div></div>
-          <div className="panel-body data-stack">
-            <div className="data-row"><div className="data-row__main"><span className="data-row__title">Work email</span><span className="data-row__meta">{user?.email || 'Not available'}</span></div></div>
-            <div className="data-row"><div className="data-row__main"><span className="data-row__title">Role</span><span className="status-badge status-badge--success">Sales Executive</span></div></div>
-          </div>
-        </section>
-      )}
     </OperationsShell>
   );
 }
