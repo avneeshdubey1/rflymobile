@@ -16,6 +16,7 @@ const SUMMER_CROPS = [
 ];
 
 const SUBSCRIPTION_YEARS = ['2026-27', '2027-28'];
+const localMobileNumber = (value) => String(value || '').replace(/\D/g, '').slice(-10);
 
 const initialForm = {
     farmerName: "",
@@ -93,7 +94,8 @@ function FarmDetails() {
 
     const submitRequest = async (e) => {
         e.preventDefault();
-        if (form.phone.length !== 10) {
+        const normalizedPhone = localMobileNumber(form.phone);
+        if (normalizedPhone.length !== 10) {
             showNotice("error", "Mobile number must be exactly 10 digits.");
             return;
         }
@@ -133,7 +135,7 @@ function FarmDetails() {
 
             const payload = {
                 farmerName: form.farmerName,
-                farmerPhone: form.phone,
+                farmerPhone: normalizedPhone,
                 acreage: form.totalAcres ? parseFloat(form.totalAcres) : undefined,
                 cropType: form.cropType,
                 village: `${form.village}, ${form.district}`,
@@ -230,7 +232,7 @@ function FarmDetails() {
                     ...prev,
 
                     // Basic Details
-                    phone: farmer.phone || "",
+                    phone: localMobileNumber(farmer.phone),
                     farmerName: farmer.displayName || "",
                     farmerOwnership: farmer.ownership === "OWNER" ? "Owner" : farmer.ownership === "TENANT" ? "Tenant" : "",
                     totalAcres: farmer.totalAcres?.toString() || "",
