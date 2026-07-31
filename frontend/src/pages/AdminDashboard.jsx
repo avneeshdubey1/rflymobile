@@ -54,7 +54,7 @@ function AdminDashboard() {
   const [users, setUsers] = useState([]);
   const [drones, setDrones] = useState([]);
   const [adminNotice, setAdminNotice] = useState(null);
-  const [newUser, setNewUser] = useState({ name: '', email: '', password: '', role: 'PILOT' });
+  const [newUser, setNewUser] = useState({ name: '', email: '', phone: '', password: '', role: 'PILOT', homeCenterId: '' });
   //   const [newUser, setNewUser] = useState({
   //   name: '',
   //   email: '',
@@ -78,6 +78,7 @@ function AdminDashboard() {
   const [passwordTarget, setPasswordTarget] = useState(null);
   const [replacementPassword, setPassword] = useState('');
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteError, setDeleteError] = useState('');
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [loading, setLoading] = useState(true);
   const [editingCenterId, setEditingCenterId] = useState(null);
@@ -135,7 +136,7 @@ function AdminDashboard() {
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) { setAdminNotice({ kind: 'error', message: data.error || 'Failed to add user.' }); return; }
-      setNewUser({ name: '', email: '', password: '', role: 'PILOT' });
+      setNewUser({ name: '', email: '', phone: '', password: '', role: 'PILOT', homeCenterId: '' });
       //       setNewUser({
       //   name: '',
       //   email: '',
@@ -168,12 +169,13 @@ function AdminDashboard() {
     try {
       const response = await fetch(`${API}/api/users/delete/${deleteTarget.id}`, { method: 'DELETE' });
       const data = await response.json().catch(() => ({}));
-      if (!response.ok) { setAdminNotice({ kind: 'error', message: data.error || 'The user could not be deleted.' }); return; }
+      if (!response.ok) { setDeleteError(data.error || 'The user could not be deleted.'); return; }
       setAdminNotice({ kind: 'success', message: `${deleteTarget.name} was deleted.` });
       setDeleteTarget(null);
+      setDeleteError('');
       await fetchData();
     } catch {
-      setAdminNotice({ kind: 'error', message: 'The user could not be deleted.' });
+      setDeleteError('The user could not be deleted.');
     }
   };
 
@@ -273,6 +275,20 @@ function AdminDashboard() {
     } catch (err) {
       setAdminNotice({ kind: 'error', message: 'Failed to toggle active status.' });
     }
+  };
+
+  const updatePilotCenter = async (pilotId, homeCenterId) => {
+    try {
+      const response = await fetch(`${API}/api/users/${pilotId}/operating-center`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ homeCenterId }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || 'Pilot center could not be updated.');
+      setAdminNotice({ kind: 'success', message: 'Pilot operating center updated.' });
+      await fetchData();
+    } catch (error) { setAdminNotice({ kind: 'error', message: error.message }); }
   };
 
   // const handleFarmerRegistration = async (e) => {
@@ -552,14 +568,15 @@ useEffect(() => {
                         {account.phone && ` - ${account.phone}`}</span>
                       <span className="status-badge">{statusLabel(account.role)}</span>
                       <span className={`status-badge status-badge--${account.active ? 'success' : 'danger'}`} style={{ marginLeft: '0.5rem' }}>{account.active ? 'Active' : 'Disabled'}</span>
+                      {account.role === 'PILOT' && <label className="input-group"><span>Operating center</span><select value={account.homeCenterId || ''} onChange={(event) => void updatePilotCenter(account.id, event.target.value)}><option value="" disabled>Select center</option>{centers.filter((center) => center.active).map((center) => <option key={center.id} value={center.id}>{center.name}</option>)}</select></label>}
                     </div>
                     {account.role !== 'ADMIN' && account.id !== user?.id && (
                       <div className="data-row__actions">
-                        <button className="action-btn" type="button" onClick={() => toggleUserActive(account.id)}>{account.active ? 'Disable' : 'Enable'}</button>
+                        <button className="action-btn" type="button" onClick={() => toggleUserActive(account.id)}>{account.active ? 'Deactivate login' : 'Reactivate login'}</button>
                         {account.role !== 'FARMER' && (
                           <button className="action-btn" type="button" onClick={() => { setPasswordTarget(account); setPassword(''); }}>Reset password</button>
                         )}
-                        <button className="danger-btn" type="button" onClick={() => setDeleteTarget(account)}>Delete</button>
+                        <button className="danger-btn" type="button" onClick={() => { setDeleteError(''); setDeleteTarget(account); }}>Delete permanently</button>
                       </div>
                     )}
                   </div>
@@ -598,6 +615,7 @@ useEffect(() => {
                 <div className="input-group"><label htmlFor="new-user-role">Role</label><select id="new-user-role" value={newUser.role} onChange={(event) => setNewUser({ ...newUser, role: event.target.value })}>
                   <option value="ADMIN">Administrator</option>
                   <option value="PILOT">Pilot</option><option value="SALES">Sales Executive</option><option value="FLEET_MANAGER">Fleet Manager</option></select></div>
+                {newUser.role === 'PILOT' && <div className="input-group"><label htmlFor="new-user-center">Operating center</label><select id="new-user-center" value={newUser.homeCenterId} onChange={(event) => setNewUser({ ...newUser, homeCenterId: event.target.value })} required><option value="">Select active center</option>{centers.filter((center) => center.active).map((center) => <option key={center.id} value={center.id}>{center.name}</option>)}</select></div>}
                 <div className="form-actions"><button type="submit" className="submit-btn">Create Account</button></div>
               </form>
 
@@ -1013,7 +1031,7 @@ useEffect(() => {
       )}
       {passwordTarget && <div className="modal-backdrop" role="presentation"><section className="modal-card" role="dialog" aria-modal="true" aria-labelledby="password-dialog-title"><div className="modal-card__header"><div><p className="eyebrow">Credential reset</p><h2 id="password-dialog-title">Reset {passwordTarget.name}’s password</h2></div><button className="icon-button" type="button" aria-label="Close password reset" onClick={() => setPasswordTarget(null)}>×</button></div><form className="form-stack" onSubmit={submitPasswordReset}><div className="input-group"><label htmlFor="replacement-password">New temporary password</label><input id="replacement-password" type="password" value={replacementPassword} onChange={(event) => setPassword(event.target.value)} minLength={12} maxLength={128} autoComplete="new-password" required /><span className="field-hint">The application stores only a bcrypt hash.</span></div><div className="button-row button-row--end"><button type="button" className="action-btn" onClick={() => setPasswordTarget(null)}>Cancel</button><button type="submit" className="submit-btn">Update password</button></div></form></section></div>}
 
-      {deleteTarget && <div className="modal-backdrop" role="presentation"><section className="modal-card" role="alertdialog" aria-modal="true" aria-labelledby="delete-dialog-title"><div className="modal-card__header"><div><p className="eyebrow">Confirm deletion</p><h2 id="delete-dialog-title">Delete {deleteTarget.name}?</h2></div></div><p className="muted">This account will be removed only if it is not linked to protected operational records.</p><div className="button-row button-row--end"><button type="button" className="action-btn" onClick={() => setDeleteTarget(null)}>Cancel</button><button type="button" className="danger-btn" onClick={() => void confirmDeleteUser()}>Delete account</button></div></section></div>}
+      {deleteTarget && <div className="modal-backdrop" role="presentation"><section className="modal-card" role="alertdialog" aria-modal="true" aria-labelledby="delete-dialog-title"><div className="modal-card__header"><div><p className="eyebrow">Confirm permanent deletion</p><h2 id="delete-dialog-title">Delete {deleteTarget.name}?</h2></div></div><p className="muted">This account can be deleted only when it is not linked to protected operational records. Otherwise, deactivate its login instead.</p>{deleteError && <div className="notice notice--error" role="alert">{deleteError}</div>}<div className="button-row button-row--end"><button type="button" className="action-btn" onClick={() => { setDeleteTarget(null); setDeleteError(''); }}>Cancel</button><button type="button" className="danger-btn" onClick={() => void confirmDeleteUser()}>Delete permanently</button></div></section></div>}
     </OperationsShell>
 
   );

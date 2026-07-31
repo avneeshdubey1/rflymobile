@@ -126,6 +126,18 @@ function FleetManagerDashboard() {
     } catch (error) { showNotice('error', error.message); }
   };
 
+  const updatePilotCenter = async (pilotId, homeCenterId) => {
+    try {
+      await request(`/api/users/${pilotId}/operating-center`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ homeCenterId }),
+      });
+      showNotice('success', 'Pilot operating center updated.');
+      await fetchData();
+    } catch (error) { showNotice('error', error.message); }
+  };
+
   const handleAddDrone = async (e) => {
     e.preventDefault();
     try {
@@ -203,7 +215,7 @@ function FleetManagerDashboard() {
           {notice && <div role="alert" className={`notice notice--${notice.kind}`}><span>{notice.message}</span><button type="button" className="notice__close" onClick={() => setNotice(null)} aria-label="Dismiss message">×</button></div>}
           <div className="panel panel--raised">
             <div className="panel-header"><div className="panel-header__title"><div className="panel-title-row"><span className="panel-title-icon"><OpsIcon name="users" /></span><h2>Registered Pilots</h2></div><p>{pilots.length} pilot(s).</p></div></div>
-            <div className="data-stack">{pilots.map((pilot) => <div className="data-row" key={pilot.id}><div className="data-row__main"><span className="data-row__title">{pilot.name}</span><span className="data-row__meta">{pilot.email} | Center: {pilot.homeCenter?.name || 'N/A'}</span><span className={`status-badge status-badge--${pilot.active ? 'success' : 'danger'}`}>{pilot.active ? 'Active' : 'Pending Admin Approval'}</span></div></div>)}</div>
+            <div className="data-stack">{pilots.map((pilot) => <div className="data-row" key={pilot.id}><div className="data-row__main"><span className="data-row__title">{pilot.name}</span><span className="data-row__meta">{pilot.email}</span><span className={`status-badge status-badge--${pilot.active ? 'success' : 'danger'}`}>{pilot.active ? 'Active' : 'Pending Admin Approval'}</span></div><div className="data-row__actions"><label className="input-group"><span>Operating center</span><select value={pilot.homeCenterId || ''} onChange={(event) => void updatePilotCenter(pilot.id, event.target.value)}><option value="" disabled>Select center</option>{centers.filter((center) => center.active).map((center) => <option key={center.id} value={center.id}>{center.name}</option>)}</select></label></div></div>)}</div>
           </div>
           <div className="panel panel--raised">
             <div className="panel-header"><div className="panel-header__title"><div className="panel-title-row"><span className="panel-title-icon"><OpsIcon name="plus" /></span><h2>Add Pilot</h2></div><p>Register a new pilot. Requires admin activation.</p></div></div>

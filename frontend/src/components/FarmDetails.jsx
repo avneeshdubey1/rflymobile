@@ -215,23 +215,24 @@ function FarmDetails() {
             return;
         }
         try {
-            const response = await fetch(
-                `${API}/api/farmers/search?phone=${phone}`
+            const response = await fetch(`${API}/api/customers/sales?q=${encodeURIComponent(phone)}`);
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok || !data.success) throw new Error(data.error || "Customer lookup failed");
+            const normalizedPhone = phone.replace(/\D/g, "").slice(-10);
+            const farmer = (data.customers || []).find(
+                (customer) => String(customer.phone || "").replace(/\D/g, "").slice(-10) === normalizedPhone
             );
-            const data = await response.json();
-            if (data.success) {
+            if (farmer) {
                 setFarmerFound(true);
                 setFarmerMessage("");
-
-                const farmer = data.farmer;
 
                 setForm((prev) => ({
                     ...prev,
 
                     // Basic Details
                     phone: farmer.phone || "",
-                    farmerName: farmer.name || "",
-                    farmerOwnership: farmer.ownership || "",
+                    farmerName: farmer.displayName || "",
+                    farmerOwnership: farmer.ownership === "OWNER" ? "Owner" : farmer.ownership === "TENANT" ? "Tenant" : "",
                     totalAcres: farmer.totalAcres?.toString() || "",
 
                     // Kharif
@@ -310,7 +311,8 @@ function FarmDetails() {
             }
         }
         catch (error) {
-            console.error(error);
+            setFarmerFound(false);
+            setFarmerMessage(error.message || "Customer lookup failed.");
         }
     };
 
