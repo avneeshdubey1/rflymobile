@@ -693,6 +693,11 @@ try {
 
   await runCase('UI-01', 'Admin workspace remains usable without page overflow on mobile', async (page) => {
     await login(page, roleUsers.ADMIN, '/admin');
+    assert.equal(await page.locator('.ops-sidebar__footer').count(), 0, 'The shared sidebar must not repeat account and sign-out controls');
+    await page.getByRole('button', { name: /Open account profile menu/i }).click();
+    await page.getByRole('button', { name: /My Profile/i }).waitFor();
+    await page.getByRole('button', { name: /Sign out/i }).waitFor();
+    await page.getByRole('button', { name: /Open account profile menu/i }).click();
     const tabs = ['Fleet Overview', 'My Team', 'Lead Details', 'Team Command Chat', 'Live Pilot GPS'];
     const dimensions = {};
     for (const tab of tabs) {
@@ -715,7 +720,7 @@ try {
       await page.waitForTimeout(120);
       dimensions[tab] = await assertNoPageOverflow(page, `Sales ${tab}`);
     }
-    await page.getByRole('button', { name: /Open employee profile menu/i }).click();
+    await page.getByRole('button', { name: /Open account profile menu/i }).click();
     await page.getByRole('button', { name: /My Profile/i }).click();
     dimensions.Profile = await assertNoPageOverflow(page, 'Sales Profile');
     return dimensions;

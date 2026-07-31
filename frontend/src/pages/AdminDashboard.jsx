@@ -228,10 +228,9 @@ function AdminDashboard() {
   const [eyebrow, title, description] = pageCopy[activeTab];
 
   return (
-    <OperationsShell roleLabel="Operations control" navItems={navItems} activeTab={activeTab} onTabChange={setActiveTab} user={user} onLogout={logout}>
+    <OperationsShell roleLabel="Operations control" navItems={navItems} activeTab={activeTab} onTabChange={setActiveTab} user={user} onLogout={logout} onRefresh={fetchData}>
       <header className="page-header">
         <div className="page-header__copy"><p className="eyebrow">{eyebrow}</p><h1>{title}</h1><p>{description}</p></div>
-        <div className="page-header__actions"><button className="action-btn" type="button" onClick={() => void fetchData()}><OpsIcon name="refresh" /> Refresh data</button></div>
       </header>
 
       {adminNotice && <div role="alert" className={`notice notice--${adminNotice.kind}`}><span>{adminNotice.message}</span><button className="notice__close" type="button" aria-label="Dismiss message" onClick={() => setAdminNotice(null)}>×</button></div>}

@@ -2921,6 +2921,21 @@ tbody tr[aria-selected="true"] {
     position: relative;
 }
 
+.ops-main__inner {
+    position: relative;
+}
+
+.ops-account-menu {
+    position: absolute;
+    top: clamp(1.25rem, 2.4vw, 2.25rem);
+    right: clamp(1.25rem, 2.4vw, 2.25rem);
+    z-index: 100;
+}
+
+.ops-main__inner > .page-header {
+    padding-right: 4rem;
+}
+
 .profile-trigger {
     width: 44px;
     height: 44px;
@@ -2942,7 +2957,7 @@ tbody tr[aria-selected="true"] {
     position: absolute;
     right: 0;
     top: 55px;
-    width: 170px;
+    width: 240px;
     background: #fff;
     border: 1px solid var(--border);
     border-radius: 14px;
