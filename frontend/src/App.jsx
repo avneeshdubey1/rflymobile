@@ -6,6 +6,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import Login from "./pages/Login";
 import LandingPage from "./pages/LandingPage";
 import EmployeeForgotPassword from "./pages/EmployeeForgotPassword";
+import EmployeeRegistration from "./pages/EmployeeRegistration";
 import AdminDashboard from "./pages/AdminDashboard";
 import MarketingDashboard from "./pages/MarketingDashboard";
 import PilotDashboard from "./pages/PilotDashboard";
@@ -46,6 +47,7 @@ function App() {
           {/* Protected Admin Routes */}
           <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
             <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/employee/register" element={<EmployeeRegistration />} />
           </Route>
 
           {/* Protected Sales/Marketing Routes */}

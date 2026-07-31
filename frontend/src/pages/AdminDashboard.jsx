@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router';
 import { useAuth } from '../context/useAuth';
 import OperationsShell from '../components/OperationsShell';
 import OpsIcon from '../components/OpsIcon';
@@ -40,6 +41,7 @@ const statusTone = (status) => {
 };
 
 function AdminDashboard() {
+  const navigate = useNavigate();
   const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState('fleet');
   const [activeUserTab, setActiveUserTab] = useState('employees');
@@ -307,7 +309,7 @@ function AdminDashboard() {
 
           {activeUserTab === 'employees' && (
             <div className="panel panel--raised">
-              <div className="panel-header"><div className="panel-header__title"><div className="panel-title-row"><span className="panel-title-icon"><OpsIcon name="plus" /></span><h2>Add new employee</h2></div><p>Create a role-scoped work account.</p></div></div>
+              <div className="panel-header"><div className="panel-header__title"><div className="panel-title-row"><span className="panel-title-icon"><OpsIcon name="plus" /></span><h2>Add new employee</h2></div><p>Create a role-scoped work account.</p></div><button type="button" className="action-btn" onClick={() => navigate('/employee/register')}>Open registration form</button></div>
               <form className="panel-body form-stack" onSubmit={handleAddUser}>
                 <div className="input-group"><label htmlFor="new-user-name">Full Name</label><input id="new-user-name" type="text" value={newUser.name} onChange={(event) => setNewUser({ ...newUser, name: event.target.value })} required minLength={2} maxLength={120} /></div>
                 <div className="input-group"><label htmlFor="new-user-email">Work Email</label><input id="new-user-email" type="email" value={newUser.email} onChange={(event) => setNewUser({ ...newUser, email: event.target.value })} required autoComplete="off" /></div>
