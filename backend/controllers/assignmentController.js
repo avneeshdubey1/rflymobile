@@ -35,11 +35,20 @@ exports.createManualAssignment = async (req, res) => {
     const copilotId = req.body.copilotId || req.body.copilot?.id;
     const droneId = req.body.droneId;
     const lmvId = req.body.lmvId;
-    const [storedLead, pilot, copilot, drone, lmv] = await Promise.all([leadRepository.findById(leadId), userRepository.findById(pilotId), userRepository.findById(copilotId), droneRepository.findById(droneId), lmvId ? lmvRepository.findById(lmvId) : null]);
+    const storedLead = leadId ? await leadRepository.findById(leadId) : null;
     if (!storedLead) return res.status(400).json({ error: 'A valid lead is required' });
     let lead = storedLead;
     if (!['PROCESSED', 'NEEDS_MANUAL_SCHEDULING'].includes(lead.status)) return res.status(409).json({ error: 'Only processed or manual-scheduling leads can be assigned' });
     lead = await revalidateForScheduling(lead, { actorId: req.auth.userId });
+    if (!pilotId || !copilotId || !droneId || !lmvId) {
+      return res.status(400).json({ error: 'A valid primary Pilot, Copilot, drone, and LMV are required' });
+    }
+    const [pilot, copilot, drone, lmv] = await Promise.all([
+      userRepository.findById(pilotId),
+      userRepository.findById(copilotId),
+      droneRepository.findById(droneId),
+      lmvRepository.findById(lmvId),
+    ]);
     if (!pilot || !copilot || !drone || !lmv) return res.status(400).json({ error: 'A valid primary Pilot, Copilot, drone, and LMV are required' });
     if (pilot.id === copilot.id) return res.status(409).json({ error: 'Primary Pilot and Copilot must be different people' });
     if (pilot.role !== 'PILOT' || !pilot.active || pilot.archivedAt || pilot.homeCenterId !== lead.matchedCenterId) {

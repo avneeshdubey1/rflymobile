@@ -9,6 +9,7 @@ let server;
 let baseUrl;
 let sales;
 let pilot;
+let copilot;
 let center;
 let assignment;
 let scheduledLead;
@@ -31,11 +32,12 @@ test.before(async () => {
   await new Promise((resolve) => server.once('listening', resolve));
   baseUrl = `http://127.0.0.1:${server.address().port}`;
   center = await prisma.operatingCenter.create({ data: { name: `Phase 7 Centre ${runId}`, latitude: 11, longitude: 76, radiusKm: 50 } });
-  [sales, pilot] = await Promise.all([
+  [sales, pilot, copilot] = await Promise.all([
     prisma.user.create({ data: { name: 'Phase 7 Sales', email: `phase7-sales-${runId}@example.test`, passwordHash: 'test', role: 'SALES' } }),
     prisma.user.create({ data: { name: 'Phase 7 Pilot', email: `phase7-pilot-${runId}@example.test`, passwordHash: 'test', role: 'PILOT', homeCenterId: center.id } }),
+    prisma.user.create({ data: { name: 'Phase 7 Copilot', email: `phase7-copilot-${runId}@example.test`, passwordHash: 'test', role: 'PILOT', homeCenterId: center.id } }),
   ]);
-  ids.users.push(sales.id, pilot.id);
+  ids.users.push(sales.id, pilot.id, copilot.id);
   const drone = await prisma.drone.create({ data: { model: 'Test', serialNumber: `PHASE7-DRONE-${runId}`, status: 'AVAILABLE', homeCenterId: center.id, airworthinessExpiry: new Date('2027-01-01') } });
   ids.drones.push(drone.id);
   const lmv = await prisma.lMV.create({ data: { registrationNo: `PHASE7-LMV-${runId}`, label: 'Phase 7 LMV', status: 'AVAILABLE', homeCenterId: center.id, capacity: 1 } });
