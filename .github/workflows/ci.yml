@@ -118,7 +118,21 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          docker compose --env-file "$DEPLOY_ENV" -f compose.production.yml up --detach --build --wait --wait-timeout 180
+          for attempt in 1 2 3; do
+            if docker compose --env-file "$DEPLOY_ENV" -f compose.production.yml pull db \
+              && docker compose --env-file "$DEPLOY_ENV" -f compose.production.yml build; then
+              break
+            fi
+            if [ "$attempt" -eq 3 ]; then
+              echo "Container image preparation failed after $attempt attempts." >&2
+              exit 1
+            fi
+            delay=$((attempt * 10))
+            echo "Container registry request failed; retrying in ${delay}s (attempt $((attempt + 1))/3)." >&2
+            sleep "$delay"
+          done
+
+          docker compose --env-file "$DEPLOY_ENV" -f compose.production.yml up --detach --no-build --wait --wait-timeout 180
 
           curl --fail --silent --show-error http://127.0.0.1:18080/healthz | grep -q '"status":"ok"'
           curl --fail --silent --show-error \
