@@ -34,7 +34,6 @@ function App() {
           {/* <Route path="/" element={<Navigate to="/farmer/login" replace />} /> */}
           <Route path="/" element={<Navigate to="/login" replace />} />
           <Route path="/login" element={<Login />} />
-          <Route path="/employee/register" element={<EmployeeRegistration />} />
           {/* <Route path="/farmer/login" element={<FarmerLogin />} />
           <Route path="/farmer/register" element={<FarmerRegister />} /> */}
           <Route path="/success" element={<RegistrationSuccess />} />
@@ -48,6 +47,7 @@ function App() {
           {/* Protected Admin Routes */}
           <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
             <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/employee/register" element={<EmployeeRegistration />} />
           </Route>
 
           {/* Protected Sales/Marketing Routes */}

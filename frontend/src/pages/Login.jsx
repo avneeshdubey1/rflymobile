@@ -131,22 +131,6 @@ function Login() {
               )}
             </button>
           </form>
-          <div style={{ marginTop: "18px", textAlign: "center" }}>
-            <p>
-              New Employee?{" "}
-              <span
-                onClick={() => navigate("/employee/register")}
-                style={{
-                  color: "#2e7d32",
-                  fontWeight: "600",
-                  cursor: "pointer",
-                  textDecoration: "underline",
-                }}
-              >
-                Register as an Employee
-              </span>
-            </p>
-          </div>
           {/* <button type="button" className="back-link" onClick={() => navigate('/')}>{t('return_to_service', '← Return to service request')}</button> */}
         </div>
       </section>

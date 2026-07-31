@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
 import LanguageSelector from "../components/LanguageSelector";
+import { API_URL as API } from "../config";
 
 export default function EmployeeRegistration() {
     const navigate = useNavigate();
@@ -10,6 +11,7 @@ export default function EmployeeRegistration() {
     const [success, setSuccess] = useState("");
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+    const [centers, setCenters] = useState([]);
     const [form, setForm] = useState({
         name: "",
         email: "",
@@ -17,7 +19,20 @@ export default function EmployeeRegistration() {
         role: "",
         password: "",
         confirmPassword: "",
+        homeCenterId: "",
     });
+
+    useEffect(() => {
+        let active = true;
+        fetch(`${API}/api/centers/all`)
+            .then(async (response) => {
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok || !data.success) throw new Error(data.error || "Failed to load operating centers");
+                if (active) setCenters((data.centers || []).filter((center) => center.active));
+            })
+            .catch((requestError) => { if (active) setError(requestError.message); });
+        return () => { active = false; };
+    }, []);
 
     const handleChange = (e) => {
         setForm({
@@ -44,7 +59,7 @@ export default function EmployeeRegistration() {
         try {
             setBusy(true);
             const response = await fetch(
-                "http://localhost:5000/api/auth/register",
+                `${API}/api/users/add`,
                 {
                     method: "POST",
                     headers: {
@@ -52,21 +67,20 @@ export default function EmployeeRegistration() {
                     },
                     body: JSON.stringify({
                         name: form.name,
-                        employeeId: form.employeeId,
                         email: form.email,
                         phone: form.phone,
                         role: form.role,
-                        department: form.department,
-                        password: form.password
+                        password: form.password,
+                        homeCenterId: form.role === "PILOT" ? form.homeCenterId : undefined,
                     })
                 }
             );
             const data = await response.json();
             if (!response.ok) {
-                throw new Error(data.message || "Registration failed");
+                throw new Error(data.error || data.message || "Registration failed");
             }
             setSuccess("Employee account created successfully. Redirecting to login...");
-            setTimeout(() => { navigate("/login"); }, 1500);
+            setTimeout(() => { navigate("/admin"); }, 1500);
         }
         catch (error) {
             setError(error.message || "Registration failed");
@@ -186,9 +200,19 @@ export default function EmployeeRegistration() {
                                     <option value="">Select Role  </option>
                                     <option value="ADMIN">Admin  </option>
                                     <option value="SALES"> Sales Executive </option>
+                                    <option value="FLEET_MANAGER"> Fleet Manager </option>
                                     <option value="PILOT"> Pilot </option>
                                 </select>
                             </div>
+                            {form.role === "PILOT" && (
+                                <div className="input-group" style={{ marginTop: "10px" }}>
+                                    <label>Operating Center</label>
+                                    <select name="homeCenterId" value={form.homeCenterId} onChange={handleChange} required disabled={busy}>
+                                        <option value="">Select active center</option>
+                                        {centers.map((center) => <option key={center.id} value={center.id}>{center.name}</option>)}
+                                    </select>
+                                </div>
+                            )}
                             <div className="input-group" style={{ marginTop: "10px" }}>
                                 <label> Password  </label>
                                 <div style={{ position: "relative" }}>

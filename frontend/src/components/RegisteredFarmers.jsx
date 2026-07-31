@@ -18,12 +18,11 @@ function RegisteredFarmers() {
     const fetchFarmers = async () => {
         setLoading(true);
         try {
-            const response = await fetch(`${API}/api/farmers`);
-            const data = await response.json();
+            const response = await fetch(`${API}/api/customers/sales?q=`);
+            const data = await response.json().catch(() => ({}));
 
-            if (data.success) {
-                setFarmers(data.farmers);
-            }
+            if (!response.ok || !data.success) throw new Error(data.error || "Failed to fetch customers");
+            setFarmers(data.customers || []);
         } catch (error) {
             console.error("Failed to fetch farmers:", error);
         } finally {
@@ -34,7 +33,7 @@ function RegisteredFarmers() {
         const value = search.toLowerCase();
 
         return (
-            farmer.name?.toLowerCase().includes(value) ||
+            farmer.displayName?.toLowerCase().includes(value) ||
             farmer.phone?.includes(value)
         );
     });
@@ -116,7 +115,7 @@ function RegisteredFarmers() {
                             ) : (
                                 currentFarmers.map((farmer) => (
                                     <tr key={farmer.id}>
-                                        <td>{farmer.name}</td>
+                                        <td>{farmer.displayName}</td>
 
                                         <td>{farmer.phone}</td>
 
@@ -156,7 +155,7 @@ function RegisteredFarmers() {
                                                 : "-"}
                                         </td>
 
-                                        <td>{farmer.registeredByName || farmer.registeredBy || "-"}</td>
+                                        <td>Internal staff</td>
 
                                         <td>
                                             {new Date(farmer.createdAt).toLocaleDateString()}
