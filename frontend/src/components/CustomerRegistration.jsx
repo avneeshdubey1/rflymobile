@@ -82,11 +82,10 @@ function CustomerRegistration({ API, user, confirmModal, setConfirmModal }) {
         try {
             const payload = {
                 ...farmerData,
-                registeredBy: user?.email,
-                registeredByName: user?.name,
-                confirmed,
+                displayName: farmerData.name,
+                ownership: farmerData.ownership.toUpperCase(),
             };
-            const response = await fetch(`${API}/api/farmers/register`, {
+            const response = await fetch(`${API}/api/customers/sales`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload),
@@ -106,13 +105,13 @@ function CustomerRegistration({ API, user, confirmModal, setConfirmModal }) {
                 }
                 setFarmerNotice({
                     type: "error",
-                    message: data.message || "Customer registration could not be completed.",
+                    message: data.error || data.message || "Customer registration could not be completed.",
                 });
                 return;
             }
 
             setFarmerNotice({ type: "success", message: "Customer registered successfully!" });
-            setFarmerData({ name: "", phone: "", village: "", district: "", state: "" });
+            setFarmerData(initialFarmerData);
         } catch (error) {
             console.error(error);
             setFarmerNotice({ type: "error", message: "An unexpected error occurred. Please try again." });

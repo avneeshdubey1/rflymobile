@@ -49,7 +49,8 @@ function LogbookTimelinePanel() {
       const response = await fetch(`${API}/api/audit-log?entityType=Lead&entityId=${encodeURIComponent(lead.id)}`);
       const data = await response.json().catch(() => ({}));
       if (!response.ok || !data.success) throw new Error(data.error || 'Could not load this timeline');
-      setEntries(data.entries || []);
+      const currentlyVisibleActions = new Set(['CREATED', 'GEOFENCE_VALIDATED', 'GEOFENCE_CHECKED']);
+      setEntries((data.entries || []).filter((entry) => currentlyVisibleActions.has(entry.action)));
     } catch (error) { setNotice(error.message); }
     finally { setLoadingTimeline(false); }
   }, []);
