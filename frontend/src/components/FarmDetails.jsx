@@ -137,12 +137,15 @@ function FarmDetails() {
                 setBusy(false);
                 return;
             }
+            const selectedCrop = form[cropField] === 'Others'
+                ? form[cropOtherField].trim()
+                : form[cropField];
 
             const payload = {
                 farmerName: form.farmerName,
                 farmerPhone: normalizedPhone,
                 acreage: form.totalAcres ? parseFloat(form.totalAcres) : undefined,
-                cropType: form.cropType,
+                cropType: selectedCrop,
                 village: `${form.village}, ${form.district}`,
                 mapsLink: form.mapsLink,
                 soilType: form.soilType,
