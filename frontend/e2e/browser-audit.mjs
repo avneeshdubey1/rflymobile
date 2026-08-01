@@ -351,6 +351,9 @@ try {
       await page.evaluate(() => sessionStorage.clear());
       await login(page, user, route);
       await page.getByText(text, { exact: false }).first().waitFor();
+      await page.goBack();
+      await page.waitForURL(`**${route}`);
+      assert.ok(page.url().endsWith(route), `Browser Back exposed the login page for ${user.role}: ${page.url()}`);
     }
   });
 
