@@ -1,0 +1,21 @@
+name: production-source-policy
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  require-staging-source:
+    name: require-staging-source
+    runs-on: ubuntu-latest
+    steps:
+      - name: Reject non-staging production pull requests
+        shell: bash
+        run: |
+          if [ "${{ github.head_ref }}" != "staging" ]; then
+            echo "Production pull requests must originate from staging." >&2
+            exit 1
+          fi
