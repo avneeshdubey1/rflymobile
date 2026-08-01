@@ -77,16 +77,16 @@ function LogbookTimelinePanel() {
   }, [visibleLeads, currentPage]);
 
 const getSeasonCrop = (lead) => {
-  switch (lead.season) {
-    case "kharif":
-      return lead.kharifCrop || "-";
-    case "rabi":
-      return lead.rabiCrop || "-";
-    case "summer":
-      return lead.summerCrop || "-";
-    default:
-      return lead.cropType || "-";
-  }
+  if (lead.cropType) return lead.cropType;
+
+  const customer = lead.customer || {};
+  const seasonalCrops = [
+    customer.kharifCrop === 'Others' ? customer.kharifOtherCrop : customer.kharifCrop,
+    customer.rabiCrop === 'Others' ? customer.rabiOtherCrop : customer.rabiCrop,
+    customer.summerCrop === 'Others' ? customer.summerOtherCrop : customer.summerCrop,
+  ].filter(Boolean);
+
+  return [...new Set(seasonalCrops)].join(', ') || '-';
 };
 
   return (
