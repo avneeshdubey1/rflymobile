@@ -2,6 +2,7 @@ import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 import { AuthProvider } from "./context/AuthContext.jsx";
 import ProtectedRoute from "./components/ProtectedRoute";
+import GuestOnlyRoute from "./components/GuestOnlyRoute";
 
 import LandingPage from "./pages/LandingPage";
 import Login from "./pages/Login";
@@ -33,13 +34,13 @@ function App() {
           {/* Public Routes */}
           {/* <Route path="/" element={<Navigate to="/farmer/login" replace />} /> */}
           <Route path="/" element={<Navigate to="/login" replace />} />
-          <Route path="/login" element={<Login />} />
+          <Route path="/login" element={<GuestOnlyRoute><Login /></GuestOnlyRoute>} />
           {/* <Route path="/farmer/login" element={<FarmerLogin />} />
           <Route path="/farmer/register" element={<FarmerRegister />} /> */}
           <Route path="/success" element={<RegistrationSuccess />} />
           
           {/* Business Routes */}
-          <Route path="/business/login" element={<B2BLogin />} />
+          <Route path="/business/login" element={<GuestOnlyRoute><B2BLogin /></GuestOnlyRoute>} />
           <Route path="/business/register" element={<B2BRegister />} />
           <Route path="/business/forgot-password" element={<B2BForgotPassword />} />
           <Route path="/business/success" element={<BusinessRegistrationSuccess />} />
