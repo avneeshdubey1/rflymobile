@@ -14,7 +14,17 @@ let sales;
 const auth = (user) => ({ Authorization: `Bearer ${issueToken(user)}`, 'Content-Type': 'application/json' });
 
 async function createScheduledMission(label, leadStatus = 'SCHEDULED') {
-  const drone = await prisma.drone.create({ data: { model: 'Test', serialNumber: `PHASE4-${label}`, status: 'ASSIGNED', homeCenterId: ids.center, airworthinessExpiry: new Date('2027-01-01') } });
+  // const drone = await prisma.drone.create({ data: { model: 'Test', serialNumber: `PHASE4-${label}`, status: 'ASSIGNED', homeCenterId: ids.center, airworthinessExpiry: new Date('2027-01-01') } });
+  const drone = await prisma.drone.create({
+  data: {
+    model: 'Test',
+    serialNumber: `PHASE4-${label}`,
+    uin: `UIN-PHASE4-${label}`,
+    status: 'ASSIGNED',
+    homeCenterId: ids.center,
+    airworthinessExpiry: new Date('2027-01-01'),
+  },
+});
   ids.drones.push(drone.id);
   const lead = await prisma.lead.create({ data: { farmerName: `Phase 4 ${label}`, farmerPhone: `95555${label}`, acreage: 2, intakeChannel: 'MANUAL_SALES', status: leadStatus, latitude: 11, longitude: 76, matchedCenterId: ids.center } });
   ids.leads.push(lead.id);

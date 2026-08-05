@@ -38,7 +38,17 @@ test.before(async () => {
     prisma.user.create({ data: { name: 'Phase 7 Copilot', email: `phase7-copilot-${runId}@example.test`, passwordHash: 'test', role: 'PILOT', homeCenterId: center.id } }),
   ]);
   ids.users.push(sales.id, pilot.id, copilot.id);
-  const drone = await prisma.drone.create({ data: { model: 'Test', serialNumber: `PHASE7-DRONE-${runId}`, status: 'AVAILABLE', homeCenterId: center.id, airworthinessExpiry: new Date('2027-01-01') } });
+  // const drone = await prisma.drone.create({ data: { model: 'Test', serialNumber: `PHASE7-DRONE-${runId}`, status: 'AVAILABLE', homeCenterId: center.id, airworthinessExpiry: new Date('2027-01-01') } });
+  const drone = await prisma.drone.create({
+  data: {
+    model: 'Test',
+    serialNumber: `PHASE7-DRONE-${runId}`,
+    uin: `UIN-PHASE7-3110-${Date.now()}`,
+    status: 'AVAILABLE',
+    homeCenterId: center.id,
+    airworthinessExpiry: new Date('2027-01-01'),
+  },
+});
   ids.drones.push(drone.id);
   const lmv = await prisma.lMV.create({ data: { registrationNo: `PHASE7-LMV-${runId}`, label: 'Phase 7 LMV', status: 'AVAILABLE', homeCenterId: center.id, capacity: 1 } });
   ids.lmvs.push(lmv.id);

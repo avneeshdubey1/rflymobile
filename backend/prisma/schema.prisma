@@ -349,6 +349,7 @@ model Drone {
   type                String?
   model               String
   manufacturer        String?
+  serialNumber        String       @unique
   uin                 String       @unique
   location            String?
   tankCapacity        Float?

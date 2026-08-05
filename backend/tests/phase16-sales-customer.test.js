@@ -57,7 +57,16 @@ test.before(async () => {
   ]);
   ids.users.push(sales.id, admin.id, fleet.id, pilot.id);
   const [drone, lmv] = await Promise.all([
-    prisma.drone.create({ data: { model: 'Phase 16 Drone', serialNumber: `PHASE16-DRONE-${Date.now()}`, homeCenterId: center.id, status: 'AVAILABLE' } }),
+    // prisma.drone.create({ data: { model: 'Phase 16 Drone', serialNumber: `PHASE16-DRONE-${Date.now()}`, homeCenterId: center.id, status: 'AVAILABLE' } }),
+    prisma.drone.create({
+  data: {
+    model: 'Phase 16 Drone',
+    serialNumber: `PHASE16-DRONE-${Date.now()}`,
+    uin: `UIN-PHASE16-${Date.now()}`,
+    homeCenterId: center.id,
+    status: 'AVAILABLE',
+  },
+}),
     prisma.lMV.create({ data: { registrationNo: `PHASE16-LMV-${Date.now()}`, label: 'Phase 16 LMV', homeCenterId: center.id, status: 'AVAILABLE' } }),
   ]);
   ids.drones.push(drone.id);

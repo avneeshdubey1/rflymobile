@@ -51,19 +51,41 @@ test('Admin cannot create a centerless pilot and Fleet can maintain pilot center
   });
   assert.equal(missingCenter.status, 400);
 
-  const createdResponse = await fetch(`${baseUrl}/api/users/add`, {
+  // const createdResponse = await fetch(`${baseUrl}/api/users/add`, {
+  //   method: 'POST',
+  //   headers: auth(admin),
+  //   body: JSON.stringify({
+  //     name: 'Release Pilot',
+  //     email: `release-pilot-${runId}@example.test`,
+  //     password,
+  //     role: 'PILOT',
+  //     homeCenterId: centerA.id,
+  //   }),
+  // });
+
+const createdResponse = await fetch(`${baseUrl}/api/users/add`, {
     method: 'POST',
     headers: auth(admin),
     body: JSON.stringify({
-      name: 'Release Pilot',
-      email: `release-pilot-${runId}@example.test`,
-      password,
-      role: 'PILOT',
-      homeCenterId: centerA.id,
+        name: 'Release Pilot',
+        email: `release-pilot-${runId}@example.test`,
+        password,
+        role: 'PILOT',
+        homeCenterId: centerA.id,
+        idProof: `ID-${runId}`,
+        licenseId: `LIC-${runId}`,
+        addressLine1: 'Test Address',
+        state: 'Andhra Pradesh',
+        city: 'Vijayawada',
+        pincode: '520001'
     }),
-  });
+});
   const created = await createdResponse.json();
-  assert.equal(createdResponse.status, 201, JSON.stringify(created));
+
+  console.log("CREATE PILOT STATUS:", createdResponse.status);
+  console.log("CREATE PILOT RESPONSE:", JSON.stringify(created, null, 2));
+
+  assert.equal(createdResponse.status, 201, JSON.stringify(created)); 
   pilot = created.user;
   assert.equal(pilot.homeCenterId, centerA.id);
 
@@ -117,6 +139,8 @@ test('an active pilot cannot move centers; completion releases fleet without cre
       data: {
         model: 'Release Drone',
         serialNumber: `RELEASE-DRONE-${runId}`,
+        // change 5-8-26
+        uin: `UIN-RELEASE-2950-${Date.now()}`,
         status: 'ASSIGNED',
         homeCenterId: centerB.id,
       },
