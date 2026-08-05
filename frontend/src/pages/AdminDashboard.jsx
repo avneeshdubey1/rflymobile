@@ -19,7 +19,8 @@ import { SkeletonRow, SkeletonCard } from '../components/Skeleton';
 import MyDrones from '../components/MyDrones';
 import AcreageTrend from '../components/AcreageTrend';
 import CustomerRegistration from '../components/CustomerRegistration';
-
+import ManagePilots from '../components/ManagePilots';
+import AssignmentDetails from '../components/AssignmentDetails';
 
 let DefaultIcon = L.icon({
   iconUrl: icon,
@@ -54,27 +55,19 @@ function AdminDashboard() {
   const [users, setUsers] = useState([]);
   const [drones, setDrones] = useState([]);
   const [adminNotice, setAdminNotice] = useState(null);
-  const [newUser, setNewUser] = useState({ name: '', email: '', phone: '', password: '', role: 'PILOT', homeCenterId: '' });
-  //   const [newUser, setNewUser] = useState({
-  //   name: '',
-  //   email: '',
-  //   password: '',
-  //   role: 'ADMIN',   // changed from 'ADMIN'
-  //   firstName: '',
-  //   middleName: '',
-  //   lastName: '',
-  //   idProof: '',
-  //   licenseId: '',
-  //   location: '',
-  //   countryCode: '+91',
-  //   phone: '',
-  //   addressLine1: '',
-  //   addressLine2: '',
-  //   state: '',
-  //   city: '',
-  //   pincode: '',
-  //   assignedDrone: '',
-  // });
+  // const [newUser, setNewUser] = useState({ name: '', email: '', phone: '', password: '', role: 'PILOT', homeCenterId: '' });
+  const [newUser, setNewUser] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    address: '',
+    homeCenterId: '',
+    password: '',
+    confirmPassword: '',
+    role: 'SALES',
+    active: true,
+  });
+
   const [passwordTarget, setPasswordTarget] = useState(null);
   const [replacementPassword, setPassword] = useState('');
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -125,38 +118,64 @@ function AdminDashboard() {
     return () => { window.clearTimeout(initialLoad); controller.abort(); };
   }, [fetchData]);
 
+  // const handleAddUser = async (event) => {
+  //   event.preventDefault();
+  //   setAdminNotice(null);
+  //   try {
+  //     const response = await fetch(`${API}/api/users/add`, {
+  //       method: 'POST',
+  //       headers: { 'Content-Type': 'application/json' },
+  //       body: JSON.stringify(newUser),
+  //     });
+  //     const data = await response.json().catch(() => ({}));
+  //     if (!response.ok) { setAdminNotice({ kind: 'error', message: data.error || 'Failed to add user.' }); return; }
+  //     // setNewUser({ name: '', email: '', phone: '', password: '', role: 'PILOT', homeCenterId: '' });
+
+  //     setNewUser({ name: '', email: '', phone: '', password: '', role: 'PILOT', homeCenterId: '', idProof: '', licenseId: '', addressLine1: '', addressLine2: '', state: '', city: '', pincode: '' });
+  //     //       setNewUser({
+  //     //   name: '',
+  //     //   email: '',
+  //     //   password: '',
+  //     //   role: 'ADMIN',
+  //     //   firstName: '',
+  //     //   middleName: '',
+  //     //   lastName: '',
+  //     //   idProof: '',
+  //     //   licenseId: '',
+  //     //   location: '',
+  //     //   countryCode: '+91',
+  //     //   phone: '',
+  //     //   addressLine1: '',
+  //     //   addressLine2: '',
+  //     //   state: '',
+  //     //   city: '',
+  //     //   pincode: '',
+  //     //   assignedDrone: '',
+  //     // });
+  //     setAdminNotice({ kind: 'success', message: `${data.user.name} can now sign in with their work email.` });
+  //     await fetchData();
+  //   } catch {
+  //     setAdminNotice({ kind: 'error', message: 'The account could not be created. Check the server connection.' });
+  //   }
+  // };
+
   const handleAddUser = async (event) => {
     event.preventDefault();
     setAdminNotice(null);
+    if (newUser.password !== newUser.confirmPassword) {
+      setAdminNotice({ kind: 'error', message: 'Passwords do not match.' });
+      return;
+    }
     try {
+      const { confirmPassword, ...payload } = newUser;
       const response = await fetch(`${API}/api/users/add`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newUser),
+        body: JSON.stringify(payload),
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) { setAdminNotice({ kind: 'error', message: data.error || 'Failed to add user.' }); return; }
-      setNewUser({ name: '', email: '', phone: '', password: '', role: 'PILOT', homeCenterId: '' });
-      //       setNewUser({
-      //   name: '',
-      //   email: '',
-      //   password: '',
-      //   role: 'ADMIN',
-      //   firstName: '',
-      //   middleName: '',
-      //   lastName: '',
-      //   idProof: '',
-      //   licenseId: '',
-      //   location: '',
-      //   countryCode: '+91',
-      //   phone: '',
-      //   addressLine1: '',
-      //   addressLine2: '',
-      //   state: '',
-      //   city: '',
-      //   pincode: '',
-      //   assignedDrone: '',
-      // });
+      setNewUser({ name: '', email: '', phone: '', address: '', homeCenterId: '', password: '', confirmPassword: '', role: 'SALES', active: true });
       setAdminNotice({ kind: 'success', message: `${data.user.name} can now sign in with their work email.` });
       await fetchData();
     } catch {
@@ -341,15 +360,15 @@ function AdminDashboard() {
     return () => clearTimeout(timer);
   }, [farmerNotice]);
 
-useEffect(() => {
+  useEffect(() => {
     if (!farmerNotice) return;
 
     const timer = setTimeout(() => {
-        setFarmerNotice(null);
+      setFarmerNotice(null);
     }, 4500);
 
     return () => clearTimeout(timer);
-}, [farmerNotice]);
+  }, [farmerNotice]);
 
   const handleFarmerRegistration = async (e, confirmed = false) => {
     e.preventDefault();
@@ -415,10 +434,12 @@ useEffect(() => {
     { id: 'centers', label: 'Feasible Regions', icon: 'location' },
     { id: 'farmerRegistration', label: 'Customer Registration', icon: 'user-plus' },
     { id: 'manual', label: 'Enter New Lead', icon: 'plus' },
-    // { id: 'drone', label: 'Drones', icon: 'drone' },
+    { id: 'drone', label: 'Drones', icon: 'drone' },
+    { id: 'pilots', label: 'Pilots', icon: 'users' },
     // { id: 'chat', label: 'Pilot Support Chat', icon: 'chat' },
     // { id: 'payments', label: 'Payment Collection', icon: 'wallet' },
     // { id: 'location', label: 'Live Pilot GPS', icon: 'location' },
+    { id: 'assignments', label: 'Assignments', icon: 'assignment' },
     { id: "registeredFarmers", label: "Registered Customers", icon: "customers" },
     { id: 'logbook', label: 'Lead Details', icon: 'book' },
     { id: 'users', label: 'My Team', icon: 'team' },
@@ -435,7 +456,13 @@ useEffect(() => {
     // chat: ['Support desk', 'Pilot support chat', 'Coordinate directly with field teams and retain the conversation state.'],
     // payments: ['Revenue operations', 'Payment collection', 'Resolve completed missions waiting for settlement.'],
     // location: ['Live operations', 'Pilot GPS', 'View the latest position for accepted and active missions.'],
+    assignments: [
+      'Operations Planning',
+      'Spraying Assignments',
+      'View automatically assigned pilots, co-pilots, drones, date, and schedule details.'
+    ],
     drone: ['Fleet management', 'Drones', 'Add, update, and monitor drones registered to your fleet.'],
+    pilots: ['Fleet management', 'Pilots', 'Manage registered pilots, licenses, and operating centers.'],
     farmerRegistration: ['Customer onboarding', 'Customer Registration', 'Register new Customers and create their accounts.'],
     registeredFarmers: ['Customer records', 'Registered Customers', 'View all registered Customers and their registration details.'],
     profile: ['Account', 'Administrator Profile', 'View and manage your profile, account information, and security settings.'],
@@ -560,32 +587,37 @@ useEffect(() => {
               {loading ? (
                 <SkeletonRow count={4} />
               ) : (
-                users.filter(u => activeUserTab === 'employees' ? u.role !== 'FARMER' : u.role === 'FARMER').map((account) => (
-                  <div className="data-row" key={account.id}>
-                    <div className="data-row__main">
-                      <span className="data-row__title">{account.name}</span>
-                      <span className="data-row__meta">  {account.email}
-                        {account.phone && ` - ${account.phone}`}</span>
-                      <span className="status-badge">{statusLabel(account.role)}</span>
-                      <span className={`status-badge status-badge--${account.active ? 'success' : 'danger'}`} style={{ marginLeft: '0.5rem' }}>{account.active ? 'Active' : 'Disabled'}</span>
-                      {account.role === 'PILOT' && <label className="input-group"><span>Operating center</span><select value={account.homeCenterId || ''} onChange={(event) => void updatePilotCenter(account.id, event.target.value)}><option value="" disabled>Select center</option>{centers.filter((center) => center.active).map((center) => <option key={center.id} value={center.id}>{center.name}</option>)}</select></label>}
+                users
+                  .filter((u) =>
+                    activeUserTab === "employees"
+                      ? ["ADMIN", "SALES", "FLEET_MANAGER"].includes(u.role)
+                      : u.role === "FARMER"
+                  ).map((account) => (
+                    <div className="data-row" key={account.id}>
+                      <div className="data-row__main">
+                        <span className="data-row__title">{account.name}</span>
+                        <span className="data-row__meta">  {account.email}
+                          {account.phone && ` - ${account.phone}`}</span>
+                        <span className="status-badge">{statusLabel(account.role)}</span>
+                        <span className={`status-badge status-badge--${account.active ? 'success' : 'danger'}`} style={{ marginLeft: '0.5rem' }}>{account.active ? 'Active' : 'Disabled'}</span>
+                        {account.role === 'PILOT' && <label className="input-group"><span>Operating center</span><select value={account.homeCenterId || ''} onChange={(event) => void updatePilotCenter(account.id, event.target.value)}><option value="" disabled>Select center</option>{centers.filter((center) => center.active).map((center) => <option key={center.id} value={center.id}>{center.name}</option>)}</select></label>}
+                      </div>
+                      {account.role === 'ADMIN' && account.id === user?.id && (
+                        <div className="data-row__actions">
+                          <button className="action-btn" type="button" onClick={() => { setPasswordTarget(account); setPassword(''); }}>Change my password</button>
+                        </div>
+                      )}
+                      {account.role !== 'ADMIN' && account.id !== user?.id && (
+                        <div className="data-row__actions">
+                          <button className="action-btn" type="button" onClick={() => toggleUserActive(account.id)}>{account.active ? 'Deactivate login' : 'Reactivate login'}</button>
+                          {account.role !== 'FARMER' && (
+                            <button className="action-btn" type="button" onClick={() => { setPasswordTarget(account); setPassword(''); }}>Reset password</button>
+                          )}
+                          <button className="danger-btn" type="button" onClick={() => { setDeleteError(''); setDeleteTarget(account); }}>Delete permanently</button>
+                        </div>
+                      )}
                     </div>
-                    {account.role === 'ADMIN' && account.id === user?.id && (
-                      <div className="data-row__actions">
-                        <button className="action-btn" type="button" onClick={() => { setPasswordTarget(account); setPassword(''); }}>Change my password</button>
-                      </div>
-                    )}
-                    {account.role !== 'ADMIN' && account.id !== user?.id && (
-                      <div className="data-row__actions">
-                        <button className="action-btn" type="button" onClick={() => toggleUserActive(account.id)}>{account.active ? 'Deactivate login' : 'Reactivate login'}</button>
-                        {account.role !== 'FARMER' && (
-                          <button className="action-btn" type="button" onClick={() => { setPasswordTarget(account); setPassword(''); }}>Reset password</button>
-                        )}
-                        <button className="danger-btn" type="button" onClick={() => { setDeleteError(''); setDeleteTarget(account); }}>Delete permanently</button>
-                      </div>
-                    )}
-                  </div>
-                ))
+                  ))
               )}
             </div>
           </div>
@@ -593,7 +625,7 @@ useEffect(() => {
           {activeUserTab === 'employees' && (
             <div className="panel panel--raised">
               <div className="panel-header"><div className="panel-header__title"><div className="panel-title-row"><span className="panel-title-icon"><OpsIcon name="plus" /></span><h2>Add new employee</h2></div><p>Create a role-scoped work account.</p></div></div>
-              <form className="panel-body form-stack" onSubmit={handleAddUser}>
+              {/* <form className="panel-body form-stack" onSubmit={handleAddUser}>
                 <div className="input-group"><label htmlFor="new-user-name">Full Name</label><input id="new-user-name" type="text" value={newUser.name} onChange={(event) => setNewUser({ ...newUser, name: event.target.value })} required minLength={2} maxLength={120} /></div>
                 <div className="input-group"><label htmlFor="new-user-email">Work Email</label><input id="new-user-email" type="email" value={newUser.email} onChange={(event) => setNewUser({ ...newUser, email: event.target.value })} required autoComplete="off" /></div>
                 <div className="input-group">
@@ -621,155 +653,102 @@ useEffect(() => {
                   <option value="PILOT">Pilot</option><option value="SALES">Sales Executive</option><option value="FLEET_MANAGER">Fleet Manager</option></select></div>
                 {newUser.role === 'PILOT' && <div className="input-group"><label htmlFor="new-user-center">Operating center</label><select id="new-user-center" value={newUser.homeCenterId} onChange={(event) => setNewUser({ ...newUser, homeCenterId: event.target.value })} required><option value="">Select active center</option>{centers.filter((center) => center.active).map((center) => <option key={center.id} value={center.id}>{center.name}</option>)}</select></div>}
                 <div className="form-actions"><button type="submit" className="submit-btn">Create Account</button></div>
+              </form> */}
+              <form className="panel-body form-stack" onSubmit={handleAddUser}>
+                <div className="input-group">
+                  <label htmlFor="new-user-name">Full Name</label>
+                  <input id="new-user-name" type="text" value={newUser.name} onChange={(event) => setNewUser({ ...newUser, name: event.target.value })} required minLength={2} maxLength={120} />
+                </div>
+
+                <div className="input-group">
+                  <label htmlFor="new-user-email">Work Email</label>
+                  <input id="new-user-email" type="email" value={newUser.email} onChange={(event) => setNewUser({ ...newUser, email: event.target.value })} required autoComplete="off" />
+                </div>
+
+                <div className="input-group">
+                  <label htmlFor="new-user-phone">Mobile Number</label>
+                  <input
+                    id="new-user-phone"
+                    type="tel"
+                    placeholder="Enter mobile number"
+                    value={newUser.phone || ''}
+                    onChange={(event) => {
+                      const value = event.target.value.replace(/\D/g, "").slice(0, 10);
+                      setNewUser({ ...newUser, phone: value });
+                    }}
+                    maxLength={10}
+                    pattern="[0-9]{10}"
+                    inputMode="numeric"
+                    required
+                  />
+                  {newUser.phone && newUser.phone.length !== 10 && (
+                    <small className="error-text">Mobile number must be exactly 10 digits.</small>
+                  )}
+                </div>
+
+                <div className="input-group">
+                  <label htmlFor="new-user-address">Address</label>
+                  <input id="new-user-address" type="text" value={newUser.address} onChange={(event) => setNewUser({ ...newUser, address: event.target.value })} required />
+                </div>
+
+                <div className="input-group">
+                  <label htmlFor="new-user-location">Location</label>
+                  <select id="new-user-location" value={newUser.homeCenterId} onChange={(event) => setNewUser({ ...newUser, homeCenterId: event.target.value })} required>
+                    <option value="">Select location…</option>
+                    {centers.filter((center) => center.active).map((center) => <option key={center.id} value={center.id}>{center.name}</option>)}
+                  </select>
+                </div>
+
+                <div className="input-group">
+                  <label htmlFor="new-user-role">Role</label>
+                  <select id="new-user-role" value={newUser.role} onChange={(event) => setNewUser({ ...newUser, role: event.target.value })}>
+                    <option value="ADMIN">Admin</option>
+                    <option value="SALES">Sales Executive</option>
+                    <option value="FLEET_MANAGER">Fleet Manager</option>
+
+                  </select>
+                </div>
+
+                <div className="input-group">
+                  <label htmlFor="new-user-password">Password</label>
+                  <input id="new-user-password" type="password" value={newUser.password} onChange={(event) => setNewUser({ ...newUser, password: event.target.value })} required minLength={12} maxLength={128} autoComplete="new-password" />
+                  <span className="field-hint">Use 12–128 characters and share it through an approved channel.</span>
+                </div>
+
+                <div className="input-group">
+                  <label htmlFor="new-user-confirm-password">Confirm Password</label>
+                  <input id="new-user-confirm-password" type="password" value={newUser.confirmPassword} onChange={(event) => setNewUser({ ...newUser, confirmPassword: event.target.value })} required minLength={12} maxLength={128} autoComplete="new-password" />
+                  {newUser.confirmPassword && newUser.password !== newUser.confirmPassword && (
+                    <small className="error-text">Passwords do not match.</small>
+                  )}
+                </div>
+
+                <div className="input-group">
+                  <label htmlFor="new-user-status">Status</label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.25rem' }}>
+                    <button
+                      type="button"
+                      id="new-user-status"
+                      onClick={() => setNewUser({ ...newUser, active: !newUser.active })}
+                      style={{
+                        width: '44px', height: '24px', borderRadius: '999px', border: 'none', cursor: 'pointer',
+                        background: newUser.active ? 'var(--primary, #2e6b4d)' : '#d1d5db',
+                        position: 'relative', transition: 'background 0.2s',
+                      }}
+                    >
+                      <span style={{
+                        position: 'absolute', top: '2px', left: newUser.active ? '22px' : '2px',
+                        width: '20px', height: '20px', borderRadius: '50%', background: '#fff',
+                        transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+                      }} />
+                    </button>
+                    <span style={{ fontSize: '0.875rem', color: '#374151' }}>{newUser.active ? 'Active' : 'Inactive'}</span>
+                  </div>
+                </div>
+
+                <div className="form-actions"><button type="submit" className="submit-btn">Create Account</button></div>
               </form>
 
-              {/* <form className="panel-body form-stack" onSubmit={handleAddUser}>
-
-  {newUser.role === 'PILOT' ? (
-    <>
-      <div className="input-group">
-        <label htmlFor="new-user-first-name">First Name</label>
-        <input id="new-user-first-name" type="text" value={newUser.firstName}
-          onChange={(e) => setNewUser({ ...newUser, firstName: e.target.value })} required minLength={2} maxLength={60} />
-      </div>
-
-      <div className="input-group">
-        <label htmlFor="new-user-middle-name">Middle Name</label>
-        <input id="new-user-middle-name" type="text" value={newUser.middleName}
-          onChange={(e) => setNewUser({ ...newUser, middleName: e.target.value })} maxLength={60} />
-      </div>
-
-      <div className="input-group">
-        <label htmlFor="new-user-last-name">Last Name</label>
-        <input id="new-user-last-name" type="text" value={newUser.lastName}
-          onChange={(e) => setNewUser({ ...newUser, lastName: e.target.value })} required minLength={1} maxLength={60} />
-      </div>
-
-      <div className="input-group">
-        <label htmlFor="new-user-id-proof">ID Proof</label>
-        <input id="new-user-id-proof" type="text" value={newUser.idProof}
-          onChange={(e) => setNewUser({ ...newUser, idProof: e.target.value })} required placeholder="Aadhaar / Passport / Voter ID No." />
-      </div>
-
-      <div className="input-group">
-        <label htmlFor="new-user-license-id">License ID</label>
-        <input id="new-user-license-id" type="text" value={newUser.licenseId}
-          onChange={(e) => setNewUser({ ...newUser, licenseId: e.target.value })} required placeholder="Remote Pilot License No." />
-      </div>
-
-<div className="input-group">
-  <label htmlFor="new-user-location">Location</label>
-  <input id="new-user-location" type="text" value={newUser.location}
-    onChange={(e) => setNewUser({ ...newUser, location: e.target.value })} required />
-</div>
-
-<div className="input-group">
-  <label htmlFor="new-user-phone">Phone</label>
-  <div className="phone-input-row">
-    <select value={newUser.countryCode}
-      onChange={(e) => setNewUser({ ...newUser, countryCode: e.target.value })}>
-      <option value="+91">🇮🇳 +91</option>
-    </select>
-    <input id="new-user-phone" type="tel" value={newUser.phone}
-      onChange={(e) => setNewUser({ ...newUser, phone: e.target.value })}
-      required pattern="[0-9]{10}" placeholder="Phone number" />
-  </div>
-  {!newUser.phone && <span className="field-hint field-hint--error">Phone number is required</span>}
-</div>
-
-<div className="input-group">
-  <label htmlFor="new-user-email">Email</label>
-  <input id="new-user-email" type="email" value={newUser.email}
-    onChange={(e) => setNewUser({ ...newUser, email: e.target.value })} required autoComplete="off" />
-</div>
-
-<div className="input-group">
-  <label htmlFor="new-user-address1">First Line Address</label>
-  <input id="new-user-address1" type="text" value={newUser.addressLine1}
-    onChange={(e) => setNewUser({ ...newUser, addressLine1: e.target.value })} required />
-</div>
-
-<div className="input-group">
-  <label htmlFor="new-user-address2">Second Line Address</label>
-  <input id="new-user-address2" type="text" value={newUser.addressLine2}
-    onChange={(e) => setNewUser({ ...newUser, addressLine2: e.target.value })} />
-</div>
-
-<div className="input-group">
-  <label htmlFor="new-user-state">State</label>
-  <input id="new-user-state" type="text" value={newUser.state}
-    onChange={(e) => setNewUser({ ...newUser, state: e.target.value })} required />
-</div>
-
-<div className="input-group">
-  <label htmlFor="new-user-city">City</label>
-  <input id="new-user-city" type="text" value={newUser.city}
-    onChange={(e) => setNewUser({ ...newUser, city: e.target.value })} required />
-</div>
-
-      <div className="input-group">
-        <label htmlFor="new-user-pincode">Pincode / Postal Code</label>
-        <input id="new-user-pincode" type="text" value={newUser.pincode}
-          onChange={(e) => setNewUser({ ...newUser, pincode: e.target.value })}
-          required pattern="[0-9]{6}" maxLength={6} />
-      </div>
-
-      <div className="input-group">
-        <label htmlFor="new-user-drone">Assign Drone</label>
-        <select id="new-user-drone" value={newUser.assignedDrone}
-          onChange={(e) => setNewUser({ ...newUser, assignedDrone: e.target.value })}>
-          <option value="">Select...</option>
-          {droneOptions.map((d) => (
-            <option key={d.value} value={d.value}>{d.label}</option>
-          ))}
-        </select>
-      </div>
-
-      <div className="input-group">
-        <label htmlFor="new-user-password">Temporary Password</label>
-        <input id="new-user-password" type="password" value={newUser.password}
-          onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
-          required minLength={12} maxLength={128} autoComplete="new-password" />
-        <span className="field-hint">Use 12–128 characters and share it through an approved channel.</span>
-      </div>
-    </>
-  ) : (
-    <>
-      <div className="input-group">
-        <label htmlFor="new-user-name">Full Name</label>
-        <input id="new-user-name" type="text" value={newUser.name}
-          onChange={(e) => setNewUser({ ...newUser, name: e.target.value })} required minLength={2} maxLength={120} />
-      </div>
-      <div className="input-group">
-        <label htmlFor="new-user-email">Work Email</label>
-        <input id="new-user-email" type="email" value={newUser.email}
-          onChange={(e) => setNewUser({ ...newUser, email: e.target.value })} required autoComplete="off" />
-      </div>
-      <div className="input-group">
-        <label htmlFor="new-user-password">Temporary Password</label>
-        <input id="new-user-password" type="password" value={newUser.password}
-          onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
-          required minLength={12} maxLength={128} autoComplete="new-password" />
-        <span className="field-hint">Use 12–128 characters and share it through an approved channel.</span>
-      </div>
-    </>
-  )}
-
-  <div className="input-group">
-    <label htmlFor="new-user-role">Role</label>
-    <select id="new-user-role" value={newUser.role}
-      onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}>
-      <option value="ADMIN">Administrator</option>
-      <option value="PILOT">Pilot</option>
-      <option value="SALES">Sales Executive</option>
-      <option value="FLEET_MANAGER">Fleet Manager</option>
-    </select>
-  </div>
-
-  <div className="form-actions">
-    <button type="submit" className="submit-btn">Create Account</button>
-  </div>
-</form> */}
             </div>
           )}
         </section>
@@ -778,6 +757,10 @@ useEffect(() => {
       {activeTab === 'manual' && <FarmDetails />}
 
       {activeTab === 'drone' && <MyDrones />}
+
+      {activeTab === "assignments" && (
+        <AssignmentDetails />
+      )}
       {activeTab === 'trend' && <AcreageTrend />}
       {activeTab === 'centers' && (
         <section className="user-admin-grid">
@@ -822,6 +805,7 @@ useEffect(() => {
       )}
 
       {activeTab === 'logbook' && <LogbookTimelinePanel />}
+      {activeTab === 'pilots' && <ManagePilots />}
 
       {/* {activeTab === "farmerRegistration" && (
         <section className="panel panel--raised">
@@ -1021,14 +1005,14 @@ useEffect(() => {
         </section>
       )} */}
 
-{activeTab === "farmerRegistration" && (
-  <CustomerRegistration
-    API={API}
-    user={user}
-    confirmModal={confirmModal}
-    setConfirmModal={setConfirmModal}
-  />
-)}
+      {activeTab === "farmerRegistration" && (
+        <CustomerRegistration
+          API={API}
+          user={user}
+          confirmModal={confirmModal}
+          setConfirmModal={setConfirmModal}
+        />
+      )}
 
       {activeTab === "registeredFarmers" && (
         <RegisteredFarmers />

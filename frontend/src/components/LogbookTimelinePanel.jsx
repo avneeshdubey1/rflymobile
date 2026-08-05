@@ -76,18 +76,20 @@ function LogbookTimelinePanel() {
     return visibleLeads.slice(start, start + PAGE_SIZE);
   }, [visibleLeads, currentPage]);
 
-const getSeasonCrop = (lead) => {
-  switch (lead.season) {
-    case "kharif":
-      return lead.kharifCrop || "-";
-    case "rabi":
-      return lead.rabiCrop || "-";
-    case "summer":
-      return lead.summerCrop || "-";
-    default:
-      return lead.cropType || "-";
-  }
-};
+// const getSeasonCrop = (lead) => {
+//   switch (lead.season) {
+//     case "kharif":
+//       return lead.kharifCrop || "-";
+//     case "rabi":
+//       return lead.rabiCrop || "-";
+//     case "summer":
+//       return lead.summerCrop || "-";
+//     default:
+//       return lead.cropType || "-";
+//   }
+// };
+
+const getSeasonCrop = (lead) => lead.cropType || "-";
 
   return (
     <section>
@@ -115,8 +117,8 @@ const getSeasonCrop = (lead) => {
                       <span className="caption">{lead.farmerPhone}</span></td>
                     <td><LocationLink latitude={lead.latitude} longitude={lead.longitude} address={lead.farmerAddress} centerName={lead.matchedCenter?.name} farmerName={lead.farmerName} fallback="Location not recorded" onClick={(event) => event.stopPropagation()} /></td>
                     <td>{lead.acreage}</td>
-                    {/* <td>{lead.cropType || "-"}</td> */}
-                    <td>{getSeasonCrop(lead)}</td>
+                    <td>{lead.cropType || "-"}</td>
+                    {/* <td>{getSeasonCrop(lead)}</td> */}
                     <td>
                       {lead.expectedDate
                         ? new Date(lead.expectedDate).toLocaleDateString()

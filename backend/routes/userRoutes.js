@@ -1,11 +1,12 @@
 const express = require("express");
 const router = express.Router();
 const {
-  getAllUsers,
-  getPilots,
-  addUser,
-  deleteUser,
-  updatePilotOperatingCenter,
+    getAllUsers,
+    getPilots,
+    addUser,
+    deleteUser,
+    updatePilotOperatingCenter,
+    updateUser
 } = require('../controllers/userController');
 const { authenticate, authorize } = require('../middleware/auth');
 
@@ -21,5 +22,6 @@ router.patch("/:id/operating-center", authenticate, authorize('ADMIN', 'FLEET_MA
 router.delete("/delete/:id", authenticate, authorize('ADMIN'), deleteUser);
 router.post("/edit-password", authenticate, authorize('ADMIN'), require('../controllers/userController').editPassword);
 router.post("/toggle-active", authenticate, authorize('ADMIN'), require('../controllers/userController').toggleActive);
+router.patch('/:id', authenticate, authorize('ADMIN', 'FLEET_MANAGER'), updateUser);
 
 module.exports = router;

@@ -10,6 +10,7 @@ import OperationsShell from '../components/OperationsShell';
 import OpsIcon from '../components/OpsIcon';
 import LiveLocationPanel from '../components/LiveLocationPanel';
 import { API_URL as API } from '../config';
+import MyDrones from '../components/MyDrones';
 
 const localizer = dateFnsLocalizer({ format, parse, startOfWeek, getDay, locales: { 'en-US': enUS } });
 const withDragAndDrop = dragAndDropModule.default ?? dragAndDropModule;
@@ -220,6 +221,17 @@ function FleetManagerDashboard() {
     } catch (error) { showNotice('error', error.message); }
   };
 
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+
+const pageCopy = {
+  schedule: ['Fleet manager', 'Exception scheduling calendar', 'Resolve requests that need a human scheduling decision and monitor current allocations.'],
+  pilots: ['Fleet manager', 'Pilots', 'Manage registered pilots and their operating centers.'],
+  drones: ['Fleet manager', 'Drones', 'Register and manage fleet aircraft.'],
+  lmvs: ['Fleet manager', 'Light motor vehicles', 'Each scheduled crew reserves one LMV.'],
+  location: ['Fleet manager', 'Live Pilot GPS', 'Track pilot locations in real time.'],
+};
+
+const [eyebrow, title, description] = pageCopy[activeSection] || pageCopy.schedule;
   const navItems = [
     { id: 'schedule', label: 'Scheduling board', icon: 'calendar', badge: manualQueue.length || null },
     { id: 'pilots', label: 'Pilots', icon: 'users' },
@@ -230,12 +242,54 @@ function FleetManagerDashboard() {
 
   return (
     <OperationsShell roleLabel="Fleet operations" navItems={navItems} activeTab={activeSection} onTabChange={selectSection} user={user}  onLogout={logout}>
+       <header className="page-header">
+             <div className="page-header__copy"><p className="eyebrow">{eyebrow}</p><h1>{title}</h1><p>{description}</p></div>
+             <div className="page-header__actions">
+               <div className="profile-menu">
+                 <button
+                   className="profile-trigger"
+                   onClick={() => setShowProfileMenu(!showProfileMenu)}>
+                   {user?.name?.charAt(0)?.toUpperCase() || "U"}
+                 </button>
+                 {showProfileMenu && (
+                   <div className="profile-dropdown">
+                     <div className="profile-dropdown__header">
+                       <div className="profile-avatar">
+                         {user?.name?.charAt(0)?.toUpperCase() || "U"}
+                       </div>
+                       <div>
+                         <h4>{user?.name || "User"}</h4>
+                         <p>{user?.role || "Sales Operations"}</p>
+                       </div>
+                     </div>
+                     <hr />
+                     <button
+                       className="dropdown-item"
+                       onClick={() => {
+                         selectSection("profile");
+                         setShowProfileMenu(false);
+                       }}>
+                       <OpsIcon name="user" />
+                       My Profile
+                     </button>
+                     <button
+                       className="dropdown-item logout"
+                       onClick={logout}>
+                       <OpsIcon name="logout" />
+                       Sign Out
+                     </button>
+                   </div>
+                 )}
+               </div>
+             </div>
+           </header>
+     
       {activeSection === 'schedule' && (
       <section id="schedule">
-        <header className="page-header">
+        {/* <header className="page-header">
           <div className="page-header__copy"><p className="eyebrow">Fleet manager</p><h1>Exception scheduling calendar</h1><p>Resolve requests that need a human scheduling decision and monitor current allocations.</p></div>
           <div className="page-header__actions"><button type="button" className="action-btn" onClick={() => void fetchData()}><OpsIcon name="refresh" /> Refresh board</button></div>
-        </header>
+        </header> */}
 
         {notice && <div role="alert" className={`notice notice--${notice.kind}`}><span>{notice.message}</span><button type="button" className="notice__close" onClick={() => setNotice(null)} aria-label="Dismiss message">×</button></div>}
 
@@ -310,7 +364,7 @@ function FleetManagerDashboard() {
         </section>
       )}
 
-      {activeSection === 'drones' && (
+      {/* {activeSection === 'drones' && (
         <section className="user-admin-grid">
           {notice && <div role="alert" className={`notice notice--${notice.kind}`}><span>{notice.message}</span><button type="button" className="notice__close" onClick={() => setNotice(null)} aria-label="Dismiss message">×</button></div>}
           <div className="panel panel--raised">
@@ -327,8 +381,9 @@ function FleetManagerDashboard() {
             </form>
           </div>
         </section>
-      )}
+      )} */}
 
+{activeSection === 'drones' && <MyDrones/>}
       {activeSection === 'lmvs' && (
         <section className="user-admin-grid">
           {notice && <div role="alert" className={`notice notice--${notice.kind}`}><span>{notice.message}</span><button type="button" className="notice__close" onClick={() => setNotice(null)} aria-label="Dismiss message">×</button></div>}
