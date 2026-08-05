@@ -30,11 +30,11 @@ function Login() {
       if (!data.success) { setError(data.error || data.message || 'Login failed'); return; }
 
       login(data.user, data.token);
-      if (data.user.role === 'admin') navigate('/admin');
-      else if (data.user.role === 'sales') navigate('/marketing');
-      else if (data.user.role === 'pilot') navigate('/pilot');
-      else if (data.user.role === 'fleet-manager') navigate('/fleet-manager');
-      else navigate('/');
+      if (data.user.role === 'admin') navigate('/admin', { replace: true });
+      else if (data.user.role === 'sales') navigate('/marketing', { replace: true });
+      else if (data.user.role === 'pilot') navigate('/pilot', { replace: true });
+      else if (data.user.role === 'fleet-manager') navigate('/fleet-manager', { replace: true });
+      else navigate('/', { replace: true });
     } catch {
       setError('Server error. Please try again.');
     } finally {

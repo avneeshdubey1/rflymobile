@@ -28,6 +28,7 @@ function LogbookTimelinePanel() {
   const loadLeads = useCallback(async () => {
     setLoadingLeads(true);
     try {
+      
       const response = await fetch(`${API}/api/leads/all`);
       const data = await response.json().catch(() => ({}));
       if (!response.ok || !data.success) throw new Error(data.error || 'Could not load the logbook');
@@ -76,6 +77,7 @@ function LogbookTimelinePanel() {
     return visibleLeads.slice(start, start + PAGE_SIZE);
   }, [visibleLeads, currentPage]);
 
+
 // const getSeasonCrop = (lead) => {
 //   switch (lead.season) {
 //     case "kharif":
@@ -90,6 +92,20 @@ function LogbookTimelinePanel() {
 // };
 
 const getSeasonCrop = (lead) => lead.cropType || "-";
+
+// const getSeasonCrop = (lead) => {
+//   if (lead.cropType) return lead.cropType;
+
+//   const customer = lead.customer || {};
+//   const seasonalCrops = [
+//     customer.kharifCrop === 'Others' ? customer.kharifOtherCrop : customer.kharifCrop,
+//     customer.rabiCrop === 'Others' ? customer.rabiOtherCrop : customer.rabiCrop,
+//     customer.summerCrop === 'Others' ? customer.summerOtherCrop : customer.summerCrop,
+//   ].filter(Boolean);
+
+//   return [...new Set(seasonalCrops)].join(', ') || '-';
+// };
+
 
   return (
     <section>
