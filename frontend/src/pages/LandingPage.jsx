@@ -74,7 +74,7 @@ export default function LandingPage() {
   return (
     <div className="landing-container">
       <nav className="navbar">
-        <div className="logo">Daas</div>
+        <div className="logo">Drone as a Service</div>
         <div className="navbar__actions">
           <LanguageSelector />
           <button className="login-btn" onClick={() => navigate('/farmer/login')}>{t('farmer_login_eyebrow', 'Farmer login')}</button>
@@ -86,7 +86,7 @@ export default function LandingPage() {
         <section className="hero-intro">
           <div className="hero-content">
             <span className="hero-kicker">{t('hero_kicker')}</span>
-            <h1 className="hero-title">Daas</h1>
+            <h1 className="hero-title">Drone as a Service</h1>
             <p className="hero-subtitle">{t('hero_subtitle', 'Create your Farmer account and request drone services.')}</p>
             <div className="hero-points">
               <div className="hero-point"><strong>{t('hero_location_title')}</strong><span>{t('hero_location_copy')}</span></div>

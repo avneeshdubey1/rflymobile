@@ -112,7 +112,9 @@ jobs:
           EOF
           echo "DEPLOY_ENV=$RUNNER_TEMP/operations-ci.env" >> "$GITHUB_ENV"
       - name: Validate rendered Compose configuration
-        run: docker compose --env-file "$DEPLOY_ENV" -f compose.production.yml config --quiet
+        run: |
+          docker compose --env-file "$DEPLOY_ENV" -f compose.production.yml config --quiet
+          docker compose --env-file "$DEPLOY_ENV" -f compose.production.yml -f compose.onprem-staging.yml config --quiet
       - name: Build and start isolated stack
         shell: bash
         run: |

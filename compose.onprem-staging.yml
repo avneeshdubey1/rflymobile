@@ -1,0 +1,17 @@
+# Internal staging override for the office server.
+#
+# This stack must use its own DEPLOYMENT_NAME, secret files, database volume,
+# image tag, and host port. It is intentionally HTTP-only while it is reachable
+# only on the approved office network. Do not expose its port to the internet.
+
+services:
+  backend:
+    environment:
+      NODE_ENV: production
+      ENFORCE_HTTPS: "false"
+      TRUST_PROXY_HOPS: ${TRUST_PROXY_HOPS:-1}
+      OTP_DELIVERY_PROVIDER: ${OTP_DELIVERY_PROVIDER:-disabled}
+
+  frontend:
+    ports:
+      - "${APP_BIND_ADDRESS:-127.0.0.1}:${APP_PORT:-8089}:8080"

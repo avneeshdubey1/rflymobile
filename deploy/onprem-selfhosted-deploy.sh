@@ -3,9 +3,10 @@ set -euo pipefail
 
 deploy_env="${DEPLOY_ENV:-/opt/client-demo-app/deployment.env}"
 deploy_changelog="${DEPLOY_CHANGELOG:-/opt/client-demo-app/deployment-notes/CHANGELOG.md}"
+compose_override="${DEPLOY_COMPOSE_OVERRIDE:-compose.onprem-demo.yml}"
 compose_env=".deploy-runtime.env"
-compose_files=(-f compose.production.yml -f compose.onprem-demo.yml)
-secret_stage_dir="${DEPLOY_SECRET_STAGE_DIR:-${RUNNER_WORKSPACE:-$(pwd)/..}/_rfly-deploy-secrets}"
+compose_files=(-f compose.production.yml -f "$compose_override")
+secret_stage_root="${RUNNER_WORKSPACE:-$(pwd)/..}/_rfly-deploy-secrets"
 
 cleanup() {
   rm -f "$compose_env"
@@ -147,7 +148,7 @@ wait_for_service_healthy() {
 
 require_file "$deploy_env"
 require_file compose.production.yml
-require_file compose.onprem-demo.yml
+require_file "$compose_override"
 sed -e 's/\r$//' -e 's/[[:space:]]*$//' "$deploy_env" > "$compose_env"
 chmod 0600 "$compose_env"
 
@@ -155,6 +156,20 @@ set -a
 # shellcheck disable=SC1090
 . "./$compose_env"
 set +a
+
+[ -n "${DEPLOYMENT_NAME:-}" ] || fail "DEPLOYMENT_NAME must be set in the deployment environment"
+[ -n "${APP_PORT:-}" ] || fail "APP_PORT must be set in the deployment environment"
+case "$APP_PORT" in
+  *[!0-9]*|'') fail "APP_PORT must be a numeric TCP port" ;;
+esac
+[ "$APP_PORT" -ge 1024 ] && [ "$APP_PORT" -le 65535 ] || fail "APP_PORT must be between 1024 and 65535"
+
+health_host="${DEPLOY_HEALTH_HOST:-${APP_BIND_ADDRESS:-127.0.0.1}}"
+case "$health_host" in
+  0.0.0.0|'::') health_host="127.0.0.1" ;;
+esac
+
+secret_stage_dir="${DEPLOY_SECRET_STAGE_DIR:-${secret_stage_root}/${DEPLOYMENT_NAME}}"
 
 require_env_file_path DB_PASSWORD_FILE
 require_env_file_path RECOVERY_HASH_SECRET_FILE
@@ -173,22 +188,30 @@ if ! docker info >/dev/null 2>&1; then
 fi
 verify_docker_can_mount_file "$DB_PASSWORD_FILE"
 
-if docker ps --format '{{.Names}}' | grep -Fxq 'srs'; then
-  echo "Verified existing srs container is running."
-else
-  fail "Existing srs container was not observed running; stop before deploying and inspect the server."
-fi
-
-if ss -lntup | grep -q ':8088 '; then
-  if ! docker ps --format '{{.Names}}' | grep -Eq '^rfly-onprem-demo.*frontend|^rfly-onprem-demo.*-frontend'; then
-    echo "Port 8088 is already in use. Continuing only if it belongs to this Compose deployment will be checked by Docker."
-  fi
+existing_frontend_id="$(compose ps -q frontend 2>/dev/null || true)"
+published_container_ids="$(docker ps --filter "publish=${APP_PORT}" --format '{{.ID}}' || true)"
+if [ -n "$published_container_ids" ]; then
+  while IFS= read -r container_id; do
+    [ -z "$container_id" ] && continue
+    if [ -z "$existing_frontend_id" ] || [ "$container_id" != "${existing_frontend_id:0:12}" ]; then
+      fail "Host port ${APP_PORT} is published by a container outside deployment ${DEPLOYMENT_NAME}"
+    fi
+  done <<< "$published_container_ids"
+elif ss -lnt | grep -Eq ":${APP_PORT}[[:space:]]"; then
+  fail "Host port ${APP_PORT} is already used by a non-Docker listener"
 fi
 
 mkdir -p "$(dirname "$deploy_changelog")"
 
 source_sha="$(git rev-parse HEAD)"
 started_at="$(date --iso-8601=seconds)"
+
+# Tag locally built images with the exact deployed revision. The operator's
+# environment file remains unchanged; only this deployment's runtime copy is
+# rewritten. This prevents staging and production from relying on one mutable
+# image tag.
+rewrite_env_value IMAGE_TAG "$source_sha"
+export IMAGE_TAG="$source_sha"
 
 compose config --quiet
 
@@ -206,24 +229,23 @@ compose run --rm migrate
 echo "Starting backend and frontend."
 compose up --detach --no-deps backend frontend
 
-wait_for_http http://127.0.0.1:8088/healthz
-wait_for_http http://127.0.0.1:8088/api/health
-
-if ! docker ps --format '{{.Names}}' | grep -Fxq 'srs'; then
-  fail "srs container disappeared after deployment."
-fi
+wait_for_http "http://${health_host}:${APP_PORT}/healthz"
+wait_for_http "http://${health_host}:${APP_PORT}/api/health"
 
 {
   echo
   echo "## ${started_at}"
   echo
   echo "- source_sha: ${source_sha}"
+  echo "- image_tag: ${source_sha}"
   echo "- workflow_run: ${GITHUB_RUN_ID:-local}"
-  echo "- compose_files: compose.production.yml + compose.onprem-demo.yml"
+  echo "- deployment_name: ${DEPLOYMENT_NAME}"
+  echo "- compose_files: compose.production.yml + ${compose_override}"
   echo "- deploy_env: ${deploy_env}"
-  echo "- host_port: 8088"
-  echo "- checks: compose config, build, db health, migration, localhost /healthz, localhost /api/health, srs still running"
-  echo "- rollback: docker compose --env-file ${deploy_env} -f compose.production.yml -f compose.onprem-demo.yml down"
+  echo "- bind_address: ${APP_BIND_ADDRESS:-127.0.0.1}"
+  echo "- host_port: ${APP_PORT}"
+  echo "- checks: compose config, build, db health, migration, /healthz, /api/health"
+  echo "- rollback: docker compose --env-file ${deploy_env} -f compose.production.yml -f ${compose_override} down"
 } >> "$deploy_changelog"
 
 echo "On-prem deployment completed for ${source_sha}."

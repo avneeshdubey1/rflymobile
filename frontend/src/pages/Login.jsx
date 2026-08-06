@@ -46,7 +46,7 @@ function Login() {
     <main className="login-container">
       <LanguageSelector style={{ position: 'absolute', top: '1.5rem', right: '1.5rem', zIndex: 50 }} />
       <section className="login-context">
-        <div className="login-context__brand logo">Daas</div>
+        <div className="login-context__brand logo">Drone as a Service</div>
         <div className="login-context__copy">
           <p className="hero-kicker">{t('secure_team_access', 'Secure team access')}</p>
           <h1>{t('employee_login_heading', 'One workspace for every field decision.')}</h1>
