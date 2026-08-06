@@ -45,6 +45,10 @@ async function main() {
         data: { name: 'Baddipadaga', latitude: 16.55, longitude: 80.75, radiusKm: 50 },
     });
 
+    const tenkasi = await prisma.operatingCenter.create({
+        data: { name: 'Tenkasi, Tamil Nadu, India', latitude: 8.9591, longitude: 77.3152, radiusKm: 50 },
+    });
+
     const userPasswordHashes = await Promise.all(Array.from({ length: 8 }, () => hashPassword(demoPassword)));
     const provisionedAt = new Date();
     const admin = await prisma.user.create({
@@ -70,13 +74,13 @@ async function main() {
     //   prisma.drone.create({ data: { model: 'Agras T20', serialNumber: 'SN-005', homeCenterId: tenkasi.id, status: 'OUT_OF_SERVICE', airworthinessExpiry: new Date('2025-01-01') } }),
     // ]);
 
-    // const drones = await Promise.all([
-    //     prisma.drone.create({ data: { model: 'Agras T10', uin: 'UIN-001', homeCenterId: vijayawada.id, status: 'ASSIGNED', airworthinessExpiry: new Date('2027-01-01') } }),
-    //     prisma.drone.create({ data: { model: 'Agras T20', uin: 'UIN-002', homeCenterId: vijayawada.id, status: 'AVAILABLE', airworthinessExpiry: new Date('2027-01-01') } }),
-    //     prisma.drone.create({ data: { model: 'Agras T10', uin: 'UIN-003', homeCenterId: kankipadu.id, status: 'AVAILABLE', airworthinessExpiry: new Date('2027-01-01') } }),
-    //     prisma.drone.create({ data: { model: 'Agras T30', uin: 'UIN-004', homeCenterId: kankipadu.id, status: 'MAINTENANCE', airworthinessExpiry: new Date('2027-01-01') } }),
-    //     prisma.drone.create({ data: { model: 'Agras T20', uin: 'UIN-005', homeCenterId: vijayawada.id, status: 'OUT_OF_SERVICE', airworthinessExpiry: new Date('2025-01-01') } }),
-    // ]);
+const drones = await Promise.all([
+        prisma.drone.create({ data: { model: 'Agras T10', serialNumber: 'SN-001', uin: 'UIN-001', homeCenterId: vijayawada.id, status: 'ASSIGNED', airworthinessExpiry: new Date('2027-01-01') } }),
+        prisma.drone.create({ data: { model: 'Agras T20', serialNumber: 'SN-002', uin: 'UIN-002', homeCenterId: vijayawada.id, status: 'AVAILABLE', airworthinessExpiry: new Date('2027-01-01') } }),
+        prisma.drone.create({ data: { model: 'Agras T10', serialNumber: 'SN-003', uin: 'UIN-003', homeCenterId: kankipadu.id, status: 'AVAILABLE', airworthinessExpiry: new Date('2027-01-01') } }),
+        prisma.drone.create({ data: { model: 'Agras T30', serialNumber: 'SN-004', uin: 'UIN-004', homeCenterId: kankipadu.id, status: 'MAINTENANCE', airworthinessExpiry: new Date('2027-01-01') } }),
+        prisma.drone.create({ data: { model: 'Agras T20', serialNumber: 'SN-005', uin: 'UIN-005', homeCenterId: vijayawada.id, status: 'OUT_OF_SERVICE', airworthinessExpiry: new Date('2025-01-01') } }),
+    ]);
 
     const lmvs = await Promise.all([
         // prisma.lMV.create({ data: { registrationNo: 'TN-72-LMV-001', label: 'Tenkasi LMV 1', homeCenterId: tenkasi.id, status: 'ASSIGNED', capacity: 1 } }),
