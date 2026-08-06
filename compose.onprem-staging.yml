@@ -7,7 +7,11 @@
 services:
   backend:
     environment:
-      NODE_ENV: production
+      # The office staging endpoint currently has no TLS route. The backend
+      # correctly refuses production mode over HTTP, so this isolated,
+      # LAN-bound stack uses development perimeter mode until internal TLS is
+      # provisioned. This does not run seed data or share production storage.
+      NODE_ENV: development
       ENFORCE_HTTPS: "false"
       TRUST_PROXY_HOPS: ${TRUST_PROXY_HOPS:-1}
       OTP_DELIVERY_PROVIDER: ${OTP_DELIVERY_PROVIDER:-disabled}
