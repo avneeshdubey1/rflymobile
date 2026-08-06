@@ -43,7 +43,7 @@ test.before(async () => {
 test('one two-person operational unit performs several ordered non-overlapping jobs', async () => {
   const centerId = ids.centers[0];
   const [drone, lmv] = await Promise.all([
-    prisma.drone.create({ data: { model: 'Phase 20 Drone', serialNumber: `PHASE20-DRONE-${runId}`, homeCenterId: centerId, status: 'AVAILABLE' } }),
+    prisma.drone.create({ data: { model: 'Phase 20 Drone', serialNumber: `PHASE20-DRONE-${runId}`,uin: `UIN-${runId}-${Date.now()}`, homeCenterId: centerId, status: 'AVAILABLE' } }),
     prisma.lMV.create({ data: { registrationNo: `PHASE20-LMV-${runId}`, homeCenterId: centerId, status: 'AVAILABLE' } }),
   ]);
   ids.drones.push(drone.id);
