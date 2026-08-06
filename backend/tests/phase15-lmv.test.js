@@ -33,9 +33,21 @@ async function createLead(centerId, suffix = 'main') {
 }
 
 async function createDrone(centerId, suffix = ids.drones.length) {
-  const drone = await prisma.drone.create({
-    data: { model: 'LMV Test Drone', serialNumber: `PHASE15-DRONE-${runId}-${suffix}`, status: 'AVAILABLE', homeCenterId: centerId, airworthinessExpiry: new Date('2027-01-01') },
-  });
+  // const drone = await prisma.drone.create({
+  //   data: { model: 'LMV Test Drone', serialNumber: `PHASE15-DRONE-${runId}-${suffix}`, status: 'AVAILABLE', homeCenterId: centerId, airworthinessExpiry: new Date('2027-01-01') },
+  // });
+
+const drone = await prisma.drone.create({
+  data: {
+    model: 'LMV Test Drone',
+    serialNumber: `PHASE15-DRONE-${runId}-${suffix}`,
+    uin: `UIN-PHASE15-${suffix}-${Date.now()}`,
+    status: 'AVAILABLE',
+    homeCenterId: centerId,
+    airworthinessExpiry: new Date('2027-01-01'),
+  },
+});
+
   ids.drones.push(drone.id);
   return drone;
 }

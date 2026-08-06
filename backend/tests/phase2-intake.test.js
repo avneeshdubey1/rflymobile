@@ -236,6 +236,7 @@ test('legacy records cannot bypass service-area revalidation and retired routes 
     data: {
       model: 'Phase 2 Reschedule Drone',
       serialNumber: `phase2-reschedule-${Date.now()}`,
+      uin: `UIN-PHASE2-RESCHEDULE-${Date.now()}`,
       homeCenterId: activeCenter.id,
       status: 'AVAILABLE',
     },

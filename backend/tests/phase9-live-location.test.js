@@ -52,7 +52,16 @@ test.before(async () => {
     prisma.user.create({ data: { name: 'Phase 9 Pilot', email: `phase9-pilot-${runId}@example.test`, passwordHash: 'test', role: 'PILOT', homeCenterId: center.id } }),
   ]);
   ids.users.push(admin.id, fleet.id, pilot.id);
-  const drone = await prisma.drone.create({ data: { model: 'Test', serialNumber: `PHASE9-DRONE-${runId}`, status: 'ASSIGNED', homeCenterId: center.id } });
+  // const drone = await prisma.drone.create({ data: { model: 'Test', serialNumber: `PHASE9-DRONE-${runId}`, status: 'ASSIGNED', homeCenterId: center.id } });
+  const drone = await prisma.drone.create({
+  data: {
+    model: 'Test',
+    serialNumber: `PHASE9-DRONE-${runId}`,
+    uin: `UIN-PHASE9-3130-${Date.now()}`,
+    status: 'ASSIGNED',
+    homeCenterId: center.id,
+  },
+});
   ids.drones.push(drone.id);
   const lead = await prisma.lead.create({ data: { farmerName: 'Phase 9 Farmer', farmerPhone: '955550009', acreage: 3, intakeChannel: 'MANUAL_SALES', status: 'PILOT_ACCEPTED', matchedCenterId: center.id } });
   ids.leads.push(lead.id);

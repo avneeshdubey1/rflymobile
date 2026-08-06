@@ -98,6 +98,12 @@ enum OtpDeliveryStatus {
   DISABLED
 }
 
+enum DroneCategory {
+  EVTOL
+  HEXACOPTER
+  QUADCOPTER
+}
+
 model OperatingCenter {
   id        String   @id @default(uuid())
   name      String                          // "Tenkasi HQ", "Kanyakumari Branch"
@@ -133,7 +139,16 @@ model User {
   homeCenter           OperatingCenter? @relation(fields: [homeCenterId], references: [id])
   homeCenterId         String?
   pilotLicenseExpiry   DateTime?        // DGCA placeholder, see §9
-
+  assignedDrone        Drone?    @relation("PilotAssignedDrone", fields: [assignedDroneId], references: [id])
+  assignedDroneId      String?   @unique
+  idProof              String?
+  licenseId            String?
+  addressLine1         String?
+  addressLine2         String?
+  state                String?
+  city                 String?
+  pincode              String?
+ 
   // Farmer-specific
   village              String?
   district             String?
@@ -331,23 +346,27 @@ model PasswordRecoveryChallenge {
 model Drone {
   id                  String       @id @default(uuid())
   name                String?
+  type                String?
   model               String
-  serialNumber        String       @unique
-  category            String?
   manufacturer        String?
-  tankCapacityLitres  Float?
-  batteryCapacityMah  Int?
-  enduranceMinutes    Int?
-  certified           Boolean      @default(false)
+  serialNumber        String       @unique
+  uin                 String       @unique
+  location            String?
+  tankCapacity        Float?
+  batteryCapacity     Int?
+  endurance           Int?
+  certified           String?
   serviceType         String?
   status              DroneStatus  @default(AVAILABLE)
   homeCenter          OperatingCenter @relation(fields: [homeCenterId], references: [id])
   homeCenterId        String
-  airworthinessExpiry DateTime?    // DGCA placeholder, see §9
-  lastMaintained       DateTime?
+  airworthinessExpiry DateTime?
+  lastMaintained      DateTime?
   createdAt           DateTime     @default(now())
 
   assignments         Assignment[]
+  copilotAssignments   Assignment[] @relation("CopilotDroneAssignments")
+  assignedPilot       User?        @relation("PilotAssignedDrone")
 }
 
 model LMV {
@@ -447,6 +466,8 @@ model Assignment {
   copilotId         String?
   drone             Drone     @relation(fields: [droneId], references: [id])
   droneId           String
+  copilotDrone      Drone?    @relation("CopilotDroneAssignments", fields: [copilotDroneId], references: [id])
+  copilotDroneId    String?
   lmv               LMV?      @relation(fields: [lmvId], references: [id])
   lmvId             String?
 

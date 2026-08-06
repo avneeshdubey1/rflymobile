@@ -33,7 +33,17 @@ test.before(async () => {
 test('a fleet manager can turn a manual-scheduling lead into an assignment, then reschedule it with a Sales notification', async () => {
   const [lead, drone, lmv] = await Promise.all([
     prisma.lead.create({ data: { farmerName: 'Phase 5 Farmer', farmerPhone: '955550005', acreage: 3, intakeChannel: 'MANUAL_SALES', status: 'NEEDS_MANUAL_SCHEDULING', latitude: 11, longitude: 76, matchedCenterId: ids.center } }),
-    prisma.drone.create({ data: { model: 'Test', serialNumber: `PHASE5-DRONE-${runId}`, status: 'AVAILABLE', homeCenterId: ids.center, airworthinessExpiry: new Date('2027-01-01') } }),
+    // prisma.drone.create({ data: { model: 'Test', serialNumber: `PHASE5-DRONE-${runId}`, status: 'AVAILABLE', homeCenterId: ids.center, airworthinessExpiry: new Date('2027-01-01') } }),
+    prisma.drone.create({
+  data: {
+    model: 'Test',
+    serialNumber: `PHASE5-DRONE-${runId}`,
+    uin: `UIN-PHASE5-3070-${Date.now()}`,
+    status: 'AVAILABLE',
+    homeCenterId: ids.center,
+    airworthinessExpiry: new Date('2027-01-01'),
+  },
+}),
     prisma.lMV.create({ data: { registrationNo: `PHASE5-LMV-${runId}`, label: 'Phase 5 LMV', status: 'AVAILABLE', homeCenterId: ids.center } }),
   ]);
   ids.leads.push(lead.id);
