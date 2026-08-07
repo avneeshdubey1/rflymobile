@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Plus, Pencil, Trash2, Search } from 'lucide-react';
 import axios from "axios";
+import { API_URL } from '../config';
+import { csrfHeaders } from '../utils/csrf';
 
 const PAGE_SIZE = 15;
 
@@ -9,7 +11,8 @@ const emptyForm = {
     email: '',
     phone: '',
     assignedDroneId: '',
-    //   password: '',
+    password: '',
+    confirmPassword: '',
     homeCenterId: '',
     idProof: '',
     licenseId: '',
@@ -18,10 +21,9 @@ const emptyForm = {
     state: '',
     city: '',
     pincode: '',
-    active: true,
 };
 
-function Field({ label, name, value, onChange, placeholder, required = true, type = 'text' }) {
+function Field({ label, name, value, onChange, placeholder, required = true, type = 'text', minLength, maxLength }) {
     return (
         <label className="block">
             <span className="text-xs font-medium text-gray-500">{label}</span>
@@ -32,6 +34,8 @@ function Field({ label, name, value, onChange, placeholder, required = true, typ
                 onChange={onChange}
                 placeholder={placeholder}
                 required={required}
+                minLength={minLength}
+                maxLength={maxLength}
                 className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
             />
         </label>
@@ -52,18 +56,26 @@ export default function ManagePilots() {
     const [deleteError, setDeleteError] = useState('');
     const [drones, setDrones] = useState([]);
 
-    const handleChange = (e) => setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
-    const closeModal = () => { setShowAdd(false); setEditingId(null); setForm(emptyForm); };
+    const activeCenters = useMemo(() => centers.filter((center) => center.active), [centers]);
+    const eligibleDrones = useMemo(() => drones.filter((drone) => (
+        !drone.archivedAt &&
+        drone.homeCenterId === form.homeCenterId &&
+        ['AVAILABLE', 'ASSIGNED'].includes(drone.status) &&
+        drone.operationalState === 'IN_SERVICE' &&
+        ['AVAILABLE', 'ASSIGNED'].includes(drone.availabilityState)
+    )), [drones, form.homeCenterId]);
 
-    function getCsrfToken() {
-        const match = document.cookie.match(/(?:^|;\s*)daas_csrf=([^;]+)/);
-        return match ? decodeURIComponent(match[1]) : null;
-    }
+    const handleChange = (e) => setForm((current) => ({
+        ...current,
+        [e.target.name]: e.target.value,
+        ...(e.target.name === 'homeCenterId' ? { assignedDroneId: '' } : {}),
+    }));
+    const closeModal = () => { setShowAdd(false); setEditingId(null); setForm(emptyForm); };
 
     useEffect(() => {
         const fetchDrones = async () => {
             try {
-                const response = await axios.get("http://localhost:5000/api/drones/all", { withCredentials: true });
+                const response = await axios.get(`${API_URL}/api/drones/all`, { withCredentials: true });
                 setDrones(response.data.drones || []);
             } catch (error) { console.error(error); }
         };
@@ -72,7 +84,7 @@ export default function ManagePilots() {
 
     const fetchPilots = async () => {
         try {
-            const response = await axios.get("http://localhost:5000/api/users/pilots", { withCredentials: true });
+            const response = await axios.get(`${API_URL}/api/users/pilots`, { withCredentials: true });
             setPilots(response.data.pilots || []);
         } catch (error) {
             console.error(error);
@@ -86,7 +98,7 @@ export default function ManagePilots() {
     useEffect(() => {
         const fetchCenters = async () => {
             try {
-                const response = await axios.get("http://localhost:5000/api/centers/all", { withCredentials: true });
+                const response = await axios.get(`${API_URL}/api/centers/all`, { withCredentials: true });
                 setCenters(response.data.centers || []);
             } catch (error) { console.error(error); }
         };
@@ -98,22 +110,29 @@ export default function ManagePilots() {
         setSubmitting(true);
         try {
             if (editingId) {
+                const profileChanges = { ...form };
+                delete profileChanges.active;
+                delete profileChanges.password;
+                delete profileChanges.confirmPassword;
                 const response = await axios.patch(
-                    `http://localhost:5000/api/users/${editingId}`,
-                    form,
-                    { withCredentials: true, headers: { 'x-csrf-token': getCsrfToken() } }
+                    `${API_URL}/api/users/${editingId}`,
+                    profileChanges,
+                    { withCredentials: true, headers: csrfHeaders() }
                 );
                 setPilots((prev) => prev.map((p) => (p.id === editingId ? response.data.user : p)));
             } else {
+                if (form.password !== form.confirmPassword) {
+                    alert('Temporary password and confirmation must match.');
+                    return;
+                }
+                const payload = { ...form };
+                delete payload.confirmPassword;
                 const response = await axios.post(
-                    "http://localhost:5000/api/users/add",
-                    { ...form, role: 'PILOT' },
-                    { withCredentials: true, headers: { 'x-csrf-token': getCsrfToken() } }
+                    `${API_URL}/api/users/add`,
+                    { ...payload, role: 'PILOT' },
+                    { withCredentials: true, headers: csrfHeaders() }
                 );
                 setPilots((prev) => [response.data.user, ...prev]);
-                if (response.data.temporaryPassword) {
-                    alert(`Pilot created successfully.\n\nTemporary password: ${response.data.temporaryPassword}\n\nShare this with the pilot through an approved channel — it will not be shown again.`);
-                }
             }
             closeModal();
         } catch (error) {
@@ -123,12 +142,6 @@ export default function ManagePilots() {
             setSubmitting(false);
         }
     };
-
-    //   const startEdit = (pilot) => {
-    //     setForm({ ...emptyForm, ...pilot, password: '' });
-    //     setEditingId(pilot.id);
-    //     setShowAdd(true);
-    //   };
 
     const startEdit = (pilot) => {
         setForm({
@@ -142,14 +155,14 @@ export default function ManagePilots() {
     const toggleActive = async (pilotId) => {
         try {
             const response = await axios.post(
-                "http://localhost:5000/api/users/toggle-active",
+                `${API_URL}/api/users/toggle-active`,
                 { userId: pilotId },
-                { withCredentials: true, headers: { 'x-csrf-token': getCsrfToken() } }
+                { withCredentials: true, headers: csrfHeaders() }
             );
-            setPilots((prev) => prev.map((p) => (p.id === pilotId ? response.data.user : p)));
+            setPilots((prev) => prev.map((pilot) => (pilot.id === pilotId ? response.data.user : pilot)));
         } catch (error) {
             console.error(error);
-            alert(error.response?.data?.error || "Failed to update status.");
+            alert(error.response?.data?.error || 'Failed to update status.');
         }
     };
 
@@ -157,8 +170,8 @@ export default function ManagePilots() {
         if (!deleteTarget) return;
         try {
             await axios.delete(
-                `http://localhost:5000/api/users/delete/${deleteTarget.id}`,
-                { withCredentials: true, headers: { 'x-csrf-token': getCsrfToken() } }
+                `${API_URL}/api/users/delete/${deleteTarget.id}`,
+                { withCredentials: true, headers: csrfHeaders() }
             );
             setPilots((prev) => prev.filter((p) => p.id !== deleteTarget.id));
             setDeleteTarget(null);
@@ -269,9 +282,9 @@ export default function ManagePilots() {
                                             onChange={async (e) => {
                                                 try {
                                                     const response = await axios.patch(
-                                                        `http://localhost:5000/api/users/${pilot.id}/operating-center`,
+                                                        `${API_URL}/api/users/${pilot.id}/operating-center`,
                                                         { homeCenterId: e.target.value },
-                                                        { withCredentials: true, headers: { 'x-csrf-token': getCsrfToken() } }
+                                                        { withCredentials: true, headers: csrfHeaders() }
                                                     );
                                                     setPilots((prev) => prev.map((p) => (p.id === pilot.id ? response.data.user : p)));
                                                 } catch (error) {
@@ -281,7 +294,7 @@ export default function ManagePilots() {
                                             className="rounded border border-gray-300 px-2 py-1 text-sm"
                                         >
                                             <option value="" disabled>Select center…</option>
-                                            {centers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                            {activeCenters.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                                         </select>
                                     </td>
                                     <td className="px-4 py-3 text-gray-700">
@@ -292,8 +305,10 @@ export default function ManagePilots() {
                                     <td className="px-4 py-3 text-gray-700">{pilot.licenseId || '—'}</td>
                                     <td className="px-4 py-3">
                                         <button
+                                            type="button"
                                             onClick={() => toggleActive(pilot.id)}
                                             className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${pilot.active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}
+                                            title={pilot.active ? 'Deactivate pilot account' : 'Activate pilot account'}
                                         >
                                             {pilot.active ? 'Active' : 'Inactive'}
                                         </button>
@@ -345,6 +360,11 @@ export default function ManagePilots() {
                                 <Field label="Mobile Number" name="phone" value={form.phone} onChange={handleChange} placeholder="10-digit number" />
                                 <Field label="License ID" name="licenseId" value={form.licenseId} onChange={handleChange} placeholder="Remote Pilot License No." />
                             </div>
+                            {!editingId && <div className="grid grid-cols-2 gap-3">
+                                <Field label="Temporary Password" name="password" value={form.password} onChange={handleChange} type="password" minLength={12} maxLength={72} placeholder="12 to 72 UTF-8 bytes" />
+                                <Field label="Confirm Temporary Password" name="confirmPassword" value={form.confirmPassword} onChange={handleChange} type="password" minLength={12} maxLength={72} placeholder="Repeat temporary password" />
+                            </div>}
+                            {!editingId && <p className="text-xs text-gray-500">Enter a temporary password deliberately and share it only through an approved channel. It will not be returned or shown after account creation.</p>}
                             <Field label="ID Proof" name="idProof" value={form.idProof} onChange={handleChange} placeholder="Aadhaar / Passport / Voter ID No." />
                             <div className="grid grid-cols-2 gap-3">
                                 <label className="block">
@@ -357,7 +377,7 @@ export default function ManagePilots() {
                                         className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                                     >
                                         <option value="" disabled>Select location…</option>
-                                        {centers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                        {activeCenters.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                                     </select>
                                 </label>
                                 <label className="block">
@@ -368,8 +388,8 @@ export default function ManagePilots() {
                                         onChange={handleChange}
                                         className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                                     >
-                                        {/* <option value="">Unassigned</option> */}
-                                        {drones.map((d) => <option key={d.id} value={d.id}>{d.name || d.model} · {d.uin}</option>)}
+                                        <option value="">No preferred drone</option>
+                                        {eligibleDrones.map((d) => <option key={d.id} value={d.id}>{d.name || d.model} · {d.uin || d.serialNumber}</option>)}
                                     </select>
                                 </label>
                             </div>
@@ -385,29 +405,6 @@ export default function ManagePilots() {
                                 <Field label="Pincode" name="pincode" value={form.pincode} onChange={handleChange} />
                             </div>
 
-
-                            <div className="input-group">
-                                <label htmlFor="pilot-status">Status</label>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.25rem' }}>
-                                    <button
-                                        type="button"
-                                        id="pilot-status"
-                                        onClick={() => setForm({ ...form, active: !form.active })}
-                                        style={{
-                                            width: '44px', height: '24px', borderRadius: '999px', border: 'none', cursor: 'pointer',
-                                            background: form.active ? 'var(--primary, #2e6b4d)' : '#d1d5db',
-                                            position: 'relative', transition: 'background 0.2s',
-                                        }}
-                                    >
-                                        <span style={{
-                                            position: 'absolute', top: '2px', left: form.active ? '22px' : '2px',
-                                            width: '20px', height: '20px', borderRadius: '50%', background: '#fff',
-                                            transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
-                                        }} />
-                                    </button>
-                                    <span style={{ fontSize: '0.875rem', color: '#374151' }}>{form.active ? 'Active' : 'Inactive'}</span>
-                                </div>
-                            </div>
 
                             <div className="mt-5 flex justify-end gap-2">
                                 <button type="button" onClick={closeModal} className="rounded-lg px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100">Cancel</button>

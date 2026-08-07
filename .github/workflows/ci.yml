@@ -45,10 +45,12 @@ jobs:
       - name: Generate process-local test secrets
         shell: bash
         run: |
-          echo "RECOVERY_HASH_SECRET=$(openssl rand -hex 48)" >> "$GITHUB_ENV"
-          echo "OTP_HASH_SECRET=$(openssl rand -hex 48)" >> "$GITHUB_ENV"
-          echo "OTP_DELIVERY_PROVIDER=test" >> "$GITHUB_ENV"
-          echo "DEMO_USER_PASSWORD=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
+          {
+            echo "RECOVERY_HASH_SECRET=$(openssl rand -hex 48)"
+            echo "OTP_HASH_SECRET=$(openssl rand -hex 48)"
+            echo "OTP_DELIVERY_PROVIDER=test"
+            echo "DEMO_USER_PASSWORD=$(openssl rand -hex 32)"
+          } >> "$GITHUB_ENV"
       - run: npm ci
       - run: npm audit --audit-level=high
       - run: npm run prisma:validate
@@ -71,6 +73,11 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
+      # The current React Router advisory applies only to unstable RSC APIs;
+      # this application is a client-side Vite SPA and does not enable RSC.
+      # Keep critical findings blocking while upstream publishes a compatible
+      # patched react-router-dom release.
+      - run: npm audit --omit=dev --audit-level=critical
       - run: npm run lint
       - name: Production same-origin build
         env:
@@ -94,7 +101,12 @@ jobs:
           openssl rand -base64 36 > "$secret_dir/db_password"
           openssl rand -base64 48 > "$secret_dir/recovery_hash_secret"
           openssl rand -base64 48 > "$secret_dir/otp_hash_secret"
-          chmod 0444 "$secret_dir/db_password" "$secret_dir/recovery_hash_secret" "$secret_dir/otp_hash_secret"
+          openssl rand -hex 32 > "$secret_dir/import_staging_key"
+          mkdir -p "$RUNNER_TEMP/import-input"
+          chmod 0755 "$RUNNER_TEMP/import-input"
+          printf 'intentionally-invalid-workbook\n' > "$RUNNER_TEMP/import-input/invalid.xlsx"
+          chmod 0444 "$RUNNER_TEMP/import-input/invalid.xlsx"
+          chmod 0444 "$secret_dir/db_password" "$secret_dir/recovery_hash_secret" "$secret_dir/otp_hash_secret" "$secret_dir/import_staging_key"
           cat > "$RUNNER_TEMP/operations-ci.env" <<EOF
           DEPLOYMENT_NAME=operations-ci-${GITHUB_RUN_ID}
           IMAGE_TAG=ci-${GITHUB_SHA}
@@ -108,20 +120,44 @@ jobs:
           DB_PASSWORD_FILE=$secret_dir/db_password
           RECOVERY_HASH_SECRET_FILE=$secret_dir/recovery_hash_secret
           OTP_HASH_SECRET_FILE=$secret_dir/otp_hash_secret
+          IMPORT_STAGING_KEY_FILE=$secret_dir/import_staging_key
+          IMPORT_STAGING_KEY_VERSION=ci-v1
+          IMPORT_WORKBOOK_DIRECTORY=$RUNNER_TEMP/import-input
+          IMPORTER_UID=$(id -u)
+          IMPORTER_GID=$(id -g)
           OTP_DELIVERY_PROVIDER=disabled
           EOF
           echo "DEPLOY_ENV=$RUNNER_TEMP/operations-ci.env" >> "$GITHUB_ENV"
       - name: Validate rendered Compose configuration
+        shell: bash
         run: |
+          set -euo pipefail
           docker compose --env-file "$DEPLOY_ENV" -f compose.production.yml config --quiet
           docker compose --env-file "$DEPLOY_ENV" -f compose.production.yml -f compose.onprem-staging.yml config --quiet
+          docker compose --env-file "$DEPLOY_ENV" -f compose.production.yml -f compose.import.yml config --quiet
+          import_config="$(docker compose --env-file "$DEPLOY_ENV" \
+            -f compose.production.yml -f compose.import.yml config --format json)"
+          jq -e '
+            .services["importer-preflight"] as $preflight
+            | .services.importer as $importer
+            | $preflight.network_mode == "none"
+              and (($preflight.secrets // []) | length == 0)
+              and (($preflight.depends_on // {}) | length == 0)
+              and $preflight.read_only
+              and ($preflight.cap_drop | index("ALL") != null)
+              and ($preflight.security_opt | index("no-new-privileges:true") != null)
+              and ($importer.networks | has("data"))
+              and (($importer.networks | has("edge")) | not)
+              and (($importer.secrets // []) | length == 2)
+          ' <<< "$import_config" >/dev/null
       - name: Build and start isolated stack
         shell: bash
         run: |
           set -euo pipefail
           for attempt in 1 2 3; do
             if docker compose --env-file "$DEPLOY_ENV" -f compose.production.yml pull db \
-              && docker compose --env-file "$DEPLOY_ENV" -f compose.production.yml build; then
+              && docker compose --env-file "$DEPLOY_ENV" -f compose.production.yml build \
+              && docker compose --env-file "$DEPLOY_ENV" -f compose.production.yml -f compose.import.yml build importer importer-preflight; then
               break
             fi
             if [ "$attempt" -eq 3 ]; then
@@ -157,9 +193,23 @@ jobs:
           backend_user="$(docker image inspect "field-operations-backend:ci-${GITHUB_SHA}" --format '{{.Config.User}}')"
           frontend_user="$(docker image inspect "field-operations-frontend:ci-${GITHUB_SHA}" --format '{{.Config.User}}')"
           migration_user="$(docker image inspect "field-operations-migration:ci-${GITHUB_SHA}" --format '{{.Config.User}}')"
+          importer_user="$(docker image inspect "field-operations-importer:ci-${GITHUB_SHA}" --format '{{.Config.User}}')"
           test "$backend_user" = node || { echo "backend image must run as node, got '$backend_user'" >&2; exit 1; }
           test "$frontend_user" = nginx || { echo "frontend image must run as nginx, got '$frontend_user'" >&2; exit 1; }
           test "$migration_user" = node || { echo "migration image must run as node, got '$migration_user'" >&2; exit 1; }
+          test "$importer_user" = node || { echo "importer image must run as node, got '$importer_user'" >&2; exit 1; }
+
+          # Exercise the parser boundary as the non-root host-mapped operator.
+          # The invalid fixture must be readable but rejected safely, and this
+          # service has no network, database secret, key, or migration dependency.
+          if docker compose --env-file "$DEPLOY_ENV" -f compose.production.yml -f compose.import.yml \
+            run --rm --no-deps importer-preflight preflight --file /imports/input/invalid.xlsx \
+            > "$RUNNER_TEMP/import-preflight.out" 2>&1; then
+            echo "Importer preflight unexpectedly accepted an invalid workbook." >&2
+            exit 1
+          fi
+          grep -q '"ok":false' "$RUNNER_TEMP/import-preflight.out"
+          grep -q '"error":"INVALID_ZIP"' "$RUNNER_TEMP/import-preflight.out"
       - name: Print container diagnostics after failure
         if: failure()
         run: |

@@ -14,8 +14,10 @@ jobs:
     steps:
       - name: Reject non-staging production pull requests
         shell: bash
+        env:
+          HEAD_REF: ${{ github.head_ref }}
         run: |
-          if [ "${{ github.head_ref }}" != "staging" ]; then
+          if [ "$HEAD_REF" != "staging" ]; then
             echo "Production pull requests must originate from staging." >&2
             exit 1
           fi

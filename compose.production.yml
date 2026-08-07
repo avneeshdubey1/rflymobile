@@ -46,6 +46,7 @@ services:
     logging: *service-logging
 
   migrate:
+    <<: *service-security
     image: ${MIGRATION_IMAGE:-field-operations-migration}:${IMAGE_TAG:-local}
     build:
       context: ./backend
@@ -68,6 +69,7 @@ services:
     logging: *service-logging
 
   backend:
+    <<: *service-security
     image: ${BACKEND_IMAGE:-field-operations-backend}:${IMAGE_TAG:-local}
     build:
       context: ./backend
@@ -128,6 +130,7 @@ services:
     logging: *service-logging
 
   frontend:
+    <<: *service-security
     image: ${FRONTEND_IMAGE:-field-operations-frontend}:${IMAGE_TAG:-local}
     build:
       context: ./frontend

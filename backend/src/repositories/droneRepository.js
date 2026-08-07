@@ -1,14 +1,22 @@
 const prisma = require('../lib/prisma');
+const { setHistoryActor } = require('./historyActorRepository');
+
+const include = { homeCenter: true };
 
 module.exports = {
-    create: (data) => prisma.drone.create({ data, include: { homeCenter: true } }),
-    findAll: (where = {}) => prisma.drone.findMany({ where, include: { homeCenter: true }, orderBy: { createdAt: 'desc' } }),
-    findById: (id) => prisma.drone.findUnique({ where: { id }, include: { homeCenter: true } }),
+    create: (data, options = {}) => prisma.$transaction(async (transaction) => {
+        await setHistoryActor(transaction, options.actorId);
+        return transaction.drone.create({ data, include });
+    }),
+    findAll: (where = {}) => prisma.drone.findMany({ where, include, orderBy: { createdAt: 'desc' } }),
+    findById: (id) => prisma.drone.findUnique({ where: { id }, include }),
     findByUin: (uin) =>
         prisma.drone.findUnique({
             where: { uin }
         }),
-    update: (id, data) => prisma.drone.update({ where: { id }, data, include: { homeCenter: true } }),
-    remove: (id) => prisma.drone.delete({ where: { id } }),
+    update: (id, data, options = {}) => prisma.$transaction(async (transaction) => {
+        await setHistoryActor(transaction, options.actorId);
+        return transaction.drone.update({ where: { id }, data, include });
+    }),
     deleteAll: () => prisma.drone.deleteMany(),
 };

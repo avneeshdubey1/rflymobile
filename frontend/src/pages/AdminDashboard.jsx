@@ -217,34 +217,6 @@ function AdminDashboard() {
     }
   };
 
-  const handleResolveMaintenance = async (droneId, action) => {
-    try {
-      const response = await fetch(`${API}/api/drones/resolve-maintenance`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ droneId, action }),
-      });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data.error || 'Maintenance decision failed.');
-      setAdminNotice({ kind: 'success', message: action === 'approve' ? 'Maintenance request approved.' : 'Maintenance request rejected.' });
-      await fetchData();
-    } catch (error) { setAdminNotice({ kind: 'error', message: error.message }); }
-  };
-
-  const inquireDroneStatus = async (droneId) => {
-    try {
-      const response = await fetch(`${API}/api/drones/inquire`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ droneId }),
-      });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data.error || 'Status inquiry failed.');
-      setAdminNotice({ kind: 'success', message: 'Status inquiry sent to Fleet.' });
-      await fetchData();
-    } catch (error) { setAdminNotice({ kind: 'error', message: error.message }); }
-  };
-
   const handleAddCenter = async (event) => {
     event.preventDefault();
     if (!centerPosition) {
@@ -428,9 +400,8 @@ function AdminDashboard() {
 
   const activeDrones = useMemo(() => drones.filter((drone) => ['AVAILABLE', 'ASSIGNED'].includes(drone.status)), [drones]);
   const standbyDrones = useMemo(() => drones.filter((drone) => ['MAINTENANCE', 'OUT_OF_SERVICE'].includes(drone.status)), [drones]);
-  const maintenanceRequests = useMemo(() => drones.filter((drone) => drone.maintenanceRequest), [drones]);
   const navItems = [
-    { id: 'fleet', label: 'Fleet Overview', icon: 'overview', badge: maintenanceRequests.length || null },
+    { id: 'fleet', label: 'Fleet Overview', icon: 'overview' },
     { id: 'centers', label: 'Feasible Regions', icon: 'location' },
     { id: 'farmerRegistration', label: 'Customer Registration', icon: 'user-plus' },
     { id: 'manual', label: 'Enter New Lead', icon: 'plus' },
@@ -546,7 +517,7 @@ function AdminDashboard() {
               {loading ? (
                 <div className="data-stack"><SkeletonRow count={3} /></div>
               ) : activeDrones.length ? (
-                <div className="data-stack">{activeDrones.map((drone) => <div className="data-row" key={drone.id}><div className="data-row__main"><span className="data-row__title">{drone.model}</span><span className="data-row__meta">Serial {drone.serialNumber || drone.id}</span><span className={`status-badge status-badge--${statusTone(drone.status)}`}>{statusLabel(drone.status)}</span></div><div className="data-row__actions"><button className="action-btn" type="button" onClick={() => void inquireDroneStatus(drone.id)}>{drone.pendingInquiry ? 'Inquiry Sent ✓' : 'Inquire Status'}</button></div></div>)}</div>
+                <div className="data-stack">{activeDrones.map((drone) => <div className="data-row" key={drone.id}><div className="data-row__main"><span className="data-row__title">{drone.model}</span><span className="data-row__meta">Serial {drone.serialNumber || drone.id}</span><span className={`status-badge status-badge--${statusTone(drone.status)}`}>{statusLabel(drone.status)}</span></div></div>)}</div>
               ) : (
                 <div className="panel-body"><div className="empty-state"><strong>No ready aircraft</strong><span>Available and assigned drones will appear here.</span></div></div>
               )}
@@ -557,14 +528,13 @@ function AdminDashboard() {
               {loading ? (
                 <div className="data-stack"><SkeletonRow count={2} /></div>
               ) : standbyDrones.length ? (
-                <div className="data-stack">{standbyDrones.map((drone) => <div className="data-row" key={drone.id}><div className="data-row__main"><span className="data-row__title">{drone.model}</span><span className="data-row__meta">Serial {drone.serialNumber || drone.id}</span><span className={`status-badge status-badge--${statusTone(drone.status)}`}>{statusLabel(drone.status)}</span></div>{drone.status !== 'MAINTENANCE' && <div className="data-row__actions"><button className="action-btn" type="button" onClick={() => void inquireDroneStatus(drone.id)}>{drone.pendingInquiry ? 'Inquiry Sent ✓' : 'Inquire Status'}</button></div>}</div>)}</div>
+                <div className="data-stack">{standbyDrones.map((drone) => <div className="data-row" key={drone.id}><div className="data-row__main"><span className="data-row__title">{drone.model}</span><span className="data-row__meta">Serial {drone.serialNumber || drone.id}</span><span className={`status-badge status-badge--${statusTone(drone.status)}`}>{statusLabel(drone.status)}</span></div></div>)}</div>
               ) : (
                 <div className="panel-body"><div className="empty-state"><strong>No maintenance exceptions</strong><span>The unavailable fleet queue is clear.</span></div></div>
               )}
             </div>
           </section>
 
-          {!loading && maintenanceRequests.length > 0 && <section className="panel maintenance-card section-gap"><div className="panel-header"><div className="panel-header__title"><div className="panel-title-row"><span className="panel-title-icon"><OpsIcon name="alert" /></span><h2>Pending maintenance requests</h2></div><p>Review pilot and Fleet requests before changing aircraft availability.</p></div></div>{maintenanceRequests.map((drone) => <article className="maintenance-row" key={drone.id}><div><strong>{drone.model} · {drone.serialNumber || drone.id}</strong><p className="caption">Requested by {drone.maintenanceRequest.requestedBy}</p><p>{drone.maintenanceRequest.reason}</p></div><div className="button-row"><button className="danger-btn" type="button" onClick={() => void handleResolveMaintenance(drone.id, 'approve')}>Approve maintenance</button><button className="action-btn" type="button" onClick={() => void handleResolveMaintenance(drone.id, 'reject')}>Reject request</button></div></article>)}</section>}
         </>
       )}
 

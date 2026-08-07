@@ -50,6 +50,15 @@ function optionalDate(value) {
   return parsed;
 }
 
+function optionalSprayPurpose(value) {
+  if (!Array.isArray(value)) return optionalText(value, 'sprayPurpose', { maximum: 500 });
+  if (value.length > 20 || value.some((item) => typeof item !== 'string')) {
+    throw new Error('sprayPurpose must contain at most 20 text values');
+  }
+  const joined = value.map((item) => item.trim()).filter(Boolean).join(', ');
+  return optionalText(joined, 'sprayPurpose', { maximum: 500 });
+}
+
 async function validateAcreage(value) {
   const acreage = Number(value);
   if (!Number.isFinite(acreage) || acreage <= 0) throw new Error('Acreage must be a positive number');
@@ -80,7 +89,7 @@ function allowlistedLeadFields(input) {
     soilType: optionalText(input.soilType, 'soilType'),
     cropAgeWeeks: optionalInteger(input.cropAgeWeeks, 'cropAgeWeeks'),
     chemicalBrand: optionalText(input.chemicalBrand, 'chemicalBrand'),
-    sprayPurpose: optionalText(input.sprayPurpose, 'sprayPurpose', { maximum: 500 }),
+    sprayPurpose: optionalSprayPurpose(input.sprayPurpose),
     hasChemical,
     chemicalProofUrl,
     expectedDate: optionalDate(input.expectedDate),
@@ -142,7 +151,7 @@ async function createIntake(input) {
     distanceFromCenterKm: geofence.distanceKm,
     processedAt: status === 'PROCESSED' ? new Date() : null,
     ...fields,
-  });
+  }, { actorId, sprayPurposes: input.sprayPurpose ?? fields.sprayPurpose });
   await auditLogService.record({
     entityType: 'Lead',
     entityId: lead.id,
@@ -160,9 +169,9 @@ async function createIntake(input) {
   return { outcome: 'ACCEPTED', lead, geofence };
 }
 
-async function triggerAutoAssignment(leadId) {
+async function triggerAutoAssignment(leadId, actorId = null) {
   try {
-    return await autoAssignmentService.autoAssignProcessedLead(leadId);
+    return await autoAssignmentService.autoAssignProcessedLead(leadId, { actorId });
   } catch (error) {
     logger.error('intake.auto-assignment-failed', { leadId, error: error.name });
     return null;

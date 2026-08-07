@@ -3,6 +3,7 @@ import { useAuth } from '../context/useAuth';
 import OpsIcon from './OpsIcon';
 import { useTranslation } from 'react-i18next';
 import { supportedLanguages } from '../i18n';
+import { API_URL } from '../config';
 
 export default function LanguageSelector({ style, className }) {
   const { user } = useAuth();
@@ -23,7 +24,7 @@ export default function LanguageSelector({ style, className }) {
     
     if (user) {
       try {
-        await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/users/preferences`, {
+        await fetch(`${API_URL}/api/users/preferences`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',

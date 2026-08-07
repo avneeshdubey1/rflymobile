@@ -6,8 +6,9 @@ const { issueToken } = require('../middleware/auth');
 
 let server;
 let baseUrl;
-const ids = { center: null, users: [], drones: [], leads: [], assignments: [] };
+const ids = { center: null, users: [], drones: [], lmvs: [], leads: [], assignments: [] };
 let pilot;
+let copilot;
 let otherPilot;
 let sales;
 
@@ -26,11 +27,31 @@ async function createScheduledMission(label, leadStatus = 'SCHEDULED') {
   },
 });
   ids.drones.push(drone.id);
+  const lmv = await prisma.lMV.create({
+    data: {
+      registrationNo: `PHASE4-LMV-${label}`,
+      status: 'ASSIGNED',
+      homeCenterId: ids.center,
+    },
+  });
+  ids.lmvs.push(lmv.id);
   const lead = await prisma.lead.create({ data: { farmerName: `Phase 4 ${label}`, farmerPhone: `95555${label}`, acreage: 2, intakeChannel: 'MANUAL_SALES', status: leadStatus, latitude: 11, longitude: 76, matchedCenterId: ids.center } });
   ids.leads.push(lead.id);
-  const assignment = await prisma.assignment.create({ data: { leadId: lead.id, pilotId: pilot.id, droneId: drone.id, scheduledDate: new Date(), expectedAcreage: 2, acceptedAt: leadStatus === 'PILOT_ACCEPTED' ? new Date() : null } });
+  const assignment = await prisma.assignment.create({
+    data: {
+      leadId: lead.id,
+      pilotId: pilot.id,
+      copilotId: copilot.id,
+      droneId: drone.id,
+      lmvId: lmv.id,
+      scheduledDate: new Date(),
+      dailySequence: ids.assignments.length + 1,
+      expectedAcreage: 2,
+      acceptedAt: leadStatus === 'PILOT_ACCEPTED' ? new Date() : null,
+    },
+  });
   ids.assignments.push(assignment.id);
-  return { lead, drone, assignment };
+  return { lead, drone, lmv, assignment };
 }
 
 test.before(async () => {
@@ -39,12 +60,13 @@ test.before(async () => {
   baseUrl = `http://127.0.0.1:${server.address().port}`;
   const center = await prisma.operatingCenter.create({ data: { name: 'Phase 4 Center', latitude: 11, longitude: 76, radiusKm: 50 } });
   ids.center = center.id;
-  [pilot, otherPilot, sales] = await Promise.all([
+  [pilot, copilot, otherPilot, sales] = await Promise.all([
     prisma.user.create({ data: { name: 'Phase 4 Pilot', email: 'phase4-pilot@example.test', passwordHash: 'test', role: 'PILOT', homeCenterId: center.id } }),
+    prisma.user.create({ data: { name: 'Phase 4 Copilot', email: 'phase4-copilot@example.test', passwordHash: 'test', role: 'PILOT', homeCenterId: center.id } }),
     prisma.user.create({ data: { name: 'Phase 4 Other Pilot', email: 'phase4-other@example.test', passwordHash: 'test', role: 'PILOT', homeCenterId: center.id } }),
     prisma.user.create({ data: { name: 'Phase 4 Sales', email: 'phase4-sales@example.test', passwordHash: 'test', role: 'SALES' } }),
   ]);
-  ids.users.push(pilot.id, otherPilot.id, sales.id);
+  ids.users.push(pilot.id, copilot.id, otherPilot.id, sales.id);
 });
 
 test('Sales cannot create an assignment and a pilot cannot skip acceptance', async () => {
@@ -72,6 +94,8 @@ test('assigned pilot must accept, then start, then complete in order', async () 
   assert.equal(completedBody.lead.status, 'COMPLETED');
   const drone = await prisma.drone.findUnique({ where: { id: mission.drone.id } });
   assert.equal(drone.status, 'AVAILABLE');
+  const lmv = await prisma.lMV.findUnique({ where: { id: mission.lmv.id } });
+  assert.equal(lmv.status, 'AVAILABLE');
 });
 
 test('pilot decommission flags the mission and sends the drone to maintenance', async () => {
@@ -92,6 +116,7 @@ test.after(async () => {
   await prisma.assignment.deleteMany({ where: { id: { in: ids.assignments } } });
   await prisma.lead.deleteMany({ where: { id: { in: ids.leads } } });
   await prisma.drone.deleteMany({ where: { id: { in: ids.drones } } });
+  await prisma.lMV.deleteMany({ where: { id: { in: ids.lmvs } } });
   await prisma.user.deleteMany({ where: { id: { in: ids.users } } });
   await prisma.operatingCenter.delete({ where: { id: ids.center } });
   await new Promise((resolve) => server.close(resolve));

@@ -55,8 +55,6 @@ test.after(async () => {
 
 test('seeded and Admin-provisioned employees have a verified recovery email', async () => {
   const admin = await prisma.user.findUnique({ where: { email: 'admin@fieldops.example' } });
-  console.log('ADMIN:', admin);
-  console.log('NODE_ENV:', process.env.NODE_ENV);
   const center = await prisma.operatingCenter.findFirst({ where: { active: true } });
   assert.ok(admin?.emailVerifiedAt, 'Seeded work email was not marked as provisioned and verified');
   assert.ok(center, 'The disposable seed did not create an active operating center');
@@ -84,8 +82,6 @@ test('seeded and Admin-provisioned employees have a verified recovery email', as
 
 test('semantic phone variants cannot create an ambiguous second account', async () => {
   const admin = await prisma.user.findUnique({ where: { email: 'admin@fieldops.example' } });
-  console.log('ADMIN:', admin);
-  console.log('NODE_ENV:', process.env.NODE_ENV);
   const center = await prisma.operatingCenter.findFirst({ where: { active: true } });
   const duplicate = await invokeAddUser(admin, {
     name: 'Duplicate Phone Pilot',

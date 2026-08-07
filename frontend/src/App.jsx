@@ -32,11 +32,11 @@ function App() {
       <HashRouter>
         <Routes>
           {/* Public Routes */}
-          {/* <Route path="/" element={<Navigate to="/farmer/login" replace />} /> */}
           <Route path="/" element={<Navigate to="/login" replace />} />
+          <Route path="/request" element={<LandingPage />} />
           <Route path="/login" element={<GuestOnlyRoute><Login /></GuestOnlyRoute>} />
-          {/* <Route path="/farmer/login" element={<FarmerLogin />} />
-          <Route path="/farmer/register" element={<FarmerRegister />} /> */}
+          <Route path="/farmer/login" element={<GuestOnlyRoute><FarmerLogin /></GuestOnlyRoute>} />
+          <Route path="/farmer/register" element={<FarmerRegister />} />
           <Route path="/success" element={<RegistrationSuccess />} />
           
           {/* Business Routes */}

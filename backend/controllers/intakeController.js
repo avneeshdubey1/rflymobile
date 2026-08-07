@@ -88,7 +88,7 @@ async function submit(req, res, { intakeChannel, actorId = null, farmerName, far
   let assignment = null;
   if (autoAssign && result.lead.status === 'PROCESSED') {
     await whatsappService.sendForStatus(result.lead, 'PROCESSED');
-    assignment = await intakeService.triggerAutoAssignment(result.lead.id);
+    assignment = await intakeService.triggerAutoAssignment(result.lead.id, actorId);
   }
   logger.info('intake.accepted', { leadId: result.lead.id, intakeChannel, status: result.lead.status });
   return res.status(201).json({

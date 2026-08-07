@@ -53,3 +53,19 @@ COPY --chown=node:node package.json package-lock.json ./
 COPY --chown=node:node prisma ./prisma
 USER node
 CMD ["node", "node_modules/prisma/build/index.js", "migrate", "deploy"]
+
+# Operator-only, one-shot workbook importer. The normal API runtime deliberately
+# does not contain this CLI or its spreadsheet parser.
+FROM runtime-base AS importer
+ENV APP_RUNTIME_MODE=importer
+COPY --from=production-dependencies --chown=node:node /workspace/node_modules ./node_modules
+COPY --chown=node:node package.json package-lock.json ./
+COPY --chown=node:node prisma ./prisma
+COPY --chown=node:node importer ./importer
+COPY --chown=node:node services/farmerDataImportService.js ./services/farmerDataImportService.js
+COPY --chown=node:node src/lib ./src/lib
+COPY --chown=node:node src/repositories/importRepository.js ./src/repositories/importRepository.js
+COPY --chown=node:node src/repositories/historyActorRepository.js ./src/repositories/historyActorRepository.js
+COPY --chown=node:node src/repositories/normalizedCompatibilityRepository.js ./src/repositories/normalizedCompatibilityRepository.js
+USER node
+ENTRYPOINT ["/bin/sh", "/usr/local/bin/operations-entrypoint", "node", "importer/cli.js"]

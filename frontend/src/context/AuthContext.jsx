@@ -2,19 +2,9 @@ import { useEffect, useState } from 'react';
 import { AuthContext } from './authContext';
 import { API_URL } from '../config';
 import { clearQueuedActions } from '../services/offlineActionQueue';
+import { csrfToken } from '../utils/csrf';
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
-const CSRF_COOKIE_NAMES = ['__Host-daas_csrf', 'daas_csrf'];
-
-function readCookie(name) {
-  const prefix = `${name}=`;
-  const entry = document.cookie.split(';').map((part) => part.trim()).find((part) => part.startsWith(prefix));
-  return entry ? decodeURIComponent(entry.slice(prefix.length)) : '';
-}
-
-function csrfToken() {
-  return CSRF_COOKIE_NAMES.map(readCookie).find(Boolean) || '';
-}
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(() => {

@@ -5,7 +5,6 @@ on:
     workflows: [application-and-container-gates]
     branches: [main]
     types: [completed]
-  workflow_dispatch:
 
 permissions:
   contents: read
@@ -17,22 +16,27 @@ concurrency:
 jobs:
   deploy:
     name: deploy main to office on-prem server
-    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    if: github.event.workflow_run.conclusion == 'success'
     runs-on: [self-hosted, linux, rfly-onprem]
     timeout-minutes: 30
     environment: onprem-production
     steps:
       - name: Checkout CI-passed source
-        if: github.event_name == 'workflow_run'
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 0
 
-      - name: Checkout manually selected source
-        if: github.event_name == 'workflow_dispatch'
-        uses: actions/checkout@v4
-        with:
-          ref: main
+      - name: Refuse a stale CI result
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --force --no-tags origin \
+            refs/heads/main:refs/remotes/origin/main
+          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" || {
+            echo "The successful CI revision is no longer the main branch tip; refusing rollback." >&2
+            exit 1
+          }
 
       - name: Show source revision
         run: git rev-parse HEAD

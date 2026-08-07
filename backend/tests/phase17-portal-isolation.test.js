@@ -6,6 +6,7 @@ const { issueToken } = require('../middleware/auth');
 
 let server;
 let baseUrl;
+let portalCrop;
 
 const ids = {
   users: [],
@@ -14,6 +15,7 @@ const ids = {
   leads: [],
   centers: [],
   pricing: [],
+  crops: [],
 };
 
 async function request(pathname, { method = 'GET', body, authorization } = {}) {
@@ -53,6 +55,15 @@ test.before(async () => {
   }
   const center = await prisma.operatingCenter.create({ data: { name: 'Phase 17 Centre', latitude: 8.959, longitude: 77.311, radiusKm: 25 } });
   ids.centers.push(center.id);
+  portalCrop = await prisma.crop.create({
+    data: {
+      code: `phase17-portal-${process.pid}`.slice(0, 40),
+      displayName: `Phase 17 approved crop ${process.pid}`.slice(0, 120),
+      normalizedName: `phase17approvedcrop${process.pid}`.slice(0, 120),
+      active: true,
+    },
+  });
+  ids.crops.push(portalCrop.id);
 });
 
 test('Farmer portal returns only the linked customer requests', async () => {
@@ -66,8 +77,8 @@ test('Farmer portal returns only the linked customer requests', async () => {
   ]);
   ids.customers.push(customerA.id, customerB.id);
   const [leadA, leadB] = await Promise.all([
-    prisma.lead.create({ data: { customerId: customerA.id, farmerName: customerA.displayName, farmerPhone: customerA.phone, acreage: 2, cropType: 'Rice', intakeChannel: 'MANUAL_SALES', status: 'SCHEDULED', matchedCenterId: ids.centers[0] } }),
-    prisma.lead.create({ data: { customerId: customerB.id, farmerName: customerB.displayName, farmerPhone: customerB.phone, acreage: 3, cropType: 'Cotton', intakeChannel: 'MANUAL_SALES', status: 'COMPLETED', matchedCenterId: ids.centers[0] } }),
+    prisma.lead.create({ data: { customerId: customerA.id, farmerName: customerA.displayName, farmerPhone: customerA.phone, acreage: 2, cropType: portalCrop.displayName, cropId: portalCrop.id, intakeChannel: 'MANUAL_SALES', status: 'SCHEDULED', matchedCenterId: ids.centers[0] } }),
+    prisma.lead.create({ data: { customerId: customerB.id, farmerName: customerB.displayName, farmerPhone: customerB.phone, acreage: 3, cropType: portalCrop.displayName, cropId: portalCrop.id, intakeChannel: 'MANUAL_SALES', status: 'COMPLETED', matchedCenterId: ids.centers[0] } }),
   ]);
   ids.leads.push(leadA.id, leadB.id);
 
@@ -84,7 +95,7 @@ test('Farmer self-request remains available and becomes visible through the link
   const created = await request('/api/leads/new', {
     method: 'POST',
     authorization: `Bearer ${issueToken(farmer)}`,
-    body: { acres: 1.5, cropType: 'Banana', village: 'Phase 17 Village', district: 'Phase 17 District', latitude: 8.959, longitude: 77.311 },
+    body: { acres: 1.5, cropType: portalCrop.displayName, village: 'Phase 17 Village', district: 'Phase 17 District', latitude: 8.959, longitude: 77.311 },
   });
   assert.equal(created.response.status, 201, JSON.stringify(created.data));
   ids.leads.push(created.data.lead.id);
@@ -112,8 +123,8 @@ test('Business portal returns only explicitly linked organization work', async (
     prisma.businessMembership.create({ data: { organizationId: orgB.id, userId: businessB.id, active: true } }),
   ]);
   const [leadA, leadB] = await Promise.all([
-    prisma.lead.create({ data: { businessOrganizationId: orgA.id, farmerName: 'Phase 17 Org A Farmer', farmerPhone: '+919444444446', acreage: 4, cropType: 'Rice', intakeChannel: 'MANUAL_SALES', status: 'IN_PROGRESS', matchedCenterId: ids.centers[0] } }),
-    prisma.lead.create({ data: { businessOrganizationId: orgB.id, farmerName: 'Phase 17 Org B Farmer', farmerPhone: '+919444444447', acreage: 5, cropType: 'Cotton', intakeChannel: 'MANUAL_SALES', status: 'COMPLETED', matchedCenterId: ids.centers[0] } }),
+    prisma.lead.create({ data: { businessOrganizationId: orgA.id, farmerName: 'Phase 17 Org A Farmer', farmerPhone: '+919444444446', acreage: 4, cropType: portalCrop.displayName, cropId: portalCrop.id, intakeChannel: 'MANUAL_SALES', status: 'IN_PROGRESS', matchedCenterId: ids.centers[0] } }),
+    prisma.lead.create({ data: { businessOrganizationId: orgB.id, farmerName: 'Phase 17 Org B Farmer', farmerPhone: '+919444444447', acreage: 5, cropType: portalCrop.displayName, cropId: portalCrop.id, intakeChannel: 'MANUAL_SALES', status: 'COMPLETED', matchedCenterId: ids.centers[0] } }),
   ]);
   ids.leads.push(leadA.id, leadB.id);
 
@@ -137,17 +148,21 @@ test('Portal routes reject anonymous and wrong-role callers', async () => {
 });
 
 test.after(async () => {
-  await prisma.paymentRecord.deleteMany({ where: { leadId: { in: ids.leads } } });
-  await prisma.notification.deleteMany({ where: { leadId: { in: ids.leads } } });
-  await prisma.assignment.deleteMany({ where: { leadId: { in: ids.leads } } });
-  await prisma.auditLog.deleteMany({ where: { entityId: { in: [...ids.leads, ...ids.customers, ...ids.organizations] } } });
-  await prisma.lead.deleteMany({ where: { id: { in: ids.leads } } });
-  await prisma.businessMembership.deleteMany({ where: { organizationId: { in: ids.organizations } } });
-  await prisma.businessOrganization.deleteMany({ where: { id: { in: ids.organizations } } });
-  await prisma.customer.deleteMany({ where: { id: { in: ids.customers.filter(Boolean) } } });
-  await prisma.user.deleteMany({ where: { id: { in: ids.users } } });
-  await prisma.operatingCenter.deleteMany({ where: { id: { in: ids.centers } } });
-  await prisma.pricingConfig.deleteMany({ where: { id: { in: ids.pricing } } });
+  await prisma.$transaction(async (transaction) => {
+    await transaction.$queryRaw`SELECT set_config('rfly.allow_history_mutation', 'on', true)`;
+    await transaction.paymentRecord.deleteMany({ where: { leadId: { in: ids.leads } } });
+    await transaction.notification.deleteMany({ where: { leadId: { in: ids.leads } } });
+    await transaction.assignment.deleteMany({ where: { leadId: { in: ids.leads } } });
+    await transaction.auditLog.deleteMany({ where: { entityId: { in: [...ids.leads, ...ids.customers, ...ids.organizations] } } });
+    await transaction.lead.deleteMany({ where: { id: { in: ids.leads } } });
+    await transaction.businessMembership.deleteMany({ where: { organizationId: { in: ids.organizations } } });
+    await transaction.businessOrganization.deleteMany({ where: { id: { in: ids.organizations } } });
+    await transaction.customer.deleteMany({ where: { id: { in: ids.customers.filter(Boolean) } } });
+    await transaction.user.deleteMany({ where: { id: { in: ids.users } } });
+    await transaction.operatingCenter.deleteMany({ where: { id: { in: ids.centers } } });
+    await transaction.pricingConfig.deleteMany({ where: { id: { in: ids.pricing } } });
+    await transaction.crop.deleteMany({ where: { id: { in: ids.crops } } });
+  });
   await new Promise((resolve) => server.close(resolve));
   await prisma.$disconnect();
 });

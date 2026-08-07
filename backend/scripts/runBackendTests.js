@@ -43,6 +43,9 @@ databaseUrl.pathname = `/${databaseName}`;
 // later test behavior.
 run('docker', ['exec', containerName, 'psql', '-U', 'postgres', '-v', 'ON_ERROR_STOP=1', '-c', `DROP DATABASE IF EXISTS ${databaseName} WITH (FORCE)`]);
 run('docker', ['exec', containerName, 'psql', '-U', 'postgres', '-v', 'ON_ERROR_STOP=1', '-c', `CREATE DATABASE ${databaseName}`]);
+// History is immutable in deployed databases. This fixed disposable database
+// opts into test cleanup so independent test files can remove their fixtures.
+run('docker', ['exec', containerName, 'psql', '-U', 'postgres', '-v', 'ON_ERROR_STOP=1', '-c', `ALTER DATABASE ${databaseName} SET "rfly.allow_history_mutation" = 'on'`]);
 
 const testEnv = {
   ...process.env,
@@ -60,4 +63,4 @@ const testFiles = fs.readdirSync(path.join(backendDir, 'tests'))
   .filter((file) => file.endsWith('.test.js'))
   .sort()
   .map((file) => path.join('tests', file));
-run(process.execPath, ['--test', '--test-concurrency=1', ...testFiles], { env: testEnv, stdio: 'inherit' });
+run(process.execPath, ['--test', '--test-force-exit', '--test-concurrency=1', ...testFiles], { env: testEnv, stdio: 'inherit' });

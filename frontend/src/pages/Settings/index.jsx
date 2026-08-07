@@ -7,6 +7,7 @@ import PilotSettings from './PilotSettings';
 import EmployeeSettings from './EmployeeSettings';
 import OpsIcon from '../../components/OpsIcon';
 import LanguageSelector from '../../components/LanguageSelector';
+import { API_URL } from '../../config';
 
 export default function Settings() {
   const { user, logout } = useAuth();
@@ -17,7 +18,7 @@ export default function Settings() {
   useEffect(() => {
     const fetchPreferences = async () => {
       try {
-        const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/users/preferences`, {
+        const res = await fetch(`${API_URL}/api/users/preferences`, {
           headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
         });
         const data = await res.json();

@@ -7,9 +7,15 @@ compose_override="${DEPLOY_COMPOSE_OVERRIDE:-compose.onprem-demo.yml}"
 compose_env=".deploy-runtime.env"
 compose_files=(-f compose.production.yml -f "$compose_override")
 secret_stage_root="${RUNNER_WORKSPACE:-$(pwd)/..}/_rfly-deploy-secrets"
+backup_temp=""
+backup_file=""
+backup_checksum=""
 
 cleanup() {
   rm -f "$compose_env"
+  if [ -n "$backup_temp" ]; then
+    rm -f "$backup_temp"
+  fi
 }
 
 dump_diagnostics() {
@@ -146,6 +152,51 @@ wait_for_service_healthy() {
   done
 }
 
+backup_database_before_migration() {
+  local backup_root="${DEPLOY_BACKUP_DIRECTORY:-$(dirname "$deploy_env")/backups}"
+  local backup_directory
+  local resolved_backup_root
+  local worktree_root
+  local backup_stamp
+  case "$backup_root" in
+    /*) ;;
+    *) fail "DEPLOY_BACKUP_DIRECTORY must be an absolute host path" ;;
+  esac
+  [ "$backup_root" != "/" ] || fail "DEPLOY_BACKUP_DIRECTORY cannot be the filesystem root"
+  mkdir -p "$backup_root" || fail "Could not create database backup root"
+  resolved_backup_root="$(cd "$backup_root" && pwd -P)"
+  worktree_root="$(pwd -P)"
+  case "${resolved_backup_root}/" in
+    "${worktree_root}/"*) fail "Database backups must be stored outside the repository checkout" ;;
+  esac
+  backup_directory="${resolved_backup_root}/${DEPLOYMENT_NAME}"
+  backup_stamp="$(date -u +%Y%m%dT%H%M%SZ)"
+  mkdir -p "$backup_directory" || fail "Could not create database backup directory"
+  chmod 0700 "$backup_directory" || fail "Could not secure database backup directory"
+  umask 077
+  backup_temp="$(mktemp "${backup_directory}/${DEPLOYMENT_NAME}-${backup_stamp}-${source_sha}.XXXXXX.dump")" \
+    || fail "Could not allocate a unique database backup file"
+  backup_file="$backup_temp"
+
+  echo "Creating a pre-migration PostgreSQL backup."
+  compose exec -T db pg_dump \
+    --username "$POSTGRES_USER" \
+    --dbname "$POSTGRES_DB" \
+    --format custom \
+    --no-owner \
+    --no-privileges \
+    > "$backup_temp"
+  [ -s "$backup_temp" ] || fail "Pre-migration database backup is empty"
+  compose exec -T db pg_restore --list < "$backup_temp" >/dev/null \
+    || fail "Pre-migration database backup could not be read back"
+  chmod 0600 "$backup_temp"
+  sync "$backup_temp" || fail "Could not flush the verified database backup to storage"
+  backup_checksum="$(sha256sum "$backup_file" | awk '{print $1}')"
+  [ -n "$backup_checksum" ] || fail "Could not calculate database backup checksum"
+  backup_temp=""
+  echo "Verified pre-migration backup: ${backup_file}"
+}
+
 require_file "$deploy_env"
 require_file compose.production.yml
 require_file "$compose_override"
@@ -158,11 +209,16 @@ set -a
 set +a
 
 [ -n "${DEPLOYMENT_NAME:-}" ] || fail "DEPLOYMENT_NAME must be set in the deployment environment"
+case "$DEPLOYMENT_NAME" in
+  *[!a-z0-9_-]*|'') fail "DEPLOYMENT_NAME may contain only lowercase letters, digits, underscores, and hyphens" ;;
+esac
 [ -n "${APP_PORT:-}" ] || fail "APP_PORT must be set in the deployment environment"
 case "$APP_PORT" in
   *[!0-9]*|'') fail "APP_PORT must be a numeric TCP port" ;;
 esac
-[ "$APP_PORT" -ge 1024 ] && [ "$APP_PORT" -le 65535 ] || fail "APP_PORT must be between 1024 and 65535"
+if [ "$APP_PORT" -lt 1024 ] || [ "$APP_PORT" -gt 65535 ]; then
+  fail "APP_PORT must be between 1024 and 65535"
+fi
 
 health_host="${DEPLOY_HEALTH_HOST:-${APP_BIND_ADDRESS:-127.0.0.1}}"
 case "$health_host" in
@@ -222,6 +278,8 @@ echo "Starting database."
 compose up --detach db
 wait_for_service_healthy db
 
+backup_database_before_migration
+
 echo "Running database migrations."
 compose rm --force --stop migrate >/dev/null 2>&1 || true
 compose run --rm migrate
@@ -244,8 +302,10 @@ wait_for_http "http://${health_host}:${APP_PORT}/api/health"
   echo "- deploy_env: ${deploy_env}"
   echo "- bind_address: ${APP_BIND_ADDRESS:-127.0.0.1}"
   echo "- host_port: ${APP_PORT}"
-  echo "- checks: compose config, build, db health, migration, /healthz, /api/health"
-  echo "- rollback: docker compose --env-file ${deploy_env} -f compose.production.yml -f ${compose_override} down"
+  echo "- pre_migration_backup: ${backup_file}"
+  echo "- pre_migration_backup_sha256: ${backup_checksum}"
+  echo "- checks: compose config, build, db health, verified backup, migration, /healthz, /api/health"
+  echo "- recovery: redeploy the approved prior source revision; restore ${backup_file} only through the documented, outage-controlled database restore procedure when schema rollback requires it"
 } >> "$deploy_changelog"
 
 echo "On-prem deployment completed for ${source_sha}."

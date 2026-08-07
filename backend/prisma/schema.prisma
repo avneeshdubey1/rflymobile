@@ -18,17 +18,17 @@ enum Role {
 }
 
 enum LeadStatus {
-  NEW                     // accepted website request awaiting Sales review
-  PROCESSED               // verified, inside range, ready for auto-assignment
+  NEW // accepted website request awaiting Sales review
+  PROCESSED // verified, inside range, ready for auto-assignment
   NEEDS_MANUAL_SCHEDULING // auto-assignment found no valid candidates
-  MANUAL_CALL_REQUIRED    // farmer claims to have chemicals but no proof attached
-  SCHEDULED               // pilot+drone assigned, awaiting pilot acceptance
+  MANUAL_CALL_REQUIRED // farmer claims to have chemicals but no proof attached
+  SCHEDULED // pilot+drone assigned, awaiting pilot acceptance
   PILOT_ACCEPTED
   IN_PROGRESS
   COMPLETED
-  FLAGGED                 // discrepancy, decommission, or admin flag
+  FLAGGED // discrepancy, decommission, or admin flag
   CANCELLED
-  REJECTED                // request or operational rejection
+  REJECTED // request or operational rejection
 }
 
 enum DroneStatus {
@@ -98,119 +98,229 @@ enum OtpDeliveryStatus {
   DISABLED
 }
 
-enum DroneCategory {
-  EVTOL
-  HEXACOPTER
-  QUADCOPTER
+enum AssetOperationalState {
+  IN_SERVICE
+  MAINTENANCE
+  OUT_OF_SERVICE
+}
+
+enum AssetAvailabilityState {
+  AVAILABLE
+  ASSIGNED
+  UNAVAILABLE
+}
+
+enum CropSeason {
+  KHARIF
+  RABI
+  SUMMER
+  OTHER
+}
+
+enum LanguageProficiency {
+  PRIMARY
+  STRONG
+  WORKING
+  BASIC
+}
+
+enum FarmLocationSource {
+  STAFF_CAPTURED
+  PUBLIC_WEBSITE
+  IMPORTED_ZOHO
+  IMPORTED_GOOGLE_FORMS
+}
+
+enum ImportSourceType {
+  FARMER_WORKBOOK
+  ZOHO_CRM
+  GOOGLE_FORMS
+}
+
+enum ImportBatchStatus {
+  STAGED
+  VALIDATED
+  REVIEW_REQUIRED
+  APPROVED
+  IMPORTING
+  COMPLETED
+  FAILED
+  ROLLED_BACK
+  SUPERSEDED
+}
+
+enum SourceRecordStatus {
+  PENDING
+  VALID
+  REJECTED
+  REVIEW_REQUIRED
+  IMPORTED
+  SKIPPED
+  ROLLED_BACK
+}
+
+enum HistoricalServiceStatus {
+  COMPLETED
+  UNKNOWN
+  CORRECTED
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  EXPIRED
+  CANCELLED
+  UNKNOWN
+}
+
+enum HistoryEventType {
+  BASELINE
+  CREATED
+  UPDATED
+  STATUS_CHANGED
+  CORRECTED
+  ARCHIVED
+  IMPORTED
 }
 
 model OperatingCenter {
-  id        String   @id @default(uuid())
-  name      String                          // "Tenkasi HQ", "Kanyakumari Branch"
-  latitude  Float
-  longitude Float
-  radiusKm  Float    @default(50)
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now())
+  id                       String    @id @default(uuid())
+  code                     String?   @unique
+  name                     String // "Tenkasi HQ", "Kanyakumari Branch"
+  latitude                 Float
+  longitude                Float
+  plusCode                 String?
+  radiusKm                 Float     @default(50)
+  active                   Boolean   @default(true)
+  administrativeLocation   Location? @relation(fields: [administrativeLocationId], references: [id], onDelete: SetNull)
+  administrativeLocationId String?
+  createdAt                DateTime  @default(now())
+  updatedAt                DateTime  @updatedAt
 
-  drones    Drone[]
-  lmvs      LMV[]
-  pilots    User[]
-  leads     Lead[]
+  drones             Drone[]
+  lmvs               LMV[]
+  pilots             User[]
+  leads              Lead[]
+  historicalServices HistoricalServiceRecord[]
+
+  @@index([administrativeLocationId])
 }
 
 model User {
-  id                   String    @id @default(uuid())
-  name                 String
-  email                String    @unique
-  phone                String?   @unique
-  passwordHash         String
-  role                 Role
-  preferredLanguage    String    @default("ta")   // ISO-ish code, see §10
-  preferences          Json      @default("{}")
-  active               Boolean   @default(true)
-  authVersion          Int       @default(1)
-  emailVerifiedAt      DateTime?
-  phoneVerifiedAt      DateTime?
-  archivedAt           DateTime?
-  createdAt            DateTime  @default(now())
+  id                String    @id @default(uuid())
+  name              String
+  email             String    @unique
+  phone             String?   @unique
+  passwordHash      String
+  role              Role
+  preferredLanguage String    @default("ta") // ISO-ish code, see §10
+  preferences       Json      @default("{}")
+  active            Boolean   @default(true)
+  authVersion       Int       @default(1)
+  emailVerifiedAt   DateTime?
+  phoneVerifiedAt   DateTime?
+  archivedAt        DateTime?
+  employeeCode      String?   @unique
+  createdAt         DateTime  @default(now())
 
   // Pilot-specific
-  homeCenter           OperatingCenter? @relation(fields: [homeCenterId], references: [id])
-  homeCenterId         String?
-  pilotLicenseExpiry   DateTime?        // DGCA placeholder, see §9
-  assignedDrone        Drone?    @relation("PilotAssignedDrone", fields: [assignedDroneId], references: [id])
-  assignedDroneId      String?   @unique
-  idProof              String?
-  licenseId            String?
-  addressLine1         String?
-  addressLine2         String?
-  state                String?
-  city                 String?
-  pincode              String?
- 
+  homeCenter         OperatingCenter? @relation(fields: [homeCenterId], references: [id])
+  homeCenterId       String?
+  pilotLicenseExpiry DateTime? // DGCA placeholder, see §9
+  // Compatibility-only home-drone preference. A service assignment always
+  // carries exactly one operational drone for both Pilot and Copilot.
+  assignedDrone      Drone?           @relation("PilotAssignedDrone", fields: [assignedDroneId], references: [id])
+  assignedDroneId    String?          @unique
+  idProof            String?
+  licenseId          String?
+  addressLine1       String?
+  addressLine2       String?
+  state              String?
+  city               String?
+  pincode            String?
+
   // Farmer-specific
-  village              String?
-  district             String?
+  village  String?
+  district String?
 
   // Business-specific
-  businessName         String?
-  gstNo                String?
-  contactPerson        String?
-  address              String?
+  businessName  String?
+  gstNo         String?
+  contactPerson String?
+  address       String?
 
-  assignments          Assignment[]     @relation("PilotAssignments")
-  copilotAssignments   Assignment[]     @relation("CopilotAssignments")
-  chatSessions         ChatSession[]    @relation("ChatParticipants")
-  notifications        Notification[]
-  authSessions         AuthSession[]
-  recoveryChallenges   PasswordRecoveryChallenge[]
-  businessMemberships  BusinessMembership[]
+  assignments                 Assignment[]                 @relation("PilotAssignments")
+  copilotAssignments          Assignment[]                 @relation("CopilotAssignments")
+  chatSessions                ChatSession[]                @relation("ChatParticipants")
+  notifications               Notification[]
+  authSessions                AuthSession[]
+  recoveryChallenges          PasswordRecoveryChallenge[]
+  businessMemberships         BusinessMembership[]
   phoneVerificationChallenges PhoneVerificationChallenge[]
-  customerProfile      Customer?          @relation("CustomerFarmerUser")
+  customerProfile             Customer?                    @relation("CustomerFarmerUser")
+  importBatchesCreated        ImportBatch[]                @relation("ImportBatchCreatedBy")
+  importBatchesApproved       ImportBatch[]                @relation("ImportBatchApprovedBy")
+  verifiedFarmLocations       FarmLocation[]               @relation("FarmLocationVerifiedBy")
+  collectedVillageVisits      VillageVisit[]               @relation("VillageVisitCollector")
+  customerHistoryEvents       CustomerHistory[]            @relation("CustomerHistoryActor")
+  leadHistoryEvents           LeadHistory[]                @relation("LeadHistoryActor")
+  droneHistoryEvents          DroneHistory[]               @relation("DroneHistoryActor")
+  lmvHistoryEvents            LMVHistory[]                 @relation("LMVHistoryActor")
 }
 
 model Customer {
-  id                String    @id @default(uuid())
-  displayName       String
-  phone             String    @unique
-  preferredLanguage String    @default("ta")
-  ownership         String?
-  totalAcres        Float?
-  village           String?
-  mandal            String?
-  district          String?
-  state             String?
-  kharifCrop        String?
-  kharifOtherCrop   String?
-  kharifAcres       Float?
-  kharifTanks       Float?
-  kharifSprayings   Int?
-  rabiCrop          String?
-  rabiOtherCrop     String?
-  rabiAcres         Float?
-  rabiTanks         Float?
-  rabiSprayings     Int?
-  summerCrop        String?
-  summerOtherCrop   String?
-  summerAcres       Float?
-  summerTanks       Float?
-  summerSprayings   Int?
+  id                     String    @id @default(uuid())
+  displayName            String
+  phone                  String    @unique
+  preferredLanguage      String    @default("ta")
+  ownership              String?
+  totalAcres             Float?
+  village                String?
+  mandal                 String?
+  district               String?
+  state                  String?
+  kharifCrop             String?
+  kharifOtherCrop        String?
+  kharifAcres            Float?
+  kharifTanks            Float?
+  kharifSprayings        Int?
+  rabiCrop               String?
+  rabiOtherCrop          String?
+  rabiAcres              Float?
+  rabiTanks              Float?
+  rabiSprayings          Int?
+  summerCrop             String?
+  summerOtherCrop        String?
+  summerAcres            Float?
+  summerTanks            Float?
+  summerSprayings        Int?
   subscriptionCardNumber String?
-  subscriptionYear  String?
-  remarks           String?
-  farmerUserId      String?   @unique
-  createdByUserId   String?
-  staffConfirmedAt  DateTime?
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  subscriptionYear       String?
+  remarks                String?
+  active                 Boolean   @default(true)
+  createdByImportBatchId String?
+  farmerUserId           String?   @unique
+  createdByUserId        String?
+  staffConfirmedAt       DateTime?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
 
-  leads             Lead[]
+  leads                       Lead[]
   phoneVerificationChallenges PhoneVerificationChallenge[]
-  farmerPortalUser  User?     @relation("CustomerFarmerUser", fields: [farmerUserId], references: [id], onDelete: SetNull)
+  farmerPortalUser            User?                        @relation("CustomerFarmerUser", fields: [farmerUserId], references: [id], onDelete: SetNull)
+  createdByImportBatch        ImportBatch?                 @relation("ImportBatchCreatedCustomers", fields: [createdByImportBatchId], references: [id], onDelete: SetNull)
+  farmLocations               FarmLocation[]
+  languagePreferences         CustomerLanguagePreference[]
+  seasonalCrops               CustomerSeasonalCrop[]
+  subscriptions               CustomerSubscription[]
+  sourceRecords               SourceRecord[]
+  historicalServices          HistoricalServiceRecord[]
+  villageVisits               VillageVisit[]
+  history                     CustomerHistory[]
 
   @@index([displayName])
   @@index([createdAt])
+  @@index([active, updatedAt])
+  @@index([createdByImportBatchId])
 }
 
 model PhoneVerificationChallenge {
@@ -232,8 +342,8 @@ model PhoneVerificationChallenge {
   createdAt         DateTime                 @default(now())
   updatedAt         DateTime                 @updatedAt
 
-  deliveries        VerificationDeliveryAttempt[]
-  outboxMessages    OtpDeliveryOutbox[]
+  deliveries     VerificationDeliveryAttempt[]
+  outboxMessages OtpDeliveryOutbox[]
 
   @@index([phoneHash, purpose, createdAt])
   @@index([userId, purpose, revokedAt])
@@ -254,33 +364,33 @@ model VerificationDeliveryAttempt {
 }
 
 model OtpDeliveryOutbox {
-  id                String                     @id @default(uuid())
-  challenge         PhoneVerificationChallenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
-  challengeId       String
-  channel           OtpDeliveryChannel
-  status            OtpDeliveryStatus          @default(QUEUED)
-  idempotencyKey    String                     @unique
-  attempts          Int                        @default(0)
-  nextAttemptAt     DateTime                   @default(now())
-  processedAt       DateTime?
-  lastError         String?
-  createdAt         DateTime                   @default(now())
-  updatedAt         DateTime                   @updatedAt
+  id             String                     @id @default(uuid())
+  challenge      PhoneVerificationChallenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  challengeId    String
+  channel        OtpDeliveryChannel
+  status         OtpDeliveryStatus          @default(QUEUED)
+  idempotencyKey String                     @unique
+  attempts       Int                        @default(0)
+  nextAttemptAt  DateTime                   @default(now())
+  processedAt    DateTime?
+  lastError      String?
+  createdAt      DateTime                   @default(now())
+  updatedAt      DateTime                   @updatedAt
 
   @@index([status, nextAttemptAt])
   @@index([challengeId])
 }
 
 model BusinessOrganization {
-  id          String   @id @default(uuid())
-  name        String
-  phone       String?
-  email       String?
-  gstNo       String?
-  address     String?
-  active      Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        String   @id @default(uuid())
+  name      String
+  phone     String?
+  email     String?
+  gstNo     String?
+  address   String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   memberships BusinessMembership[]
   leads       Lead[]
@@ -290,14 +400,14 @@ model BusinessOrganization {
 }
 
 model BusinessMembership {
-  id             String               @id @default(uuid())
-  organization   BusinessOrganization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  organizationId String
-  user           User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId         String
-  active         Boolean              @default(true)
+  id              String               @id @default(uuid())
+  organization    BusinessOrganization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organizationId  String
+  user            User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId          String
+  active          Boolean              @default(true)
   createdByUserId String?
-  createdAt      DateTime             @default(now())
+  createdAt       DateTime             @default(now())
 
   @@unique([organizationId, userId])
   @@index([userId, active])
@@ -305,14 +415,14 @@ model BusinessMembership {
 }
 
 model AuthSession {
-  id                String   @id @default(uuid())
-  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                String    @id @default(uuid())
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId            String
-  tokenHash         String   @unique
+  tokenHash         String    @unique
   csrfTokenHash     String
   authVersion       Int
-  createdAt         DateTime @default(now())
-  lastSeenAt        DateTime @default(now())
+  createdAt         DateTime  @default(now())
+  lastSeenAt        DateTime  @default(now())
   idleExpiresAt     DateTime
   absoluteExpiresAt DateTime
   revokedAt         DateTime?
@@ -323,112 +433,135 @@ model AuthSession {
 }
 
 model PasswordRecoveryChallenge {
-  id              String   @id
-  user            User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
-  userId          String?
+  id                  String    @id
+  user                User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userId              String?
   expectedAuthVersion Int?
-  externalProofHash String? @unique
-  identifierHash  String
-  channel         String
-  deliveryStatus  String
-  codeHash        String
-  attempts        Int      @default(0)
-  maxAttempts     Int      @default(5)
-  expiresAt       DateTime
-  usedAt          DateTime?
-  revokedAt       DateTime?
-  createdAt       DateTime @default(now())
+  externalProofHash   String?   @unique
+  identifierHash      String
+  channel             String
+  deliveryStatus      String
+  codeHash            String
+  attempts            Int       @default(0)
+  maxAttempts         Int       @default(5)
+  expiresAt           DateTime
+  usedAt              DateTime?
+  revokedAt           DateTime?
+  createdAt           DateTime  @default(now())
 
   @@index([userId, createdAt])
   @@index([expiresAt])
 }
 
 model Drone {
-  id                  String       @id @default(uuid())
+  id                  String                 @id @default(uuid())
   name                String?
   type                String?
+  category            String?
   model               String
   manufacturer        String?
-  serialNumber        String       @unique
-  uin                 String       @unique
+  serialNumber        String                 @unique
+  uin                 String?                @unique
   location            String?
   tankCapacity        Float?
+  tankCapacityLitres  Float?
   batteryCapacity     Int?
+  batteryCapacityMah  Int?
   endurance           Int?
-  certified           String?
+  enduranceMinutes    Int?
+  certified           Boolean                @default(false)
   serviceType         String?
-  status              DroneStatus  @default(AVAILABLE)
-  homeCenter          OperatingCenter @relation(fields: [homeCenterId], references: [id])
+  status              DroneStatus            @default(AVAILABLE)
+  operationalState    AssetOperationalState  @default(IN_SERVICE)
+  availabilityState   AssetAvailabilityState @default(AVAILABLE)
+  homeCenter          OperatingCenter        @relation(fields: [homeCenterId], references: [id])
   homeCenterId        String
   airworthinessExpiry DateTime?
   lastMaintained      DateTime?
-  createdAt           DateTime     @default(now())
+  archivedAt          DateTime?
+  createdAt           DateTime               @default(now())
 
-  assignments         Assignment[]
-  copilotAssignments   Assignment[] @relation("CopilotDroneAssignments")
-  assignedPilot       User?        @relation("PilotAssignedDrone")
+  assignments        Assignment[]
+  copilotAssignments Assignment[]   @relation("CopilotDroneAssignments")
+  assignedPilot      User?          @relation("PilotAssignedDrone")
+  history            DroneHistory[]
+
+  @@index([homeCenterId, archivedAt, operationalState, availabilityState])
 }
 
 model LMV {
-  id             String          @id @default(uuid())
-  registrationNo String          @unique
-  label          String?
-  status         LMVStatus       @default(AVAILABLE)
-  homeCenter     OperatingCenter @relation(fields: [homeCenterId], references: [id])
-  homeCenterId   String
-  capacity       Int             @default(1)
-  notes          String?
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
+  id                String                 @id @default(uuid())
+  registrationNo    String                 @unique
+  label             String?
+  status            LMVStatus              @default(AVAILABLE)
+  operationalState  AssetOperationalState  @default(IN_SERVICE)
+  availabilityState AssetAvailabilityState @default(AVAILABLE)
+  homeCenter        OperatingCenter        @relation(fields: [homeCenterId], references: [id])
+  homeCenterId      String
+  capacity          Int                    @default(1)
+  notes             String?
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
 
-  assignments    Assignment[]
+  assignments Assignment[]
+  history     LMVHistory[]
 
   @@index([homeCenterId, status])
+  @@index([homeCenterId, operationalState, availabilityState])
 }
 
 model Lead {
-  id               String        @id @default(uuid())
-  customer         Customer?     @relation(fields: [customerId], references: [id])
-  customerId       String?
-  businessOrganization BusinessOrganization? @relation(fields: [businessOrganizationId], references: [id])
+  id                     String                @id @default(uuid())
+  customer               Customer?             @relation(fields: [customerId], references: [id])
+  customerId             String?
+  businessOrganization   BusinessOrganization? @relation(fields: [businessOrganizationId], references: [id])
   businessOrganizationId String?
-  farmerName       String
-  farmerPhone      String
-  farmerAddress    String?
-  latitude         Float?
-  longitude        Float?
-  acreage          Float
-  cropType         String?
-  notes            String?
-  preferredLanguage String       @default("ta")
-  status           LeadStatus    @default(NEW)
-  intakeChannel    IntakeChannel
-  matchedCenter    OperatingCenter? @relation(fields: [matchedCenterId], references: [id])
-  matchedCenterId  String?
-  distanceFromCenterKm Float?
-  
+  farmerName             String
+  farmerPhone            String
+  farmerAddress          String?
+  farmLocation           FarmLocation?         @relation(fields: [farmLocationId], references: [id], onDelete: SetNull)
+  farmLocationId         String?
+  latitude               Float?
+  longitude              Float?
+  acreage                Float
+  acreageDecimal         Decimal?              @db.Decimal(12, 2)
+  crop                   Crop?                 @relation(fields: [cropId], references: [id], onDelete: SetNull)
+  cropId                 String?
+  cropType               String?
+  notes                  String?
+  preferredLanguage      String                @default("ta")
+  status                 LeadStatus            @default(NEW)
+  intakeChannel          IntakeChannel
+  matchedCenter          OperatingCenter?      @relation(fields: [matchedCenterId], references: [id])
+  matchedCenterId        String?
+  distanceFromCenterKm   Float?
+
   // Comprehensive form fields
   soilType         String?
   cropAgeWeeks     Int?
   chemicalBrand    String?
   sprayPurpose     String?
-  hasChemical      Boolean       @default(true)
+  hasChemical      Boolean   @default(true)
   chemicalProofUrl String?
   expectedDate     DateTime?
   expectedTime     String?
-  waterBodyNearby  Boolean       @default(false)
+  waterBodyNearby  Boolean   @default(false)
   terrainType      String?
 
-  createdAt        DateTime      @default(now())
-  processedAt      DateTime?
+  createdAt   DateTime  @default(now())
+  processedAt DateTime?
 
-  assignment       Assignment?
-  notifications    Notification[]
-  payments         PaymentRecord[]
-  chatSessions     ChatSession[]
+  assignment    Assignment?
+  notifications Notification[]
+  payments      PaymentRecord[]
+  chatSessions  ChatSession[]
+  sprayPurposes LeadSprayPurpose[]
+  history       LeadHistory[]
 
   @@index([customerId, createdAt])
   @@index([businessOrganizationId, createdAt])
+  @@index([farmLocationId, createdAt])
+  @@index([cropId, createdAt])
 }
 
 // This is deliberately not a Lead: a declined request must never become
@@ -450,58 +583,69 @@ model DeclinedEnquiry {
 
 model PricingConfig {
   id        String   @id @default(uuid())
-  key       String   @unique   // e.g. "DISCREPANCY_THRESHOLD_PCT"
-  value     Float               // placeholder values
+  key       String   @unique // e.g. "DISCREPANCY_THRESHOLD_PCT"
+  value     Float // placeholder values
   updatedBy String?
   updatedAt DateTime @updatedAt
 }
 
 model Assignment {
-  id                String    @id @default(uuid())
-  lead              Lead      @relation(fields: [leadId], references: [id])
-  leadId            String    @unique
-  pilot             User      @relation("PilotAssignments", fields: [pilotId], references: [id])
-  pilotId           String
-  copilot           User?     @relation("CopilotAssignments", fields: [copilotId], references: [id])
-  copilotId         String?
-  drone             Drone     @relation(fields: [droneId], references: [id])
-  droneId           String
-  copilotDrone      Drone?    @relation("CopilotDroneAssignments", fields: [copilotDroneId], references: [id])
-  copilotDroneId    String?
-  lmv               LMV?      @relation(fields: [lmvId], references: [id])
-  lmvId             String?
+  id             String  @id @default(uuid())
+  lead           Lead    @relation(fields: [leadId], references: [id])
+  leadId         String  @unique
+  pilot          User    @relation("PilotAssignments", fields: [pilotId], references: [id])
+  pilotId        String
+  copilot        User?   @relation("CopilotAssignments", fields: [copilotId], references: [id])
+  copilotId      String?
+  drone          Drone   @relation(fields: [droneId], references: [id])
+  droneId        String
+  // Deprecated compatibility alias. New writes keep this null (or equal to
+  // droneId); a Copilot never introduces a second drone into the crew unit.
+  copilotDrone   Drone?  @relation("CopilotDroneAssignments", fields: [copilotDroneId], references: [id])
+  copilotDroneId String?
+  lmv            LMV?    @relation(fields: [lmvId], references: [id])
+  lmvId          String?
 
-  scheduledDate     DateTime
-  dailySequence     Int       @default(1)
-  autoAssigned      Boolean   @default(true)   // false if a Fleet Manager manually created/overrode it
-  acceptedAt        DateTime?
-  startedAt         DateTime?
-  completedAt       DateTime?
+  scheduledDate      DateTime
+  serviceWindowStart DateTime?
+  serviceWindowEnd   DateTime?
+  dailySequence      Int       @default(1)
+  // Set only by the compatibility migration for pre-existing incomplete
+  // assignments. New operational assignments must always contain the full
+  // two-pilot + drone + LMV unit; completing the crew clears this marker.
+  legacyCrewIncomplete Boolean @default(false)
+  autoAssigned       Boolean   @default(true) // false if a Fleet Manager manually created/overrode it
+  acceptedAt         DateTime?
+  startedAt          DateTime?
+  completedAt        DateTime?
 
-  weatherCheckedAt  DateTime?
-  weatherSuitable   Boolean?
-  weatherNote       String?
+  weatherCheckedAt DateTime?
+  weatherSuitable  Boolean?
+  weatherNote      String?
 
-  expectedAcreage   Float
-  actualAcreage     Float?
-  cost              Float?
-  hasDiscrepancy    Boolean   @default(false)
-  discrepancyNote   String?
+  expectedAcreage Float
+  actualAcreage   Float?
+  cost            Float?
+  hasDiscrepancy  Boolean @default(false)
+  discrepancyNote String?
 
   decommissionedMidMission Boolean @default(false)
   decommissionReason       String?
 
-  lastKnownLat      Float?          // live GPS, most recent ping only
-  lastKnownLng      Float?
-  lastPingAt        DateTime?
+  lastKnownLat Float? // live GPS, most recent ping only
+  lastKnownLng Float?
+  lastPingAt   DateTime?
 
-  rescheduleHistory ScheduleChangeLog[]
-  payments          PaymentRecord[]
+  rescheduleHistory      ScheduleChangeLog[]
+  payments               PaymentRecord[]
   notificationEscalation NotificationEscalation?
-  createdAt         DateTime  @default(now())
+  createdAt              DateTime                @default(now())
 
   @@index([scheduledDate, dailySequence])
+  @@index([pilotId, scheduledDate])
   @@index([copilotId, scheduledDate])
+  @@index([droneId, scheduledDate])
+  @@index([lmvId, scheduledDate])
 }
 
 // Persists the notification-cascade clock so a server restart never loses a pilot follow-up.
@@ -542,57 +686,431 @@ model ChatSession {
   closedAt            DateTime?
   createdAt           DateTime  @default(now())
 
-  messages            ChatMessage[]
+  messages ChatMessage[]
 }
 
 model ChatMessage {
-  id          String      @id @default(uuid())
-  session     ChatSession @relation(fields: [sessionId], references: [id])
-  sessionId   String
-  senderId    String
-  content     String
-  sentAt      DateTime    @default(now())
-  readAt      DateTime?
+  id        String      @id @default(uuid())
+  session   ChatSession @relation(fields: [sessionId], references: [id])
+  sessionId String
+  senderId  String
+  content   String
+  sentAt    DateTime    @default(now())
+  readAt    DateTime?
 }
 
 model Notification {
-  id          String            @id @default(uuid())
+  id          String           @id @default(uuid())
   type        NotificationType
-  recipient   User              @relation(fields: [recipientId], references: [id])
+  recipient   User             @relation(fields: [recipientId], references: [id])
   recipientId String
-  lead        Lead?             @relation(fields: [leadId], references: [id])
+  lead        Lead?            @relation(fields: [leadId], references: [id])
   leadId      String?
   message     String
   readAt      DateTime?
-  createdAt   DateTime          @default(now())
+  createdAt   DateTime         @default(now())
 }
 
 model PaymentRecord {
-  id            String        @id @default(uuid())
-  lead          Lead          @relation(fields: [leadId], references: [id])
-  leadId        String
-  assignment    Assignment    @relation(fields: [assignmentId], references: [id])
-  assignmentId  String
-  amount        Float
-  method        PaymentMethod
-  status        PaymentStatus @default(PENDING)
-  upiLink       String?
+  id               String        @id @default(uuid())
+  lead             Lead          @relation(fields: [leadId], references: [id])
+  leadId           String
+  assignment       Assignment    @relation(fields: [assignmentId], references: [id])
+  assignmentId     String
+  amount           Float
+  method           PaymentMethod
+  status           PaymentStatus @default(PENDING)
+  upiLink          String?
   upiTransactionId String?
-  markedCashBy  String?               // userId if manually marked collected
-  createdAt     DateTime      @default(now())
-  resolvedAt    DateTime?
+  markedCashBy     String? // userId if manually marked collected
+  createdAt        DateTime      @default(now())
+  resolvedAt       DateTime?
 }
 
 // Append-only. Never updated or deleted — this is the source for the
 // Logbook/CRM job-lifecycle timeline view
 model AuditLog {
-  id         String   @id @default(uuid())
-  entityType String              // "Lead" | "Assignment" | "Drone" | ...
-  entityId   String
-  action     String              // "STATUS_CHANGE" | "ADMIN_OVERRIDE" | "RESCHEDULE" | ...
-  actorId    String?             // null for system/automated actions
+  id          String   @id @default(uuid())
+  entityType  String // "Lead" | "Assignment" | "Drone" | ...
+  entityId    String
+  action      String // "STATUS_CHANGE" | "ADMIN_OVERRIDE" | "RESCHEDULE" | ...
+  actorId     String? // null for system/automated actions
   beforeState Json?
   afterState  Json?
   reason      String?
-  createdAt  DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  @@index([entityType, entityId, createdAt])
+}
+
+// Controlled reference values. Customer-facing preferences and operational
+// crops point here instead of storing arrays or unconstrained comma-separated
+// text. Legacy flat fields remain during the compatibility release.
+model Language {
+  id          String   @id @default(uuid())
+  code        String   @unique @db.VarChar(12)
+  displayName String   @db.VarChar(80)
+  nativeName  String?  @db.VarChar(80)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  customerPreferences CustomerLanguagePreference[]
+
+  @@index([active, displayName])
+}
+
+model Crop {
+  id             String   @id @default(uuid())
+  code           String   @unique @db.VarChar(40)
+  displayName    String   @db.VarChar(120)
+  normalizedName String   @unique @db.VarChar(120)
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  seasonalCrops      CustomerSeasonalCrop[]
+  leads              Lead[]
+  historicalServices HistoricalServiceRecord[]
+  villageVisits      VillageVisit[]
+
+  @@index([active, displayName])
+}
+
+model Location {
+  id            String   @id @default(uuid())
+  countryCode   String   @default("IN") @db.VarChar(2)
+  state         String?  @db.VarChar(120)
+  district      String?  @db.VarChar(120)
+  mandal        String?  @db.VarChar(120)
+  village       String?  @db.VarChar(160)
+  postalCode    String?  @db.VarChar(20)
+  normalizedKey String   @unique @db.VarChar(640)
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  operatingCenters OperatingCenter[]
+  farmLocations    FarmLocation[]
+  villageVisits    VillageVisit[]
+
+  @@index([countryCode, state, district, mandal, village])
+  @@index([active])
+}
+
+model FarmLocation {
+  id                       String             @id @default(uuid())
+  customer                 Customer           @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  customerId               String
+  administrativeLocation   Location?          @relation(fields: [administrativeLocationId], references: [id], onDelete: SetNull)
+  administrativeLocationId String?
+  label                    String?            @db.VarChar(120)
+  addressText              String?            @db.VarChar(500)
+  plusCode                 String?            @db.VarChar(20)
+  latitude                 Decimal?           @db.Decimal(10, 7)
+  longitude                Decimal?           @db.Decimal(10, 7)
+  accuracyMeters           Decimal?           @db.Decimal(10, 2)
+  source                   FarmLocationSource
+  verifiedAt               DateTime?
+  verifiedBy               User?              @relation("FarmLocationVerifiedBy", fields: [verifiedByUserId], references: [id], onDelete: SetNull)
+  verifiedByUserId         String?
+  active                   Boolean            @default(true)
+  createdAt                DateTime           @default(now())
+  updatedAt                DateTime           @updatedAt
+
+  leads              Lead[]
+  historicalServices HistoricalServiceRecord[]
+
+  @@index([customerId, active])
+  @@index([administrativeLocationId])
+  @@index([verifiedByUserId])
+  @@index([plusCode])
+}
+
+model CustomerLanguagePreference {
+  id          String              @id @default(uuid())
+  customer    Customer            @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  customerId  String
+  language    Language            @relation(fields: [languageId], references: [id], onDelete: Restrict)
+  languageId  String
+  rank        Int
+  proficiency LanguageProficiency @default(WORKING)
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  @@unique([customerId, languageId])
+  @@unique([customerId, rank])
+  @@index([languageId])
+}
+
+model CustomerSeasonalCrop {
+  id                String     @id @default(uuid())
+  customer          Customer   @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  customerId        String
+  crop              Crop       @relation(fields: [cropId], references: [id], onDelete: Restrict)
+  cropId            String
+  season            CropSeason
+  seasonYear        Int?
+  acreage           Decimal?   @db.Decimal(12, 2)
+  tankQuantity      Decimal?   @db.Decimal(12, 2)
+  expectedSprayings Int?
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+
+  @@index([customerId, season, seasonYear])
+  @@index([cropId])
+}
+
+model CustomerSubscription {
+  id         String             @id @default(uuid())
+  customer   Customer           @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  customerId String
+  cardNumber String?            @unique @db.VarChar(80)
+  schemeCode String?            @db.VarChar(80)
+  status     SubscriptionStatus @default(UNKNOWN)
+  validFrom  DateTime?          @db.Date
+  validUntil DateTime?          @db.Date
+  createdAt  DateTime           @default(now())
+  updatedAt  DateTime           @updatedAt
+
+  @@index([customerId, status])
+}
+
+model LeadSprayPurpose {
+  id            String   @id @default(uuid())
+  lead          Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  leadId        String
+  purposeCode   String   @db.VarChar(80)
+  labelSnapshot String?  @db.VarChar(160)
+  createdAt     DateTime @default(now())
+
+  @@unique([leadId, purposeCode])
+  @@index([purposeCode])
+}
+
+// One operator-controlled batch represents one source file. Source rows are
+// encrypted staging records; only approved, valid rows can create canonical
+// records through the importer transaction.
+model ImportBatch {
+  id                       String            @id @default(uuid())
+  sourceType               ImportSourceType
+  originalFileName         String            @db.VarChar(255)
+  fileSizeBytes            BigInt
+  workbookType             String            @default("XLSX") @db.VarChar(20)
+  fileChecksum             String            @db.Char(64)
+  mappingVersion           String            @db.VarChar(80)
+  attemptNumber            Int               @default(1)
+  supersedesBatch          ImportBatch?      @relation("ImportBatchAttempts", fields: [supersedesBatchId], references: [id], onDelete: Restrict)
+  supersedesBatchId        String?
+  supersededBy             ImportBatch[]     @relation("ImportBatchAttempts")
+  dryRunPlanHash           String?           @db.Char(64)
+  referenceDataFingerprint String?           @db.Char(64)
+  approvalReference        String?           @db.VarChar(160)
+  backupEvidenceReference  String?           @db.VarChar(160)
+  expectedDeploymentName   String?           @db.VarChar(120)
+  reconciliationChecksum   String?           @db.Char(64)
+  status                   ImportBatchStatus @default(STAGED)
+  totalRows                Int               @default(0)
+  validRows                Int               @default(0)
+  rejectedRows             Int               @default(0)
+  reviewRows               Int               @default(0)
+  importedRows             Int               @default(0)
+  skippedRows              Int               @default(0)
+  safeReport               Json?
+  rawRetentionUntil        DateTime
+  createdBy                User?             @relation("ImportBatchCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  createdByUserId          String?
+  approvedBy               User?             @relation("ImportBatchApprovedBy", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+  approvedByUserId         String?
+  approvedAt               DateTime?
+  importStartedAt          DateTime?
+  completedAt              DateTime?
+  reconciledAt             DateTime?
+  rolledBackAt             DateTime?
+  failureCode              String?           @db.VarChar(80)
+  createdAt                DateTime          @default(now())
+  updatedAt                DateTime          @updatedAt
+
+  sourceRecords    SourceRecord[]
+  createdCustomers Customer[]     @relation("ImportBatchCreatedCustomers")
+
+  @@unique([fileChecksum, mappingVersion, attemptNumber])
+  @@index([status, createdAt])
+  @@index([rawRetentionUntil])
+  @@index([supersedesBatchId])
+  @@index([createdByUserId])
+  @@index([approvedByUserId])
+}
+
+model SourceRecord {
+  id                   String             @id @default(uuid())
+  batch                ImportBatch        @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  batchId              String
+  sourceSystem         ImportSourceType
+  sheetName            String             @db.VarChar(120)
+  sourceRowNumber      Int
+  externalRecordId     String?            @db.VarChar(160)
+  rowFingerprint       String             @db.Char(64)
+  phoneFingerprint     String?            @db.Char(64)
+  recipientLast4       String?            @db.VarChar(4)
+  status               SourceRecordStatus @default(PENDING)
+  reasonCode           String?            @db.VarChar(80)
+  safeDetails          Json?
+  proposedOutcome      String?            @db.VarChar(80)
+  finalOutcome         String?            @db.VarChar(80)
+  encryptedPayload     Bytes
+  payloadIv            Bytes
+  payloadAuthTag       Bytes
+  encryptionKeyVersion String             @db.VarChar(40)
+  payloadExpiresAt     DateTime
+  customer             Customer?          @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  customerId           String?
+  resultEntityType     String?            @db.VarChar(80)
+  resultEntityId       String?
+  committedAt          DateTime?
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  historicalService HistoricalServiceRecord?
+  villageVisit      VillageVisit?
+
+  @@unique([batchId, sheetName, sourceRowNumber])
+  // The same source row can appear in a later immutable import attempt. The
+  // canonical importer performs duplicate reconciliation; staging evidence
+  // must therefore index, not globally own, an external source identifier.
+  @@index([sourceSystem, externalRecordId])
+  @@index([batchId, status])
+  @@index([rowFingerprint])
+  @@index([phoneFingerprint])
+  @@index([payloadExpiresAt])
+  @@index([customerId])
+}
+
+model HistoricalServiceRecord {
+  id                String                  @id @default(uuid())
+  customer          Customer                @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  customerId        String
+  sourceRecord      SourceRecord            @relation(fields: [sourceRecordId], references: [id], onDelete: Restrict)
+  sourceRecordId    String                  @unique
+  farmLocation      FarmLocation?           @relation(fields: [farmLocationId], references: [id], onDelete: SetNull)
+  farmLocationId    String?
+  crop              Crop?                   @relation(fields: [cropId], references: [id], onDelete: SetNull)
+  cropId            String?
+  operatingCenter   OperatingCenter?        @relation(fields: [operatingCenterId], references: [id], onDelete: SetNull)
+  operatingCenterId String?
+  serviceDate       DateTime?               @db.Date
+  rawCropName       String?                 @db.VarChar(160)
+  servicedAcres     Decimal?                @db.Decimal(12, 2)
+  legacyZone        String?                 @db.VarChar(160)
+  status            HistoricalServiceStatus @default(COMPLETED)
+  notes             String?                 @db.VarChar(1000)
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+
+  @@index([customerId, serviceDate])
+  @@index([farmLocationId])
+  @@index([cropId])
+  @@index([operatingCenterId])
+}
+
+model VillageVisit {
+  id                       String       @id @default(uuid())
+  customer                 Customer     @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  customerId               String
+  sourceRecord             SourceRecord @relation(fields: [sourceRecordId], references: [id], onDelete: Restrict)
+  sourceRecordId           String       @unique
+  collector                User?        @relation("VillageVisitCollector", fields: [collectorUserId], references: [id], onDelete: SetNull)
+  collectorUserId          String?
+  collectorNameRaw         String?      @db.VarChar(160)
+  employeeCodeRaw          String?      @db.VarChar(80)
+  administrativeLocation   Location?    @relation(fields: [administrativeLocationId], references: [id], onDelete: SetNull)
+  administrativeLocationId String?
+  crop                     Crop?        @relation(fields: [cropId], references: [id], onDelete: SetNull)
+  cropId                   String?
+  visitedAt                DateTime?
+  rawCropName              String?      @db.VarChar(160)
+  observedAcres            Decimal?     @db.Decimal(12, 2)
+  fertilizerShop           String?      @db.VarChar(240)
+  expectedSpraying         String?      @db.VarChar(240)
+  farmerType               String?      @db.VarChar(80)
+  notes                    String?      @db.VarChar(1000)
+  createdAt                DateTime     @default(now())
+  updatedAt                DateTime     @updatedAt
+
+  @@index([customerId, visitedAt])
+  @@index([collectorUserId, visitedAt])
+  @@index([administrativeLocationId])
+  @@index([cropId])
+}
+
+model CustomerHistory {
+  id            String           @id @default(uuid())
+  customer      Customer         @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  customerId    String
+  version       Int
+  eventType     HistoryEventType
+  changedFields Json             @default("{}")
+  actor         User?            @relation("CustomerHistoryActor", fields: [actorUserId], references: [id], onDelete: Restrict)
+  actorUserId   String?
+  reason        String?          @db.VarChar(500)
+  effectiveAt   DateTime?
+  recordedAt    DateTime         @default(now())
+
+  @@unique([customerId, version])
+  @@index([customerId, recordedAt])
+  @@index([actorUserId])
+}
+
+model LeadHistory {
+  id            String           @id @default(uuid())
+  lead          Lead             @relation(fields: [leadId], references: [id], onDelete: Restrict)
+  leadId        String
+  version       Int
+  eventType     HistoryEventType
+  changedFields Json             @default("{}")
+  actor         User?            @relation("LeadHistoryActor", fields: [actorUserId], references: [id], onDelete: Restrict)
+  actorUserId   String?
+  reason        String?          @db.VarChar(500)
+  effectiveAt   DateTime?
+  recordedAt    DateTime         @default(now())
+
+  @@unique([leadId, version])
+  @@index([leadId, recordedAt])
+  @@index([actorUserId])
+}
+
+model DroneHistory {
+  id            String           @id @default(uuid())
+  drone         Drone            @relation(fields: [droneId], references: [id], onDelete: Restrict)
+  droneId       String
+  version       Int
+  eventType     HistoryEventType
+  changedFields Json             @default("{}")
+  actor         User?            @relation("DroneHistoryActor", fields: [actorUserId], references: [id], onDelete: Restrict)
+  actorUserId   String?
+  reason        String?          @db.VarChar(500)
+  effectiveAt   DateTime?
+  recordedAt    DateTime         @default(now())
+
+  @@unique([droneId, version])
+  @@index([droneId, recordedAt])
+  @@index([actorUserId])
+}
+
+model LMVHistory {
+  id            String           @id @default(uuid())
+  lmv           LMV              @relation(fields: [lmvId], references: [id], onDelete: Restrict)
+  lmvId         String
+  version       Int
+  eventType     HistoryEventType
+  changedFields Json             @default("{}")
+  actor         User?            @relation("LMVHistoryActor", fields: [actorUserId], references: [id], onDelete: Restrict)
+  actorUserId   String?
+  reason        String?          @db.VarChar(500)
+  effectiveAt   DateTime?
+  recordedAt    DateTime         @default(now())
+
+  @@unique([lmvId, version])
+  @@index([lmvId, recordedAt])
+  @@index([actorUserId])
 }

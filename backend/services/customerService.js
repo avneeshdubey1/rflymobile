@@ -145,7 +145,7 @@ async function createForSales(input, actorId) {
     farmerUserId: linkedFarmer?.id || null,
     createdByUserId: actorId,
     staffConfirmedAt: new Date(),
-  });
+  }, { actorId });
   await auditLogService.record({
     entityType: 'Customer',
     entityId: customer.id,
@@ -173,7 +173,7 @@ async function updateForSales(customerId, input, actorId) {
   if (input.preferredLanguage !== undefined) changes.preferredLanguage = i18nService.normalizeLanguage(input.preferredLanguage);
   const definedChanges = Object.fromEntries(Object.entries(changes).filter(([, value]) => value !== undefined));
   if (!Object.keys(definedChanges).length) throw new Error('At least one customer field is required');
-  const customer = await customerRepository.update(customerId, definedChanges);
+  const customer = await customerRepository.update(customerId, definedChanges, { actorId });
   await auditLogService.record({
     entityType: 'Customer',
     entityId: customer.id,
@@ -205,7 +205,7 @@ async function ensureForFarmerUser(user) {
   if (existingByPhone) {
     if (existingByPhone.farmerUserId === user.id) return existingByPhone;
     if (!existingByPhone.farmerUserId) {
-      return customerRepository.update(existingByPhone.id, { farmerUserId: user.id });
+      return customerRepository.update(existingByPhone.id, { farmerUserId: user.id }, { actorId: user.id });
     }
     return null;
   }
@@ -217,7 +217,7 @@ async function ensureForFarmerUser(user) {
     district: optionalText(user.district, 'District'),
     farmerUserId: user.id,
     staffConfirmedAt: user.phoneVerifiedAt || new Date(),
-  });
+  }, { actorId: user.id });
 }
 
 async function openServiceContext(customerId, actorId) {
@@ -258,7 +258,7 @@ async function enableFarmerPortalAccess(customerId, actorId) {
     village: customer.village || null,
     district: customer.district || null,
     active: true,
-  });
+  }, { actorId });
   if (!result) {
     const error = new Error('Customer not found');
     error.status = 404;

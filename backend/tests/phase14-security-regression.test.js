@@ -73,6 +73,15 @@ test('management APIs reject anonymous and wrong-role callers', async() => {
 });
 
 test('Admin account creation hashes the password and no API response exposes credential fields', async() => {
+    const missingPassword = await request('/api/users/add', {
+        method: 'POST',
+        headers: auth(admin),
+        body: JSON.stringify({ name: 'No Credential User', email: `no-credential-${runId}@example.test`, role: 'SALES' }),
+    });
+    assert.equal(missingPassword.response.status, 400);
+    assert.match(missingPassword.data.error, /Password must be between/);
+    assert.equal(await prisma.user.count({ where: { email: `no-credential-${runId}@example.test` } }), 0);
+
     const newPassword = crypto.randomBytes(24).toString('base64url');
     const created = await request('/api/users/add', {
         method: 'POST',

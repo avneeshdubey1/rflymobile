@@ -1,15 +1,16 @@
 {
   "dependencies": {
     "@prisma/client": "^5.22.0",
-    "axios": "^1.18.1",
     "bcryptjs": "^3.0.3",
     "cookie": "^0.7.2",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "express-rate-limit": "^8.5.2",
+    "fflate": "0.8.3",
     "helmet": "^8.3.0",
     "node-fetch": "^2.6.7",
+    "read-excel-file": "9.3.5",
     "socket.io": "^4.8.3"
   },
   "name": "backend",
@@ -23,9 +24,11 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "node prisma/seed.js",
     "bootstrap:initial-admin": "node scripts/bootstrapInitialAdmin.js",
+    "import:farmer-data": "node importer/cli.js",
     "security:migrate-passwords": "node scripts/hashDevelopmentPasswords.js",
     "demo:prepare": "node scripts/prepareDevelopmentDemo.js",
-    "test": "node scripts/runBackendTests.js"
+    "test": "node scripts/runBackendTests.js",
+    "test:migration-schema": "node scripts/verifySchemaMigration.js"
   },
   "keywords": [],
   "author": "",

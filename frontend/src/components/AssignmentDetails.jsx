@@ -3,6 +3,7 @@ import axios from "axios";
 // import "./AssignmentDetails.css";
 import "../style/AssignmentDetails.css";
 import { SkeletonRow } from '../components/Skeleton';
+import { API_URL } from '../config';
 
 const AssignmentDetails = () => {
     const [assignments, setAssignments] = useState([]);
@@ -28,7 +29,7 @@ const AssignmentDetails = () => {
         setLoading(true);
         try {
             const response = await axios.get(
-                "http://localhost:5000/api/assignments/all",
+                `${API_URL}/api/assignments/all`,
                 {
                     withCredentials: true
                 }
@@ -56,9 +57,9 @@ const AssignmentDetails = () => {
                         <th>Date</th>
                         <th>Time</th>
                         <th>Pilot</th>
-                        <th>Pilot Drone</th>
                         <th>Co-Pilot</th>
-                        <th>Co-Pilot Drone</th>
+                        <th>Drone</th>
+                        <th>LMV</th>
                         <th>Status</th>
                     </tr>
                 </thead>
@@ -66,7 +67,7 @@ const AssignmentDetails = () => {
                     {loading ? (
                         // Show a handful of skeleton rows while data loads
                         Array.from({ length: rowsPerPage }).map((_, index) => (
-                            <SkeletonRow key={`skeleton-${index}`} columns={8} />
+                            <SkeletonRow key={`skeleton-${index}`} columns={7} />
                         ))
                     ) : assignments.length > 0 ? (
                         currentAssignments.map((item) => (
@@ -103,7 +104,15 @@ const AssignmentDetails = () => {
                                     {item.pilot?.name || "Not Assigned"}
                                 </td>
 
-                                {/* Pilot Drone */}
+                                {/* Co Pilot */}
+                                <td>
+                                    {
+                                        item.copilot?.name || "Not Assigned"
+                                    }
+                                </td>
+
+
+                                {/* Shared crew drone */}
                                 <td>
                                     {
                                         item.drone
@@ -116,31 +125,9 @@ const AssignmentDetails = () => {
                                             :
                                             "No Drone"
                                     }
-
                                 </td>
 
-                                {/* Co Pilot */}
-                                <td>
-                                    {
-                                        item.copilot?.name || "Not Assigned"
-                                    }
-                                </td>
-
-
-                                {/* Co Pilot Drone */}
-                                <td>
-                                    {
-                                        item.copilotDrone
-                                            ?
-                                            <>
-                                                {item.copilotDrone.name}
-                                                <br />
-                                                {item.copilotDrone.model}
-                                            </>
-                                            :
-                                            "No Drone"
-                                    }
-                                </td>
+                                <td>{item.lmv?.registrationNo || item.lmv?.label || "No LMV"}</td>
 
                                 {/* Status */}
                                 <td>
@@ -160,7 +147,7 @@ const AssignmentDetails = () => {
                     ) : (
 
                         <tr>
-                            <td colSpan="8">
+                            <td colSpan="7">
                                 No assignments found
                             </td>
                         </tr>

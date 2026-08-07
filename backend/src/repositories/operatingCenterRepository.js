@@ -4,6 +4,7 @@ module.exports = {
     create: (data) => prisma.operatingCenter.create({ data }),
     findAll: (where = {}) => prisma.operatingCenter.findMany({ where, orderBy: { createdAt: 'asc' } }),
     findById: (id) => prisma.operatingCenter.findUnique({ where: { id } }),
+    findActiveById: (id) => prisma.operatingCenter.findFirst({ where: { id, active: true } }),
     findByName: (name) =>
         prisma.operatingCenter.findFirst({
             where: {

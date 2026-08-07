@@ -1,3 +1,4 @@
+const { Prisma } = require('@prisma/client');
 const prisma = require('../lib/prisma');
 
 // Audit history is retained for a long time. Keep it useful for operational
@@ -50,6 +51,11 @@ function sanitizeAuditReason(value) {
 
 function sanitizeAuditState(value) {
   if (value instanceof Date) return value.toISOString();
+  // Prisma Decimal instances expose implementation fields (including an own
+  // `constructor` function) through Object.entries(). Passing those fields to
+  // a Json column makes Prisma reject the entire audit write. Preserve the
+  // exact decimal value using Decimal's JSON representation before recursing.
+  if (Prisma.Decimal.isDecimal(value)) return value.toJSON();
   if (Array.isArray(value)) return value.map(sanitizeAuditState);
   if (!value || typeof value !== 'object') return value;
   return Object.fromEntries(Object.entries(value)

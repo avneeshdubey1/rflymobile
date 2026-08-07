@@ -17,6 +17,9 @@ const createdEnquiryIds = [];
 const createdCenterIds = [];
 const createdDroneIds = [];
 const createdLmvIds = [];
+const createdUserIds = [];
+const createdCropIds = [];
+const runId = `${process.pid}-${Date.now()}`;
 
 async function request(pathname, { method = 'GET', body, authorization } = {}) {
   const response = await fetch(`${baseUrl}${pathname}`, {
@@ -34,6 +37,15 @@ test.before(async () => {
   server = app.listen(0);
   await new Promise((resolve) => server.once('listening', resolve));
   baseUrl = `http://127.0.0.1:${server.address().port}`;
+  const rice = await prisma.crop.create({
+    data: {
+      code: `phase2-rice-${runId}`,
+      displayName: 'Rice',
+      normalizedName: `phase2rice${runId}`,
+      active: true,
+    },
+  });
+  createdCropIds.push(rice.id);
   const [sales, admin] = await Promise.all([
     prisma.user.findFirst({ where: { role: 'SALES' } }),
     prisma.user.findFirst({ where: { role: 'ADMIN' } }),
@@ -217,47 +229,63 @@ test('legacy records cannot bypass service-area revalidation and retired routes 
   const autoAssign = await request(`/api/leads/${processedLegacy.id}/auto-assign`, { method: 'POST', authorization: adminAuthorization });
   assert.equal(autoAssign.response.status, 409, JSON.stringify(autoAssign.data));
   assert.equal(autoAssign.data.code, 'SERVICE_AREA_REVALIDATION_FAILED');
-  const [pilot, drone, lmv] = await Promise.all([
-    prisma.user.findFirst({ where: { role: 'PILOT' } }),
-    prisma.drone.findFirst(),
-    prisma.lMV.findFirst(),
+  const activeCenter = await prisma.operatingCenter.findFirst({ where: { active: true } });
+  assert.ok(activeCenter, 'An active operating centre is required for the scheduling fixtures');
+  const [pilot, copilot, rescheduleDrone, rescheduleLmv] = await Promise.all([
+    prisma.user.create({
+      data: {
+        name: 'Phase 2 Scheduling Pilot',
+        email: `phase2-scheduling-pilot-${runId}@example.test`,
+        passwordHash: 'test',
+        role: 'PILOT',
+        homeCenterId: activeCenter.id,
+      },
+    }),
+    prisma.user.create({
+      data: {
+        name: 'Phase 2 Scheduling Copilot',
+        email: `phase2-scheduling-copilot-${runId}@example.test`,
+        passwordHash: 'test',
+        role: 'PILOT',
+        homeCenterId: activeCenter.id,
+      },
+    }),
+    prisma.drone.create({
+      data: {
+        model: 'Phase 2 Reschedule Drone',
+        serialNumber: `phase2-reschedule-${runId}`,
+        uin: `UIN-PHASE2-RESCHEDULE-${runId}`,
+        homeCenterId: activeCenter.id,
+        status: 'ASSIGNED',
+      },
+    }),
+    prisma.lMV.create({
+      data: {
+        registrationNo: `PHASE2-RESCHEDULE-LMV-${runId}`,
+        label: 'Phase 2 Reschedule LMV',
+        homeCenterId: activeCenter.id,
+        status: 'ASSIGNED',
+        capacity: 1,
+      },
+    }),
   ]);
+  createdUserIds.push(pilot.id, copilot.id);
+  createdDroneIds.push(rescheduleDrone.id);
+  createdLmvIds.push(rescheduleLmv.id);
   const manualAssign = await request('/api/assignments/manual', {
     method: 'POST',
     authorization: adminAuthorization,
-    body: { leadId: processedLegacy.id, pilotId: pilot.id, droneId: drone.id, lmvId: lmv.id },
+    body: { leadId: processedLegacy.id, pilotId: pilot.id, copilotId: copilot.id, droneId: rescheduleDrone.id, lmvId: rescheduleLmv.id },
   });
   assert.equal(manualAssign.response.status, 409, JSON.stringify(manualAssign.data));
   assert.equal(manualAssign.data.code, 'SERVICE_AREA_REVALIDATION_FAILED');
 
-  const activeCenter = await prisma.operatingCenter.findFirst({ where: { active: true } });
-  assert.ok(activeCenter, 'An active operating centre is required for the reschedule fixture');
-  const rescheduleDrone = await prisma.drone.create({
-    data: {
-      model: 'Phase 2 Reschedule Drone',
-      serialNumber: `phase2-reschedule-${Date.now()}`,
-      uin: `UIN-PHASE2-RESCHEDULE-${Date.now()}`,
-      homeCenterId: activeCenter.id,
-      status: 'AVAILABLE',
-    },
-  });
-  createdDroneIds.push(rescheduleDrone.id);
-  const rescheduleLmv = await prisma.lMV.create({
-    data: {
-      registrationNo: `PHASE2-RESCHEDULE-LMV-${Date.now()}`,
-      label: 'Phase 2 Reschedule LMV',
-      homeCenterId: activeCenter.id,
-      status: 'ASSIGNED',
-      capacity: 1,
-    },
-  });
-  createdLmvIds.push(rescheduleLmv.id);
   const scheduledLegacy = await prisma.lead.create({
     data: { farmerName: 'Phase 2 Legacy Scheduled', farmerPhone: '+919222222227', acreage: 1, intakeChannel: 'WEBSITE', status: 'SCHEDULED', latitude: 10, longitude: 77.311 },
   });
   createdLeadIds.push(scheduledLegacy.id);
   const legacyAssignment = await prisma.assignment.create({
-    data: { leadId: scheduledLegacy.id, pilotId: pilot.id, droneId: rescheduleDrone.id, lmvId: rescheduleLmv.id, scheduledDate: new Date('2026-08-01T09:00:00.000Z'), expectedAcreage: 1, autoAssigned: false },
+    data: { leadId: scheduledLegacy.id, pilotId: pilot.id, copilotId: copilot.id, droneId: rescheduleDrone.id, lmvId: rescheduleLmv.id, scheduledDate: new Date('2026-08-01T09:00:00.000Z'), expectedAcreage: 1, autoAssigned: false },
   });
   const reschedule = await request(`/api/assignments/${legacyAssignment.id}/reschedule`, {
     method: 'PUT',
@@ -283,12 +311,39 @@ test.after(async () => {
   await prisma.lMV.updateMany({ where: { id: { in: assignments.map((assignment) => assignment.lmvId).filter(Boolean) } }, data: { status: 'AVAILABLE' } });
   await prisma.assignment.deleteMany({ where: { id: { in: assignmentIds } } });
   await prisma.auditLog.deleteMany({ where: { OR: [{ entityType: 'Lead', entityId: { in: createdLeadIds } }, { entityType: 'DeclinedEnquiry', entityId: { in: createdEnquiryIds } }] } });
+  await prisma.leadHistory.deleteMany({
+    where: {
+      OR: [
+        { leadId: { in: createdLeadIds } },
+        { actorUserId: farmerUser.id },
+      ],
+    },
+  });
   await prisma.lead.deleteMany({ where: { id: { in: createdLeadIds } } });
   await prisma.declinedEnquiry.deleteMany({ where: { id: { in: createdEnquiryIds } } });
   await prisma.drone.deleteMany({ where: { id: { in: createdDroneIds } } });
   await prisma.lMV.deleteMany({ where: { id: { in: createdLmvIds } } });
+  await prisma.user.deleteMany({ where: { id: { in: createdUserIds } } });
+  const farmerCustomers = await prisma.customer.findMany({
+    where: { farmerUserId: farmerUser.id },
+    select: { id: true },
+  });
+  const farmerCustomerIds = farmerCustomers.map((customer) => customer.id);
+  await prisma.customerHistory.deleteMany({
+    where: {
+      OR: [
+        { customerId: { in: farmerCustomerIds } },
+        { actorUserId: farmerUser.id },
+      ],
+    },
+  });
+  await prisma.customer.deleteMany({ where: { id: { in: farmerCustomerIds } } });
   await prisma.user.delete({ where: { id: farmerUser.id } });
+  await prisma.crop.deleteMany({ where: { id: { in: createdCropIds } } });
   await prisma.operatingCenter.deleteMany({ where: { id: { in: createdCenterIds } } });
-  await new Promise((resolve) => server.close(resolve));
+  await new Promise((resolve, reject) => {
+    server.close((error) => (error ? reject(error) : resolve()));
+    server.closeAllConnections?.();
+  });
   await prisma.$disconnect();
 });

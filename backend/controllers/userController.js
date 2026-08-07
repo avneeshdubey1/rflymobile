@@ -1,8 +1,8 @@
-const crypto = require('crypto');
 const userRepository = require('../src/repositories/userRepository');
 const auditLogRepository = require('../src/repositories/auditLogRepository');
 const assignmentRepository = require('../src/repositories/assignmentRepository');
 const operatingCenterRepository = require('../src/repositories/operatingCenterRepository');
+const droneRepository = require('../src/repositories/droneRepository');
 const { hashPassword, validatePassword } = require('../services/passwordService');
 const { normalizePhone } = require('../services/identityService');
 const { disconnectUserSockets } = require('../middleware/auth');
@@ -18,6 +18,17 @@ function normalizeEmail(email) {
     return normalized;
 }
 
+function isEligiblePreferredDrone(drone, homeCenterId) {
+    return Boolean(
+        drone &&
+        !drone.archivedAt &&
+        drone.homeCenterId === homeCenterId &&
+        ['AVAILABLE', 'ASSIGNED'].includes(drone.status) &&
+        drone.operationalState === 'IN_SERVICE' &&
+        ['AVAILABLE', 'ASSIGNED'].includes(drone.availabilityState)
+    );
+}
+
 exports.getAllUsers = async(_req, res) => { try { res.json({ success: true, users: await userRepository.findAll() }); } catch { res.status(500).json({ error: 'Failed to fetch users' }); } };
 exports.getPilots = async(_req, res) => { try { res.json({ success: true, pilots: await userRepository.findAll({ role: 'PILOT' }) }); } catch { res.status(500).json({ error: 'Failed to fetch pilots' }); } };
 exports.addUser = async(req, res) => {
@@ -29,12 +40,8 @@ exports.addUser = async(req, res) => {
         if (role === 'ADMIN' && await userRepository.count({ role: 'ADMIN' }) > 0) {
             return res.status(409).json({ error: 'This installation already has its single Admin account' });
         }
-        // const phone = req.body.phone ? normalizePhone(req.body.phone) : null;
-        // validatePassword(req.body.password);
-        // const passwordHash = await hashPassword(req.body.password);
-
         const phone = req.body.phone ? normalizePhone(req.body.phone) : null;
-        const rawPassword = req.body.password || crypto.randomBytes(9).toString('base64url');
+        const rawPassword = req.body.password;
         validatePassword(rawPassword);
         const passwordHash = await hashPassword(rawPassword);
 
@@ -65,6 +72,14 @@ exports.addUser = async(req, res) => {
                 return res.status(400).json({ error: 'ID proof, license ID, address, state, city, and a valid 6-digit pincode are required for pilots' });
             }
 
+            const assignedDroneId = String(req.body.assignedDroneId || '').trim() || null;
+            if (assignedDroneId) {
+                const assignedDrone = await droneRepository.findById(assignedDroneId);
+                if (!isEligiblePreferredDrone(assignedDrone, homeCenterId)) {
+                    return res.status(409).json({ error: 'The preferred drone must be operational at the Pilot operating center' });
+                }
+            }
+
             pilotFields = {
                 idProof,
                 licenseId,
@@ -73,7 +88,7 @@ exports.addUser = async(req, res) => {
                 state,
                 city,
                 pincode,
-                assignedDroneId: req.body.assignedDroneId || null,
+                assignedDroneId,
             };
         }
 
@@ -96,7 +111,11 @@ exports.addUser = async(req, res) => {
         res.status(201).json({ success: true, user });
     } catch (error) {
         const validationError = /required|between|valid/i.test(error.message || '');
-        const message = error.code === 'P2002' ? 'That work email or mobile is already registered' : validationError ? error.message : 'Failed to add user';
+        const conflictTarget = Array.isArray(error.meta?.target) ? error.meta.target : [];
+        const conflictMessage = conflictTarget.includes('assignedDroneId')
+            ? 'That drone is already assigned to another pilot'
+            : 'That work email or mobile is already registered';
+        const message = error.code === 'P2002' ? conflictMessage : validationError ? error.message : 'Failed to add user';
         res.status(error.code === 'P2002' ? 409 : validationError ? 400 : 500).json({ error: message });
     }
 };
@@ -118,14 +137,14 @@ exports.updatePilotOperatingCenter = async(req, res) => {
             return res.status(409).json({ error: 'A pilot with an active assignment cannot be moved to another operating center' });
         }
 
-        const updated = await userRepository.update(pilot.id, { homeCenterId });
+        const updated = await userRepository.update(pilot.id, { homeCenterId, assignedDroneId: null });
         await auditLogRepository.create({
             entityType: 'User',
             entityId: pilot.id,
             action: 'PILOT_OPERATING_CENTER_CHANGED',
             actorId: req.auth.userId,
-            beforeState: { role: pilot.role, homeCenterId: pilot.homeCenterId },
-            afterState: { role: updated.role, homeCenterId: updated.homeCenterId },
+            beforeState: { role: pilot.role, homeCenterId: pilot.homeCenterId, assignedDroneId: pilot.assignedDroneId },
+            afterState: { role: updated.role, homeCenterId: updated.homeCenterId, assignedDroneId: updated.assignedDroneId },
         });
         return res.json({ success: true, user: updated });
     } catch {
@@ -238,13 +257,41 @@ exports.updateUser = async(req, res) => {
     try {
         const existing = await userRepository.findById(req.params.id);
         if (!existing) return res.status(404).json({ error: 'User not found' });
+        if (req.auth.role === 'FLEET_MANAGER' && existing.role !== 'PILOT') {
+            return res.status(403).json({ error: 'Fleet Managers can update only Pilot profiles' });
+        }
+        if (req.body.active !== undefined) {
+            return res.status(400).json({ error: 'Use the Admin activation control to change account status' });
+        }
 
         const updateData = {};
-        if (req.body.name !== undefined) updateData.name = String(req.body.name).trim();
+        if (req.body.name !== undefined) {
+            const name = String(req.body.name).trim();
+            if (name.length < 2 || name.length > 120) return res.status(400).json({ error: 'Name must contain between 2 and 120 characters' });
+            updateData.name = name;
+        }
         if (req.body.email !== undefined) updateData.email = normalizeEmail(req.body.email);
         if (req.body.phone !== undefined) updateData.phone = req.body.phone ? normalizePhone(req.body.phone) : null;
         if (req.body.address !== undefined) updateData.address = String(req.body.address).trim() || null;
-        if (req.body.homeCenterId !== undefined) updateData.homeCenterId = req.body.homeCenterId || null;
+        let homeCenterChanged = false;
+        if (req.body.homeCenterId !== undefined) {
+            const homeCenterId = String(req.body.homeCenterId || '').trim();
+            if (existing.role === 'PILOT' && !homeCenterId) {
+                return res.status(400).json({ error: 'An active operating center is required for every pilot' });
+            }
+            if (homeCenterId) {
+                const center = await operatingCenterRepository.findById(homeCenterId);
+                if (!center || !center.active) return res.status(400).json({ error: 'The selected operating center is not active' });
+            }
+            if (existing.role === 'PILOT' && homeCenterId !== existing.homeCenterId) {
+                const activeAssignments = await assignmentRepository.findActiveForPilot(existing.id);
+                if (activeAssignments.length) {
+                    return res.status(409).json({ error: 'A pilot with an active assignment cannot be moved to another operating center' });
+                }
+                homeCenterChanged = true;
+            }
+            updateData.homeCenterId = homeCenterId || null;
+        }
         if (req.body.idProof !== undefined) updateData.idProof = String(req.body.idProof).trim() || null;
         if (req.body.licenseId !== undefined) updateData.licenseId = String(req.body.licenseId).trim() || null;
         if (req.body.addressLine1 !== undefined) updateData.addressLine1 = String(req.body.addressLine1).trim() || null;
@@ -252,8 +299,29 @@ exports.updateUser = async(req, res) => {
         if (req.body.state !== undefined) updateData.state = String(req.body.state).trim() || null;
         if (req.body.city !== undefined) updateData.city = String(req.body.city).trim() || null;
         if (req.body.pincode !== undefined) updateData.pincode = String(req.body.pincode).trim() || null;
-        if (req.body.active !== undefined) updateData.active = Boolean(req.body.active);
-        if (req.body.assignedDroneId !== undefined) updateData.assignedDroneId = req.body.assignedDroneId || null;
+        if (req.body.assignedDroneId !== undefined) {
+            if (existing.role !== 'PILOT') return res.status(400).json({ error: 'Only Pilots can have a preferred home drone' });
+            const assignedDroneId = String(req.body.assignedDroneId || '').trim() || null;
+            if (assignedDroneId) {
+                const drone = await droneRepository.findById(assignedDroneId);
+                const effectiveCenterId = updateData.homeCenterId || existing.homeCenterId;
+                if (!isEligiblePreferredDrone(drone, effectiveCenterId)) {
+                    if (homeCenterChanged && assignedDroneId === existing.assignedDroneId) {
+                        updateData.assignedDroneId = null;
+                    } else {
+                        return res.status(409).json({ error: 'The preferred drone must be operational at the Pilot operating center' });
+                    }
+                } else {
+                    updateData.assignedDroneId = assignedDroneId;
+                }
+            } else {
+                updateData.assignedDroneId = null;
+            }
+        } else if (homeCenterChanged) {
+            updateData.assignedDroneId = null;
+        }
+
+        if (!Object.keys(updateData).length) return res.status(400).json({ error: 'At least one supported profile field is required' });
 
         const updated = await userRepository.update(existing.id, updateData);
         await auditLogRepository.create({ entityType: 'User', entityId: updated.id, action: 'UPDATED', actorId: req.auth.userId, beforeState: existing, afterState: updated });
@@ -267,6 +335,7 @@ exports.updateUser = async(req, res) => {
             else if (target.includes('assignedDroneId')) message = 'That drone is already assigned to another pilot';
             return res.status(409).json({ error: message });
         }
-        res.status(500).json({ error: 'Failed to update user' });
+        const validationError = /required|between|valid|only Pilots|operating center|activation control/i.test(error.message || '');
+        res.status(validationError ? 400 : 500).json({ error: validationError ? error.message : 'Failed to update user' });
     }
 };

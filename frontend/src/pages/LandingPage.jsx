@@ -1,153 +1,147 @@
-import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { motion } from 'framer-motion';
-import { signInWithPhoneNumber } from 'firebase/auth';
 import { API_URL } from '../config';
-import { auth } from '../lib/firebase';
-import { clearPhoneRecaptcha, getPhoneRecaptcha, normalizeIndianPhone } from '../lib/firebasePhone';
-import OtpInput from '../components/OtpInput';
 import LanguageSelector from '../components/LanguageSelector';
 
-export default function LandingPage() {
-  const navigate = useNavigate();
-  const { t } = useTranslation();
-  const [form, setForm] = useState({ name: '', phone: '', village: '', district: '' });
-  const [otp, setOtp] = useState('');
-  const [confirmation, setConfirmation] = useState(null);
-  const [step, setStep] = useState('register');
-  const [countdown, setCountdown] = useState(5);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
+const initialForm = {
+  farmerName: '',
+  phone: '',
+  village: '',
+  cropType: '',
+  acres: '',
+  latitude: '',
+  longitude: '',
+};
 
-  useEffect(() => () => clearPhoneRecaptcha(), []);
-  useEffect(() => {
-    if (step !== 'success') return undefined;
-    if (countdown <= 0) {
-      navigate('/farmer/login', { replace: true });
-      return undefined;
-    }
-    const timer = window.setTimeout(() => setCountdown((value) => value - 1), 1000);
-    return () => window.clearTimeout(timer);
-  }, [countdown, navigate, step]);
+export default function LandingPage() {
+  const { t, i18n } = useTranslation();
+  const [form, setForm] = useState(initialForm);
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState(null);
+  const noticeRef = useRef(null);
 
   const update = (field) => (event) => setForm((current) => ({ ...current, [field]: event.target.value }));
+  const focusNotice = () => window.setTimeout(() => noticeRef.current?.focus(), 0);
 
-  const sendRegistrationOtp = async (event) => {
-    event.preventDefault();
-    setBusy(true);
-    setError('');
-    try {
-      const result = await signInWithPhoneNumber(auth, normalizeIndianPhone(form.phone), getPhoneRecaptcha());
-      setConfirmation(result);
-      setStep('otp');
-    } catch (failure) {
-      setError(failure?.message || 'Unable to send OTP.');
-    } finally {
-      setBusy(false);
+  const useCurrentLocation = () => {
+    setNotice(null);
+    if (!navigator.geolocation) {
+      setNotice({ kind: 'error', text: t('service_location_unavailable', 'Location is unavailable. Please call the operations team.') });
+      focusNotice();
+      return;
     }
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setForm((current) => ({
+          ...current,
+          latitude: position.coords.latitude.toFixed(6),
+          longitude: position.coords.longitude.toFixed(6),
+        }));
+        setNotice({ kind: 'success', text: t('service_location_captured', 'Farm location captured. You can now submit the request.') });
+        focusNotice();
+      },
+      () => {
+        setNotice({ kind: 'error', text: t('service_location_unavailable', 'Location is unavailable. Please call the operations team.') });
+        focusNotice();
+      },
+      { enableHighAccuracy: false, timeout: 10_000, maximumAge: 60_000 },
+    );
   };
 
-  const completeRegistration = async (event) => {
+  const submit = async (event) => {
     event.preventDefault();
     setBusy(true);
-    setError('');
+    setNotice(null);
     try {
-      const credential = await confirmation.confirm(otp.trim());
-      const idToken = await credential.user.getIdToken();
-      const response = await fetch(`${API_URL}/api/auth/farmer/complete-signup`, {
+      const response = await fetch(`${API_URL}/api/leads/ingest/website`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ idToken, name: form.name, village: form.village, district: form.district }),
+        body: JSON.stringify({
+          farmerName: form.farmerName,
+          phone: form.phone,
+          village: form.village,
+          cropType: form.cropType,
+          acres: form.acres,
+          latitude: Number(form.latitude),
+          longitude: Number(form.longitude),
+          preferredLanguage: i18n.language,
+        }),
       });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Registration failed.');
-      clearPhoneRecaptcha();
-      setStep('success');
-    } catch (failure) {
-      setError(failure?.message || 'OTP verification failed.');
+      const data = await response.json().catch(() => ({}));
+      if (data.code === 'OUTSIDE_SERVICE_AREA') {
+        setNotice({ kind: 'declined', text: t('service_area_unavailable', 'Service is unavailable at this location.') });
+        setForm((current) => ({ ...current, latitude: '', longitude: '', acres: '', cropType: '' }));
+      } else if (!response.ok) {
+        setNotice({ kind: 'error', text: data.code === 'LOCATION_REQUIRED' ? t('service_location_required', 'Enter a valid farm location.') : t('request_error', 'Failed to submit request. Please try again.') });
+      } else {
+        setNotice({ kind: 'success', text: t('request_received_for_review', 'Your request was received and is waiting for Sales review.') });
+        setForm(initialForm);
+      }
+      focusNotice();
+    } catch {
+      setNotice({ kind: 'error', text: t('request_error', 'Failed to submit request. Please try again.') });
+      focusNotice();
     } finally {
       setBusy(false);
     }
   };
 
   return (
-    <div className="landing-container">
-      <nav className="navbar">
+    <main className="landing-container">
+      <nav className="navbar" aria-label={t('public_navigation_label', 'Public navigation')}>
         <div className="logo">Drone as a Service</div>
         <div className="navbar__actions">
           <LanguageSelector />
-          <button className="login-btn" onClick={() => navigate('/farmer/login')}>{t('farmer_login_eyebrow', 'Farmer login')}</button>
-          <button className="login-btn" onClick={() => navigate('/login')}>{t('employee_login')}</button>
+          <Link className="login-btn" to="/farmer/login">{t('farmer_login_eyebrow', 'Farmer login')}</Link>
+          <Link className="login-btn" to="/login">{t('employee_login', 'Employee login')}</Link>
         </div>
       </nav>
 
-      <motion.main className="hero-section" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }}>
-        <section className="hero-intro">
+      <section className="hero-section">
+        <div className="hero-intro">
           <div className="hero-content">
-            <span className="hero-kicker">{t('hero_kicker')}</span>
-            <h1 className="hero-title">Drone as a Service</h1>
-            <p className="hero-subtitle">{t('hero_subtitle', 'Create your Farmer account and request drone services.')}</p>
+            <span className="hero-kicker">{t('public_booking_eyebrow', 'Public service request')}</span>
+            <h1 className="hero-title">{t('public_booking_heading', 'Request a drone service')}</h1>
+            <p className="hero-subtitle">{t('public_booking_copy', 'Online requests are reviewed by Sales. Calling the operations team remains the fastest way to begin.')}</p>
             <div className="hero-points">
-              <div className="hero-point"><strong>{t('hero_location_title')}</strong><span>{t('hero_location_copy')}</span></div>
-              <div className="hero-point"><strong>{t('hero_operations_title')}</strong><span>{t('hero_operations_copy')}</span></div>
-              <div className="hero-point"><strong>{t('hero_mobile_title')}</strong><span>{t('hero_mobile_copy')}</span></div>
+              <div className="hero-point"><strong>{t('phone_first_title', 'Phone-first support')}</strong><span>{t('phone_first_copy', 'Call the operations team if a phone conversation is easier than this form.')}</span></div>
+              <div className="hero-point"><strong>{t('service_area_title', 'Service-area checked')}</strong><span>{t('service_area_copy', 'Requests are accepted only inside an active operating area.')}</span></div>
+              <div className="hero-point"><strong>{t('location_privacy_title', 'Location used carefully')}</strong><span>{t('location_privacy_copy', 'Location is used to decide whether service is available.')}</span></div>
             </div>
           </div>
-        </section>
+        </div>
 
-        <section className="request-pane">
+        <section className="request-pane" aria-labelledby="public-booking-form-title">
           <div className="panel form-container">
-            {error && <div className="alert error" role="alert">{error}</div>}
-
-            {step === 'register' && (
-              <>
-                <div className="form-heading">
-                  <p className="eyebrow eyebrow--accent">{t('farmer_registration', 'FARMER REGISTRATION')}</p>
-                  <h2>{t('create_an_account_heading', 'Create your account')}</h2>
-                  <p>{t('already_registered', 'Already registered?')} <Link to="/farmer/login">{t('login_here', 'Login using OTP')}</Link></p>
-                </div>
-                <form onSubmit={sendRegistrationOtp} className="lead-form">
-                  <div className="input-group"><label htmlFor="farmer-name">{t('full_name')}</label><input id="farmer-name" value={form.name} onChange={update('name')} minLength="2" maxLength="120" autoComplete="name" required disabled={busy} /></div>
-                  <div className="input-group"><label htmlFor="farmer-phone">{t('mobile_number', 'Mobile number')}</label><input id="farmer-phone" value={form.phone} onChange={update('phone')} inputMode="numeric" autoComplete="tel" placeholder="9876543210" maxLength="16" required disabled={busy} /></div>
-                  <div className="input-group"><label htmlFor="farmer-village">{t('village_town', 'Village / approximate location')}</label><input id="farmer-village" value={form.village} onChange={update('village')} maxLength="120" required disabled={busy} /></div>
-                  <div className="input-group"><label htmlFor="farmer-district">{t('district_label', 'District')}</label><input id="farmer-district" value={form.district} onChange={update('district')} maxLength="120" required disabled={busy} /></div>
-                  <div id="recaptcha-container" />
-                  <button className="submit-btn" disabled={busy}>{busy ? t('sending_otp', 'Sending…') : t('send_otp', 'Verify mobile number')}</button>
-                </form>
-                <p>{t('business_registration_note', 'Business registration will be added in the next module.')}</p>
-              </>
-            )}
-
-            {step === 'otp' && (
-              <form onSubmit={completeRegistration} className="lead-form">
-                <div className="form-heading"><p className="eyebrow eyebrow--accent">{t('verify_mobile_eyebrow', 'VERIFY MOBILE')}</p><h2>{t('enter_otp', 'Enter the OTP')}</h2><p>{t('sent_six_digit_code', 'We sent a six-digit code to your mobile number.')}</p></div>
-                <div className="input-group">
-                  <label>{t('otp_label', '6-digit OTP')}</label>
-                  <OtpInput length={6} onComplete={(val) => { setOtp(val); }} disabled={busy} />
-                </div>
-                <button className="submit-btn" disabled={busy || otp.length !== 6}>{busy ? t('registering', 'Creating account…') : t('complete_registration', 'Complete registration')}</button>
-                <button type="button" className="login-btn" onClick={() => { setStep('register'); setOtp(''); setConfirmation(null); }} disabled={busy}>{t('edit_details', 'Change details')}</button>
-              </form>
-            )}
-
-            {step === 'success' && (
-              <div className="form-heading form-heading--center" role="status" style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem' }}>
-                  <motion.svg width="86" height="86" viewBox="0 0 50 50" initial="hidden" animate="visible">
-                    <motion.circle cx="25" cy="25" r="22" fill="none" stroke="var(--success)" strokeWidth="2.5" variants={{ hidden: { pathLength: 0 }, visible: { pathLength: 1, transition: { duration: 0.6 } } }} />
-                    <motion.path d="M15 26 L22 32 L35 17" fill="none" stroke="var(--success)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" variants={{ hidden: { pathLength: 0 }, visible: { pathLength: 1, transition: { delay: 0.3, duration: 0.4 } } }} />
-                  </motion.svg>
-                </div>
-                <p className="eyebrow eyebrow--accent">{t('registration_successful', 'REGISTRATION SUCCESSFUL')}</p>
-                <h2 style={{ marginTop: '0.5rem', marginBottom: '0.25rem' }}>{t('account_ready', 'Your Farmer account is ready')}</h2>
-                <p style={{ marginBottom: '1.5rem' }}>{t('redirect_login', 'You will be redirected to login in {{countdown}} seconds.', { countdown })}</p>
-                <button className="submit-btn button-wide" onClick={() => navigate('/farmer/login', { replace: true })}>{t('continue_login', 'Continue to login')}</button>
+            <div className="form-heading">
+              <p className="eyebrow eyebrow--accent">{t('request_kicker', 'Service request')}</p>
+              <h2 id="public-booking-form-title">{t('request_service', 'Request Service')}</h2>
+              <p>{t('public_booking_form_copy', 'We use the farm location only to check whether service is available.')}</p>
+            </div>
+            {notice && <div ref={noticeRef} tabIndex="-1" role={notice.kind === 'error' ? 'alert' : 'status'} className={`notice notice--${notice.kind === 'declined' ? 'warning' : notice.kind}`}>{notice.text}</div>}
+            <form className="lead-form" onSubmit={submit}>
+              <div className="input-group"><label htmlFor="public-farmer-name">{t('full_name', 'Full Name')}</label><input id="public-farmer-name" value={form.farmerName} onChange={update('farmerName')} minLength="2" maxLength="120" autoComplete="name" required disabled={busy} /></div>
+              <div className="input-group"><label htmlFor="public-phone">{t('phone_number', 'Phone Number')}</label><input id="public-phone" value={form.phone} onChange={update('phone')} inputMode="tel" autoComplete="tel" maxLength="20" required disabled={busy} /></div>
+              <div className="input-group"><label htmlFor="public-village">{t('village_location', 'Village / Location')}</label><input id="public-village" value={form.village} onChange={update('village')} maxLength="500" required disabled={busy} /></div>
+              <div className="row-group">
+                <div className="input-group"><label htmlFor="public-crop">{t('crop_type', 'Crop Type')}</label><input id="public-crop" value={form.cropType} onChange={update('cropType')} maxLength="120" required disabled={busy} /></div>
+                <div className="input-group"><label htmlFor="public-acres">{t('total_acres', 'Total Acres')}</label><input id="public-acres" type="number" min="0.01" step="0.01" value={form.acres} onChange={update('acres')} required disabled={busy} /></div>
               </div>
-            )}
+              <fieldset className="form-stack">
+                <legend>{t('service_location_title', 'Farm location')}</legend>
+                <p className="field-hint">{t('service_location_hint', 'Enter coordinates or use your device location so we can check service availability.')}</p>
+                <div className="row-group">
+                  <div className="input-group"><label htmlFor="public-latitude">{t('latitude_label', 'Latitude')}</label><input id="public-latitude" type="number" min="-90" max="90" step="any" inputMode="decimal" value={form.latitude} onChange={update('latitude')} required disabled={busy} /></div>
+                  <div className="input-group"><label htmlFor="public-longitude">{t('longitude_label', 'Longitude')}</label><input id="public-longitude" type="number" min="-180" max="180" step="any" inputMode="decimal" value={form.longitude} onChange={update('longitude')} required disabled={busy} /></div>
+                </div>
+                <button type="button" className="action-btn" onClick={useCurrentLocation} disabled={busy}>{t('use_current_location', 'Use current location')}</button>
+              </fieldset>
+              <button className="submit-btn" disabled={busy}>{busy ? t('submitting', 'Submitting...') : t('book_drone', 'Book a Drone')}</button>
+            </form>
           </div>
         </section>
-      </motion.main>
-    </div>
+      </section>
+    </main>
   );
 }
