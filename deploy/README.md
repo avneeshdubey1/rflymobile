@@ -12,4 +12,13 @@ After the application gates pass on the current `main` tip, the `release-image-e
 
 The one-shot importer is deliberately excluded from normal API images and is never run by the automatic deployment script. Use `compose.import.yml` only through the approved import procedure after dry-run review and backup verification. Its preflight service has no network, database secret, or staging key; the committing service can reach only the private data network. Workbook and key paths must be outside the checkout and readable through the host's Docker filesystem boundary. On confined Docker installations, use an approved Docker-visible staging directory rather than weakening filesystem confinement.
 
+The office server's snap-packaged Docker engine rejects process startup when
+`no-new-privileges` is enabled. On that verified host only, append
+`compose.snap-import.yml` after `compose.import.yml`. The compatibility overlay
+removes that single unsupported option from the one-shot importer services; it
+retains their non-root identity, read-only filesystem and input mounts, dropped
+capabilities, resource limits, secrets boundary, and network restrictions. Do
+not apply this overlay to normal application services or to another host without
+reproducing the same engine failure first.
+
 For the shared office server demo described in `docs/SERVER_HANDOFF_FOR_CODEX.md`, use [the on-premises demo runbook](../docs/operations/onprem-demo-deployment.md), `compose.onprem-demo.yml`, and `deploy/onprem-demo.env.example`. That path publishes only the demo frontend on port `8088` and must not modify unrelated host services or containers.
