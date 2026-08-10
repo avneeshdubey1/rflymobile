@@ -69,17 +69,23 @@ function createSyntheticWorkbook(fileName, {
   visitTimestamp = '07/31/2026 10:15:00 AM',
   crmSerial = phoneSuffix,
   googleSerial = phoneSuffix,
+  zoneName = null,
+  villageName = null,
+  mandalName = null,
+  districtName = null,
+  crmPhoneValue = null,
+  googlePhoneValue = null,
 } = {}) {
-  const crmPhone = `98765432${phoneSuffix}`;
-  const googlePhone = `97654321${phoneSuffix}`;
+  const crmPhone = crmPhoneValue ?? `98765432${phoneSuffix}`;
+  const googlePhone = googlePhoneValue ?? `97654321${phoneSuffix}`;
   const selectedCrop = invalidCrop ? `Unknown crop ${runId}` : cropName;
   const crmRows = [
     [...SHEETS.CRM.headers],
-    [crmSerial, 'One', `Synthetic CRM farmer ${runId}-${phoneSuffix}`, crmPhone, 'Synthetic CRM city', '2.50', '15/01/2026', selectedCrop, center.name],
+    [crmSerial, 'One', `Synthetic CRM farmer ${runId}-${phoneSuffix}`, crmPhone, 'Synthetic CRM city', '2.50', '15/01/2026', selectedCrop, zoneName || center.name],
   ];
   const googleRows = [
     [...SHEETS.GOOGLE.headers],
-    [googleSerial, visitTimestamp, 'Synthetic Collector', collector.employeeCode, location.village, location.mandal, location.district, `Synthetic Google farmer ${runId}-${phoneSuffix}`, googlePhone, selectedCrop, '3.00', 'Synthetic Shop', 'Next month', '', '', 'Owner'],
+    [googleSerial, visitTimestamp, 'Synthetic Collector', collector.employeeCode, villageName || location.village, mandalName || location.mandal, districtName || location.district, `Synthetic Google farmer ${runId}-${phoneSuffix}`, googlePhone, selectedCrop, '3.00', 'Synthetic Shop', 'Next month', '', '', 'Owner'],
   ];
   const files = {
     '[Content_Types].xml': strToU8(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -498,6 +504,121 @@ test('farmer workbook import is staged, approved and committed without creating 
   assert.doesNotMatch(auditText, /Synthetic CRM farmer|Synthetic Google farmer|Synthetic Collector|Synthetic Shop|9876543210|9765432110|Phase village/u);
 });
 
+test('historical reference gaps do not block keepsake import or phone-based customer autofill data', async () => {
+  const suffix = '11';
+  const importedVillage = `Imported village ${runId}`;
+  const importedMandal = `Imported mandal ${runId}`;
+  const importedDistrict = `Imported district ${runId}`;
+  const workbook = createSyntheticWorkbook('historical-gaps.xlsx', {
+    phoneSuffix: suffix,
+    cropName: crop.displayName,
+    invalidCrop: true,
+    zoneName: `Legacy zone ${runId}`,
+    villageName: importedVillage,
+    mandalName: importedMandal,
+    districtName: importedDistrict,
+  });
+  const existingCustomer = await prisma.customer.create({
+    data: {
+      displayName: `Synthetic Google farmer ${runId}-${suffix}`,
+      phone: `+9197654321${suffix}`,
+      state: 'Existing state',
+      remarks: 'Existing information must remain unchanged',
+    },
+  });
+  ids.customers.push(existingCustomer.id);
+
+  const prepared = await importer.prepare({ filePath: workbook, actorId: admin.id, key: stagingKey });
+  ids.batches.push(prepared.id);
+  assert.equal(prepared.status, 'VALIDATED');
+  assert.equal(prepared.validRows, 2);
+  assert.equal(prepared.reviewRows, 0);
+  assert.equal(prepared.safeReport.validationSummary.unknownCropRows, 2);
+  assert.equal(prepared.safeReport.validationSummary.invalidLocationRows, 1);
+
+  await importer.approve({
+    batchId: prepared.id,
+    adminId: admin.id,
+    approvalReference: `P21-keepsake-approval-${runId}`,
+    backupEvidenceReference: `P21-keepsake-backup-${runId}`,
+    expectedDeploymentName: 'phase21-test',
+  });
+  const committed = await importer.commit({
+    batchId: prepared.id,
+    confirmation: `COMMIT_IMPORT_${prepared.id}`,
+    key: stagingKey,
+    deploymentName: 'phase21-test',
+  });
+  assert.equal(committed.status, 'COMPLETED');
+  assert.equal(committed.importedRows, 2);
+
+  const enriched = await prisma.customer.findUnique({ where: { id: existingCustomer.id } });
+  assert.equal(enriched.displayName, existingCustomer.displayName);
+  assert.equal(enriched.state, 'Existing state');
+  assert.equal(enriched.remarks, 'Existing information must remain unchanged');
+  assert.equal(enriched.village, importedVillage);
+  assert.equal(enriched.mandal, importedMandal);
+  assert.equal(enriched.district, importedDistrict);
+
+  const visit = await prisma.villageVisit.findFirst({
+    where: { sourceRecord: { batchId: prepared.id } },
+    include: { administrativeLocation: true },
+  });
+  assert.equal(visit.customerId, existingCustomer.id);
+  assert.equal(visit.cropId, null);
+  assert.match(visit.rawCropName, /Unknown crop/u);
+  assert.match(visit.notes, /UNKNOWN_CROP/u);
+  assert.equal(visit.administrativeLocation.village, importedVillage);
+  ids.locations.push(visit.administrativeLocation.id);
+
+  const service = await prisma.historicalServiceRecord.findFirst({
+    where: { sourceRecord: { batchId: prepared.id } },
+  });
+  assert.equal(service.cropId, null);
+  assert.equal(service.operatingCenterId, null);
+  assert.equal(service.legacyZone, `Legacy zone ${runId}`);
+  assert.match(service.notes, /UNKNOWN_OPERATING_CENTER/u);
+  assert.equal(await prisma.lead.count(), initialLeadCount);
+});
+
+test('invalid customer identities are reported and skipped without blocking valid historical rows', async () => {
+  const workbook = createSyntheticWorkbook('invalid-identity-skip.xlsx', {
+    phoneSuffix: '12',
+    cropName: crop.displayName,
+    crmPhoneValue: 'not-a-phone',
+  });
+  const prepared = await importer.prepare({ filePath: workbook, actorId: admin.id, key: stagingKey });
+  ids.batches.push(prepared.id);
+  assert.equal(prepared.status, 'VALIDATED');
+  assert.equal(prepared.validRows, 1);
+  assert.equal(prepared.skippedRows, 1);
+  assert.equal(prepared.rejectedRows, 0);
+
+  await importer.approve({
+    batchId: prepared.id,
+    adminId: admin.id,
+    approvalReference: `P21-invalid-skip-approval-${runId}`,
+    backupEvidenceReference: `P21-invalid-skip-backup-${runId}`,
+    expectedDeploymentName: 'phase21-test',
+  });
+  const committed = await importer.commit({
+    batchId: prepared.id,
+    confirmation: `COMMIT_IMPORT_${prepared.id}`,
+    key: stagingKey,
+    deploymentName: 'phase21-test',
+  });
+  assert.equal(committed.importedRows, 1);
+  assert.equal(committed.skippedRows, 1);
+  const skipped = await prisma.sourceRecord.findFirst({
+    where: { batchId: prepared.id, sourceSystem: 'ZOHO_CRM' },
+  });
+  assert.equal(skipped.status, 'SKIPPED');
+  assert.equal(skipped.finalOutcome, 'SKIPPED_INVALID_CUSTOMER_IDENTITY');
+  assert.equal(skipped.customerId, null);
+  assert.equal((await importer.verify({ batchId: prepared.id })).ok, true);
+  assert.equal(await prisma.lead.count(), initialLeadCount);
+});
+
 test('cross-batch source identity prevents duplicate outcomes and keeps normalized customer links', async () => {
   const firstWorkbook = createSyntheticWorkbook('cross-batch-first.xlsx', {
     phoneSuffix: '50',
@@ -716,7 +837,7 @@ test('cross-batch source identity prevents duplicate outcomes and keeps normaliz
   });
 });
 
-test('approval and commit fail closed for unresolved values and reference drift', async () => {
+test('historical gaps remain visible while identity and reference drift fail closed', async () => {
   const ambiguousWorkbook = createSyntheticWorkbook('ambiguous-date.xlsx', {
     phoneSuffix: '40',
     cropName: crop.displayName,
@@ -724,12 +845,13 @@ test('approval and commit fail closed for unresolved values and reference drift'
   });
   const ambiguousBatch = await importer.prepare({ filePath: ambiguousWorkbook, actorId: admin.id, key: stagingKey });
   ids.batches.push(ambiguousBatch.id);
-  assert.equal(ambiguousBatch.status, 'REVIEW_REQUIRED');
+  assert.equal(ambiguousBatch.status, 'VALIDATED');
   const ambiguousRecord = await prisma.sourceRecord.findFirst({
     where: { batchId: ambiguousBatch.id, sourceSystem: 'GOOGLE_FORMS' },
     select: { status: true, reasonCode: true, safeDetails: true },
   });
-  assert.equal(ambiguousRecord.status, 'REVIEW_REQUIRED');
+  assert.equal(ambiguousRecord.status, 'VALID');
+  assert.equal(ambiguousRecord.reasonCode, null);
   assert.equal(ambiguousRecord.safeDetails.reasonCodes.includes('AMBIGUOUS_VISIT_TIMESTAMP'), true);
   await importer.abort({
     batchId: ambiguousBatch.id,
@@ -740,15 +862,10 @@ test('approval and commit fail closed for unresolved values and reference drift'
   const unknownWorkbook = createSyntheticWorkbook('unknown-crop.xlsx', { phoneSuffix: '20', cropName: crop.displayName, invalidCrop: true });
   const needsReview = await importer.prepare({ filePath: unknownWorkbook, actorId: admin.id, key: stagingKey });
   ids.batches.push(needsReview.id);
-  assert.equal(needsReview.status, 'REVIEW_REQUIRED');
-  assert.equal(needsReview.reviewRows, 2);
-  await assert.rejects(() => importer.approve({
-    batchId: needsReview.id,
-    adminId: admin.id,
-    approvalReference: 'not-approved',
-    backupEvidenceReference: 'not-approved',
-    expectedDeploymentName: 'phase21-test',
-  }), (error) => error.code === 'IMPORT_BATCH_NOT_APPROVABLE');
+  assert.equal(needsReview.status, 'VALIDATED');
+  assert.equal(needsReview.validRows, 2);
+  assert.equal(needsReview.reviewRows, 0);
+  assert.equal(needsReview.safeReport.validationSummary.unknownCropRows, 2);
   await importer.abort({
     batchId: needsReview.id,
     actorId: admin.id,
@@ -774,7 +891,7 @@ test('approval and commit fail closed for unresolved values and reference drift'
   assert.notEqual(reprepared.id, needsReview.id);
   assert.equal(reprepared.attemptNumber, 2);
   assert.equal(reprepared.supersedesBatchId, needsReview.id);
-  assert.equal(reprepared.status, 'REVIEW_REQUIRED');
+  assert.equal(reprepared.status, 'VALIDATED');
   const priorAfterReprepare = await prisma.importBatch.findUnique({ where: { id: needsReview.id } });
   assert.equal(priorAfterReprepare.status, 'SUPERSEDED');
   assert.equal(priorAfterReprepare.attemptNumber, 1);

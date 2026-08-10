@@ -288,6 +288,10 @@ async function findCustomersByPhones(phones, transaction = prisma) {
       displayName: true,
       phone: true,
       active: true,
+      village: true,
+      mandal: true,
+      district: true,
+      state: true,
       createdByImportBatchId: true,
     },
     orderBy: { id: 'asc' },
@@ -653,15 +657,57 @@ async function approveBatch({
 }
 
 function commitActions(transaction) {
+  const customerSelect = {
+    id: true,
+    displayName: true,
+    phone: true,
+    active: true,
+    village: true,
+    mandal: true,
+    district: true,
+    state: true,
+  };
+  const cleanImportedText = (value) => {
+    if (typeof value !== 'string') return null;
+    return value.trim().replace(/\s+/gu, ' ') || null;
+  };
   return {
     getReferenceData: () => getReferenceData(transaction),
     findCustomersByPhones: (phones) => findCustomersByPhones(phones, transaction),
     findPriorImportedSourceRecords: (candidates, options) => findPriorImportedSourceRecords(candidates, options, transaction),
-    findCustomerByPhone: (phone) => transaction.customer.findUnique({ where: { phone }, select: { id: true, phone: true } }),
+    findCustomerByPhone: (phone) => transaction.customer.findUnique({ where: { phone }, select: customerSelect }),
     createCustomer: async (data) => {
       const customer = await transaction.customer.create({ data });
       await normalizedCompatibilityRepository.syncCustomer(transaction, customer);
-      return { id: customer.id, phone: customer.phone };
+      return transaction.customer.findUnique({ where: { id: customer.id }, select: customerSelect });
+    },
+    enrichCustomerProfile: async (customerId, candidate) => {
+      const current = await transaction.customer.findUnique({ where: { id: customerId }, select: customerSelect });
+      if (!current) throw repositoryError('Imported customer no longer exists', 'IMPORT_CUSTOMER_NOT_FOUND', 409);
+      const data = {};
+      for (const field of ['village', 'mandal', 'district', 'state']) {
+        const value = cleanImportedText(candidate[field]);
+        if (!cleanImportedText(current[field]) && value) data[field] = value;
+      }
+      if (!Object.keys(data).length) return current;
+      return transaction.customer.update({ where: { id: customerId }, data, select: customerSelect });
+    },
+    resolveImportedLocation: async (candidate) => {
+      const location = {
+        state: cleanImportedText(candidate.state),
+        district: cleanImportedText(candidate.district),
+        mandal: cleanImportedText(candidate.mandal),
+        village: cleanImportedText(candidate.village),
+      };
+      if (!location.district || !location.mandal || !location.village) return null;
+      const normalizedKey = normalizedCompatibilityRepository.normalizedLocationKey(location);
+      if (!normalizedKey) return null;
+      return transaction.location.upsert({
+        where: { normalizedKey },
+        update: {},
+        create: { countryCode: 'IN', ...location, normalizedKey },
+        select: { id: true },
+      });
     },
     createHistoricalService: (data) => transaction.historicalServiceRecord.create({ data, select: { id: true } }),
     createVillageVisit: (data) => transaction.villageVisit.create({ data, select: { id: true } }),
@@ -1105,9 +1151,11 @@ async function verifyBatch(batchId) {
         }
         if (history || visit) unexpectedResults += 1;
       } else {
+        const allowedUnlinkedSkip = ['SKIPPED_EMPTY_ROW', 'SKIPPED_INVALID_CUSTOMER_IDENTITY']
+          .includes(record.finalOutcome);
         const committedSkip = batch.status === 'COMPLETED'
           && record.status === 'SKIPPED'
-          && record.finalOutcome === 'SKIPPED_EMPTY_ROW'
+          && allowedUnlinkedSkip
           && Boolean(record.committedAt);
         if (record.customerId || record.resultEntityType || record.resultEntityId || history || visit
           || (record.committedAt && !committedSkip)) unexpectedResults += 1;

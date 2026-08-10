@@ -397,7 +397,35 @@ function analyzeGoogle(row, identity, references) {
 function classifyReasons(reasons) {
   if (!reasons.length) return 'VALID';
   const rejected = new Set(['MISSING_CUSTOMER_NAME', 'FIELD_TOO_LONG', 'MISSING_PHONE', 'INVALID_PHONE']);
-  return reasons.some((reason) => rejected.has(reason)) ? 'REJECTED' : 'REVIEW_REQUIRED';
+  if (reasons.some((reason) => rejected.has(reason))) return 'REJECTED';
+  const historicalWarnings = new Set([
+    'MISSING_ACREAGE',
+    'INVALID_ACREAGE',
+    'ACREAGE_PRECISION_REVIEW_REQUIRED',
+    'ACREAGE_UNIT_REVIEW_REQUIRED',
+    'MISSING_SERVICE_DATE',
+    'INVALID_SERVICE_DATE',
+    'MISSING_VISIT_TIMESTAMP',
+    'INVALID_VISIT_TIMESTAMP',
+    'AMBIGUOUS_VISIT_TIMESTAMP',
+    'MISSING_CROP',
+    'UNKNOWN_CROP',
+    'MISSING_OPERATING_CENTER',
+    'UNKNOWN_OPERATING_CENTER',
+    'INCOMPLETE_ADMINISTRATIVE_LOCATION',
+    'UNKNOWN_ADMINISTRATIVE_LOCATION',
+    'EXISTING_CUSTOMER_IDENTITY_REVIEW',
+    'INACTIVE_CUSTOMER_REVIEW',
+    'CONFLICTING_CUSTOMER_IDENTITY',
+    'CONFLICTING_CUSTOMER_LOCATION',
+    'POSSIBLE_DUPLICATE_IDENTITY',
+  ]);
+  return reasons.every((reason) => historicalWarnings.has(reason)) ? 'VALID' : 'REVIEW_REQUIRED';
+}
+
+function historicalImportNotes(reasons) {
+  const warnings = [...new Set(reasons)].filter(Boolean);
+  return warnings.length ? `Import warnings: ${warnings.join(', ')}`.slice(0, 1000) : null;
 }
 
 function applyDuplicateReview(analyses) {
@@ -420,8 +448,6 @@ function applyDuplicateReview(analyses) {
     if (names.size > 1 || hasLocationConflict) {
       for (const item of group) {
         addReason(item.reasons, names.size > 1 ? 'CONFLICTING_CUSTOMER_IDENTITY' : 'CONFLICTING_CUSTOMER_LOCATION');
-        item.status = 'REVIEW_REQUIRED';
-        item.reasonCode = item.reasons[0];
       }
     }
   }
@@ -439,8 +465,6 @@ function applyDuplicateReview(analyses) {
     if (new Set(group.map((item) => item.identity.phoneFingerprint)).size <= 1) continue;
     for (const item of group) {
       addReason(item.reasons, 'POSSIBLE_DUPLICATE_IDENTITY');
-      item.status = 'REVIEW_REQUIRED';
-      item.reasonCode = item.reasons[0];
     }
   }
 }
@@ -583,14 +607,20 @@ async function analyzeRows(rows, references, key, dataAccess = importRepository,
     const locationSignature = row.sourceSystem === 'ZOHO_CRM'
       ? normalizeLookup(row.payload.city)
       : [row.payload.district, row.payload.mandal, row.payload.village].map(normalizeLookup).join('|');
+    const classifiedStatus = classifyReasons(source.reasons);
+    const skipInvalidIdentity = classifiedStatus === 'REJECTED';
     return {
       row,
       identity,
       ...source,
       locationSignature,
-      status: classifyReasons(source.reasons),
-      reasonCode: source.reasons[0] || null,
+      status: skipInvalidIdentity ? 'SKIPPED' : classifiedStatus,
+      reasonCode: skipInvalidIdentity ? source.reasons[0] || 'INVALID_CUSTOMER_IDENTITY' : null,
+      proposedOutcome: skipInvalidIdentity ? 'SKIP_INVALID_CUSTOMER_IDENTITY' : source.proposedOutcome,
       existingCustomerId: existingCustomer?.id || null,
+      existingCustomerDigest: existingCustomer
+        ? keyedDigest('existing-customer-v1', existingCustomer, key)
+        : null,
     };
   });
   applySourceRecordReconciliation(analyses, priorRecords);
@@ -614,6 +644,7 @@ function safePlanRows(analyses) {
     reasonCode: analysis.reasonCode,
     proposedOutcome: analysis.proposedOutcome,
     existingCustomerId: analysis.existingCustomerId,
+    existingCustomerDigest: analysis.existingCustomerDigest || null,
     priorSourceRecordId: analysis.priorSourceRecord?.id || null,
     sourceMatchStrategy: analysis.sourceMatchStrategy || null,
     references: analysis.safeReferences,
@@ -966,9 +997,12 @@ async function commit({ batchId, confirmation, key, deploymentName } = {}) {
         if (analysis.status === 'SKIPPED') {
           const prior = analysis.priorSourceRecord;
           const duplicateSkip = analysis.reasonCode === 'ALREADY_IMPORTED_SOURCE_RECORD' && completePriorOutcome(prior);
+          const invalidIdentitySkip = analysis.proposedOutcome === 'SKIP_INVALID_CUSTOMER_IDENTITY';
           const finalOutcome = duplicateSkip
             ? 'SKIPPED_ALREADY_IMPORTED_SOURCE_RECORD'
-            : 'SKIPPED_EMPTY_ROW';
+            : invalidIdentitySkip
+              ? 'SKIPPED_INVALID_CUSTOMER_IDENTITY'
+              : 'SKIPPED_EMPTY_ROW';
           await actions.updateSourceRecord(sourceRecord.id, {
             status: 'SKIPPED',
             finalOutcome,
@@ -1010,6 +1044,23 @@ async function commit({ batchId, confirmation, key, deploymentName } = {}) {
           customersByPhone.set(analysis.canonical.phone, customer);
         }
 
+        if (analysis.row.sourceSystem === 'GOOGLE_FORMS') {
+          customer = await actions.enrichCustomerProfile(customer.id, {
+            village: analysis.canonical.village,
+            mandal: analysis.canonical.mandal,
+            district: analysis.canonical.district,
+          });
+          customersByPhone.set(analysis.canonical.phone, customer);
+          if (!analysis.canonical.administrativeLocationId) {
+            const importedLocation = await actions.resolveImportedLocation({
+              village: analysis.canonical.village,
+              mandal: analysis.canonical.mandal,
+              district: analysis.canonical.district,
+            });
+            analysis.canonical.administrativeLocationId = importedLocation?.id || null;
+          }
+        }
+
         let entity;
         let entityType;
         if (analysis.row.sourceSystem === 'ZOHO_CRM') {
@@ -1024,6 +1075,7 @@ async function commit({ batchId, confirmation, key, deploymentName } = {}) {
               servicedAcres: analysis.canonical.servicedAcres,
               legacyZone: analysis.canonical.legacyZone,
               status: 'COMPLETED',
+              notes: historicalImportNotes(analysis.reasons),
           });
         } else {
           entityType = 'VillageVisit';
@@ -1041,6 +1093,7 @@ async function commit({ batchId, confirmation, key, deploymentName } = {}) {
               fertilizerShop: analysis.canonical.fertilizerShop,
               expectedSpraying: analysis.canonical.expectedSpraying,
               farmerType: analysis.canonical.farmerType,
+              notes: historicalImportNotes(analysis.reasons),
           });
         }
         await actions.updateSourceRecord(sourceRecord.id, {
