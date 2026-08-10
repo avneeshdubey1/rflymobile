@@ -20,12 +20,12 @@ jobs:
       postgres:
         image: postgres:16-alpine
         env:
-          POSTGRES_DB: operations_ci
+          POSTGRES_DB: operations_test
           POSTGRES_HOST_AUTH_METHOD: trust
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U postgres -d operations_ci"
+          --health-cmd "pg_isready -U postgres -d operations_test"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
@@ -34,7 +34,7 @@ jobs:
         working-directory: backend
     env:
       NODE_ENV: test
-      DATABASE_URL: postgresql://postgres@127.0.0.1:5432/operations_ci?schema=public
+      DATABASE_URL: postgresql://postgres@127.0.0.1:5432/operations_test?schema=public
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -55,6 +55,8 @@ jobs:
       - run: npm audit --audit-level=high
       - run: npm run prisma:validate
       - run: node node_modules/prisma/build/index.js migrate deploy
+      - name: Enable test database mutation
+        run: psql -h 127.0.0.1 -U postgres -d operations_test -c 'ALTER DATABASE operations_test SET "rfly.allow_history_mutation" = '"'"'on'"'"';'
       - run: node prisma/seed.js
       - name: Backend tests
         run: node --test --test-concurrency=1 --test-force-exit tests/*.test.js
