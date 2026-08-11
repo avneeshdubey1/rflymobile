@@ -22,7 +22,10 @@ FROM ${NODE_IMAGE} AS runtime-base
 ENV NODE_ENV=production \
     PORT=5000
 WORKDIR /app
-RUN apk add --no-cache ca-certificates openssl
+RUN apk upgrade --no-cache \
+    && apk add --no-cache ca-certificates openssl \
+    && rm -rf /usr/local/lib/node_modules/npm \
+    && rm -f /usr/local/bin/npm /usr/local/bin/npx
 COPY docker/entrypoint.sh /usr/local/bin/operations-entrypoint
 RUN chmod 0444 /usr/local/bin/operations-entrypoint \
     && chown node:node /app

@@ -12,7 +12,11 @@ ENV VITE_API_URL=${VITE_API_URL}
 RUN npm run build
 
 FROM nginx:1.28-alpine AS runtime
-RUN apk add --no-cache gettext \
+RUN awk -F= '$1 ~ /^nginx/ { print $1; next } { print }' /etc/apk/world > /tmp/apk-world \
+    && mv /tmp/apk-world /etc/apk/world \
+    && apk del --no-cache nginx-module-acme nginx-module-geoip nginx-module-image-filter nginx-module-njs nginx-module-xslt \
+    && apk upgrade --no-cache \
+    && apk add --no-cache gettext \
     && mkdir -p /srv/app /tmp/nginx-client /tmp/nginx-proxy /tmp/nginx-fastcgi /tmp/nginx-uwsgi /tmp/nginx-scgi \
     && chown -R nginx:nginx /srv/app /tmp/nginx-*
 COPY --from=build --chown=nginx:nginx /workspace/dist /srv/app

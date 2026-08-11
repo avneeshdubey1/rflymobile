@@ -21,6 +21,15 @@ jobs:
     timeout-minutes: 30
     environment: onprem-production
     steps:
+      - name: Recover stale checkout locks
+        shell: bash
+        run: |
+          set -euo pipefail
+          git_directory="${GITHUB_WORKSPACE}/.git"
+          if [ -d "$git_directory" ]; then
+            find "$git_directory" -type f -name '*.lock' -print -delete
+          fi
+
       - name: Checkout CI-passed source
         uses: actions/checkout@v4
         with:
