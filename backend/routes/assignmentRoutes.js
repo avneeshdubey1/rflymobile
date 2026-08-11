@@ -16,6 +16,6 @@ router.post('/:id/decommission', authenticate, authorize('PILOT'), assignmentCon
 router.post('/:id/location', authenticate, authorize('PILOT'), assignmentController.recordLocation);
 router.get('/:id/location', authenticate, authorize('ADMIN', 'FLEET_MANAGER'), assignmentController.getLocation);
 
-router.post('/auto-assign', authenticate, authorize('ADMIN', 'FLEET_MANAGER', 'SALES'), assignmentController.autoAssignPilot);
+router.post('/auto-assign', authenticate, authorize('ADMIN', 'FLEET_MANAGER'), assignmentController.autoAssignPilot);
 
 module.exports = router;

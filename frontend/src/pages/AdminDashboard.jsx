@@ -21,6 +21,8 @@ import AcreageTrend from '../components/AcreageTrend';
 import CustomerRegistration from '../components/CustomerRegistration';
 import ManagePilots from '../components/ManagePilots';
 import AssignmentDetails from '../components/AssignmentDetails';
+import AutoAssignmentPolicyPanel from '../components/AutoAssignmentPolicyPanel';
+import { useTranslation } from 'react-i18next';
 
 let DefaultIcon = L.icon({
   iconUrl: icon,
@@ -50,6 +52,7 @@ const statusTone = (status) => {
 
 function AdminDashboard() {
   const { user, logout } = useAuth();
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState('fleet');
   const [activeUserTab, setActiveUserTab] = useState('employees');
   const [users, setUsers] = useState([]);
@@ -414,6 +417,7 @@ function AdminDashboard() {
     { id: "registeredFarmers", label: "Registered Customers", icon: "customers" },
     { id: 'logbook', label: 'Lead Details', icon: 'book' },
     { id: 'users', label: 'My Team', icon: 'team' },
+    { id: 'autoPolicy', label: t('auto_policy_title'), icon: 'calendar' },
     // { id: 'trend', label: 'Acreage Trend', icon: 'trend' },
     { id: 'profile', label: 'Profile', icon: 'user' },
   ];
@@ -437,6 +441,7 @@ function AdminDashboard() {
     farmerRegistration: ['Customer onboarding', 'Customer Registration', 'Register new Customers and create their accounts.'],
     registeredFarmers: ['Customer records', 'Registered Customers', 'View all registered Customers and their registration details.'],
     profile: ['Account', 'Administrator Profile', 'View and manage your profile, account information, and security settings.'],
+    autoPolicy: [t('auto_policy_eyebrow'), t('auto_policy_title'), t('auto_policy_description')],
     trend: ['Acreage Trend', 'Acreage Analysis', 'View and analyze total acreage trends and growth patterns'],
   };
   const [eyebrow, title, description] = pageCopy[activeTab];
@@ -495,6 +500,8 @@ function AdminDashboard() {
       {activeTab === "profile" && (
         <AdminProfile user={user} />
       )}
+
+      {activeTab === 'autoPolicy' && <AutoAssignmentPolicyPanel editable />}
 
       {activeTab === 'fleet' && (
         <>

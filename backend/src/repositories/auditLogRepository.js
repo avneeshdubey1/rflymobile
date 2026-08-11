@@ -73,6 +73,17 @@ function sanitizeRow(row) {
   };
 }
 
+function createWithClient(client, data) {
+  return client.auditLog.create({
+    data: {
+      ...data,
+      beforeState: sanitizeAuditState(data.beforeState),
+      afterState: sanitizeAuditState(data.afterState),
+      reason: sanitizeAuditReason(data.reason),
+    },
+  });
+}
+
 async function redactStoredSnapshots() {
   const rows = await prisma.auditLog.findMany({ select: { id: true, beforeState: true, afterState: true, reason: true } });
   let redacted = 0;
@@ -90,7 +101,8 @@ async function redactStoredSnapshots() {
 }
 
 module.exports = {
-  create: (data) => prisma.auditLog.create({ data: { ...data, beforeState: sanitizeAuditState(data.beforeState), afterState: sanitizeAuditState(data.afterState), reason: sanitizeAuditReason(data.reason) } }),
+  create: (data) => createWithClient(prisma, data),
+  createWithClient,
   findByEntity: (entityType, entityId) => prisma.auditLog.findMany({ where: { entityType, entityId }, orderBy: { createdAt: 'asc' } }).then((rows) => rows.map(sanitizeRow)),
   findTimeline: (leadId, assignmentId, paymentIds = []) => prisma.auditLog.findMany({
     where: {

@@ -61,12 +61,23 @@ test('one two-person operational unit performs several ordered non-overlapping j
     },
   })));
   ids.leads.push(...leads.map((lead) => lead.id));
-  const scheduledDate = '2026-08-15T09:00:00.000Z';
+  const windows = [
+    ['2026-08-15T09:00:00.000Z', '2026-08-15T11:00:00.000Z'],
+    ['2026-08-15T11:30:00.000Z', '2026-08-15T13:30:00.000Z'],
+  ];
 
-  for (const lead of leads) {
+  for (const [index, lead] of leads.entries()) {
     const created = await request('/api/assignments/manual', fleet, {
       method: 'POST',
-      body: { leadId: lead.id, pilotId: primary.id, copilotId: copilot.id, droneId: drone.id, lmvId: lmv.id, scheduledDate },
+      body: {
+        leadId: lead.id,
+        pilotId: primary.id,
+        copilotId: copilot.id,
+        droneId: drone.id,
+        lmvId: lmv.id,
+        serviceWindowStart: windows[index][0],
+        serviceWindowEnd: windows[index][1],
+      },
     });
     assert.equal(created.response.status, 201, JSON.stringify(created.data));
     ids.assignments.push(created.data.mission.id);
@@ -114,12 +125,15 @@ test.after(async () => {
   await prisma.notification.deleteMany({ where: { leadId: { in: ids.leads } } });
   await prisma.auditLog.deleteMany({ where: { entityId: { in: [...ids.assignments, ...ids.leads] } } });
   await prisma.scheduleChangeLog.deleteMany({ where: { assignmentId: { in: ids.assignments } } });
-  await prisma.assignment.deleteMany({ where: { id: { in: ids.assignments } } });
-  await prisma.lead.deleteMany({ where: { id: { in: ids.leads } } });
-  await prisma.drone.deleteMany({ where: { id: { in: ids.drones } } });
-  await prisma.lMV.deleteMany({ where: { id: { in: ids.lmvs } } });
-  await prisma.user.deleteMany({ where: { id: { in: ids.users } } });
-  await prisma.operatingCenter.deleteMany({ where: { id: { in: ids.centers } } });
+  await prisma.$transaction(async (transaction) => {
+    await transaction.$queryRaw`SELECT set_config('rfly.allow_history_mutation', 'on', true)`;
+    await transaction.assignment.deleteMany({ where: { id: { in: ids.assignments } } });
+    await transaction.lead.deleteMany({ where: { id: { in: ids.leads } } });
+    await transaction.drone.deleteMany({ where: { id: { in: ids.drones } } });
+    await transaction.lMV.deleteMany({ where: { id: { in: ids.lmvs } } });
+    await transaction.user.deleteMany({ where: { id: { in: ids.users } } });
+    await transaction.operatingCenter.deleteMany({ where: { id: { in: ids.centers } } });
+  });
   await new Promise((resolve) => server.close(resolve));
   await prisma.$disconnect();
 });

@@ -5,6 +5,7 @@ const whatsappService = require('../services/whatsappService');
 const logger = require('../services/loggerService');
 const locationService = require('../services/locationService');
 const autoAssignmentService = require('../services/autoAssignmentService');
+const autoAssignmentPolicyService = require('../services/autoAssignmentPolicyService');
 
 async function deliverAfterCommit(deliver, context) {
     try {
@@ -21,7 +22,33 @@ exports.getPilotMissions = async(req, res) => {
         res.json({ success: true, missions: await assignmentRepository.findAll({ OR: [{ pilotId }, { copilotId: pilotId }] }) });
     } catch { res.status(500).json({ error: 'Failed to fetch missions' }); }
 };
-exports.getAllAssignments = async(_req, res) => { try { res.json({ success: true, missions: await assignmentRepository.findAll() }); } catch { res.status(500).json({ error: 'Failed to fetch assignments' }); } };
+exports.getAllAssignments = async(req, res) => {
+    try {
+        const now = new Date();
+        const from = req.query.from ? new Date(req.query.from) : new Date(now.getTime() - 50 * 24 * 60 * 60_000);
+        const to = req.query.to ? new Date(req.query.to) : new Date(now.getTime() + 50 * 24 * 60 * 60_000);
+        if (Number.isNaN(from.valueOf()) || Number.isNaN(to.valueOf()) || to <= from) {
+            return res.status(400).json({ error: 'Valid from and to date bounds are required' });
+        }
+        if (to.getTime() - from.getTime() > 100 * 24 * 60 * 60_000) {
+            return res.status(400).json({ error: 'Assignment date range cannot exceed 100 days' });
+        }
+        return res.json({
+            success: true,
+            missions: await assignmentRepository.findAll({
+                OR: [
+                    { serviceWindowStart: { lt: to }, serviceWindowEnd: { gt: from } },
+                    {
+                        serviceWindowStart: null,
+                        scheduledDate: { gte: new Date(from.getTime() - 12 * 60 * 60_000), lt: to },
+                    },
+                ],
+            }),
+        });
+    } catch {
+        return res.status(500).json({ error: 'Failed to fetch assignments' });
+    }
+};
 exports.getSalesAlerts = async(_req, res) => { try { res.json({ success: true, alerts: await assignmentRepository.findSalesAlerts() }); } catch { res.status(500).json({ error: 'Failed to fetch operational alerts' }); } };
 
 exports.createManualAssignment = async(req, res) => {
@@ -34,9 +61,15 @@ exports.createManualAssignment = async(req, res) => {
         if (!pilotId || !copilotId || !droneId || !lmvId) {
             return res.status(400).json({ error: 'A valid primary Pilot, Copilot, drone, and LMV are required' });
         }
-        const scheduledDate = req.body.scheduledDate ? new Date(req.body.scheduledDate) : new Date();
-        if (Number.isNaN(scheduledDate.valueOf())) return res.status(400).json({ error: 'Valid scheduledDate is required' });
-        const result = await assignmentOperationRepository.manualAssign({ leadId, pilotId, copilotId, droneId, lmvId, scheduledDate, actorId: req.auth.userId });
+        const serviceWindowStart = new Date(req.body.serviceWindowStart || req.body.scheduledDate || Date.now());
+        const policy = await autoAssignmentPolicyService.getPolicy();
+        const serviceWindowEnd = req.body.serviceWindowEnd
+            ? new Date(req.body.serviceWindowEnd)
+            : new Date(serviceWindowStart.getTime() + policy.defaultJobDurationMinutes * 60_000);
+        if (Number.isNaN(serviceWindowStart.valueOf()) || Number.isNaN(serviceWindowEnd.valueOf())) return res.status(400).json({ error: 'Valid service window values are required' });
+        const result = await assignmentOperationRepository.manualAssign({
+            leadId, pilotId, copilotId, droneId, lmvId, serviceWindowStart, serviceWindowEnd, actorId: req.auth.userId,
+        });
         await deliverAfterCommit(
             () => whatsappService.sendMissionScheduled(result.lead, result.assignment.scheduledDate),
             { assignmentId: result.assignment.id, action: 'MISSION_SCHEDULED' },
@@ -44,7 +77,9 @@ exports.createManualAssignment = async(req, res) => {
         res.status(201).json({ success: true, mission: result.assignment });
     } catch (error) {
         if (String(error.code || '').startsWith('SERVICE_AREA_')) return res.status(409).json({ code: error.code });
-        return res.status(error.code === 'CONFLICT' ? 409 : 400).json({ error: error.message || 'Failed to create assignment' });
+        return res.status(['CONFLICT', 'SCHEDULING_RETRY_EXHAUSTED'].includes(error.code) ? 409 : 400).json({
+            error: error.message || 'Failed to create assignment', code: error.code, conflictCategories: error.conflictCategories,
+        });
     }
 };
 
@@ -82,16 +117,23 @@ exports.getLocation = async(req, res) => {
 
 exports.rescheduleAssignment = async(req, res) => {
     try {
-        const scheduledDate = new Date(req.body.scheduledDate);
-        if (Number.isNaN(scheduledDate.valueOf())) return res.status(400).json({ error: 'Valid scheduledDate is required' });
+        const serviceWindowStart = new Date(req.body.serviceWindowStart || req.body.scheduledDate);
+        const serviceWindowEnd = req.body.serviceWindowEnd ? new Date(req.body.serviceWindowEnd) : null;
+        const reason = typeof req.body.reason === 'string' ? req.body.reason.trim() : '';
+        if (Number.isNaN(serviceWindowStart.valueOf()) || (serviceWindowEnd && Number.isNaN(serviceWindowEnd.valueOf()))) {
+            return res.status(400).json({ error: 'Valid service window values are required' });
+        }
+        if (reason.length < 3 || reason.length > 500) return res.status(400).json({ error: 'A reschedule reason between 3 and 500 characters is required' });
         const result = await assignmentOperationRepository.reschedule({
             assignmentId: req.params.id,
-            scheduledDate,
+            serviceWindowStart,
+            serviceWindowEnd,
             pilotId: req.body.pilotId,
             copilotId: req.body.copilotId,
+            droneId: req.body.droneId,
             lmvId: req.body.lmvId,
             actorId: req.auth.userId,
-            reason: req.body.reason,
+            reason,
         });
         await deliverAfterCommit(
             () => whatsappService.sendMissionScheduled(result.lead, result.assignment.scheduledDate),
@@ -100,7 +142,9 @@ exports.rescheduleAssignment = async(req, res) => {
         res.json({ success: true, mission: result.assignment, lead: result.lead });
     } catch (error) {
         if (String(error.code || '').startsWith('SERVICE_AREA_')) return res.status(409).json({ code: error.code });
-        return res.status(error.code === 'NOT_FOUND' ? 404 : error.code === 'CONFLICT' ? 409 : 400).json({ error: error.message || 'Failed to reschedule assignment' });
+        return res.status(error.code === 'NOT_FOUND' ? 404 : ['CONFLICT', 'SCHEDULING_RETRY_EXHAUSTED'].includes(error.code) ? 409 : 400).json({
+            error: error.message || 'Failed to reschedule assignment', code: error.code, conflictCategories: error.conflictCategories,
+        });
     }
 };
 
@@ -122,7 +166,7 @@ exports.autoAssignPilot = async(req, res) => {
         const requestedDate = req.body.scheduledDate ? new Date(req.body.scheduledDate) : new Date();
         if (Number.isNaN(requestedDate.valueOf())) return res.status(400).json({ error: 'Valid scheduledDate is required' });
 
-        const result = await autoAssignmentService.autoAssignProcessedLead(leadId, { now: requestedDate, actorId: req.auth.userId });
+        const result = await autoAssignmentService.autoAssignProcessedLead(leadId, { now: requestedDate, actorId: req.auth.userId, trigger: 'OPERATOR_RETRY' });
         if (result.outcome !== 'SCHEDULED') {
             return res.status(409).json({
                 success: false,

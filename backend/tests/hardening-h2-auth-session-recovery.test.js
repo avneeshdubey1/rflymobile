@@ -484,6 +484,7 @@ test('production login uses Secure __Host cookies and production rejects the tes
     CORS_ALLOWED_ORIGINS: productionOrigin,
     TRUST_PROXY_HOPS: '1',
     ENFORCE_HTTPS: 'true',
+    OPERATING_TIME_ZONE: 'UTC',
     RECOVERY_HASH_SECRET: crypto.randomBytes(48).toString('base64url'),
     RATE_LIMIT_GENERAL_MAX: '1000',
     RATE_LIMIT_LOGIN_MAX: '100',

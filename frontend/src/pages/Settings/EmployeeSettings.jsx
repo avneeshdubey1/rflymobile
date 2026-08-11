@@ -53,17 +53,6 @@ export default function EmployeeSettings({ initialPreferences, user }) {
           <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem', cursor: 'pointer' }}>
             <input 
               type="checkbox" 
-              name="autoAssignLeads" 
-              checked={preferences.autoAssignLeads ?? false} 
-              onChange={handleChange}
-              style={{ width: 'auto' }}
-            />
-            Auto-assign Leads to Available Pilots
-          </label>
-          
-          <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem', cursor: 'pointer' }}>
-            <input 
-              type="checkbox" 
               name="dailyReportEmail" 
               checked={preferences.dailyReportEmail ?? true} 
               onChange={handleChange}

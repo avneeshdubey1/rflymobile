@@ -110,6 +110,11 @@ enum AssetAvailabilityState {
   UNAVAILABLE
 }
 
+enum WeatherUnavailableAction {
+  SCHEDULE_WITH_WARNING
+  MANUAL_REVIEW
+}
+
 enum CropSeason {
   KHARIF
   RABI
@@ -248,23 +253,24 @@ model User {
   contactPerson String?
   address       String?
 
-  assignments                 Assignment[]                 @relation("PilotAssignments")
-  copilotAssignments          Assignment[]                 @relation("CopilotAssignments")
-  chatSessions                ChatSession[]                @relation("ChatParticipants")
-  notifications               Notification[]
-  authSessions                AuthSession[]
-  recoveryChallenges          PasswordRecoveryChallenge[]
-  businessMemberships         BusinessMembership[]
-  phoneVerificationChallenges PhoneVerificationChallenge[]
-  customerProfile             Customer?                    @relation("CustomerFarmerUser")
-  importBatchesCreated        ImportBatch[]                @relation("ImportBatchCreatedBy")
-  importBatchesApproved       ImportBatch[]                @relation("ImportBatchApprovedBy")
-  verifiedFarmLocations       FarmLocation[]               @relation("FarmLocationVerifiedBy")
-  collectedVillageVisits      VillageVisit[]               @relation("VillageVisitCollector")
-  customerHistoryEvents       CustomerHistory[]            @relation("CustomerHistoryActor")
-  leadHistoryEvents           LeadHistory[]                @relation("LeadHistoryActor")
-  droneHistoryEvents          DroneHistory[]               @relation("DroneHistoryActor")
-  lmvHistoryEvents            LMVHistory[]                 @relation("LMVHistoryActor")
+  assignments                   Assignment[]                 @relation("PilotAssignments")
+  copilotAssignments            Assignment[]                 @relation("CopilotAssignments")
+  chatSessions                  ChatSession[]                @relation("ChatParticipants")
+  notifications                 Notification[]
+  authSessions                  AuthSession[]
+  recoveryChallenges            PasswordRecoveryChallenge[]
+  businessMemberships           BusinessMembership[]
+  phoneVerificationChallenges   PhoneVerificationChallenge[]
+  customerProfile               Customer?                    @relation("CustomerFarmerUser")
+  importBatchesCreated          ImportBatch[]                @relation("ImportBatchCreatedBy")
+  importBatchesApproved         ImportBatch[]                @relation("ImportBatchApprovedBy")
+  verifiedFarmLocations         FarmLocation[]               @relation("FarmLocationVerifiedBy")
+  collectedVillageVisits        VillageVisit[]               @relation("VillageVisitCollector")
+  customerHistoryEvents         CustomerHistory[]            @relation("CustomerHistoryActor")
+  leadHistoryEvents             LeadHistory[]                @relation("LeadHistoryActor")
+  droneHistoryEvents            DroneHistory[]               @relation("DroneHistoryActor")
+  lmvHistoryEvents              LMVHistory[]                 @relation("LMVHistoryActor")
+  autoAssignmentPoliciesUpdated AutoAssignmentPolicy[]       @relation("AutoAssignmentPolicyUpdatedBy")
 }
 
 model Customer {
@@ -589,6 +595,29 @@ model PricingConfig {
   updatedAt DateTime @updatedAt
 }
 
+// One typed company policy exists per isolated deployment. User.preferences is
+// intentionally not an operational-policy store.
+model AutoAssignmentPolicy {
+  id                        String                   @id @default(uuid())
+  singletonKey              String                   @unique @default("COMPANY")
+  enabled                   Boolean                  @default(true)
+  searchHorizonDays         Int                      @default(5)
+  workingDayStartMinutes    Int                      @default(540)
+  workingDayEndMinutes      Int                      @default(1080)
+  defaultJobDurationMinutes Int                      @default(120)
+  turnaroundMinutes         Int                      @default(30)
+  maxJobsPerUnitPerDay      Int?
+  maxAcreagePerUnitPerDay   Decimal?                 @db.Decimal(12, 2)
+  weatherUnavailableAction  WeatherUnavailableAction @default(SCHEDULE_WITH_WARNING)
+  revision                  Int                      @default(1)
+  updatedByUser             User?                    @relation("AutoAssignmentPolicyUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+  updatedByUserId           String?
+  createdAt                 DateTime                 @default(now())
+  updatedAt                 DateTime                 @updatedAt
+
+  @@index([updatedByUserId])
+}
+
 model Assignment {
   id             String  @id @default(uuid())
   lead           Lead    @relation(fields: [leadId], references: [id])
@@ -606,18 +635,18 @@ model Assignment {
   lmv            LMV?    @relation(fields: [lmvId], references: [id])
   lmvId          String?
 
-  scheduledDate      DateTime
-  serviceWindowStart DateTime?
-  serviceWindowEnd   DateTime?
-  dailySequence      Int       @default(1)
+  scheduledDate        DateTime
+  serviceWindowStart   DateTime?
+  serviceWindowEnd     DateTime?
+  dailySequence        Int       @default(1)
   // Set only by the compatibility migration for pre-existing incomplete
   // assignments. New operational assignments must always contain the full
   // two-pilot + drone + LMV unit; completing the crew clears this marker.
-  legacyCrewIncomplete Boolean @default(false)
-  autoAssigned       Boolean   @default(true) // false if a Fleet Manager manually created/overrode it
-  acceptedAt         DateTime?
-  startedAt          DateTime?
-  completedAt        DateTime?
+  legacyCrewIncomplete Boolean   @default(false)
+  autoAssigned         Boolean   @default(true) // false if a Fleet Manager manually created/overrode it
+  acceptedAt           DateTime?
+  startedAt            DateTime?
+  completedAt          DateTime?
 
   weatherCheckedAt DateTime?
   weatherSuitable  Boolean?

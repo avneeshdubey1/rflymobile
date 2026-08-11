@@ -4,7 +4,10 @@
 
 The production Compose definition runs one customer-neutral application stack and one PostgreSQL database for exactly one operating company. Deploy another company with a different Compose project name, secret directory, database volume, domain, and image release. Never attach two companies to the same database or volume.
 
-Start with [the deployment runbook](../docs/operations/deployment.md). `example.env` deliberately contains no credential values; copy it outside the repository and replace its deployment-specific entries.
+Use this file together with the reviewed Compose definitions, deployment script,
+workflow YAML, and environment examples in `deploy/`. `example.env` deliberately
+contains no credential values; copy it outside the repository and replace its
+deployment-specific entries.
 
 The stack is not a TLS terminator. The frontend port binds to loopback by default and must sit behind an approved HTTPS load balancer or host reverse proxy. The backend rejects requests not marked as HTTPS by that trusted proxy chain.
 
@@ -21,4 +24,8 @@ capabilities, resource limits, secrets boundary, and network restrictions. Do
 not apply this overlay to normal application services or to another host without
 reproducing the same engine failure first.
 
-For the shared office server demo described in `docs/SERVER_HANDOFF_FOR_CODEX.md`, use [the on-premises demo runbook](../docs/operations/onprem-demo-deployment.md), `compose.onprem-demo.yml`, and `deploy/onprem-demo.env.example`. That path publishes only the demo frontend on port `8088` and must not modify unrelated host services or containers.
+For the current office production stack, use `compose.onprem-demo.yml` and
+`deploy/onprem-demo.env.example`. The historical `demo` identifier remains in
+the deployment name, but the stack on port `8088` is live. Customer-data import
+must follow [the production migration runbook](../docs/MIGRATION_ON_MAIN.md) and
+must not modify unrelated host services or containers.

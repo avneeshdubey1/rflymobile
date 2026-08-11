@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Calendar, dateFnsLocalizer } from 'react-big-calendar';
 import dragAndDropModule from 'react-big-calendar/lib/addons/dragAndDrop';
-import { addHours, format, getDay, parse, startOfWeek } from 'date-fns';
+import { addMinutes, endOfDay, endOfMonth, endOfWeek, format, getDay, parse, startOfDay, startOfMonth, startOfWeek } from 'date-fns';
 import { enUS } from 'date-fns/locale/en-US';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import 'react-big-calendar/lib/addons/dragAndDrop/styles.css';
@@ -11,6 +11,8 @@ import OpsIcon from '../components/OpsIcon';
 import LiveLocationPanel from '../components/LiveLocationPanel';
 import { API_URL as API } from '../config';
 import MyDrones from '../components/MyDrones';
+import AutoAssignmentPolicyPanel from '../components/AutoAssignmentPolicyPanel';
+import { useTranslation } from 'react-i18next';
 
 const localizer = dateFnsLocalizer({ format, parse, startOfWeek, getDay, locales: { 'en-US': enUS } });
 const withDragAndDrop = dragAndDropModule.default ?? dragAndDropModule;
@@ -21,9 +23,15 @@ const localDateTimeValue = (date) => {
   value.setMinutes(value.getMinutes() - value.getTimezoneOffset());
   return value.toISOString().slice(0, 16);
 };
+const calendarBounds = (date, view) => {
+  if (view === 'day') return { from: startOfDay(date), to: endOfDay(date) };
+  if (view === 'week') return { from: startOfWeek(date), to: endOfWeek(date) };
+  return { from: startOfWeek(startOfMonth(date)), to: endOfWeek(endOfMonth(date)) };
+};
 
 function FleetManagerDashboard() {
   const { user, logout } = useAuth();
+  const { t } = useTranslation();
   const [activeSection, setActiveSection] = useState('schedule');
   const [leads, setLeads] = useState([]);
   const [pilots, setPilots] = useState([]);
@@ -34,7 +42,9 @@ function FleetManagerDashboard() {
   const [calendarView, setCalendarView] = useState('month');
   const [selectedLead, setSelectedLead] = useState(null);
   const [selectedAssignment, setSelectedAssignment] = useState(null);
-  const [scheduleDraft, setScheduleDraft] = useState({ pilotId: '', copilotId: '', droneId: '', lmvId: '', scheduledDate: '' });
+  const [scheduleDraft, setScheduleDraft] = useState({ pilotId: '', copilotId: '', droneId: '', lmvId: '', serviceWindowStart: '', serviceWindowEnd: '' });
+  const [editDraft, setEditDraft] = useState(null);
+  const [showTerminal, setShowTerminal] = useState(false);
   const [notice, setNotice] = useState(null);
   const [loading, setLoading] = useState(true);
   const [centers, setCenters] = useState([]);
@@ -52,8 +62,10 @@ function FleetManagerDashboard() {
 
   const fetchData = useCallback(async () => {
     try {
+      const bounds = calendarBounds(calendarDate, calendarView);
+      const assignmentQuery = new URLSearchParams({ from: bounds.from.toISOString(), to: bounds.to.toISOString() });
       const [leadData, pilotData, droneData, lmvData, assignmentData, centerData] = await Promise.all([
-        request('/api/leads/pending'), request('/api/users/pilots'), request('/api/drones/all'), request('/api/lmvs/all'), request('/api/assignments/all'), request('/api/centers/all')
+        request('/api/leads/pending'), request('/api/users/pilots'), request('/api/drones/all'), request('/api/lmvs/all'), request(`/api/assignments/all?${assignmentQuery}`), request('/api/centers/all')
       ]);
       setLeads(leadData.leads || []);
       setPilots(pilotData.pilots || []);
@@ -63,7 +75,7 @@ function FleetManagerDashboard() {
       setCenters(centerData.centers || []);
     } catch (error) { showNotice('error', error.message); }
     finally { setLoading(false); }
-  }, [request, showNotice]);
+  }, [calendarDate, calendarView, request, showNotice]);
 
   useEffect(() => {
     const initialLoad = window.setTimeout(() => void fetchData(), 0);
@@ -72,29 +84,31 @@ function FleetManagerDashboard() {
 
   const manualQueue = useMemo(() => leads.filter((lead) => lead.status === 'NEEDS_MANUAL_SCHEDULING'), [leads]);
   const availableDrones = useMemo(() => drones.filter((drone) => drone.status === 'AVAILABLE'), [drones]);
-  const events = useMemo(() => assignments.map((assignment) => ({
+  const events = useMemo(() => assignments.filter((assignment) => showTerminal || !['COMPLETED', 'CANCELLED', 'REJECTED'].includes(assignment.lead?.status)).map((assignment) => ({
     id: assignment.id,
     title: `${assignment.lead?.farmerName || 'Farmer'} — ${assignment.pilot?.name || 'Pilot'}`,
-    start: new Date(assignment.scheduledDate),
-    end: addHours(new Date(assignment.scheduledDate), 2),
+    start: new Date(assignment.serviceWindowStart || assignment.scheduledDate),
+    end: new Date(assignment.serviceWindowEnd || addMinutes(new Date(assignment.scheduledDate), 120)),
     resourceId: assignment.pilotId,
     assignment,
-  })), [assignments]);
+  })), [assignments, showTerminal]);
 
-  const handleEventDrop = useCallback(({ event, start, resourceId }) => {
+  const moveEvent = useCallback(({ event, start, end, resourceId, reason }) => {
     void (async () => {
       try {
         const targetPilotId = resourceId || event.resourceId;
         await request(`/api/assignments/${event.id}/reschedule`, { 
           method: 'PUT', 
           headers: { 'Content-Type': 'application/json' }, 
-          body: JSON.stringify({ scheduledDate: start.toISOString(), reason: 'Calendar drag-and-drop', pilotId: targetPilotId }) 
+          body: JSON.stringify({ serviceWindowStart: start.toISOString(), serviceWindowEnd: end.toISOString(), reason, pilotId: targetPilotId })
         });
         showNotice('success', `${event.assignment.lead?.farmerName || 'Assignment'} was rescheduled. Sales has been notified.`);
         await fetchData();
       } catch (error) { showNotice('error', error.message); }
     })();
   }, [fetchData, request, showNotice]);
+  const handleEventDrop = useCallback(({ event, start, end, resourceId }) => moveEvent({ event, start, end, resourceId, reason: 'Calendar drag-and-drop' }), [moveEvent]);
+  const handleEventResize = useCallback(({ event, start, end }) => moveEvent({ event, start, end, reason: 'Calendar duration changed' }), [moveEvent]);
 
   const eligiblePilots = useMemo(() => pilots.filter((pilot) => pilot.active && !pilot.archivedAt && pilot.homeCenterId === selectedLead?.matchedCenterId), [pilots, selectedLead]);
   const eligibleDrones = useMemo(() => drones.filter((drone) => ['AVAILABLE', 'ASSIGNED'].includes(drone.status) && drone.homeCenterId === selectedLead?.matchedCenterId), [drones, selectedLead]);
@@ -104,7 +118,7 @@ function FleetManagerDashboard() {
     const date = new Date(calendarDate);
     date.setHours(9, 0, 0, 0);
     setSelectedLead(lead);
-    setScheduleDraft({ pilotId: '', copilotId: '', droneId: '', lmvId: '', scheduledDate: localDateTimeValue(date) });
+    setScheduleDraft({ pilotId: '', copilotId: '', droneId: '', lmvId: '', serviceWindowStart: localDateTimeValue(date), serviceWindowEnd: localDateTimeValue(addMinutes(date, 120)) });
   }, [calendarDate]);
 
   const submitCrewSchedule = useCallback(async (event) => {
@@ -115,13 +129,48 @@ function FleetManagerDashboard() {
       await request('/api/assignments/manual', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ leadId: selectedLead.id, ...scheduleDraft, scheduledDate: new Date(scheduleDraft.scheduledDate).toISOString() }),
+        body: JSON.stringify({ leadId: selectedLead.id, ...scheduleDraft, serviceWindowStart: new Date(scheduleDraft.serviceWindowStart).toISOString(), serviceWindowEnd: new Date(scheduleDraft.serviceWindowEnd).toISOString() }),
       });
       showNotice('success', `${selectedLead.farmerName} was added to the crew's daily schedule.`);
       setSelectedLead(null);
       await fetchData();
     } catch (error) { showNotice('error', error.message); }
   }, [fetchData, request, scheduleDraft, selectedLead, showNotice]);
+
+  const openAssignment = useCallback((event) => {
+    const assignment = event.assignment;
+    setSelectedAssignment(assignment);
+    setEditDraft({
+      pilotId: assignment.pilotId,
+      copilotId: assignment.copilotId || '',
+      droneId: assignment.droneId,
+      lmvId: assignment.lmvId || '',
+      serviceWindowStart: localDateTimeValue(assignment.serviceWindowStart || assignment.scheduledDate),
+      serviceWindowEnd: localDateTimeValue(assignment.serviceWindowEnd || addMinutes(new Date(assignment.scheduledDate), 120)),
+      dailySequence: assignment.dailySequence,
+      reason: '',
+    });
+  }, []);
+
+  const saveAssignment = useCallback(async (event) => {
+    event.preventDefault();
+    try {
+      await request(`/api/assignments/${selectedAssignment.id}/reschedule`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
+          ...editDraft,
+          serviceWindowStart: new Date(editDraft.serviceWindowStart).toISOString(),
+          serviceWindowEnd: new Date(editDraft.serviceWindowEnd).toISOString(),
+        }),
+      });
+      if (Number(editDraft.dailySequence) !== selectedAssignment.dailySequence) {
+        await request(`/api/assignments/${selectedAssignment.id}/sequence`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dailySequence: Number(editDraft.dailySequence) }) });
+      }
+      setSelectedAssignment(null);
+      setEditDraft(null);
+      showNotice('success', t('calendar_assignment_updated'));
+      await fetchData();
+    } catch (error) { showNotice('error', error.message); }
+  }, [editDraft, fetchData, request, selectedAssignment, showNotice, t]);
 
   const selectSection = (id) => {
     setActiveSection(id);
@@ -247,6 +296,8 @@ const [eyebrow, title, description] = pageCopy[activeSection] || pageCopy.schedu
           <article className="metric-card"><div className="metric-card__top"><span>Assignments</span><span className="metric-card__icon"><OpsIcon name="calendar" /></span></div><strong className="metric-card__value">{assignments.length}</strong></article>
         </section>
 
+        <AutoAssignmentPolicyPanel compact />
+
         <section className="fleet-layout">
           <aside className="panel panel--raised">
             <div className="panel-header"><div className="panel-header__title"><div className="panel-title-row"><span className="panel-title-icon"><OpsIcon name="clipboard" /></span><h2>Crew scheduling</h2></div><p>Select a request, then assign its complete two-person operational unit.</p></div></div>
@@ -261,7 +312,8 @@ const [eyebrow, title, description] = pageCopy[activeSection] || pageCopy.schedu
                 {eligiblePilots.length < 2 && <div className="notice notice--error" role="alert">Two active Pilots at this operating center are required. Admin must activate both accounts and assign their center.</div>}
                 {!eligibleDrones.length && <div className="notice notice--error" role="alert">No schedulable drone is registered at this operating center.</div>}
                 {!eligibleLmvs.length && <div className="notice notice--error" role="alert">No schedulable LMV is registered at this operating center. Add one from the LMVs tab.</div>}
-                <div className="input-group"><label htmlFor="crew-date">Date and start time</label><input id="crew-date" type="datetime-local" value={scheduleDraft.scheduledDate} onChange={(event) => setScheduleDraft({ ...scheduleDraft, scheduledDate: event.target.value })} required /></div>
+                <div className="input-group"><label htmlFor="crew-start">{t('calendar_service_start')}</label><input id="crew-start" type="datetime-local" value={scheduleDraft.serviceWindowStart} onChange={(event) => setScheduleDraft({ ...scheduleDraft, serviceWindowStart: event.target.value })} required /></div>
+                <div className="input-group"><label htmlFor="crew-end">{t('calendar_service_end')}</label><input id="crew-end" type="datetime-local" value={scheduleDraft.serviceWindowEnd} onChange={(event) => setScheduleDraft({ ...scheduleDraft, serviceWindowEnd: event.target.value })} required /></div>
                 <div className="input-group"><label htmlFor="primary-pilot">Primary Pilot</label><select id="primary-pilot" value={scheduleDraft.pilotId} onChange={(event) => setScheduleDraft({ ...scheduleDraft, pilotId: event.target.value })} required><option value="">Select primary Pilot</option>{eligiblePilots.map((pilot) => <option key={pilot.id} value={pilot.id}>{pilot.name}</option>)}</select></div>
                 <div className="input-group"><label htmlFor="copilot">Copilot</label><select id="copilot" value={scheduleDraft.copilotId} onChange={(event) => setScheduleDraft({ ...scheduleDraft, copilotId: event.target.value })} required><option value="">Select Copilot</option>{eligiblePilots.filter((pilot) => pilot.id !== scheduleDraft.pilotId).map((pilot) => <option key={pilot.id} value={pilot.id}>{pilot.name}</option>)}</select></div>
                 <div className="input-group"><label htmlFor="crew-drone">Drone</label><select id="crew-drone" value={scheduleDraft.droneId} onChange={(event) => setScheduleDraft({ ...scheduleDraft, droneId: event.target.value })} required><option value="">Select drone</option>{eligibleDrones.map((drone) => <option key={drone.id} value={drone.id}>{drone.model} · {drone.serialNumber} ({readableStatus(drone.status)})</option>)}</select></div>
@@ -272,10 +324,27 @@ const [eyebrow, title, description] = pageCopy[activeSection] || pageCopy.schedu
           </aside>
 
           <section className="panel panel--raised">
-            <div className="panel-header"><div className="panel-header__title"><div className="panel-title-row"><span className="panel-title-icon"><OpsIcon name="calendar" /></span><h2>Pilot calendar</h2></div><p>Click a date for day view. Drag an existing assignment to reschedule it.</p></div></div>
-            <div className="panel-body"><div className="calendar-wrap"><div className="calendar-stage"><DnDCalendar localizer={localizer} events={events} date={calendarDate} view={calendarView} onNavigate={setCalendarDate} onView={setCalendarView} views={['month', 'week', 'day']} defaultView="month" popup selectable onDrillDown={(date) => { setCalendarDate(date); setCalendarView('day'); }} onSelectSlot={({ start }) => { if (calendarView === 'month') { setCalendarDate(start); setCalendarView('day'); } }} resources={pilots} resourceIdAccessor="id" resourceTitleAccessor="name" onEventDrop={handleEventDrop} draggableAccessor={(event) => ['SCHEDULED', 'PILOT_ACCEPTED'].includes(event.assignment?.lead?.status)} eventPropGetter={(event) => ({ style: { backgroundColor: event.assignment?.autoAssigned ? '#2e6b4d' : '#9a6920', border: 0 } })} tooltipAccessor={(event) => `${event.title} (${readableStatus(event.assignment?.lead?.status || event.status)})`} /></div></div></div>
+            <div className="panel-header"><div className="panel-header__title"><div className="panel-title-row"><span className="panel-title-icon"><OpsIcon name="calendar" /></span><h2>{t('calendar_title')}</h2></div><p>{t('calendar_help')}</p></div><label><input type="checkbox" checked={showTerminal} onChange={(event) => setShowTerminal(event.target.checked)} /> {t('calendar_show_terminal')}</label></div>
+            <div className="panel-body"><div className="calendar-wrap"><div className="calendar-stage"><DnDCalendar localizer={localizer} events={events} date={calendarDate} view={calendarView} onNavigate={setCalendarDate} onView={setCalendarView} views={['month', 'week', 'day']} defaultView="month" popup selectable resizable onDrillDown={(date) => { setCalendarDate(date); setCalendarView('day'); }} onSelectSlot={({ start, end }) => { if (calendarView === 'month') { setCalendarDate(start); setCalendarView('day'); } else if (selectedLead) { setScheduleDraft((draft) => ({ ...draft, serviceWindowStart: localDateTimeValue(start), serviceWindowEnd: localDateTimeValue(end) })); } }} onSelectEvent={openAssignment} resources={pilots} resourceIdAccessor="id" resourceTitleAccessor="name" onEventDrop={handleEventDrop} onEventResize={handleEventResize} draggableAccessor={(event) => ['SCHEDULED', 'PILOT_ACCEPTED'].includes(event.assignment?.lead?.status)} resizableAccessor={(event) => ['SCHEDULED', 'PILOT_ACCEPTED'].includes(event.assignment?.lead?.status)} eventPropGetter={(event) => ({ style: { backgroundColor: event.assignment?.autoAssigned ? '#2e6b4d' : '#9a6920', border: 0 } })} tooltipAccessor={(event) => `${event.title} (${readableStatus(event.assignment?.lead?.status || event.status)})`} /></div></div></div>
           </section>
         </section>
+
+        {selectedAssignment && editDraft && <section className="panel panel--raised" aria-label="Assignment editor">
+          <div className="panel-header"><div className="panel-header__title"><h2>{t('calendar_assignment_details')}</h2><p>{selectedAssignment.lead?.farmerName} · {selectedAssignment.lead?.matchedCenter?.name || selectedAssignment.lead?.village || t('calendar_operating_center')}</p></div><button type="button" className="action-btn" onClick={() => setSelectedAssignment(null)}>{t('calendar_close')}</button></div>
+          <form className="panel-body form-stack" onSubmit={saveAssignment}>
+            <p>{t('calendar_origin')}: {selectedAssignment.autoAssigned ? t('auto_policy_automatic') : t('calendar_manual')} · {t('calendar_status')}: {readableStatus(selectedAssignment.lead?.status)}</p>
+            <p>{t('calendar_weather')}: {selectedAssignment.weatherCheckedAt ? (selectedAssignment.weatherSuitable === true ? t('calendar_weather_suitable') : selectedAssignment.weatherSuitable === false ? t('calendar_weather_unsuitable') : t('calendar_weather_unavailable')) : t('calendar_weather_not_checked')}</p>
+            <label className="input-group"><span>{t('calendar_service_start')}</span><input type="datetime-local" value={editDraft.serviceWindowStart} onChange={(event) => setEditDraft({ ...editDraft, serviceWindowStart: event.target.value })} required /></label>
+            <label className="input-group"><span>{t('calendar_service_end')}</span><input type="datetime-local" value={editDraft.serviceWindowEnd} onChange={(event) => setEditDraft({ ...editDraft, serviceWindowEnd: event.target.value })} required /></label>
+            <label className="input-group"><span>Primary Pilot</span><select value={editDraft.pilotId} onChange={(event) => setEditDraft({ ...editDraft, pilotId: event.target.value })}>{pilots.filter((pilot) => pilot.homeCenterId === selectedAssignment.lead?.matchedCenterId).map((pilot) => <option key={pilot.id} value={pilot.id}>{pilot.name}</option>)}</select></label>
+            <label className="input-group"><span>Copilot</span><select value={editDraft.copilotId} onChange={(event) => setEditDraft({ ...editDraft, copilotId: event.target.value })}>{pilots.filter((pilot) => pilot.homeCenterId === selectedAssignment.lead?.matchedCenterId && pilot.id !== editDraft.pilotId).map((pilot) => <option key={pilot.id} value={pilot.id}>{pilot.name}</option>)}</select></label>
+            <label className="input-group"><span>Drone</span><select value={editDraft.droneId} onChange={(event) => setEditDraft({ ...editDraft, droneId: event.target.value })}>{drones.filter((drone) => drone.homeCenterId === selectedAssignment.lead?.matchedCenterId).map((drone) => <option key={drone.id} value={drone.id}>{drone.model} · {drone.serialNumber}</option>)}</select></label>
+            <label className="input-group"><span>LMV</span><select value={editDraft.lmvId} onChange={(event) => setEditDraft({ ...editDraft, lmvId: event.target.value })}>{lmvs.filter((lmv) => lmv.homeCenterId === selectedAssignment.lead?.matchedCenterId).map((lmv) => <option key={lmv.id} value={lmv.id}>{lmv.registrationNo}</option>)}</select></label>
+            <label className="input-group"><span>{t('calendar_daily_sequence')}</span><input type="number" min="1" value={editDraft.dailySequence} onChange={(event) => setEditDraft({ ...editDraft, dailySequence: event.target.value })} required /></label>
+            <label className="input-group"><span>{t('calendar_change_reason')}</span><textarea minLength="3" maxLength="500" value={editDraft.reason} onChange={(event) => setEditDraft({ ...editDraft, reason: event.target.value })} required /></label>
+            <button className="submit-btn" type="submit">{t('calendar_save')}</button>
+          </form>
+        </section>}
       </section>
       )}
 

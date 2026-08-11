@@ -215,13 +215,16 @@ test('drone DELETE retires and audits instead of deleting, and active missions b
 });
 
 test.after(async () => {
-  await prisma.assignment.deleteMany({ where: { id: { in: ids.assignments } } });
-  await prisma.lead.deleteMany({ where: { id: { in: ids.leads } } });
   await prisma.auditLog.deleteMany({ where: { OR: [{ entityType: 'Drone', entityId: { in: ids.drones } }, { entityType: 'LMV', entityId: { in: ids.lmvs } }] } });
-  await prisma.drone.deleteMany({ where: { id: { in: ids.drones } } });
-  await prisma.lMV.deleteMany({ where: { id: { in: ids.lmvs } } });
-  await prisma.user.deleteMany({ where: { id: { in: ids.users } } });
-  await prisma.operatingCenter.deleteMany({ where: { id: { in: ids.centers } } });
+  await prisma.$transaction(async (transaction) => {
+    await transaction.$queryRaw`SELECT set_config('rfly.allow_history_mutation', 'on', true)`;
+    await transaction.assignment.deleteMany({ where: { id: { in: ids.assignments } } });
+    await transaction.lead.deleteMany({ where: { id: { in: ids.leads } } });
+    await transaction.drone.deleteMany({ where: { id: { in: ids.drones } } });
+    await transaction.lMV.deleteMany({ where: { id: { in: ids.lmvs } } });
+    await transaction.user.deleteMany({ where: { id: { in: ids.users } } });
+    await transaction.operatingCenter.deleteMany({ where: { id: { in: ids.centers } } });
+  });
   await prisma.$disconnect();
   if (server) await new Promise((resolve) => server.close(resolve));
 });

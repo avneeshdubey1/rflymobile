@@ -5,7 +5,7 @@ const { spawnSync } = require('node:child_process');
 
 const backendDir = path.resolve(__dirname, '..');
 const migrationsDir = path.join(backendDir, 'prisma', 'migrations');
-const targetMigration = '20260807123000_evolve_master_history_import_schema';
+const targetMigration = '20260811090000_add_auto_assignment_policy';
 const containerName = process.env.POSTGRES_CONTAINER || 'rfly-postgres';
 const requestedDatabase = process.env.MIGRATION_VERIFY_DATABASE || 'rfly_schema_migration_test';
 
@@ -163,6 +163,19 @@ function verifyCleanReplay(migrations) {
       AND rolled_back_at IS NULL;
   `)), 1, 'Target migration was not applied successfully during clean replay');
 
+  assert.equal(Number(scalar(cleanDatabase, `
+    SELECT COUNT(*) FROM "AutoAssignmentPolicy" WHERE "singletonKey" = 'COMPANY';
+  `)), 1, 'Clean replay did not create exactly one company policy');
+
+  const appliedBeforeSecondDeploy = applied;
+  run(process.execPath, [prismaCli, 'migrate', 'deploy'], {
+    env: { ...process.env, DATABASE_URL: databaseUrl(cleanDatabase) },
+  });
+  assert.equal(Number(scalar(cleanDatabase, `
+    SELECT COUNT(*) FROM "_prisma_migrations"
+    WHERE finished_at IS NOT NULL AND rolled_back_at IS NULL;
+  `)), appliedBeforeSecondDeploy, 'A second deploy unexpectedly applied another migration');
+
   return {
     migrationsApplied: applied,
     validatedChecks: assertAllChecksValidated(cleanDatabase),
@@ -170,8 +183,8 @@ function verifyCleanReplay(migrations) {
 }
 
 const legacyFixtureSql = `
-INSERT INTO "OperatingCenter" ("id", "name", "latitude", "longitude", "radiusKm")
-VALUES ('migration-center', 'Migration Test Center', 11.0000, 77.0000, 50);
+INSERT INTO "OperatingCenter" ("id", "name", "latitude", "longitude", "radiusKm", "updatedAt")
+VALUES ('migration-center', 'Migration Test Center', 11.0000, 77.0000, 50, CURRENT_TIMESTAMP);
 
 INSERT INTO "User" (
   "id", "name", "email", "phone", "passwordHash", "role", "homeCenterId"
@@ -180,10 +193,17 @@ INSERT INTO "User" (
   'not-a-real-password-hash', 'PILOT', 'migration-center'
 );
 
+INSERT INTO "User" (
+  "id", "name", "email", "phone", "passwordHash", "role", "homeCenterId"
+) VALUES (
+  'migration-copilot', 'Legacy Copilot', 'migration-copilot@rfly.test', '+919000000002',
+  'not-a-real-password-hash', 'PILOT', 'migration-center'
+);
+
 INSERT INTO "Customer" (
   "id", "displayName", "phone", "preferredLanguage", "village", "district", "updatedAt"
 ) VALUES (
-  'migration-customer', 'Legacy Customer', '9876543210', 'ta',
+  'migration-customer', 'Legacy Customer', '+919876543210', 'ta',
   'Legacy Village', 'Legacy District', CURRENT_TIMESTAMP
 );
 
@@ -193,11 +213,17 @@ INSERT INTO "Drone" (
   'migration-drone', 'Legacy Model', 'MIGRATION-SERIAL-1', 'MIGRATION-UIN-1', 'yes', 'migration-center'
 );
 
+INSERT INTO "LMV" (
+  "id", "registrationNo", "label", "homeCenterId", "updatedAt"
+) VALUES (
+  'migration-lmv', 'MIGRATION-LMV-1', 'Legacy LMV', 'migration-center', CURRENT_TIMESTAMP
+);
+
 INSERT INTO "Lead" (
   "id", "customerId", "farmerName", "farmerPhone", "farmerAddress", "acreage",
   "cropType", "status", "intakeChannel", "matchedCenterId"
 ) VALUES (
-  'migration-lead', 'migration-customer', 'Legacy Customer', '9876543210',
+  'migration-lead', 'migration-customer', 'Legacy Customer', '+919876543210',
   'Legacy Village, Legacy District', 2.5, 'Paddy', 'SCHEDULED', 'MANUAL_SALES', 'migration-center'
 );
 
@@ -205,8 +231,8 @@ INSERT INTO "Assignment" (
   "id", "leadId", "pilotId", "copilotId", "droneId", "lmvId",
   "scheduledDate", "dailySequence", "expectedAcreage"
 ) VALUES (
-  'migration-assignment', 'migration-lead', 'migration-pilot', NULL,
-  'migration-drone', NULL, CURRENT_TIMESTAMP + INTERVAL '1 day', 1, 2.5
+  'migration-assignment', 'migration-lead', 'migration-pilot', 'migration-copilot',
+  'migration-drone', 'migration-lmv', CURRENT_TIMESTAMP + INTERVAL '1 day', 1, 2.5
 );
 `;
 
@@ -221,10 +247,10 @@ function verifyPopulatedLegacyUpgrade(migrations) {
   const before = coreCounts(legacyDatabase);
   assert.deepEqual(before, {
     OperatingCenter: 1,
-    User: 1,
+    User: 2,
     Customer: 1,
     Drone: 1,
-    LMV: 0,
+    LMV: 1,
     Lead: 1,
     Assignment: 1,
   });
@@ -236,12 +262,41 @@ function verifyPopulatedLegacyUpgrade(migrations) {
   assert.equal(
     scalar(legacyDatabase, `SELECT "phone" FROM "Customer" WHERE "id" = 'migration-customer';`),
     '+919876543210',
-    'Legacy Indian phone was not canonicalized',
+    'Canonical legacy customer phone changed during policy migration',
   );
   assert.equal(
     scalar(legacyDatabase, `SELECT "legacyCrewIncomplete"::text FROM "Assignment" WHERE "id" = 'migration-assignment';`),
+    'false',
+    'Valid complete legacy assignment was unexpectedly quarantined',
+  );
+  assert.equal(Number(scalar(legacyDatabase, `
+    SELECT COUNT(*)
+    FROM "AutoAssignmentPolicy"
+    WHERE "singletonKey" = 'COMPANY'
+      AND "enabled" = true
+      AND "searchHorizonDays" = 5
+      AND "workingDayStartMinutes" = 540
+      AND "workingDayEndMinutes" = 1080
+      AND "defaultJobDurationMinutes" = 120
+      AND "turnaroundMinutes" = 30
+      AND "weatherUnavailableAction" = 'SCHEDULE_WITH_WARNING'
+      AND "revision" = 1;
+  `)), 1, 'Compatibility auto-assignment policy was not created exactly once');
+  assert.equal(
+    scalar(legacyDatabase, `
+      SELECT ("serviceWindowStart" = "scheduledDate")::text
+      FROM "Assignment" WHERE "id" = 'migration-assignment';
+    `),
     'true',
-    'Incomplete legacy assignment was not quarantined',
+    'Legacy assignment start was not backfilled from scheduledDate',
+  );
+  assert.equal(
+    scalar(legacyDatabase, `
+      SELECT ("serviceWindowEnd" = "scheduledDate" + INTERVAL '120 minutes')::text
+      FROM "Assignment" WHERE "id" = 'migration-assignment';
+    `),
+    'true',
+    'Legacy assignment end was not backfilled with the compatibility duration',
   );
 
   const validatedChecks = assertAllChecksValidated(legacyDatabase);
@@ -274,7 +329,9 @@ function verifyPopulatedLegacyUpgrade(migrations) {
     before,
     after,
     canonicalPhone: '+919876543210',
-    legacyCrewIncomplete: true,
+    legacyCrewIncomplete: false,
+    autoAssignmentPolicyRows: 1,
+    assignmentWindowsBackfilled: true,
     validatedChecks,
     postMigrationWrites: 3,
   };

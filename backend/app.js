@@ -41,6 +41,7 @@ function createApp({ config = loadEnvironment() } = {}) {
   app.use('/api/auth', require('./routes/authRoutes'));
   app.use('/api/leads', require('./routes/leadRoutes'));
   app.use('/api/assignments', require('./routes/assignmentRoutes'));
+  app.use('/api/auto-assignment-policy', require('./routes/autoAssignmentPolicyRoutes'));
   app.use('/api/chat', require('./routes/chatRoutes'));
   app.use('/api/audit-log', require('./routes/auditLogRoutes'));
   app.use('/api/health', require('./routes/healthRoutes'));

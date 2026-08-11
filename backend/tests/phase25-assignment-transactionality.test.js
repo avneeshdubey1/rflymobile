@@ -121,6 +121,42 @@ test('concurrent scheduling creates one mission and commits all related state to
   assert.equal(await prisma.auditLog.count({ where: { entityId: assignments[0].id, action: 'MANUAL_ASSIGNMENT_CREATED' } }), 1);
 });
 
+test('concurrent overlapping windows cannot double-book either Pilot role, drone, or LMV', async () => {
+  const firstLead = await createLead('window-race-primary');
+  const secondLead = await createLead('window-race-swapped');
+  const [raceDrone, raceLmv] = await Promise.all([
+    prisma.drone.create({ data: { model: 'Window Race', serialNumber: `PHASE25-RACE-DRONE-${runId}`, uin: `PHASE25-RACE-UIN-${runId}`, homeCenterId: center.id } }),
+    prisma.lMV.create({ data: { registrationNo: `PHASE25-RACE-LMV-${runId}`, homeCenterId: center.id } }),
+  ]);
+  ids.drones.push(raceDrone.id);
+  ids.lmvs.push(raceLmv.id);
+  const serviceWindowStart = new Date('2026-09-04T09:00:00.000Z');
+  const serviceWindowEnd = new Date('2026-09-04T11:00:00.000Z');
+  const request = (leadId, pilotId, copilotId) => assignmentOperations.manualAssign({
+    leadId,
+    pilotId,
+    copilotId,
+    droneId: raceDrone.id,
+    lmvId: raceLmv.id,
+    serviceWindowStart,
+    serviceWindowEnd,
+    actorId: fleet.id,
+  });
+  const outcomes = await Promise.allSettled([
+    request(firstLead.id, pilot.id, copilot.id),
+    request(secondLead.id, copilot.id, pilot.id),
+  ]);
+  assert.equal(outcomes.filter(({ status }) => status === 'fulfilled').length, 1);
+  assert.equal(outcomes.filter(({ status }) => status === 'rejected').length, 1);
+  const committed = await prisma.assignment.findMany({
+    where: { leadId: { in: [firstLead.id, secondLead.id] } },
+  });
+  assert.equal(committed.length, 1);
+  assert.equal(committed[0].serviceWindowStart.toISOString(), serviceWindowStart.toISOString());
+  assert.equal(committed[0].serviceWindowEnd.toISOString(), serviceWindowEnd.toISOString());
+  ids.assignments.push(committed[0].id);
+});
+
 test('one crew unit can run ordered same-day jobs, but cannot start them out of order', async () => {
   const first = await prisma.assignment.findFirst({
     where: { id: { in: ids.assignments } },
@@ -203,11 +239,14 @@ test.after(async () => {
   await prisma.notification.deleteMany({ where: { leadId: { in: ids.leads } } });
   await prisma.auditLog.deleteMany({ where: { entityId: { in: [...ids.leads, ...ids.assignments] } } });
   await prisma.scheduleChangeLog.deleteMany({ where: { assignmentId: { in: ids.assignments } } });
-  await prisma.assignment.deleteMany({ where: { id: { in: ids.assignments } } });
-  await prisma.lead.deleteMany({ where: { id: { in: ids.leads } } });
-  await prisma.drone.deleteMany({ where: { id: { in: ids.drones } } });
-  await prisma.lMV.deleteMany({ where: { id: { in: ids.lmvs } } });
-  await prisma.user.deleteMany({ where: { id: { in: ids.users } } });
-  await prisma.operatingCenter.deleteMany({ where: { id: { in: ids.centers } } });
+  await prisma.$transaction(async (transaction) => {
+    await transaction.$queryRaw`SELECT set_config('rfly.allow_history_mutation', 'on', true)`;
+    await transaction.assignment.deleteMany({ where: { id: { in: ids.assignments } } });
+    await transaction.lead.deleteMany({ where: { id: { in: ids.leads } } });
+    await transaction.drone.deleteMany({ where: { id: { in: ids.drones } } });
+    await transaction.lMV.deleteMany({ where: { id: { in: ids.lmvs } } });
+    await transaction.user.deleteMany({ where: { id: { in: ids.users } } });
+    await transaction.operatingCenter.deleteMany({ where: { id: { in: ids.centers } } });
+  });
   await prisma.$disconnect();
 });

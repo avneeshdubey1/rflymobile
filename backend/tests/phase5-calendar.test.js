@@ -50,8 +50,9 @@ test('a fleet manager can turn a manual-scheduling lead into an assignment, then
   ids.drones.push(drone.id);
   ids.lmvs.push(lmv.id);
   const firstDate = new Date('2026-08-10T09:00:00.000Z');
+  const firstEnd = new Date('2026-08-10T11:00:00.000Z');
   const createResponse = await fetch(`${baseUrl}/api/assignments/manual`, {
-    method: 'POST', headers: auth(fleetManager), body: JSON.stringify({ leadId: lead.id, pilotId: pilot.id, copilotId: copilot.id, droneId: drone.id, lmvId: lmv.id, scheduledDate: firstDate }),
+    method: 'POST', headers: auth(fleetManager), body: JSON.stringify({ leadId: lead.id, pilotId: pilot.id, copilotId: copilot.id, droneId: drone.id, lmvId: lmv.id, serviceWindowStart: firstDate, serviceWindowEnd: firstEnd }),
   });
   const created = await createResponse.json();
   assert.equal(createResponse.status, 201);
@@ -60,17 +61,27 @@ test('a fleet manager can turn a manual-scheduling lead into an assignment, then
   ids.assignments.push(created.mission.id);
 
   const rescheduledDate = new Date('2026-08-11T09:00:00.000Z');
+  const rescheduledEnd = new Date('2026-08-11T12:00:00.000Z');
   const invalidPilotResponse = await fetch(`${baseUrl}/api/assignments/${created.mission.id}/reschedule`, {
     method: 'PUT',
     headers: auth(fleetManager),
-    body: JSON.stringify({ scheduledDate: rescheduledDate, pilotId: sales.id, reason: 'Invalid role attempt' }),
+    body: JSON.stringify({ serviceWindowStart: rescheduledDate, serviceWindowEnd: rescheduledEnd, pilotId: sales.id, reason: 'Invalid role attempt' }),
   });
   assert.equal(invalidPilotResponse.status, 409);
 
   const rescheduleResponse = await fetch(`${baseUrl}/api/assignments/${created.mission.id}/reschedule`, {
-    method: 'PUT', headers: auth(fleetManager), body: JSON.stringify({ scheduledDate: rescheduledDate, reason: 'Farmer requested another day' }),
+    method: 'PUT', headers: auth(fleetManager), body: JSON.stringify({ serviceWindowStart: rescheduledDate, serviceWindowEnd: rescheduledEnd, reason: 'Farmer requested another day' }),
   });
   assert.equal(rescheduleResponse.status, 200);
+  const rescheduled = await rescheduleResponse.json();
+  assert.equal(rescheduled.mission.serviceWindowStart, rescheduledDate.toISOString());
+  assert.equal(rescheduled.mission.serviceWindowEnd, rescheduledEnd.toISOString());
+  const bounded = await fetch(`${baseUrl}/api/assignments/all?from=2026-08-11T00:00:00.000Z&to=2026-08-12T00:00:00.000Z`, { headers: auth(fleetManager) });
+  const boundedData = await bounded.json();
+  assert.equal(bounded.status, 200);
+  assert.equal(boundedData.missions.some((mission) => mission.id === created.mission.id), true);
+  const excessive = await fetch(`${baseUrl}/api/assignments/all?from=2026-01-01T00:00:00.000Z&to=2026-12-31T00:00:00.000Z`, { headers: auth(fleetManager) });
+  assert.equal(excessive.status, 400);
   const [change, notification] = await Promise.all([
     prisma.scheduleChangeLog.findFirst({ where: { assignmentId: created.mission.id, changedBy: fleetManager.id } }),
     prisma.notification.findFirst({ where: { leadId: lead.id, recipientId: sales.id, type: 'RESCHEDULE' } }),
@@ -86,12 +97,15 @@ test.after(async () => {
   await prisma.notification.deleteMany({ where: { leadId: { in: ids.leads } } });
   await prisma.auditLog.deleteMany({ where: { entityId: { in: [...ids.leads, ...ids.assignments] } } });
   await prisma.scheduleChangeLog.deleteMany({ where: { assignmentId: { in: ids.assignments } } });
-  await prisma.assignment.deleteMany({ where: { id: { in: ids.assignments } } });
-  await prisma.lead.deleteMany({ where: { id: { in: ids.leads } } });
-  await prisma.drone.deleteMany({ where: { id: { in: ids.drones } } });
-  await prisma.lMV.deleteMany({ where: { id: { in: ids.lmvs } } });
-  await prisma.user.deleteMany({ where: { id: { in: ids.users } } });
-  await prisma.operatingCenter.delete({ where: { id: ids.center } });
+  await prisma.$transaction(async (transaction) => {
+    await transaction.$queryRaw`SELECT set_config('rfly.allow_history_mutation', 'on', true)`;
+    await transaction.assignment.deleteMany({ where: { id: { in: ids.assignments } } });
+    await transaction.lead.deleteMany({ where: { id: { in: ids.leads } } });
+    await transaction.drone.deleteMany({ where: { id: { in: ids.drones } } });
+    await transaction.lMV.deleteMany({ where: { id: { in: ids.lmvs } } });
+    await transaction.user.deleteMany({ where: { id: { in: ids.users } } });
+    await transaction.operatingCenter.delete({ where: { id: ids.center } });
+  });
   await new Promise((resolve) => server.close(resolve));
   await prisma.$disconnect();
 });

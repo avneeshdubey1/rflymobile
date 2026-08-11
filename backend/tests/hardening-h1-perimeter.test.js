@@ -25,6 +25,7 @@ function productionEnvironment(overrides = {}) {
     CORS_ALLOWED_ORIGINS: 'https://operations.example.test',
     MAP_FRAME_ORIGINS: 'https://www.openstreetmap.org',
     TRUST_PROXY_HOPS: '1',
+    OPERATING_TIME_ZONE: 'UTC',
     RATE_LIMITS_ENABLED: 'true',
     RECOVERY_HASH_SECRET: 'a-secure-password-recovery-hash-secret',
     ...overrides,
@@ -37,6 +38,8 @@ test('production configuration fails closed for origins, proxy trust, wildcards,
   assert.throws(() => loadEnvironment({ NODE_ENV: 'production', CORS_ALLOWED_ORIGINS: 'https:\/\/operations.example.test' }), /TRUST_PROXY_HOPS must be at least 1/);
   assert.throws(() => loadEnvironment(productionEnvironment({ CORS_ALLOWED_ORIGINS: 'http://operations.example.test' })), /HTTPS origins/);
   assert.throws(() => loadEnvironment(productionEnvironment({ RATE_LIMITS_ENABLED: 'false' })), /cannot be disabled/);
+  assert.throws(() => loadEnvironment(productionEnvironment({ OPERATING_TIME_ZONE: '' })), /OPERATING_TIME_ZONE is required/);
+  assert.throws(() => loadEnvironment(productionEnvironment({ OPERATING_TIME_ZONE: 'Invalid\/Zone' })), /valid IANA timezone/);
 });
 
 test('security headers, correlation IDs, no-store policy, and JSON 404 are applied consistently', async () => {

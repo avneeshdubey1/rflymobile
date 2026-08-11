@@ -104,10 +104,19 @@ function loadEnvironment(env = process.env) {
   const sessionIdleTimeoutMs = integer(env.SESSION_IDLE_TIMEOUT_MS, 30 * 60_000, 'SESSION_IDLE_TIMEOUT_MS', { min: 60_000, max: 24 * 60 * 60_000 });
   const sessionAbsoluteTimeoutMs = integer(env.SESSION_ABSOLUTE_TIMEOUT_MS, 8 * 60 * 60_000, 'SESSION_ABSOLUTE_TIMEOUT_MS', { min: sessionIdleTimeoutMs, max: 30 * 24 * 60 * 60_000 });
 
+  const operatingTimeZone = String(env.OPERATING_TIME_ZONE || (nodeEnv === 'production' ? '' : 'UTC')).trim();
+  if (!operatingTimeZone) throw new ConfigurationError('OPERATING_TIME_ZONE is required in production');
+  try {
+    new Intl.DateTimeFormat('en-US', { timeZone: operatingTimeZone }).format(new Date(0));
+  } catch {
+    throw new ConfigurationError('OPERATING_TIME_ZONE must be a valid IANA timezone');
+  }
+
   return Object.freeze({
     nodeEnv,
     isProduction: nodeEnv === 'production',
     port: integer(env.PORT, 5000, 'PORT', { min: 1, max: 65535 }),
+    operatingTimeZone,
     allowedOrigins,
     mapFrameOrigins,
     trustProxyHops,

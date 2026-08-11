@@ -32,6 +32,7 @@ const activeStatuses = ['SCHEDULED', 'PILOT_ACCEPTED', 'IN_PROGRESS'];
 module.exports = {
     findAll: (where = {}) => prisma.assignment.findMany({ where, include: defaultInclude, orderBy: [{ scheduledDate: 'asc' }, { dailySequence: 'asc' }] }),
     findById: (id) => prisma.assignment.findUnique({ where: { id }, include: defaultInclude }),
+    findByLeadId: (leadId) => prisma.assignment.findUnique({ where: { leadId }, include: defaultInclude }),
     findSalesAlerts: () => prisma.assignment.findMany({
         where: { OR: [{ hasDiscrepancy: true }, { decommissionedMidMission: true }] },
         include: defaultInclude,

@@ -79,6 +79,7 @@ services:
     environment:
       <<: *backend-environment
       APP_RUNTIME_MODE: server
+      OPERATING_TIME_ZONE: ${OPERATING_TIME_ZONE:?Set the approved IANA operating timezone}
       RECOVERY_HASH_SECRET_FILE: /run/secrets/recovery_hash_secret
       OTP_HASH_SECRET_FILE: /run/secrets/otp_hash_secret
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?Set the approved HTTPS browser origin or origins}
