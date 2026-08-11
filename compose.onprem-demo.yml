@@ -10,7 +10,15 @@
 # production or internet-facing security baseline.
 
 services:
+  # Docker is installed from Snap on this host. Its confinement rejects every
+  # container process launch when no-new-privileges is requested. Reset only
+  # that unsupported option here; non-root users, dropped capabilities,
+  # read-only filesystems, isolated networks and resource limits remain.
+  migrate:
+    security_opt: !reset []
+
   backend:
+    security_opt: !reset []
     environment:
       NODE_ENV: development
       ENFORCE_HTTPS: "false"
@@ -18,5 +26,6 @@ services:
       OTP_DELIVERY_PROVIDER: ${OTP_DELIVERY_PROVIDER:-disabled}
 
   frontend:
+    security_opt: !reset []
     ports:
       - "${APP_BIND_ADDRESS:-0.0.0.0}:${APP_PORT:-8088}:8080"
