@@ -46,6 +46,7 @@ services:
     logging: *service-logging
 
   migrate:
+    <<: *service-security
     image: ${MIGRATION_IMAGE:-field-operations-migration}:${IMAGE_TAG:-local}
     build:
       context: ./backend
@@ -68,6 +69,7 @@ services:
     logging: *service-logging
 
   backend:
+    <<: *service-security
     image: ${BACKEND_IMAGE:-field-operations-backend}:${IMAGE_TAG:-local}
     build:
       context: ./backend
@@ -77,6 +79,7 @@ services:
     environment:
       <<: *backend-environment
       APP_RUNTIME_MODE: server
+      OPERATING_TIME_ZONE: ${OPERATING_TIME_ZONE:?Set the approved IANA operating timezone}
       RECOVERY_HASH_SECRET_FILE: /run/secrets/recovery_hash_secret
       OTP_HASH_SECRET_FILE: /run/secrets/otp_hash_secret
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?Set the approved HTTPS browser origin or origins}
@@ -128,6 +131,7 @@ services:
     logging: *service-logging
 
   frontend:
+    <<: *service-security
     image: ${FRONTEND_IMAGE:-field-operations-frontend}:${IMAGE_TAG:-local}
     build:
       context: ./frontend

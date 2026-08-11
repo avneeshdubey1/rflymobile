@@ -26,6 +26,7 @@ async function wipeOperationalData() {
   await prisma.passwordRecoveryChallenge.deleteMany();
   await prisma.authSession.deleteMany();
   await prisma.declinedEnquiry.deleteMany();
+  await prisma.leadSprayPurpose.deleteMany();
   await prisma.paymentRecord.deleteMany();
   await prisma.notification.deleteMany();
   await prisma.chatMessage.deleteMany();
@@ -35,14 +36,25 @@ async function wipeOperationalData() {
   await prisma.assignment.deleteMany();
   await prisma.auditLog.deleteMany();
   await prisma.lead.deleteMany();
+  await prisma.historicalServiceRecord.deleteMany();
+  await prisma.villageVisit.deleteMany();
+  await prisma.sourceRecord.deleteMany();
+  await prisma.customerLanguagePreference.deleteMany();
+  await prisma.customerSeasonalCrop.deleteMany();
+  await prisma.customerSubscription.deleteMany();
+  await prisma.farmLocation.deleteMany();
   await prisma.businessMembership.deleteMany();
   await prisma.businessOrganization.deleteMany();
   await prisma.customer.deleteMany();
+  await prisma.importBatch.deleteMany();
   await prisma.drone.deleteMany();
   await prisma.lMV.deleteMany();
   await prisma.user.deleteMany();
   await prisma.pricingConfig.deleteMany();
   await prisma.operatingCenter.deleteMany();
+  await prisma.language.deleteMany();
+  await prisma.crop.deleteMany();
+  await prisma.location.deleteMany();
 }
 
 async function main() {

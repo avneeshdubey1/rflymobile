@@ -1,8 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { signInWithPhoneNumber } from 'firebase/auth';
-import { auth } from '../lib/firebase';
-import { clearPhoneRecaptcha, getPhoneRecaptcha, normalizeIndianPhone } from '../lib/firebasePhone';
 import { API_URL } from '../config';
 import { useAuth } from '../context/useAuth';
 import OtpInput from '../components/OtpInput';
@@ -15,39 +12,24 @@ export default function FarmerLogin() {
   const { login } = useAuth();
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
-  const [confirmation, setConfirmation] = useState(null);
+  const [challengeId, setChallengeId] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
-  useEffect(() => () => clearPhoneRecaptcha(), []);
-
-  const validatePhone = () => {
-    const cleanedPhone = phone.trim();
-
-    if (!/^\d+$/.test(cleanedPhone)) {
-      return "Mobile number should contain only digits.";
-    }
-
-    if (cleanedPhone.length !== 10) {
-      return "Mobile number must be exactly 10 digits.";
-    }
-
-    return "";
-  };
-
   const sendOtp = async (event) => {
     event.preventDefault();
-    const validationError = validatePhone();
-
-    if (validationError) {
-      setError(validationError);
-      return;
-    }
     setBusy(true);
     setError('');
     try {
-      const result = await signInWithPhoneNumber(auth, normalizeIndianPhone(phone), getPhoneRecaptcha());
-      setConfirmation(result);
+      const response = await fetch(`${API_URL}/api/auth/farmer/request-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: phone.trim() }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.challengeId) throw new Error(data.error || 'OTP request failed.');
+      setChallengeId(data.challengeId);
+      setOtp('');
     } catch (failure) {
       setError(failure?.message || 'Unable to send OTP.');
     } finally {
@@ -60,16 +42,14 @@ export default function FarmerLogin() {
     setBusy(true);
     setError('');
     try {
-      const credential = await confirmation.confirm(otp.trim());
-      const idToken = await credential.user.getIdToken();
       const response = await fetch(`${API_URL}/api/auth/farmer/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ idToken }),
+        body: JSON.stringify({ challengeId, code: otp.trim() }),
       });
-      const data = await response.json();
+      const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.error || 'Login failed.');
-      login(data.user, data.token);
+      login(data.user);
       navigate('/farmer/dashboard', { replace: true });
     } catch (failure) {
       setError(failure?.message || 'OTP verification failed.');
@@ -100,49 +80,24 @@ export default function FarmerLogin() {
 
           {error && <div className="alert error" role="alert">{error}</div>}
 
-          {!confirmation ? (
+          {!challengeId ? (
             <form className="login-form" onSubmit={sendOtp}>
               <div className="input-group">
-                {/* <label htmlFor="login-phone">{t('mobile_number', 'Mobile number')}</label> */}
-
-                {/* <input id="login-phone" inputMode="numeric" autoComplete="tel" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="9876543210" maxLength="10" required disabled={busy} /> */}
                 <label htmlFor="login-phone">
                   {t('mobile_number', 'Mobile number')}
                 </label>
                 <input
                   id="login-phone"
-                  inputMode="numeric"
+                  inputMode="tel"
                   autoComplete="tel"
                   value={phone}
-                  onChange={(event) => {
-                    const value = event.target.value;
-
-                    if (!/^\d*$/.test(value)) {
-                      setError("Only numbers are allowed.");
-                      return;
-                    }
-
-                    if (value.length > 10) {
-                      setError("Mobile number should not exceed 10 digits.");
-                    } else {
-                      setError("");
-                    }
-
-                    setPhone(value);
-                  }}
+                  onChange={(event) => setPhone(event.target.value)}
                   placeholder="9876543210"
-                  // maxLength="10"
+                  maxLength="20"
                   required
                   disabled={busy}
                 />
-
-                {error && (
-                  <p style={{ color: "red", marginTop: "8px" }}>
-                    {error}
-                  </p>
-                )}
               </div>
-              <div id="recaptcha-container" />
               <button className="submit-btn login-submit" disabled={busy}>{busy ? t('sending', 'Sending…') : t('send_otp', 'Send OTP')}</button>
             </form>
           ) : (
@@ -152,7 +107,7 @@ export default function FarmerLogin() {
                 <OtpInput length={6} onComplete={(val) => { setOtp(val); }} disabled={busy} />
               </div>
               <button className="submit-btn login-submit" disabled={busy || otp.length !== 6}>{busy ? t('verifying', 'Verifying…') : t('login', 'Login')}</button>
-              <button type="button" className="login-btn button-wide" style={{ marginTop: '0.65rem' }} onClick={() => { setConfirmation(null); setOtp(''); }} disabled={busy}>{t('use_another_number', 'Use another number')}</button>
+              <button type="button" className="login-btn button-wide" style={{ marginTop: '0.65rem' }} onClick={() => { setChallengeId(''); setOtp(''); setError(''); }} disabled={busy}>{t('use_another_number', 'Use another number')}</button>
             </form>
           )}
 

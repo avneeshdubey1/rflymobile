@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { toast } from 'react-hot-toast';
+import { API_URL } from '../../config';
 
 export default function FarmerSettings({ initialPreferences }) {
   const [preferences, setPreferences] = useState(initialPreferences);
@@ -17,7 +18,7 @@ export default function FarmerSettings({ initialPreferences }) {
     e.preventDefault();
     setSaving(true);
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/users/preferences`, {
+      const res = await fetch(`${API_URL}/api/users/preferences`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

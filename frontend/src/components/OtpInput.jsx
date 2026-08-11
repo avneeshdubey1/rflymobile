@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 
 export default function OtpInput({ length = 6, onComplete, disabled }) {
   const [otp, setOtp] = useState(new Array(length).fill(''));
@@ -25,9 +25,7 @@ export default function OtpInput({ length = 6, onComplete, disabled }) {
     }
 
     const otpValue = newOtp.join('');
-    if (otpValue.length === length && onComplete) {
-      onComplete(otpValue);
-    }
+    if (onComplete) onComplete(otpValue);
   };
 
   const handleKeyDown = (e, index) => {
@@ -36,6 +34,7 @@ export default function OtpInput({ length = 6, onComplete, disabled }) {
       const newOtp = [...otp];
       newOtp[index] = '';
       setOtp(newOtp);
+      if (onComplete) onComplete(newOtp.join(''));
 
       if (index > 0) {
         inputRefs.current[index - 1].focus();

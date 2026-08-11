@@ -13,9 +13,11 @@ import FarmDetails from '../components/FarmDetails';
 import '../style/profile.css';
 import AdminProfile from '../components/AdminProfile';
 import CustomerRegistration from '../components/CustomerRegistration';
+import { useTranslation } from 'react-i18next';
 
 function MarketingDashboard() {
   const { user, logout } = useAuth();
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState('farmerRegistration');
   const [leads, setLeads] = useState([]);
   const [alerts, setAlerts] = useState([]);
@@ -30,6 +32,7 @@ function MarketingDashboard() {
   const [showToast, setShowToast] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [confirmModal, setConfirmModal] = useState(null);
+  const [schedulingMode, setSchedulingMode] = useState(null);
   // const [registeredFarmers, setRegisteredFarmers] = useState([]);
 
   const [farmerData, setFarmerData] = useState({
@@ -43,17 +46,19 @@ function MarketingDashboard() {
 
   const fetchData = useCallback(async (signal) => {
     try {
-      const [leadResponse, alertResponse] = await Promise.all([
+      const [leadResponse, alertResponse, policyResponse] = await Promise.all([
         fetch(`${API}/api/leads/pending`, { signal }),
         fetch(`${API}/api/assignments/sales-alerts`, { signal }),
+        fetch(`${API}/api/auto-assignment-policy/summary`, { signal }),
       ]);
-      const [leadData, alertData] = await Promise.all([leadResponse.json(), alertResponse.json()]);
+      const [leadData, alertData, policyData] = await Promise.all([leadResponse.json(), alertResponse.json(), policyResponse.json()]);
       if (leadData.success) setLeads(leadData.leads);
       if (alertData.success) {
         setAlerts(alertData.alerts || []);
         if ((alertData.alerts || []).length && activeTab !== 'appeals') setShowToast('A mission needs Sales follow-up.');
       }
-      if (!leadResponse.ok || !alertResponse.ok) throw new Error(leadData.error || alertData.error || 'Could not refresh Sales data.');
+      if (policyResponse.ok) setSchedulingMode(policyData.policy?.mode);
+      if (!leadResponse.ok || !alertResponse.ok || !policyResponse.ok) throw new Error(leadData.error || alertData.error || policyData.error || 'Could not refresh Sales data.');
       setDataError('');
     } catch (error) {
       if (error.name !== 'AbortError' && !signal?.aborted) setDataError('Could not refresh Sales data. Check the connection and try again.');
@@ -308,6 +313,7 @@ function MarketingDashboard() {
 
         </div>
       </header>
+      <div className="notice notice--info" role="status">{t('auto_policy_title')}: {t(schedulingMode === 'automatic' ? 'auto_policy_automatic' : 'auto_policy_paused')}</div>
       {dataError && <div role="alert" className="notice notice--error"><span>{dataError}</span></div>}
 
       {/* {activeTab === 'appeals' && (

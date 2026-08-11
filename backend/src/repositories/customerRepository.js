@@ -1,4 +1,6 @@
 const prisma = require('../lib/prisma');
+const normalizedCompatibilityRepository = require('./normalizedCompatibilityRepository');
+const { setHistoryActor } = require('./historyActorRepository');
 
 const includeRecentLeads = {
   leads: {
@@ -49,7 +51,12 @@ function searchableWhere(query) {
 }
 
 module.exports = {
-  create: (data) => prisma.customer.create({ data }),
+  create: (data, options = {}) => prisma.$transaction(async (transaction) => {
+    await setHistoryActor(transaction, options.actorId);
+    const customer = await transaction.customer.create({ data });
+    await normalizedCompatibilityRepository.syncCustomer(transaction, customer);
+    return transaction.customer.findUnique({ where: { id: customer.id }, include: includeRecentLeads });
+  }),
   findById: (id) => prisma.customer.findUnique({ where: { id }, include: includeRecentLeads }),
   findByFarmerUserId: (farmerUserId) => prisma.customer.findUnique({ where: { farmerUserId }, include: includeRecentLeads }),
   findByPhone: (phone) => prisma.customer.findUnique({ where: { phone }, include: includeRecentLeads }),
@@ -59,8 +66,14 @@ module.exports = {
     orderBy: { updatedAt: 'desc' },
     take,
   }),
-  update: (id, data) => prisma.customer.update({ where: { id }, data, include: includeRecentLeads }),
-  enableFarmerPortalAccess: (customerId, createUserData) => prisma.$transaction(async (transaction) => {
+  update: (id, data, options = {}) => prisma.$transaction(async (transaction) => {
+    await setHistoryActor(transaction, options.actorId);
+    const customer = await transaction.customer.update({ where: { id }, data });
+    await normalizedCompatibilityRepository.syncCustomer(transaction, customer);
+    return transaction.customer.findUnique({ where: { id: customer.id }, include: includeRecentLeads });
+  }),
+  enableFarmerPortalAccess: (customerId, createUserData, options = {}) => prisma.$transaction(async (transaction) => {
+    await setHistoryActor(transaction, options.actorId);
     const customer = await transaction.customer.findUnique({
       where: { id: customerId },
       include: includeRecentLeadsAndPortalUser,

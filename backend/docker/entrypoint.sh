@@ -74,7 +74,9 @@ NODE
 }
 
 load_secret_file DATABASE_URL false
-build_database_url
+if [ "${APP_RUNTIME_MODE:-server}" != "importer-preflight" ]; then
+  build_database_url
+fi
 
 load_secret_file UPI_WEBHOOK_SECRET false
 load_secret_file WHATSAPP_API_KEY false

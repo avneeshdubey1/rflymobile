@@ -40,11 +40,11 @@ exports.processLead = async (req, res) => {
       ['Expected spraying', req.body.expectedSpraying],
     ].filter(([, value]) => String(value || '').trim())
       .map(([label, value]) => `${label}: ${String(value).trim().slice(0, 160)}`);
-    const lead = await leadRepository.update(serviceable.id, {
+    const lead = await leadRepository.updateOperational(serviceable.id, {
       status: 'PROCESSED',
       processedAt: new Date(),
       notes: detailFields.length ? detailFields.join('\n') : serviceable.notes,
-    });
+    }, { actorId: req.auth.userId });
     await auditLogService.record({
       entityType: 'Lead',
       entityId: lead.id,
@@ -54,7 +54,7 @@ exports.processLead = async (req, res) => {
       afterState: { status: lead.status, matchedCenterId: lead.matchedCenterId },
     });
     await whatsappService.sendForStatus(lead, 'PROCESSED');
-    const assignment = await autoAssignmentService.autoAssignProcessedLead(lead.id);
+    const assignment = await autoAssignmentService.autoAssignProcessedLead(lead.id, { actorId: req.auth.userId });
     return res.json({ success: true, lead, assignment });
   } catch (error) {
     if (error instanceof ServiceAreaValidationError) return res.status(409).json({ code: error.code });

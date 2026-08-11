@@ -47,8 +47,6 @@ const cropOptions = [
 ];
 
 const summerOptions = [
-    "Drain",
-    "Municipality Indents",
     "Sugar Cane",
     "Paddy",
     "Others",

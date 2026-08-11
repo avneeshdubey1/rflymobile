@@ -66,6 +66,12 @@ test('seeded and Admin-provisioned employees have a verified recovery email', as
     role: 'PILOT',
     password,
     homeCenterId: center.id,
+    idProof: `ID-${runId}`,
+    licenseId: `LIC-${runId}`,
+    addressLine1: 'Test Address',
+    state: 'Andhra Pradesh',
+    city: 'Vijayawada',
+    pincode: '520001'
   });
   assert.equal(created.statusCode, 201, JSON.stringify(created.body));
   assert.equal(created.body.user.phone, '+919876500001');
@@ -84,6 +90,12 @@ test('semantic phone variants cannot create an ambiguous second account', async 
     role: 'PILOT',
     password,
     homeCenterId: center.id,
+    idProof: `ID-${runId}-2`,
+    licenseId: `LIC-${runId}-2`,
+    addressLine1: 'Test Address',
+    state: 'Andhra Pradesh',
+    city: 'Vijayawada',
+    pincode: '520001',
   });
   assert.equal(duplicate.statusCode, 409, JSON.stringify(duplicate.body));
   assert.match(duplicate.body.error, /email or mobile/i);

@@ -12,7 +12,7 @@ const SEASON_CROPS = [
 ];
 
 const SUMMER_CROPS = [
-    'Drain', 'Municipality Indents', 'Sugar Cane', 'Paddy', 'Others'
+    'Sugar Cane', 'Paddy', 'Others'
 ];
 
 const SUBSCRIPTION_YEARS = ['2026-27', '2027-28'];

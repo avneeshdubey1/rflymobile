@@ -1,11 +1,10 @@
 name: release-image-evidence
 
 on:
-  push:
+  workflow_run:
+    workflows: [application-and-container-gates]
     branches: [main]
-    tags:
-      - 'v*'
-  workflow_dispatch:
+    types: [completed]
 
 permissions:
   contents: read
@@ -13,15 +12,17 @@ permissions:
   actions: read
 
 concurrency:
-  group: release-images-${{ github.ref }}
+  group: release-images-main
   cancel-in-progress: false
 
 env:
   REGISTRY: ghcr.io
+  SOURCE_SHA: ${{ github.event.workflow_run.head_sha }}
 
 jobs:
   build-scan-and-publish:
     name: build, scan, sbom, publish
+    if: github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     strategy:
@@ -43,9 +44,29 @@ jobs:
             dockerfile: ./frontend/Dockerfile
             target: runtime
             image_suffix: frontend
+          - component: importer
+            context: ./backend
+            dockerfile: ./backend/Dockerfile
+            target: importer
+            image_suffix: importer
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout CI-passed source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+          fetch-depth: 0
+
+      - name: Refuse a stale CI result
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --force --no-tags origin \
+            refs/heads/main:refs/remotes/origin/main
+          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" || {
+            echo "The successful CI revision is no longer the main branch tip; refusing image publication." >&2
+            exit 1
+          }
 
       - uses: docker/setup-buildx-action@v3
 
@@ -67,9 +88,28 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ steps.image_prefix.outputs.value }}-${{ matrix.image_suffix }}
           tags: |
-            type=sha,prefix=sha-
-            type=ref,event=branch
-            type=ref,event=tag
+            type=raw,value=sha-${{ env.SOURCE_SHA }}
+
+      - name: Build local scan candidate
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          target: ${{ matrix.target }}
+          load: true
+          push: false
+          tags: rfly-scan-${{ matrix.component }}:${{ env.SOURCE_SHA }}
+          provenance: false
+          sbom: false
+
+      - name: Block publication on fixable high or critical image findings
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: rfly-scan-${{ matrix.component }}:${{ env.SOURCE_SHA }}
+          format: table
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
 
       - name: Build and publish image
         id: build
@@ -124,7 +164,7 @@ jobs:
             "component": "${{ matrix.component }}",
             "image": "${{ env.REGISTRY }}/${{ steps.image_prefix.outputs.value }}-${{ matrix.image_suffix }}",
             "digest": "${{ steps.build.outputs.digest }}",
-            "source_sha": "${{ github.sha }}",
+            "source_sha": "${{ env.SOURCE_SHA }}",
             "workflow_run": "${{ github.run_id }}"
           }
           EOF

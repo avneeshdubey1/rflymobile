@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Calendar, dateFnsLocalizer } from 'react-big-calendar';
 import dragAndDropModule from 'react-big-calendar/lib/addons/dragAndDrop';
-import { addHours, format, getDay, parse, startOfWeek } from 'date-fns';
+import { addMinutes, endOfDay, endOfMonth, endOfWeek, format, getDay, parse, startOfDay, startOfMonth, startOfWeek } from 'date-fns';
 import { enUS } from 'date-fns/locale/en-US';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import 'react-big-calendar/lib/addons/dragAndDrop/styles.css';
@@ -10,6 +10,9 @@ import OperationsShell from '../components/OperationsShell';
 import OpsIcon from '../components/OpsIcon';
 import LiveLocationPanel from '../components/LiveLocationPanel';
 import { API_URL as API } from '../config';
+import MyDrones from '../components/MyDrones';
+import AutoAssignmentPolicyPanel from '../components/AutoAssignmentPolicyPanel';
+import { useTranslation } from 'react-i18next';
 
 const localizer = dateFnsLocalizer({ format, parse, startOfWeek, getDay, locales: { 'en-US': enUS } });
 const withDragAndDrop = dragAndDropModule.default ?? dragAndDropModule;
@@ -20,9 +23,15 @@ const localDateTimeValue = (date) => {
   value.setMinutes(value.getMinutes() - value.getTimezoneOffset());
   return value.toISOString().slice(0, 16);
 };
+const calendarBounds = (date, view) => {
+  if (view === 'day') return { from: startOfDay(date), to: endOfDay(date) };
+  if (view === 'week') return { from: startOfWeek(date), to: endOfWeek(date) };
+  return { from: startOfWeek(startOfMonth(date)), to: endOfWeek(endOfMonth(date)) };
+};
 
 function FleetManagerDashboard() {
   const { user, logout } = useAuth();
+  const { t } = useTranslation();
   const [activeSection, setActiveSection] = useState('schedule');
   const [leads, setLeads] = useState([]);
   const [pilots, setPilots] = useState([]);
@@ -31,16 +40,16 @@ function FleetManagerDashboard() {
   const [assignments, setAssignments] = useState([]);
   const [calendarDate, setCalendarDate] = useState(new Date());
   const [calendarView, setCalendarView] = useState('month');
-  const [draggedLead, setDraggedLead] = useState(null);
-  const [selectedPilotId, setSelectedPilotId] = useState('');
   const [selectedLead, setSelectedLead] = useState(null);
   const [selectedAssignment, setSelectedAssignment] = useState(null);
-  const [scheduleDraft, setScheduleDraft] = useState({ pilotId: '', copilotId: '', droneId: '', lmvId: '', scheduledDate: '' });
+  const [scheduleDraft, setScheduleDraft] = useState({ pilotId: '', copilotId: '', droneId: '', lmvId: '', serviceWindowStart: '', serviceWindowEnd: '' });
+  const [editDraft, setEditDraft] = useState(null);
+  const [showTerminal, setShowTerminal] = useState(false);
   const [notice, setNotice] = useState(null);
   const [loading, setLoading] = useState(true);
   const [centers, setCenters] = useState([]);
-  const [newPilot, setNewPilot] = useState({ name: '', email: '', password: '', homeCenterId: '' });
-  const [newDrone, setNewDrone] = useState({ model: '', serialNumber: '', homeCenterId: '' });
+  const emptyPilot = { name: '', email: '', phone: '', password: '', homeCenterId: '', idProof: '', licenseId: '', addressLine1: '', addressLine2: '', state: '', city: '', pincode: '' };
+  const [newPilot, setNewPilot] = useState(emptyPilot);
   const [newLmv, setNewLmv] = useState({ registrationNo: '', label: '', homeCenterId: '', capacity: 1 });
 
   const showNotice = useCallback((kind, message) => setNotice({ kind, message }), []);
@@ -53,8 +62,10 @@ function FleetManagerDashboard() {
 
   const fetchData = useCallback(async () => {
     try {
+      const bounds = calendarBounds(calendarDate, calendarView);
+      const assignmentQuery = new URLSearchParams({ from: bounds.from.toISOString(), to: bounds.to.toISOString() });
       const [leadData, pilotData, droneData, lmvData, assignmentData, centerData] = await Promise.all([
-        request('/api/leads/pending'), request('/api/users/pilots'), request('/api/drones/all'), request('/api/lmvs/all'), request('/api/assignments/all'), request('/api/centers/all')
+        request('/api/leads/pending'), request('/api/users/pilots'), request('/api/drones/all'), request('/api/lmvs/all'), request(`/api/assignments/all?${assignmentQuery}`), request('/api/centers/all')
       ]);
       setLeads(leadData.leads || []);
       setPilots(pilotData.pilots || []);
@@ -64,7 +75,7 @@ function FleetManagerDashboard() {
       setCenters(centerData.centers || []);
     } catch (error) { showNotice('error', error.message); }
     finally { setLoading(false); }
-  }, [request, showNotice]);
+  }, [calendarDate, calendarView, request, showNotice]);
 
   useEffect(() => {
     const initialLoad = window.setTimeout(() => void fetchData(), 0);
@@ -73,54 +84,31 @@ function FleetManagerDashboard() {
 
   const manualQueue = useMemo(() => leads.filter((lead) => lead.status === 'NEEDS_MANUAL_SCHEDULING'), [leads]);
   const availableDrones = useMemo(() => drones.filter((drone) => drone.status === 'AVAILABLE'), [drones]);
-  const events = useMemo(() => assignments.map((assignment) => ({
+  const events = useMemo(() => assignments.filter((assignment) => showTerminal || !['COMPLETED', 'CANCELLED', 'REJECTED'].includes(assignment.lead?.status)).map((assignment) => ({
     id: assignment.id,
     title: `${assignment.lead?.farmerName || 'Farmer'} — ${assignment.pilot?.name || 'Pilot'}`,
-    start: new Date(assignment.scheduledDate),
-    end: addHours(new Date(assignment.scheduledDate), 2),
+    start: new Date(assignment.serviceWindowStart || assignment.scheduledDate),
+    end: new Date(assignment.serviceWindowEnd || addMinutes(new Date(assignment.scheduledDate), 120)),
     resourceId: assignment.pilotId,
     assignment,
-  })), [assignments]);
+  })), [assignments, showTerminal]);
 
-  const getAvailableDrone = useCallback((lead) => drones.find((drone) => drone.status === 'AVAILABLE' && drone.homeCenterId === lead.matchedCenterId), [drones]);
-  const createAssignment = useCallback(async (lead, pilot, scheduledDate) => {
-    if (!pilot) { showNotice('error', 'Drop the request onto a pilot column, or choose a pilot first.'); return; }
-    const drone = getAvailableDrone(lead);
-    if (!drone) { showNotice('error', `No available drone is at ${lead.matchedCenter?.name || 'this lead’s operating centre'}.`); return; }
-    try {
-      await request('/api/assignments/manual', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ leadId: lead.id, pilotId: pilot.id, droneId: drone.id, scheduledDate }) });
-      setDraggedLead(null);
-      showNotice('success', `${lead.farmerName} is scheduled with ${pilot.name}. The pilot was notified.`);
-      await fetchData();
-    } catch (error) { showNotice('error', error.message); }
-  }, [fetchData, getAvailableDrone, request, showNotice]);
-
-  const handleDropFromOutside = useCallback(({ start, resourceId }) => {
-    if (!draggedLead) return;
-    const targetPilotId = resourceId || selectedPilotId;
-    void createAssignment(draggedLead, pilots.find((pilot) => pilot.id === targetPilotId), start);
-  }, [createAssignment, draggedLead, pilots, selectedPilotId]);
-
-  const handleEventDrop = useCallback(({ event, start, resourceId }) => {
+  const moveEvent = useCallback(({ event, start, end, resourceId, reason }) => {
     void (async () => {
       try {
         const targetPilotId = resourceId || event.resourceId;
         await request(`/api/assignments/${event.id}/reschedule`, { 
           method: 'PUT', 
           headers: { 'Content-Type': 'application/json' }, 
-          body: JSON.stringify({ scheduledDate: start.toISOString(), reason: 'Calendar drag-and-drop', pilotId: targetPilotId }) 
+          body: JSON.stringify({ serviceWindowStart: start.toISOString(), serviceWindowEnd: end.toISOString(), reason, pilotId: targetPilotId })
         });
         showNotice('success', `${event.assignment.lead?.farmerName || 'Assignment'} was rescheduled. Sales has been notified.`);
         await fetchData();
       } catch (error) { showNotice('error', error.message); }
     })();
   }, [fetchData, request, showNotice]);
-
-  const scheduleSelectedLead = useCallback((lead) => {
-    const scheduledDate = new Date(calendarDate);
-    scheduledDate.setHours(9, 0, 0, 0);
-    void createAssignment(lead, pilots.find((pilot) => pilot.id === selectedPilotId), scheduledDate);
-  }, [calendarDate, createAssignment, pilots, selectedPilotId]);
+  const handleEventDrop = useCallback(({ event, start, end, resourceId }) => moveEvent({ event, start, end, resourceId, reason: 'Calendar drag-and-drop' }), [moveEvent]);
+  const handleEventResize = useCallback(({ event, start, end }) => moveEvent({ event, start, end, reason: 'Calendar duration changed' }), [moveEvent]);
 
   const eligiblePilots = useMemo(() => pilots.filter((pilot) => pilot.active && !pilot.archivedAt && pilot.homeCenterId === selectedLead?.matchedCenterId), [pilots, selectedLead]);
   const eligibleDrones = useMemo(() => drones.filter((drone) => ['AVAILABLE', 'ASSIGNED'].includes(drone.status) && drone.homeCenterId === selectedLead?.matchedCenterId), [drones, selectedLead]);
@@ -130,7 +118,7 @@ function FleetManagerDashboard() {
     const date = new Date(calendarDate);
     date.setHours(9, 0, 0, 0);
     setSelectedLead(lead);
-    setScheduleDraft({ pilotId: '', copilotId: '', droneId: '', lmvId: '', scheduledDate: localDateTimeValue(date) });
+    setScheduleDraft({ pilotId: '', copilotId: '', droneId: '', lmvId: '', serviceWindowStart: localDateTimeValue(date), serviceWindowEnd: localDateTimeValue(addMinutes(date, 120)) });
   }, [calendarDate]);
 
   const submitCrewSchedule = useCallback(async (event) => {
@@ -141,13 +129,48 @@ function FleetManagerDashboard() {
       await request('/api/assignments/manual', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ leadId: selectedLead.id, ...scheduleDraft, scheduledDate: new Date(scheduleDraft.scheduledDate).toISOString() }),
+        body: JSON.stringify({ leadId: selectedLead.id, ...scheduleDraft, serviceWindowStart: new Date(scheduleDraft.serviceWindowStart).toISOString(), serviceWindowEnd: new Date(scheduleDraft.serviceWindowEnd).toISOString() }),
       });
       showNotice('success', `${selectedLead.farmerName} was added to the crew's daily schedule.`);
       setSelectedLead(null);
       await fetchData();
     } catch (error) { showNotice('error', error.message); }
   }, [fetchData, request, scheduleDraft, selectedLead, showNotice]);
+
+  const openAssignment = useCallback((event) => {
+    const assignment = event.assignment;
+    setSelectedAssignment(assignment);
+    setEditDraft({
+      pilotId: assignment.pilotId,
+      copilotId: assignment.copilotId || '',
+      droneId: assignment.droneId,
+      lmvId: assignment.lmvId || '',
+      serviceWindowStart: localDateTimeValue(assignment.serviceWindowStart || assignment.scheduledDate),
+      serviceWindowEnd: localDateTimeValue(assignment.serviceWindowEnd || addMinutes(new Date(assignment.scheduledDate), 120)),
+      dailySequence: assignment.dailySequence,
+      reason: '',
+    });
+  }, []);
+
+  const saveAssignment = useCallback(async (event) => {
+    event.preventDefault();
+    try {
+      await request(`/api/assignments/${selectedAssignment.id}/reschedule`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
+          ...editDraft,
+          serviceWindowStart: new Date(editDraft.serviceWindowStart).toISOString(),
+          serviceWindowEnd: new Date(editDraft.serviceWindowEnd).toISOString(),
+        }),
+      });
+      if (Number(editDraft.dailySequence) !== selectedAssignment.dailySequence) {
+        await request(`/api/assignments/${selectedAssignment.id}/sequence`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dailySequence: Number(editDraft.dailySequence) }) });
+      }
+      setSelectedAssignment(null);
+      setEditDraft(null);
+      showNotice('success', t('calendar_assignment_updated'));
+      await fetchData();
+    } catch (error) { showNotice('error', error.message); }
+  }, [editDraft, fetchData, request, selectedAssignment, showNotice, t]);
 
   const selectSection = (id) => {
     setActiveSection(id);
@@ -158,7 +181,7 @@ function FleetManagerDashboard() {
     e.preventDefault();
     try {
       await request('/api/users/add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...newPilot, role: 'PILOT' }) });
-      setNewPilot({ name: '', email: '', password: '', homeCenterId: '' });
+      setNewPilot(emptyPilot);
       showNotice('success', 'Pilot added. Requires admin approval to activate.');
       await fetchData();
     } catch (error) { showNotice('error', error.message); }
@@ -172,16 +195,6 @@ function FleetManagerDashboard() {
         body: JSON.stringify({ homeCenterId }),
       });
       showNotice('success', 'Pilot operating center updated.');
-      await fetchData();
-    } catch (error) { showNotice('error', error.message); }
-  };
-
-  const handleAddDrone = async (e) => {
-    e.preventDefault();
-    try {
-      await request('/api/drones/add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newDrone) });
-      setNewDrone({ model: '', serialNumber: '', homeCenterId: '' });
-      showNotice('success', 'Drone registered.');
       await fetchData();
     } catch (error) { showNotice('error', error.message); }
   };
@@ -204,22 +217,17 @@ function FleetManagerDashboard() {
     } catch (error) { showNotice('error', error.message); }
   };
 
-  const handleResolveMaintenance = async (droneId, action) => {
-    try {
-      await request('/api/drones/resolve-maintenance', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ droneId, action }) });
-      showNotice('success', action === 'approve' ? 'Maintenance approved.' : 'Maintenance rejected.');
-      await fetchData();
-    } catch (error) { showNotice('error', error.message); }
-  };
-  
-  const requestMaintenance = async (droneId) => {
-    try {
-      await request('/api/drones/request-maintenance', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ droneId, reason: 'Fleet manager request' }) });
-      showNotice('success', 'Maintenance requested.');
-      await fetchData();
-    } catch (error) { showNotice('error', error.message); }
-  };
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
 
+const pageCopy = {
+  schedule: ['Fleet manager', 'Exception scheduling calendar', 'Resolve requests that need a human scheduling decision and monitor current allocations.'],
+  pilots: ['Fleet manager', 'Pilots', 'Manage registered pilots and their operating centers.'],
+  drones: ['Fleet manager', 'Drones', 'Register and manage fleet aircraft.'],
+  lmvs: ['Fleet manager', 'Light motor vehicles', 'Each scheduled crew reserves one LMV.'],
+  location: ['Fleet manager', 'Live Pilot GPS', 'Track pilot locations in real time.'],
+};
+
+const [eyebrow, title, description] = pageCopy[activeSection] || pageCopy.schedule;
   const navItems = [
     { id: 'schedule', label: 'Scheduling board', icon: 'calendar', badge: manualQueue.length || null },
     { id: 'pilots', label: 'Pilots', icon: 'users' },
@@ -230,12 +238,54 @@ function FleetManagerDashboard() {
 
   return (
     <OperationsShell roleLabel="Fleet operations" navItems={navItems} activeTab={activeSection} onTabChange={selectSection} user={user}  onLogout={logout}>
+       <header className="page-header">
+             <div className="page-header__copy"><p className="eyebrow">{eyebrow}</p><h1>{title}</h1><p>{description}</p></div>
+             <div className="page-header__actions">
+               <div className="profile-menu">
+                 <button
+                   className="profile-trigger"
+                   onClick={() => setShowProfileMenu(!showProfileMenu)}>
+                   {user?.name?.charAt(0)?.toUpperCase() || "U"}
+                 </button>
+                 {showProfileMenu && (
+                   <div className="profile-dropdown">
+                     <div className="profile-dropdown__header">
+                       <div className="profile-avatar">
+                         {user?.name?.charAt(0)?.toUpperCase() || "U"}
+                       </div>
+                       <div>
+                         <h4>{user?.name || "User"}</h4>
+                         <p>{user?.role || "Sales Operations"}</p>
+                       </div>
+                     </div>
+                     <hr />
+                     <button
+                       className="dropdown-item"
+                       onClick={() => {
+                         selectSection("profile");
+                         setShowProfileMenu(false);
+                       }}>
+                       <OpsIcon name="user" />
+                       My Profile
+                     </button>
+                     <button
+                       className="dropdown-item logout"
+                       onClick={logout}>
+                       <OpsIcon name="logout" />
+                       Sign Out
+                     </button>
+                   </div>
+                 )}
+               </div>
+             </div>
+           </header>
+     
       {activeSection === 'schedule' && (
       <section id="schedule">
-        <header className="page-header">
+        {/* <header className="page-header">
           <div className="page-header__copy"><p className="eyebrow">Fleet manager</p><h1>Exception scheduling calendar</h1><p>Resolve requests that need a human scheduling decision and monitor current allocations.</p></div>
           <div className="page-header__actions"><button type="button" className="action-btn" onClick={() => void fetchData()}><OpsIcon name="refresh" /> Refresh board</button></div>
-        </header>
+        </header> */}
 
         {notice && <div role="alert" className={`notice notice--${notice.kind}`}><span>{notice.message}</span><button type="button" className="notice__close" onClick={() => setNotice(null)} aria-label="Dismiss message">×</button></div>}
 
@@ -245,6 +295,8 @@ function FleetManagerDashboard() {
           <article className="metric-card metric-card--info"><div className="metric-card__top"><span>Available drones</span><span className="metric-card__icon"><OpsIcon name="drone" /></span></div><strong className="metric-card__value">{availableDrones.length}</strong></article>
           <article className="metric-card"><div className="metric-card__top"><span>Assignments</span><span className="metric-card__icon"><OpsIcon name="calendar" /></span></div><strong className="metric-card__value">{assignments.length}</strong></article>
         </section>
+
+        <AutoAssignmentPolicyPanel compact />
 
         <section className="fleet-layout">
           <aside className="panel panel--raised">
@@ -260,7 +312,8 @@ function FleetManagerDashboard() {
                 {eligiblePilots.length < 2 && <div className="notice notice--error" role="alert">Two active Pilots at this operating center are required. Admin must activate both accounts and assign their center.</div>}
                 {!eligibleDrones.length && <div className="notice notice--error" role="alert">No schedulable drone is registered at this operating center.</div>}
                 {!eligibleLmvs.length && <div className="notice notice--error" role="alert">No schedulable LMV is registered at this operating center. Add one from the LMVs tab.</div>}
-                <div className="input-group"><label htmlFor="crew-date">Date and start time</label><input id="crew-date" type="datetime-local" value={scheduleDraft.scheduledDate} onChange={(event) => setScheduleDraft({ ...scheduleDraft, scheduledDate: event.target.value })} required /></div>
+                <div className="input-group"><label htmlFor="crew-start">{t('calendar_service_start')}</label><input id="crew-start" type="datetime-local" value={scheduleDraft.serviceWindowStart} onChange={(event) => setScheduleDraft({ ...scheduleDraft, serviceWindowStart: event.target.value })} required /></div>
+                <div className="input-group"><label htmlFor="crew-end">{t('calendar_service_end')}</label><input id="crew-end" type="datetime-local" value={scheduleDraft.serviceWindowEnd} onChange={(event) => setScheduleDraft({ ...scheduleDraft, serviceWindowEnd: event.target.value })} required /></div>
                 <div className="input-group"><label htmlFor="primary-pilot">Primary Pilot</label><select id="primary-pilot" value={scheduleDraft.pilotId} onChange={(event) => setScheduleDraft({ ...scheduleDraft, pilotId: event.target.value })} required><option value="">Select primary Pilot</option>{eligiblePilots.map((pilot) => <option key={pilot.id} value={pilot.id}>{pilot.name}</option>)}</select></div>
                 <div className="input-group"><label htmlFor="copilot">Copilot</label><select id="copilot" value={scheduleDraft.copilotId} onChange={(event) => setScheduleDraft({ ...scheduleDraft, copilotId: event.target.value })} required><option value="">Select Copilot</option>{eligiblePilots.filter((pilot) => pilot.id !== scheduleDraft.pilotId).map((pilot) => <option key={pilot.id} value={pilot.id}>{pilot.name}</option>)}</select></div>
                 <div className="input-group"><label htmlFor="crew-drone">Drone</label><select id="crew-drone" value={scheduleDraft.droneId} onChange={(event) => setScheduleDraft({ ...scheduleDraft, droneId: event.target.value })} required><option value="">Select drone</option>{eligibleDrones.map((drone) => <option key={drone.id} value={drone.id}>{drone.model} · {drone.serialNumber} ({readableStatus(drone.status)})</option>)}</select></div>
@@ -270,23 +323,28 @@ function FleetManagerDashboard() {
             </div>
           </aside>
 
-          <aside className="panel panel--raised" style={{ display: 'none' }} aria-hidden="true">
-            <div className="panel-header"><div className="panel-header__title"><div className="panel-title-row"><span className="panel-title-icon"><OpsIcon name="clipboard" /></span><h2>Manual scheduling queue</h2></div><p>Drag a request onto a pilot’s day or use the picker.</p></div></div>
-            <div className="panel-body">
-              <div className="input-group"><label htmlFor="pilot-picker">Alternative pilot picker</label><select id="pilot-picker" value={selectedPilotId} onChange={(event) => setSelectedPilotId(event.target.value)}><option value="">Choose a pilot</option>{pilots.map((pilot) => <option key={pilot.id} value={pilot.id}>{pilot.name} — {pilot.homeCenter?.name || 'no centre'}</option>)}</select></div>
-              <div className="section-gap">
-                {loading && <div className="empty-state"><strong>Loading scheduling data…</strong><span>Checking people, aircraft, and assignments.</span></div>}
-                {!loading && !manualQueue.length && <div className="empty-state"><strong>No scheduling exceptions</strong><span>All verified requests have an assignment path.</span></div>}
-                {manualQueue.map((lead) => <article key={lead.id} className="queue-card" draggable onDragStart={() => setDraggedLead({ ...lead, title: lead.farmerName })}><strong>{lead.farmerName}</strong><p className="caption">{lead.village || 'Location pending'} · {lead.acreage} acres</p><p className="queue-card__warning">{lead.notes || 'No automatic match was available.'}</p><button type="button" className="submit-btn button-wide" onClick={() => scheduleSelectedLead(lead)}>Schedule on selected date</button></article>)}
-              </div>
-            </div>
-          </aside>
-
           <section className="panel panel--raised">
-            <div className="panel-header"><div className="panel-header__title"><div className="panel-title-row"><span className="panel-title-icon"><OpsIcon name="calendar" /></span><h2>Pilot calendar</h2></div><p>Click a date for day view. Drag an assignment to reschedule it.</p></div></div>
-            <div className="panel-body"><div className="calendar-wrap"><div className="calendar-stage"><DnDCalendar localizer={localizer} events={events} date={calendarDate} view={calendarView} onNavigate={setCalendarDate} onView={setCalendarView} views={['month', 'week', 'day']} defaultView="month" popup selectable onDrillDown={(date) => { setCalendarDate(date); setCalendarView('day'); }} onSelectSlot={({ start }) => { if (calendarView === 'month') { setCalendarDate(start); setCalendarView('day'); } }} resources={pilots} resourceIdAccessor="id" resourceTitleAccessor="name" onDropFromOutside={handleDropFromOutside} dragFromOutsideItem={() => draggedLead ? { ...draggedLead, start: new Date(), end: addHours(new Date(), 2) } : null} onDragOver={(event) => event.preventDefault()} onEventDrop={handleEventDrop} draggableAccessor={(event) => ['SCHEDULED', 'PILOT_ACCEPTED'].includes(event.assignment?.lead?.status)} eventPropGetter={(event) => ({ style: { backgroundColor: event.assignment?.autoAssigned ? '#2e6b4d' : '#9a6920', border: 0 } })} tooltipAccessor={(event) => `${event.title} (${readableStatus(event.assignment?.lead?.status || event.status)})`} /></div></div></div>
+            <div className="panel-header"><div className="panel-header__title"><div className="panel-title-row"><span className="panel-title-icon"><OpsIcon name="calendar" /></span><h2>{t('calendar_title')}</h2></div><p>{t('calendar_help')}</p></div><label><input type="checkbox" checked={showTerminal} onChange={(event) => setShowTerminal(event.target.checked)} /> {t('calendar_show_terminal')}</label></div>
+            <div className="panel-body"><div className="calendar-wrap"><div className="calendar-stage"><DnDCalendar localizer={localizer} events={events} date={calendarDate} view={calendarView} onNavigate={setCalendarDate} onView={setCalendarView} views={['month', 'week', 'day']} defaultView="month" popup selectable resizable onDrillDown={(date) => { setCalendarDate(date); setCalendarView('day'); }} onSelectSlot={({ start, end }) => { if (calendarView === 'month') { setCalendarDate(start); setCalendarView('day'); } else if (selectedLead) { setScheduleDraft((draft) => ({ ...draft, serviceWindowStart: localDateTimeValue(start), serviceWindowEnd: localDateTimeValue(end) })); } }} onSelectEvent={openAssignment} resources={pilots} resourceIdAccessor="id" resourceTitleAccessor="name" onEventDrop={handleEventDrop} onEventResize={handleEventResize} draggableAccessor={(event) => ['SCHEDULED', 'PILOT_ACCEPTED'].includes(event.assignment?.lead?.status)} resizableAccessor={(event) => ['SCHEDULED', 'PILOT_ACCEPTED'].includes(event.assignment?.lead?.status)} eventPropGetter={(event) => ({ style: { backgroundColor: event.assignment?.autoAssigned ? '#2e6b4d' : '#9a6920', border: 0 } })} tooltipAccessor={(event) => `${event.title} (${readableStatus(event.assignment?.lead?.status || event.status)})`} /></div></div></div>
           </section>
         </section>
+
+        {selectedAssignment && editDraft && <section className="panel panel--raised" aria-label="Assignment editor">
+          <div className="panel-header"><div className="panel-header__title"><h2>{t('calendar_assignment_details')}</h2><p>{selectedAssignment.lead?.farmerName} · {selectedAssignment.lead?.matchedCenter?.name || selectedAssignment.lead?.village || t('calendar_operating_center')}</p></div><button type="button" className="action-btn" onClick={() => setSelectedAssignment(null)}>{t('calendar_close')}</button></div>
+          <form className="panel-body form-stack" onSubmit={saveAssignment}>
+            <p>{t('calendar_origin')}: {selectedAssignment.autoAssigned ? t('auto_policy_automatic') : t('calendar_manual')} · {t('calendar_status')}: {readableStatus(selectedAssignment.lead?.status)}</p>
+            <p>{t('calendar_weather')}: {selectedAssignment.weatherCheckedAt ? (selectedAssignment.weatherSuitable === true ? t('calendar_weather_suitable') : selectedAssignment.weatherSuitable === false ? t('calendar_weather_unsuitable') : t('calendar_weather_unavailable')) : t('calendar_weather_not_checked')}</p>
+            <label className="input-group"><span>{t('calendar_service_start')}</span><input type="datetime-local" value={editDraft.serviceWindowStart} onChange={(event) => setEditDraft({ ...editDraft, serviceWindowStart: event.target.value })} required /></label>
+            <label className="input-group"><span>{t('calendar_service_end')}</span><input type="datetime-local" value={editDraft.serviceWindowEnd} onChange={(event) => setEditDraft({ ...editDraft, serviceWindowEnd: event.target.value })} required /></label>
+            <label className="input-group"><span>Primary Pilot</span><select value={editDraft.pilotId} onChange={(event) => setEditDraft({ ...editDraft, pilotId: event.target.value })}>{pilots.filter((pilot) => pilot.homeCenterId === selectedAssignment.lead?.matchedCenterId).map((pilot) => <option key={pilot.id} value={pilot.id}>{pilot.name}</option>)}</select></label>
+            <label className="input-group"><span>Copilot</span><select value={editDraft.copilotId} onChange={(event) => setEditDraft({ ...editDraft, copilotId: event.target.value })}>{pilots.filter((pilot) => pilot.homeCenterId === selectedAssignment.lead?.matchedCenterId && pilot.id !== editDraft.pilotId).map((pilot) => <option key={pilot.id} value={pilot.id}>{pilot.name}</option>)}</select></label>
+            <label className="input-group"><span>Drone</span><select value={editDraft.droneId} onChange={(event) => setEditDraft({ ...editDraft, droneId: event.target.value })}>{drones.filter((drone) => drone.homeCenterId === selectedAssignment.lead?.matchedCenterId).map((drone) => <option key={drone.id} value={drone.id}>{drone.model} · {drone.serialNumber}</option>)}</select></label>
+            <label className="input-group"><span>LMV</span><select value={editDraft.lmvId} onChange={(event) => setEditDraft({ ...editDraft, lmvId: event.target.value })}>{lmvs.filter((lmv) => lmv.homeCenterId === selectedAssignment.lead?.matchedCenterId).map((lmv) => <option key={lmv.id} value={lmv.id}>{lmv.registrationNo}</option>)}</select></label>
+            <label className="input-group"><span>{t('calendar_daily_sequence')}</span><input type="number" min="1" value={editDraft.dailySequence} onChange={(event) => setEditDraft({ ...editDraft, dailySequence: event.target.value })} required /></label>
+            <label className="input-group"><span>{t('calendar_change_reason')}</span><textarea minLength="3" maxLength="500" value={editDraft.reason} onChange={(event) => setEditDraft({ ...editDraft, reason: event.target.value })} required /></label>
+            <button className="submit-btn" type="submit">{t('calendar_save')}</button>
+          </form>
+        </section>}
       </section>
       )}
 
@@ -302,33 +360,23 @@ function FleetManagerDashboard() {
             <form className="panel-body form-stack" onSubmit={handleAddPilot}>
               <div className="input-group"><label>Full Name</label><input type="text" value={newPilot.name} onChange={(e) => setNewPilot({ ...newPilot, name: e.target.value })} required /></div>
               <div className="input-group"><label>Email</label><input type="email" value={newPilot.email} onChange={(e) => setNewPilot({ ...newPilot, email: e.target.value })} required /></div>
+              <div className="input-group"><label>Mobile Number</label><input type="tel" value={newPilot.phone} onChange={(e) => setNewPilot({ ...newPilot, phone: e.target.value })} required /></div>
               <div className="input-group"><label>Temporary Password</label><input type="password" value={newPilot.password} onChange={(e) => setNewPilot({ ...newPilot, password: e.target.value })} minLength={12} required /></div>
-              <div className="input-group"><label>Home Center</label><select value={newPilot.homeCenterId} onChange={(e) => setNewPilot({ ...newPilot, homeCenterId: e.target.value })} required><option value="">Select Center</option>{centers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
+              <div className="input-group"><label>Home Center</label><select value={newPilot.homeCenterId} onChange={(e) => setNewPilot({ ...newPilot, homeCenterId: e.target.value })} required><option value="">Select Center</option>{centers.filter((center) => center.active).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
+              <div className="input-group"><label>ID Proof Reference</label><input value={newPilot.idProof} onChange={(e) => setNewPilot({ ...newPilot, idProof: e.target.value })} required /></div>
+              <div className="input-group"><label>Pilot License ID</label><input value={newPilot.licenseId} onChange={(e) => setNewPilot({ ...newPilot, licenseId: e.target.value })} required /></div>
+              <div className="input-group"><label>Address Line 1</label><input value={newPilot.addressLine1} onChange={(e) => setNewPilot({ ...newPilot, addressLine1: e.target.value })} required /></div>
+              <div className="input-group"><label>Address Line 2 (optional)</label><input value={newPilot.addressLine2} onChange={(e) => setNewPilot({ ...newPilot, addressLine2: e.target.value })} /></div>
+              <div className="input-group"><label>State</label><input value={newPilot.state} onChange={(e) => setNewPilot({ ...newPilot, state: e.target.value })} required /></div>
+              <div className="input-group"><label>City</label><input value={newPilot.city} onChange={(e) => setNewPilot({ ...newPilot, city: e.target.value })} required /></div>
+              <div className="input-group"><label>Pincode</label><input inputMode="numeric" pattern="[0-9]{6}" value={newPilot.pincode} onChange={(e) => setNewPilot({ ...newPilot, pincode: e.target.value.replace(/\D/g, '').slice(0, 6) })} required /></div>
               <div className="form-actions"><button type="submit" className="submit-btn">Add Pilot</button></div>
             </form>
           </div>
         </section>
       )}
 
-      {activeSection === 'drones' && (
-        <section className="user-admin-grid">
-          {notice && <div role="alert" className={`notice notice--${notice.kind}`}><span>{notice.message}</span><button type="button" className="notice__close" onClick={() => setNotice(null)} aria-label="Dismiss message">×</button></div>}
-          <div className="panel panel--raised">
-            <div className="panel-header"><div className="panel-header__title"><div className="panel-title-row"><span className="panel-title-icon"><OpsIcon name="drone" /></span><h2>Fleet Aircraft</h2></div><p>{drones.length} drone(s).</p></div></div>
-            <div className="data-stack">{drones.map((drone) => <div className="data-row" key={drone.id}><div className="data-row__main"><span className="data-row__title">{drone.model} - {drone.serialNumber}</span><span className="data-row__meta">Center: {drone.homeCenter?.name || 'N/A'}</span><span className="status-badge">{readableStatus(drone.status)}</span></div><div className="data-row__actions">{drone.status === 'AVAILABLE' && <button className="action-btn" type="button" onClick={() => requestMaintenance(drone.id)}>Request Maintenance</button>}{drone.status === 'MAINTENANCE' && drone.maintenanceRequest && <button className="action-btn" type="button" onClick={() => handleResolveMaintenance(drone.id, 'approve')}>Approve Maintenance</button>}</div></div>)}</div>
-          </div>
-          <div className="panel panel--raised">
-            <div className="panel-header"><div className="panel-header__title"><div className="panel-title-row"><span className="panel-title-icon"><OpsIcon name="plus" /></span><h2>Add Drone</h2></div><p>Register new aircraft.</p></div></div>
-            <form className="panel-body form-stack" onSubmit={handleAddDrone}>
-              <div className="input-group"><label>Model Name</label><input type="text" value={newDrone.model} onChange={(e) => setNewDrone({ ...newDrone, model: e.target.value })} required /></div>
-              <div className="input-group"><label>Serial Number</label><input type="text" value={newDrone.serialNumber} onChange={(e) => setNewDrone({ ...newDrone, serialNumber: e.target.value })} required /></div>
-              <div className="input-group"><label>Home Center</label><select value={newDrone.homeCenterId} onChange={(e) => setNewDrone({ ...newDrone, homeCenterId: e.target.value })} required><option value="">Select Center</option>{centers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
-              <div className="form-actions"><button type="submit" className="submit-btn">Register Drone</button></div>
-            </form>
-          </div>
-        </section>
-      )}
-
+{activeSection === 'drones' && <MyDrones/>}
       {activeSection === 'lmvs' && (
         <section className="user-admin-grid">
           {notice && <div role="alert" className={`notice notice--${notice.kind}`}><span>{notice.message}</span><button type="button" className="notice__close" onClick={() => setNotice(null)} aria-label="Dismiss message">×</button></div>}

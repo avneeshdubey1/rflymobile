@@ -5,13 +5,27 @@
 # only on the approved office network. Do not expose its port to the internet.
 
 services:
+  # Docker is installed from Snap on this host. Its confinement rejects every
+  # container process launch when no-new-privileges is requested, including
+  # the one-shot Prisma migration. Reset only that unsupported option here;
+  # the production file still supplies non-root images, dropped capabilities,
+  # read-only filesystems, isolated networks and resource limits.
+  migrate:
+    security_opt: !reset []
+
   backend:
+    security_opt: !reset []
     environment:
-      NODE_ENV: production
+      # The office staging endpoint currently has no TLS route. The backend
+      # correctly refuses production mode over HTTP, so this isolated,
+      # LAN-bound stack uses development perimeter mode until internal TLS is
+      # provisioned. This does not run seed data or share production storage.
+      NODE_ENV: development
       ENFORCE_HTTPS: "false"
       TRUST_PROXY_HOPS: ${TRUST_PROXY_HOPS:-1}
       OTP_DELIVERY_PROVIDER: ${OTP_DELIVERY_PROVIDER:-disabled}
 
   frontend:
+    security_opt: !reset []
     ports:
       - "${APP_BIND_ADDRESS:-127.0.0.1}:${APP_PORT:-8089}:8080"

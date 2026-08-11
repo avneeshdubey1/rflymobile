@@ -35,7 +35,17 @@ test('auto-assignment schedules an eligible pilot and escalates through reassign
     return pilot;
   }));
   await Promise.all(['A', 'B'].map(async (suffix) => {
-    const drone = await prisma.drone.create({ data: { model: 'Test', serialNumber: `PHASE3-${suffix}`, status: 'AVAILABLE', homeCenterId: center.id, airworthinessExpiry: new Date('2027-01-01') } });
+    // const drone = await prisma.drone.create({ data: { model: 'Test', serialNumber: `PHASE3-${suffix}`, status: 'AVAILABLE', homeCenterId: center.id, airworthinessExpiry: new Date('2027-01-01') } });
+    const drone = await prisma.drone.create({
+  data: {
+    model: 'Test',
+    serialNumber: `PHASE3-${suffix}`,
+    uin: `UIN-PHASE3-${suffix}-${Date.now()}`,
+    status: 'AVAILABLE',
+    homeCenterId: center.id,
+    airworthinessExpiry: new Date('2027-01-01'),
+  },
+});
     ids.drones.push(drone.id);
   }));
   await Promise.all(['A', 'B'].map(async (suffix) => {
@@ -73,7 +83,17 @@ test('missing weather data fails open and a lack of candidates lands in the manu
   const center = await createCenter('Phase 3 Fail-Open Center');
   const failOpenPilots = await Promise.all(['Primary', 'Copilot'].map((name) => prisma.user.create({ data: { name: `Phase 3 Fail-open ${name}`, email: `phase3-fail-open-${name.toLowerCase()}@example.test`, passwordHash: 'test', role: 'PILOT', homeCenterId: center.id, pilotLicenseExpiry: new Date('2027-01-01') } })));
   ids.users.push(...failOpenPilots.map((pilot) => pilot.id));
-  const drone = await prisma.drone.create({ data: { model: 'Test', serialNumber: 'PHASE3-FAILOPEN', status: 'AVAILABLE', homeCenterId: center.id, airworthinessExpiry: new Date('2027-01-01') } });
+  // const drone = await prisma.drone.create({ data: { model: 'Test', serialNumber: 'PHASE3-FAILOPEN', status: 'AVAILABLE', homeCenterId: center.id, airworthinessExpiry: new Date('2027-01-01') } });
+  const drone = await prisma.drone.create({
+  data: {
+    model: 'Test',
+    serialNumber: 'PHASE3-FAILOPEN',
+    uin: `UIN-PHASE3-FAILOPEN-${Date.now()}`,
+    status: 'AVAILABLE',
+    homeCenterId: center.id,
+    airworthinessExpiry: new Date('2027-01-01'),
+  },
+});
   ids.drones.push(drone.id);
   const lmv = await prisma.lMV.create({ data: { registrationNo: `PHASE3-FAILOPEN-LMV-${Date.now()}`, label: 'Phase 3 Fail-open LMV', status: 'AVAILABLE', homeCenterId: center.id } });
   ids.lmvs.push(lmv.id);
@@ -98,12 +118,15 @@ test.after(async () => {
   await prisma.notificationEscalation.deleteMany({ where: { assignmentId: { in: assignmentIds } } });
   await prisma.notification.deleteMany({ where: { leadId: { in: ids.leads } } });
   await prisma.auditLog.deleteMany({ where: { entityId: { in: [...ids.leads, ...assignmentIds] } } });
-  await prisma.assignment.deleteMany({ where: { id: { in: assignmentIds } } });
-  await prisma.lead.deleteMany({ where: { id: { in: ids.leads } } });
-  await prisma.drone.deleteMany({ where: { id: { in: ids.drones } } });
-  await prisma.lMV.deleteMany({ where: { id: { in: ids.lmvs } } });
-  await prisma.user.deleteMany({ where: { id: { in: ids.users } } });
-  await prisma.operatingCenter.deleteMany({ where: { id: { in: ids.centers } } });
+  await prisma.$transaction(async (transaction) => {
+    await transaction.$queryRaw`SELECT set_config('rfly.allow_history_mutation', 'on', true)`;
+    await transaction.assignment.deleteMany({ where: { id: { in: assignmentIds } } });
+    await transaction.lead.deleteMany({ where: { id: { in: ids.leads } } });
+    await transaction.drone.deleteMany({ where: { id: { in: ids.drones } } });
+    await transaction.lMV.deleteMany({ where: { id: { in: ids.lmvs } } });
+    await transaction.user.deleteMany({ where: { id: { in: ids.users } } });
+    await transaction.operatingCenter.deleteMany({ where: { id: { in: ids.centers } } });
+  });
   weatherService.setForecastProvider(null);
   delete process.env.NOTIFICATION_CASCADE_TIMERS_MS;
   await prisma.$disconnect();

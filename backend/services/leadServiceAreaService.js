@@ -33,10 +33,10 @@ async function revalidateForScheduling(lead, { actorId = null } = {}) {
     return lead;
   }
 
-  const updated = await leadRepository.update(lead.id, {
+  const updated = await leadRepository.updateOperational(lead.id, {
     matchedCenterId: geofence.matchedCenter.id,
     distanceFromCenterKm: geofence.distanceKm,
-  });
+  }, { actorId });
   await auditLogService.record({
     entityType: 'Lead',
     entityId: updated.id,

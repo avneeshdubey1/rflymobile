@@ -12,6 +12,7 @@ let fleetAuthorization;
 let farmerAuthorization;
 let farmerUser;
 let salesUserId;
+let serviceCrop;
 
 const ids = {
   customers: [],
@@ -22,6 +23,7 @@ const ids = {
   drones: [],
   lmvs: [],
   pricing: [],
+  crops: [],
 };
 
 async function request(pathname, { method = 'GET', body, authorization } = {}) {
@@ -49,6 +51,15 @@ test.before(async () => {
     data: { name: 'Phase 16 Centre', latitude: 8.959, longitude: 77.311, radiusKm: 25 },
   });
   ids.centers.push(center.id);
+  serviceCrop = await prisma.crop.create({
+    data: {
+      code: `phase16-service-${process.pid}`.slice(0, 40),
+      displayName: `Phase 16 approved crop ${process.pid}`.slice(0, 120),
+      normalizedName: `phase16approvedcrop${process.pid}`.slice(0, 120),
+      active: true,
+    },
+  });
+  ids.crops.push(serviceCrop.id);
   const [sales, admin, fleet, pilot] = await Promise.all([
     prisma.user.create({ data: { name: 'Phase 16 Sales', email: 'phase16-sales@example.test', passwordHash: 'test', role: 'SALES', emailVerifiedAt: new Date() } }),
     prisma.user.create({ data: { name: 'Phase 16 Admin', email: 'phase16-admin@example.test', passwordHash: 'test', role: 'ADMIN', emailVerifiedAt: new Date() } }),
@@ -57,7 +68,16 @@ test.before(async () => {
   ]);
   ids.users.push(sales.id, admin.id, fleet.id, pilot.id);
   const [drone, lmv] = await Promise.all([
-    prisma.drone.create({ data: { model: 'Phase 16 Drone', serialNumber: `PHASE16-DRONE-${Date.now()}`, homeCenterId: center.id, status: 'AVAILABLE' } }),
+    // prisma.drone.create({ data: { model: 'Phase 16 Drone', serialNumber: `PHASE16-DRONE-${Date.now()}`, homeCenterId: center.id, status: 'AVAILABLE' } }),
+    prisma.drone.create({
+  data: {
+    model: 'Phase 16 Drone',
+    serialNumber: `PHASE16-DRONE-${Date.now()}`,
+    uin: `UIN-PHASE16-${Date.now()}`,
+    homeCenterId: center.id,
+    status: 'AVAILABLE',
+  },
+}),
     prisma.lMV.create({ data: { registrationNo: `PHASE16-LMV-${Date.now()}`, label: 'Phase 16 LMV', homeCenterId: center.id, status: 'AVAILABLE' } }),
   ]);
   ids.drones.push(drone.id);
@@ -301,7 +321,7 @@ test('Sales service view creates customer-linked manual leads and keeps strict g
     authorization: salesAuthorization,
     body: {
       acres: 2,
-      cropType: 'Rice',
+      cropType: serviceCrop.displayName,
       village: 'In range service village',
       latitude: 8.959,
       longitude: 77.311,
@@ -316,6 +336,18 @@ test('Sales service view creates customer-linked manual leads and keeps strict g
   assert.equal(stored.farmerName, 'Phase 16 Service Farmer');
   assert.equal(stored.farmerPhone, created.data.customer.phone);
   assert.equal(stored.preferredLanguage, 'ml');
+  assert.equal(stored.status, 'NEEDS_MANUAL_SCHEDULING');
+  assert.match(stored.notes, /No eligible two-person Pilot\/Copilot crew is available/);
+  const schedulingAudit = await prisma.auditLog.findFirst({
+    where: {
+      entityType: 'Lead',
+      entityId: stored.id,
+      action: 'NEEDS_MANUAL_SCHEDULING',
+    },
+  });
+  assert.ok(schedulingAudit, 'accepted Sales intake must persist the manual-scheduling audit event');
+  assert.equal(schedulingAudit.beforeState.acreageDecimal, '2');
+  assert.equal(schedulingAudit.afterState.acreageDecimal, '2');
 
   const beforeLeadCount = await prisma.lead.count();
   const declined = await request(`/api/customers/sales/${created.data.customer.id}/leads`, {
@@ -323,7 +355,7 @@ test('Sales service view creates customer-linked manual leads and keeps strict g
     authorization: salesAuthorization,
     body: {
       acres: 2,
-      cropType: 'Rice',
+      cropType: serviceCrop.displayName,
       village: 'Sensitive out-of-area address',
       latitude: 10,
       longitude: 77.311,
@@ -345,30 +377,34 @@ test('Sales service view creates customer-linked manual leads and keeps strict g
 });
 
 test.after(async () => {
-  const assignments = await prisma.assignment.findMany({ where: { leadId: { in: ids.leads } }, select: { id: true, droneId: true, lmvId: true } });
-  const assignmentIds = assignments.map((assignment) => assignment.id);
-  await prisma.notificationEscalation.deleteMany({ where: { assignmentId: { in: assignmentIds } } });
-  await prisma.notification.deleteMany({ where: { leadId: { in: ids.leads } } });
-  await prisma.drone.updateMany({ where: { id: { in: assignments.map((assignment) => assignment.droneId) } }, data: { status: 'AVAILABLE' } });
-  await prisma.lMV.updateMany({ where: { id: { in: assignments.map((assignment) => assignment.lmvId).filter(Boolean) } }, data: { status: 'AVAILABLE' } });
-  await prisma.assignment.deleteMany({ where: { id: { in: assignmentIds } } });
-  await prisma.auditLog.deleteMany({
-    where: {
-      OR: [
-        { entityType: 'Lead', entityId: { in: ids.leads } },
-        { entityType: 'DeclinedEnquiry', entityId: { in: ids.enquiries } },
-        { entityType: 'Customer', entityId: { in: ids.customers } },
-      ],
-    },
+  await prisma.$transaction(async (transaction) => {
+    await transaction.$queryRaw`SELECT set_config('rfly.allow_history_mutation', 'on', true)`;
+    const assignments = await transaction.assignment.findMany({ where: { leadId: { in: ids.leads } }, select: { id: true, droneId: true, lmvId: true } });
+    const assignmentIds = assignments.map((assignment) => assignment.id);
+    await transaction.notificationEscalation.deleteMany({ where: { assignmentId: { in: assignmentIds } } });
+    await transaction.notification.deleteMany({ where: { leadId: { in: ids.leads } } });
+    await transaction.drone.updateMany({ where: { id: { in: assignments.map((assignment) => assignment.droneId) } }, data: { status: 'AVAILABLE' } });
+    await transaction.lMV.updateMany({ where: { id: { in: assignments.map((assignment) => assignment.lmvId).filter(Boolean) } }, data: { status: 'AVAILABLE' } });
+    await transaction.assignment.deleteMany({ where: { id: { in: assignmentIds } } });
+    await transaction.auditLog.deleteMany({
+      where: {
+        OR: [
+          { entityType: 'Lead', entityId: { in: ids.leads } },
+          { entityType: 'DeclinedEnquiry', entityId: { in: ids.enquiries } },
+          { entityType: 'Customer', entityId: { in: ids.customers } },
+        ],
+      },
+    });
+    await transaction.lead.deleteMany({ where: { id: { in: ids.leads } } });
+    await transaction.declinedEnquiry.deleteMany({ where: { id: { in: ids.enquiries } } });
+    await transaction.customer.deleteMany({ where: { id: { in: ids.customers } } });
+    await transaction.drone.deleteMany({ where: { id: { in: ids.drones } } });
+    await transaction.lMV.deleteMany({ where: { id: { in: ids.lmvs } } });
+    await transaction.user.deleteMany({ where: { id: { in: ids.users } } });
+    await transaction.operatingCenter.deleteMany({ where: { id: { in: ids.centers } } });
+    await transaction.pricingConfig.deleteMany({ where: { id: { in: ids.pricing } } });
+    await transaction.crop.deleteMany({ where: { id: { in: ids.crops } } });
   });
-  await prisma.lead.deleteMany({ where: { id: { in: ids.leads } } });
-  await prisma.declinedEnquiry.deleteMany({ where: { id: { in: ids.enquiries } } });
-  await prisma.customer.deleteMany({ where: { id: { in: ids.customers } } });
-  await prisma.user.deleteMany({ where: { id: { in: ids.users } } });
-  await prisma.drone.deleteMany({ where: { id: { in: ids.drones } } });
-  await prisma.lMV.deleteMany({ where: { id: { in: ids.lmvs } } });
-  await prisma.operatingCenter.deleteMany({ where: { id: { in: ids.centers } } });
-  await prisma.pricingConfig.deleteMany({ where: { id: { in: ids.pricing } } });
   await new Promise((resolve) => server.close(resolve));
   await prisma.$disconnect();
 });

@@ -5,6 +5,7 @@ npm-debug.log*
 !.env.example
 tests
 scripts
+prisma/seed.js
 data
 coverage
 .git

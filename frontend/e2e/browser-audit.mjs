@@ -13,6 +13,7 @@ const evidenceDir = path.join(rootDir, 'docs', 'test-evidence', 'browser-audit-2
 const frontendUrl = 'http://127.0.0.1:5180';
 const backendUrl = 'http://127.0.0.1:5100';
 const databaseName = 'rfly_daas_browser_test';
+if (!databaseName.endsWith('_test')) throw new Error('Browser audit database must end with _test');
 const edgePath = 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe';
 const prismaCli = path.join(backendDir, 'node_modules', 'prisma', 'build', 'index.js');
 const viteCli = path.join(frontendDir, 'node_modules', 'vite', 'bin', 'vite.js');
@@ -81,9 +82,11 @@ const databaseUrl = testDatabaseUrl(backendEnvFile.DATABASE_URL);
 const testPassword = crypto.randomBytes(24).toString('base64url');
 const jwtSecret = crypto.randomBytes(48).toString('base64url');
 const unique = Date.now().toString();
+const focusedCaseIds = new Set((process.env.BROWSER_AUDIT_CASES || '').split(',').map((value) => value.trim()).filter(Boolean));
 
-const databaseExists = run('docker', ['exec', 'rfly-postgres', 'psql', '-U', 'postgres', '-tAc', `SELECT 1 FROM pg_database WHERE datname='${databaseName}'`]);
-if (databaseExists.trim() !== '1') run('docker', ['exec', 'rfly-postgres', 'psql', '-U', 'postgres', '-v', 'ON_ERROR_STOP=1', '-c', `CREATE DATABASE ${databaseName}`]);
+run('docker', ['exec', 'rfly-postgres', 'psql', '-U', 'postgres', '-v', 'ON_ERROR_STOP=1', '-c', `DROP DATABASE IF EXISTS ${databaseName} WITH (FORCE)`]);
+run('docker', ['exec', 'rfly-postgres', 'psql', '-U', 'postgres', '-v', 'ON_ERROR_STOP=1', '-c', `CREATE DATABASE ${databaseName}`]);
+run('docker', ['exec', 'rfly-postgres', 'psql', '-U', 'postgres', '-v', 'ON_ERROR_STOP=1', '-c', `ALTER DATABASE ${databaseName} SET "rfly.allow_history_mutation" = 'on'`]);
 
 const databaseEnv = { ...process.env, DATABASE_URL: databaseUrl };
 run(process.execPath, [prismaCli, 'migrate', 'deploy'], { cwd: backendDir, env: databaseEnv });
@@ -99,14 +102,35 @@ const prisma = new PrismaClient();
   const centers = await prisma.operatingCenter.findMany({ orderBy: { createdAt: 'asc' } });
   const future = new Date(); future.setFullYear(future.getFullYear() + 2);
   for (const [index, center] of centers.entries()) {
-    for (let pilot = 0; pilot < 3; pilot += 1) await prisma.user.create({ data: { name: 'Browser Audit Pilot ' + (index + 1) + '-' + (pilot + 1), email: 'browser-pilot-' + index + '-' + pilot + '@example.invalid', passwordHash, role: 'PILOT', homeCenterId: center.id, pilotLicenseExpiry: future } });
-    for (let drone = 0; drone < 4; drone += 1) await prisma.drone.create({ data: { model: 'Browser Audit Drone', serialNumber: 'E2E-' + index + '-' + drone, status: 'AVAILABLE', homeCenterId: center.id, airworthinessExpiry: future } });
+    for (let pilot = 0; pilot < 4; pilot += 1) await prisma.user.create({ data: { name: 'Browser Audit Pilot ' + (index + 1) + '-' + (pilot + 1), email: 'browser-pilot-' + index + '-' + pilot + '@example.invalid', passwordHash, role: 'PILOT', homeCenterId: center.id, pilotLicenseExpiry: future } });
+    for (let drone = 0; drone < 4; drone += 1) await prisma.drone.create({ data: { model: 'Browser Audit Drone', serialNumber: 'E2E-' + index + '-' + drone, uin: 'E2E-UIN-' + index + '-' + drone + '-' + process.env.E2E_UNIQUE, status: 'AVAILABLE', homeCenterId: center.id, airworthinessExpiry: future } });
+    for (let lmv = 0; lmv < 2; lmv += 1) await prisma.lMV.create({ data: { registrationNo: 'E2E-LMV-' + index + '-' + lmv + '-' + process.env.E2E_UNIQUE, status: 'AVAILABLE', homeCenterId: center.id } });
   }
+  const center = centers[0];
+  const pilots = await prisma.user.findMany({ where: { role: 'PILOT', homeCenterId: center.id, name: { startsWith: 'Browser Audit Pilot' } }, orderBy: { email: 'asc' }, take: 4 });
+  const drones = await prisma.drone.findMany({ where: { homeCenterId: center.id, serialNumber: { startsWith: 'E2E-' } }, orderBy: { serialNumber: 'asc' }, take: 2 });
+  const lmvs = await prisma.lMV.findMany({ where: { homeCenterId: center.id, registrationNo: { startsWith: 'E2E-LMV-' } }, orderBy: { registrationNo: 'asc' }, take: 2 });
+  const start = new Date(); start.setHours(9, 0, 0, 0);
+  const end = new Date(start.getTime() + 120 * 60_000);
+  const scheduledLead = await prisma.lead.create({ data: { farmerName: 'AA Browser Scheduled', farmerPhone: '+919000012346', acreage: 3, intakeChannel: 'MANUAL_SALES', status: 'SCHEDULED', latitude: center.latitude, longitude: center.longitude, matchedCenterId: center.id } });
+  await prisma.assignment.create({ data: { leadId: scheduledLead.id, pilotId: pilots[0].id, copilotId: pilots[1].id, droneId: drones[0].id, lmvId: lmvs[0].id, scheduledDate: start, serviceWindowStart: start, serviceWindowEnd: end, dailySequence: 1, expectedAcreage: 3, autoAssigned: false } });
+  const secondStart = new Date(start.getTime() + 4 * 60 * 60_000);
+  const secondEnd = new Date(secondStart.getTime() + 120 * 60_000);
+  const secondLead = await prisma.lead.create({ data: { farmerName: 'AA Browser Conflict', farmerPhone: '+919000012347', acreage: 2, intakeChannel: 'MANUAL_SALES', status: 'SCHEDULED', latitude: center.latitude, longitude: center.longitude, matchedCenterId: center.id } });
+  await prisma.assignment.create({ data: { leadId: secondLead.id, pilotId: pilots[2].id, copilotId: pilots[3].id, droneId: drones[1].id, lmvId: lmvs[1].id, scheduledDate: secondStart, serviceWindowStart: secondStart, serviceWindowEnd: secondEnd, dailySequence: 2, expectedAcreage: 2, autoAssigned: false } });
+  const thirdStart = new Date(start.getTime() + 10 * 60 * 60_000);
+  const thirdEnd = new Date(thirdStart.getTime() + 60 * 60_000);
+  const thirdLead = await prisma.lead.create({ data: { farmerName: 'AA Browser Sequence', farmerPhone: '+919000012348', acreage: 1, intakeChannel: 'MANUAL_SALES', status: 'SCHEDULED', latitude: center.latitude, longitude: center.longitude, matchedCenterId: center.id } });
+  await prisma.assignment.create({ data: { leadId: thirdLead.id, pilotId: pilots[2].id, copilotId: pilots[3].id, droneId: drones[1].id, lmvId: lmvs[1].id, scheduledDate: thirdStart, serviceWindowStart: thirdStart, serviceWindowEnd: thirdEnd, dailySequence: 3, expectedAcreage: 1, autoAssigned: false } });
+  const terminalStart = new Date(start); terminalStart.setHours(7, 0, 0, 0);
+  const terminalEnd = new Date(terminalStart.getTime() + 60 * 60_000);
+  const terminalLead = await prisma.lead.create({ data: { farmerName: 'AA Browser Completed', farmerPhone: '+919000012349', acreage: 1, intakeChannel: 'MANUAL_SALES', status: 'COMPLETED', latitude: center.latitude, longitude: center.longitude, matchedCenterId: center.id } });
+  await prisma.assignment.create({ data: { leadId: terminalLead.id, pilotId: pilots[0].id, copilotId: pilots[1].id, droneId: drones[0].id, lmvId: lmvs[0].id, scheduledDate: terminalStart, serviceWindowStart: terminalStart, serviceWindowEnd: terminalEnd, dailySequence: 99, expectedAcreage: 1, actualAcreage: 1, autoAssigned: false, startedAt: terminalStart, completedAt: terminalEnd } });
   const users = await prisma.user.findMany({ select: { id: true, email: true, name: true, role: true, homeCenterId: true }, orderBy: { createdAt: 'asc' } });
   console.log(JSON.stringify(users));
 })().catch((error) => { console.error(error); process.exitCode = 1; }).finally(() => prisma.$disconnect());
 `;
-const users = JSON.parse(run(process.execPath, ['-e', fixtureScript], { cwd: backendDir, env: { ...databaseEnv, E2E_PASSWORD: testPassword } }));
+const users = JSON.parse(run(process.execPath, ['-e', fixtureScript], { cwd: backendDir, env: { ...databaseEnv, E2E_PASSWORD: testPassword, E2E_UNIQUE: unique } }));
 const firstRole = (role) => users.find((user) => user.role === role);
 const roleUsers = {
   ADMIN: firstRole('ADMIN'),
@@ -121,6 +145,8 @@ const backendProcess = startProcess(process.execPath, ['server.js'], {
     ...process.env,
     DATABASE_URL: databaseUrl,
     PORT: '5100',
+    CORS_ALLOWED_ORIGINS: frontendUrl,
+    OPERATING_TIME_ZONE: 'UTC',
     JWT_SECRET: jwtSecret,
     FORM_WEBHOOK_SECRET: crypto.randomBytes(24).toString('base64url'),
     WHATSAPP_API_KEY: '',
@@ -169,6 +195,7 @@ async function login(page, user, expectedPath) {
 }
 
 async function runCase(id, name, implementation, contextOptions = {}) {
+  if (focusedCaseIds.size && !focusedCaseIds.has(id)) return;
   const { allowedConsoleErrors = [], ...browserContextOptions } = contextOptions;
   const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, ...browserContextOptions });
   const page = await context.newPage();
@@ -211,6 +238,157 @@ try {
   await waitForUrl(`${backendUrl}/api/health`);
   await waitForUrl(frontendUrl);
   browser = await chromium.launch({ executablePath: edgePath, headless: true });
+
+  await runCase('AA-UI-01', 'Policy controls are role-correct and Admin updates are revision protected', async (page) => {
+    await login(page, roleUsers.ADMIN, '/admin');
+    await page.getByRole('button', { name: 'Auto-assignment policy' }).click();
+    const panel = page.locator('section').filter({ has: page.getByRole('heading', { name: 'Auto-assignment policy' }) }).last();
+    await panel.getByText(/Policy revision:/).waitFor();
+    const before = await panel.getByText(/Policy revision:/).innerText();
+    const updateResponse = page.waitForResponse((response) => response.url().endsWith('/api/auto-assignment-policy') && response.request().method() === 'PUT');
+    await panel.getByRole('button', { name: 'Save policy' }).click();
+    assert.equal((await updateResponse).status(), 200);
+    await panel.getByText('Scheduling policy saved.').waitFor();
+    const after = await panel.getByText(/Policy revision:/).innerText();
+    assert.notEqual(after, before);
+
+    const fleetContext = await browser.newContext({ viewport: { width: 1200, height: 800 } });
+    const fleetPage = await fleetContext.newPage();
+    try {
+      await login(fleetPage, roleUsers.FLEET_MANAGER, '/fleet-manager');
+      await fleetPage.getByRole('heading', { name: 'Auto-assignment policy' }).waitFor();
+      assert.equal(await fleetPage.getByRole('button', { name: 'Save policy' }).count(), 0);
+    } finally { await fleetContext.close(); }
+
+    const salesContext = await browser.newContext({ viewport: { width: 1200, height: 800 } });
+    const salesPage = await salesContext.newPage();
+    try {
+      await login(salesPage, roleUsers.SALES, '/marketing');
+      await salesPage.getByText(/Auto-assignment policy: Automatic/).waitFor();
+    } finally { await salesContext.close(); }
+    return { before, after };
+  });
+
+  await runCase('AA-UI-02', 'Fleet calendar uses bounded requests and persists window and unit edits', async (page) => {
+    const assignmentRequests = [];
+    page.on('request', (request) => { if (request.url().includes('/api/assignments/all')) assignmentRequests.push(request.url()); });
+    await login(page, roleUsers.FLEET_MANAGER, '/fleet-manager');
+    await page.getByRole('heading', { name: 'Pilot calendar' }).waitFor();
+    await page.getByText('AA Browser Scheduled', { exact: false }).first().click();
+    const editor = page.getByLabel('Assignment editor');
+    await editor.getByRole('heading', { name: 'Assignment details' }).waitFor();
+    const inputs = editor.locator('input[type="datetime-local"]');
+    const originalStart = await inputs.nth(0).inputValue();
+    const originalEnd = await inputs.nth(1).inputValue();
+    assert.notEqual(originalStart, originalEnd);
+    const updatedEndDate = new Date(originalEnd);
+    updatedEndDate.setMinutes(updatedEndDate.getMinutes() + 30);
+    const updatedEnd = localDateTimeValue(updatedEndDate);
+    await inputs.nth(1).fill(updatedEnd);
+    const pilotOptions = editor.locator('select').nth(0).locator('option');
+    const droneOptions = editor.locator('select').nth(2).locator('option');
+    assert.ok(await pilotOptions.count() >= 3);
+    assert.ok(await droneOptions.count() >= 2);
+    const replacementPilot = users.find((user) => user.name === 'Browser Audit Pilot 1-3')?.id;
+    assert.ok(replacementPilot, 'No distinct replacement Pilot was available');
+    const replacementDrone = await droneOptions.filter({ hasText: 'E2E-0-1' }).getAttribute('value');
+    assert.ok(replacementDrone, 'No replacement drone was available');
+    const replacementCopilot = users.find((user) => user.name === 'Browser Audit Pilot 1-4')?.id;
+    assert.ok(replacementCopilot, 'No replacement Copilot was available');
+    const replacementLmv = await editor.locator('select').nth(3).locator('option').filter({ hasText: 'E2E-LMV-0-1-' }).getAttribute('value');
+    assert.ok(replacementLmv, 'No replacement LMV was available');
+    await editor.locator('select').nth(0).selectOption(replacementPilot);
+    await editor.locator('select').nth(1).selectOption(replacementCopilot);
+    await editor.locator('select').nth(2).selectOption(replacementDrone);
+    await editor.locator('select').nth(3).selectOption(replacementLmv);
+    await editor.locator('input[type="number"]').fill('3');
+    await editor.locator('textarea').fill('Browser acceptance scheduling adjustment');
+    const saveResponse = page.waitForResponse((response) => response.url().includes('/api/assignments/') && response.url().endsWith('/reschedule') && response.request().method() === 'PUT');
+    const sequenceResponse = page.waitForResponse((response) => response.url().includes('/api/assignments/') && response.url().endsWith('/sequence') && response.request().method() === 'PATCH');
+    const refreshResponse = page.waitForResponse((response) => response.url().includes('/api/assignments/all?') && response.request().method() === 'GET');
+    await editor.getByRole('button', { name: 'Validate and save changes' }).click();
+    const saved = await saveResponse;
+    const savedBody = await saved.json().catch(() => ({}));
+    assert.equal(saved.status(), 200, JSON.stringify(savedBody));
+    const sequenced = await sequenceResponse;
+    const sequencedBody = await sequenced.json().catch(() => ({}));
+    assert.equal(sequenced.status(), 200, JSON.stringify(sequencedBody));
+    await refreshResponse;
+    await page.getByRole('alert').getByText(/window and operational unit were updated/i).waitFor();
+    await page.getByText('AA Browser Scheduled', { exact: false }).first().click();
+    const persistedEnd = await page.getByLabel('Assignment editor').locator('input[type="datetime-local"]').nth(1).inputValue();
+    const persistedSequence = await page.getByLabel('Assignment editor').locator('input[type="number"]').inputValue();
+    assert.equal(persistedEnd, updatedEnd);
+    assert.equal(persistedSequence, '3', JSON.stringify({ saved: savedBody.mission || savedBody.assignment || savedBody, sequenced: sequencedBody.mission || sequencedBody.assignment || sequencedBody }));
+    assert.ok(assignmentRequests.some((url) => url.includes('from=') && url.includes('to=')), `Calendar requests were not bounded: ${assignmentRequests.join(', ')}`);
+    return { originalStart, originalEnd, persistedEnd, persistedSequence, boundedRequests: assignmentRequests.length };
+  });
+
+  await runCase('AA-UI-03', 'Overlap rejection preserves the original persisted calendar window', async (page) => {
+    await login(page, roleUsers.FLEET_MANAGER, '/fleet-manager');
+    await page.getByRole('heading', { name: 'Pilot calendar' }).waitFor();
+    await page.getByText('AA Browser Scheduled', { exact: false }).first().click();
+    const editor = page.getByLabel('Assignment editor');
+    const inputs = editor.locator('input[type="datetime-local"]');
+    const originalStart = await inputs.nth(0).inputValue();
+    const originalEnd = await inputs.nth(1).inputValue();
+    const conflictDate = new Date(); conflictDate.setHours(13, 0, 0, 0);
+    const conflictStart = localDateTimeValue(conflictDate);
+    const conflictEnd = localDateTimeValue(new Date(conflictDate.getTime() + 120 * 60_000));
+    await inputs.nth(0).fill(conflictStart);
+    await inputs.nth(1).fill(conflictEnd);
+    await editor.locator('textarea').fill('Browser overlap rejection proof');
+    const rejectedResponse = page.waitForResponse((response) => response.url().includes('/api/assignments/') && response.url().endsWith('/reschedule') && response.request().method() === 'PUT');
+    await editor.getByRole('button', { name: 'Validate and save changes' }).click();
+    assert.equal((await rejectedResponse).status(), 409);
+    await page.getByRole('alert').waitFor();
+    await editor.getByRole('button', { name: 'Close' }).click();
+    await page.getByRole('button', { name: 'Next' }).click();
+    await page.getByRole('button', { name: 'Back' }).click();
+    await page.getByText('AA Browser Scheduled', { exact: false }).first().click();
+    const persistedInputs = page.getByLabel('Assignment editor').locator('input[type="datetime-local"]');
+    assert.equal(await persistedInputs.nth(0).inputValue(), originalStart);
+    assert.equal(await persistedInputs.nth(1).inputValue(), originalEnd);
+    return { originalStart, originalEnd, rejectedStart: conflictStart, rejectedEnd: conflictEnd };
+  }, { allowedConsoleErrors: [/status of 409 \(Conflict\)/] });
+
+  await runCase('AA-UI-04', 'Manual queue remains keyboard-operable without calendar drag', async (page) => {
+    await login(page, roleUsers.FLEET_MANAGER, '/fleet-manager');
+    const card = page.locator('.queue-card').filter({ hasText: 'Sample NEEDS_MANUAL_SCHEDULING' });
+    await card.getByRole('button', { name: 'Choose crew and time' }).focus();
+    await page.keyboard.press('Enter');
+    const form = page.getByRole('button', { name: 'Add to daily schedule' }).locator('xpath=ancestor::form');
+    await form.waitFor();
+    const selects = form.locator('select');
+    for (let index = 0; index < 4; index += 1) await selects.nth(index).selectOption({ index: 1 });
+    const dateInputs = form.locator('input[type="datetime-local"]');
+    const day = new Date(); day.setHours(16, 0, 0, 0);
+    await dateInputs.nth(0).fill(localDateTimeValue(day));
+    await dateInputs.nth(1).fill(localDateTimeValue(new Date(day.getTime() + 120 * 60_000)));
+    const response = page.waitForResponse((item) => item.url().endsWith('/api/assignments/manual') && item.request().method() === 'POST');
+    await form.getByRole('button', { name: 'Add to daily schedule' }).focus();
+    await page.keyboard.press('Enter');
+    assert.equal((await response).status(), 201);
+    await page.getByRole('alert').getByText(/added to the crew's daily schedule/i).waitFor();
+    await card.waitFor({ state: 'detached' });
+    assert.equal(await card.count(), 0);
+    return { keyboardActivated: true };
+  });
+
+  await runCase('AA-UI-05', 'Calendar view changes remain bounded and terminal jobs are opt-in', async (page) => {
+    const assignmentRequests = [];
+    page.on('request', (request) => { if (request.url().includes('/api/assignments/all')) assignmentRequests.push(request.url()); });
+    await login(page, roleUsers.FLEET_MANAGER, '/fleet-manager');
+    await page.getByRole('heading', { name: 'Pilot calendar' }).waitFor();
+    assert.equal(await page.getByText('AA Browser Completed', { exact: false }).count(), 0);
+    await page.getByRole('button', { name: 'Week' }).click();
+    await page.getByRole('button', { name: 'Day', exact: true }).click();
+    await page.getByLabel('Show terminal jobs').check();
+    await page.getByText('AA Browser Completed', { exact: false }).first().waitFor();
+    assert.ok(assignmentRequests.length >= 3);
+    assert.ok(assignmentRequests.every((url) => url.includes('from=') && url.includes('to=')), assignmentRequests.join(', '));
+    return { views: ['month', 'week', 'day'], boundedRequests: assignmentRequests.length, terminalOptIn: true };
+  });
 
   await runCase('PUB-01', 'Landing page renders and all five languages switch visibly', async (page) => {
     await page.goto(frontendUrl, { waitUntil: 'domcontentloaded' });
@@ -681,4 +859,12 @@ try {
   const summary = { generatedAt: new Date().toISOString(), database: databaseName, frontendUrl, backendUrl, totals: { tests: results.length, passed: results.filter((item) => item.status === 'PASS').length, failed: results.filter((item) => item.status === 'FAIL').length }, results };
   fs.writeFileSync(path.join(evidenceDir, 'results.json'), JSON.stringify(summary, null, 2));
   console.log(JSON.stringify(summary, null, 2));
+  run('docker', ['exec', 'rfly-postgres', 'psql', '-U', 'postgres', '-v', 'ON_ERROR_STOP=1', '-c', `DROP DATABASE IF EXISTS ${databaseName} WITH (FORCE)`]);
+  if (summary.totals.failed) process.exitCode = 1;
+}
+
+function localDateTimeValue(date) {
+  const value = new Date(date);
+  value.setMinutes(value.getMinutes() - value.getTimezoneOffset());
+  return value.toISOString().slice(0, 16);
 }

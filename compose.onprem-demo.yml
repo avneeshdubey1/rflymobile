@@ -1,5 +1,5 @@
 # Demo-only override for the shared office server described in
-# docs/SERVER_HANDOFF_FOR_CODEX.md.
+# the current office production stack. Operational guidance is in deploy/README.md.
 #
 # Use only with compose.production.yml:
 #   docker compose --env-file /opt/client-demo-app/deployment.env \

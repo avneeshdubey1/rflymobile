@@ -10,8 +10,10 @@ let baseUrl;
 let admin;
 let fleet;
 let pilot;
+let copilot;
 let centerA;
 let centerB;
+let preferredDrone;
 let lead;
 let drone;
 let lmv;
@@ -31,9 +33,10 @@ test.before(async () => {
     prisma.operatingCenter.create({ data: { name: `Release Centre A ${runId}`, latitude: 10, longitude: 76, radiusKm: 50 } }),
     prisma.operatingCenter.create({ data: { name: `Release Centre B ${runId}`, latitude: 11, longitude: 77, radiusKm: 50 } }),
   ]);
-  [admin, fleet] = await Promise.all([
+  [admin, fleet, copilot] = await Promise.all([
     prisma.user.create({ data: { name: 'Release Admin', email: `release-admin-${runId}@example.test`, passwordHash: 'test', role: 'ADMIN' } }),
     prisma.user.create({ data: { name: 'Release Fleet', email: `release-fleet-${runId}@example.test`, passwordHash: 'test', role: 'FLEET_MANAGER' } }),
+    prisma.user.create({ data: { name: 'Release Copilot', email: `release-copilot-${runId}@example.test`, passwordHash: 'test', role: 'PILOT', homeCenterId: centerB.id } }),
   ]);
 });
 
@@ -51,6 +54,16 @@ test('Admin cannot create a centerless pilot and Fleet can maintain pilot center
   });
   assert.equal(missingCenter.status, 400);
 
+  preferredDrone = await prisma.drone.create({
+    data: {
+      model: 'Release Preferred Drone',
+      serialNumber: `RELEASE-PREFERRED-${runId}`,
+      uin: `UIN-RELEASE-PREFERRED-${runId}`,
+      status: 'AVAILABLE',
+      homeCenterId: centerA.id,
+    },
+  });
+
   const createdResponse = await fetch(`${baseUrl}/api/users/add`, {
     method: 'POST',
     headers: auth(admin),
@@ -60,12 +73,44 @@ test('Admin cannot create a centerless pilot and Fleet can maintain pilot center
       password,
       role: 'PILOT',
       homeCenterId: centerA.id,
+      idProof: `ID-${runId}`,
+      licenseId: `LIC-${runId}`,
+      addressLine1: 'Test Address',
+      state: 'Andhra Pradesh',
+      city: 'Vijayawada',
+      pincode: '520001',
+      assignedDroneId: preferredDrone.id,
     }),
   });
   const created = await createdResponse.json();
   assert.equal(createdResponse.status, 201, JSON.stringify(created));
   pilot = created.user;
   assert.equal(pilot.homeCenterId, centerA.id);
+  assert.equal(pilot.assignedDroneId, preferredDrone.id);
+
+  const adminMovedResponse = await fetch(`${baseUrl}/api/users/${pilot.id}`, {
+    method: 'PATCH',
+    headers: auth(admin),
+    body: JSON.stringify({ homeCenterId: centerB.id, assignedDroneId: preferredDrone.id }),
+  });
+  const adminMoved = await adminMovedResponse.json();
+  assert.equal(adminMovedResponse.status, 200, JSON.stringify(adminMoved));
+  assert.equal(adminMoved.user.homeCenterId, centerB.id);
+  assert.equal(adminMoved.user.assignedDroneId, null);
+
+  const returnedResponse = await fetch(`${baseUrl}/api/users/${pilot.id}/operating-center`, {
+    method: 'PATCH',
+    headers: auth(admin),
+    body: JSON.stringify({ homeCenterId: centerA.id }),
+  });
+  assert.equal(returnedResponse.status, 200, JSON.stringify(await returnedResponse.json()));
+
+  const preferredResponse = await fetch(`${baseUrl}/api/users/${pilot.id}`, {
+    method: 'PATCH',
+    headers: auth(admin),
+    body: JSON.stringify({ assignedDroneId: preferredDrone.id }),
+  });
+  assert.equal(preferredResponse.status, 200, JSON.stringify(await preferredResponse.json()));
 
   const movedResponse = await fetch(`${baseUrl}/api/users/${pilot.id}/operating-center`, {
     method: 'PATCH',
@@ -75,6 +120,7 @@ test('Admin cannot create a centerless pilot and Fleet can maintain pilot center
   const moved = await movedResponse.json();
   assert.equal(movedResponse.status, 200, JSON.stringify(moved));
   assert.equal(moved.user.homeCenterId, centerB.id);
+  assert.equal(moved.user.assignedDroneId, null);
   assert.ok(await prisma.auditLog.findFirst({
     where: { entityType: 'User', entityId: pilot.id, action: 'PILOT_OPERATING_CENTER_CHANGED', actorId: fleet.id },
   }));
@@ -117,6 +163,8 @@ test('an active pilot cannot move centers; completion releases fleet without cre
       data: {
         model: 'Release Drone',
         serialNumber: `RELEASE-DRONE-${runId}`,
+        // change 5-8-26
+        uin: `UIN-RELEASE-2950-${Date.now()}`,
         status: 'ASSIGNED',
         homeCenterId: centerB.id,
       },
@@ -133,6 +181,7 @@ test('an active pilot cannot move centers; completion releases fleet without cre
     data: {
       leadId: lead.id,
       pilotId: pilot.id,
+      copilotId: copilot.id,
       droneId: drone.id,
       lmvId: lmv.id,
       scheduledDate: new Date(),
@@ -208,7 +257,8 @@ test.after(async () => {
     await prisma.auditLog.deleteMany({ where: { entityId: pilot.id } });
     await prisma.user.delete({ where: { id: pilot.id } });
   }
-  await prisma.user.deleteMany({ where: { id: { in: [admin.id, fleet.id] } } });
+  if (preferredDrone) await prisma.drone.delete({ where: { id: preferredDrone.id } });
+  await prisma.user.deleteMany({ where: { id: { in: [admin.id, fleet.id, copilot.id] } } });
   await prisma.operatingCenter.deleteMany({ where: { id: { in: [centerA.id, centerB.id] } } });
   await new Promise((resolve) => server.close(resolve));
   await prisma.$disconnect();

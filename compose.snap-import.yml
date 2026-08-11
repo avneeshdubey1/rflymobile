@@ -1,0 +1,20 @@
+# Compatibility overlay for the office server's snap-packaged Docker engine.
+#
+# That engine rejects every process launch when no-new-privileges is enabled,
+# before the importer can execute. Apply this file last and only on that host.
+# All other importer containment remains inherited from compose.import.yml:
+# non-root UID/GID, read-only root filesystem and inputs, dropped capabilities,
+# tmpfs scratch space, resource limits, and the service-specific network policy.
+
+services:
+  importer-preflight:
+    security_opt: !reset []
+
+  importer:
+    security_opt: !reset []
+
+  drone-importer-preflight:
+    security_opt: !reset []
+
+  drone-importer:
+    security_opt: !reset []

@@ -49,7 +49,6 @@ docs/
 .agents/
 .codex/
 .vscode/
-AGENTS.md
 *context*.md
 *placeholder*.md
 *hardening*.md
@@ -90,3 +89,12 @@ PaaS_Demo-main_OLD__emp/
 # Scratch/context files created while coding
 *-startup.log
 *-startup.err.log
+
+# The repository entry point and canonical live guidance must be available to
+# every developer and coding agent. Everything else under docs remains local.
+!AGENTS.md
+!docs/
+docs/*
+!docs/plan/
+!docs/plan/**
+!docs/MIGRATION_ON_MAIN.md
