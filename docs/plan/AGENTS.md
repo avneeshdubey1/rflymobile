@@ -24,6 +24,15 @@ kept under `docs/unrealted_docs_for_current_version/` and is never authoritative
    Fleet calendar behaviour, or scheduling tests.
 8. Before importing or changing live data, read
    [../MIGRATION_ON_MAIN.md](../MIGRATION_ON_MAIN.md) and follow it exactly.
+9. Before adding another repository or application to the shared office server,
+   read [SHARED_ONPREM_CICD_SERVER_HANDOFF.md](SHARED_ONPREM_CICD_SERVER_HANDOFF.md)
+   and preserve its runner, path, port, volume, network and secret isolation.
+10. Before changing the Pilot API, mobile authentication, offline mission
+    synchronization, Android application, or Play release workflow, read
+    [PILOT_ANDROID_APP_IMPLEMENTATION_PLAN.md](PILOT_ANDROID_APP_IMPLEMENTATION_PLAN.md),
+    then use
+    [PILOT_ANDROID_APP_MICROTASKS.md](PILOT_ANDROID_APP_MICROTASKS.md) as the
+    dependency-ordered execution workbook.
 
 Do not treat a dated report, a legacy document, a seed value, or current application behaviour as an approved requirement when it conflicts with these documents.
 
@@ -53,7 +62,7 @@ Do not treat a dated report, a legacy document, a seed value, or current applica
 - The product is customer-neutral. One isolated application stack, database/volume, secret set, and domain serve one operating company.
 - Phone-based Sales intake is primary. The public booking form is secondary. Google Form/surveyor intake is being retired.
 - Every intake channel must pass strict service-area validation. Out-of-area work is declined; there is no appeal, transport-fee negotiation, or exception scheduling path.
-- The approved target operational unit reserves a primary Pilot, a Copilot, one drone, and one LMV. Both crew members share driving and field duties, and the unit may receive multiple explicitly ordered jobs per day. The current single-Pilot assignment model is an implementation gap.
+- The operational unit reserves a primary Pilot, a Copilot, one drone, and one LMV. Both crew members share driving and field duties, and the unit may receive multiple explicitly ordered jobs per day. This server-side assignment model is implemented and frozen by the Pilot mobile Phase M00 baseline; mobile work must preserve it.
 - Every Pilot must belong to an active operating centre before account creation. Admin and Fleet may change that centre only while the Pilot has no active assignment.
 - Operational chat follows `Admin > Fleet Manager > Sales > Pilot`: a higher role may open a direct chat only with a lower role, the higher role sends the first message, and only Admin may close a chat.
 - Mission completion releases the drone and LMV immediately. Billing is a separate workflow and cannot hold fleet resources.

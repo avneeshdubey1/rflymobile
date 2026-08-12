@@ -12,6 +12,8 @@ let pilot;
 let copilot;
 let drone;
 let lmv;
+let unrelatedDrone;
+let unrelatedLmv;
 
 async function createLead(label, data = {}) {
   const lead = await prisma.lead.create({
@@ -42,12 +44,14 @@ test.before(async () => {
     prisma.user.create({ data: { name: 'Phase 25 Copilot', email: `phase25-copilot-${runId}@example.test`, passwordHash: 'test', role: 'PILOT', homeCenterId: center.id } }),
   ]);
   ids.users.push(fleet.id, pilot.id, copilot.id);
-  [drone, lmv] = await Promise.all([
+  [drone, lmv, unrelatedDrone, unrelatedLmv] = await Promise.all([
     prisma.drone.create({ data: { model: 'Atomic', serialNumber: `PHASE25-DRONE-${runId}`, uin: `PHASE25-UIN-${runId}`, homeCenterId: center.id } }),
     prisma.lMV.create({ data: { registrationNo: `PHASE25-LMV-${runId}`, homeCenterId: center.id } }),
+    prisma.drone.create({ data: { model: 'Unrelated', serialNumber: `PHASE25-UNRELATED-DRONE-${runId}`, uin: `PHASE25-UNRELATED-UIN-${runId}`, homeCenterId: center.id, status: 'MAINTENANCE' } }),
+    prisma.lMV.create({ data: { registrationNo: `PHASE25-UNRELATED-LMV-${runId}`, homeCenterId: center.id, status: 'OUT_OF_SERVICE' } }),
   ]);
-  ids.drones.push(drone.id);
-  ids.lmvs.push(lmv.id);
+  ids.drones.push(drone.id, unrelatedDrone.id);
+  ids.lmvs.push(lmv.id, unrelatedLmv.id);
 });
 
 test('a failure after service-area revalidation rolls every scheduling write back', async () => {
@@ -192,14 +196,20 @@ test('one crew unit can run ordered same-day jobs, but cannot start them out of 
   await missionStateService.complete(second.assignment.id, copilot.id, 2);
   assert.equal((await prisma.drone.findUnique({ where: { id: drone.id } })).status, 'AVAILABLE');
   assert.equal((await prisma.lMV.findUnique({ where: { id: lmv.id } })).status, 'AVAILABLE');
-  const [completedLeadHistory, completedDroneHistory, completedLmvHistory] = await Promise.all([
+  const [completedLeadHistory, completedDroneHistory, completedLmvHistory, completionAudit, unrelatedDroneAfter, unrelatedLmvAfter] = await Promise.all([
     prisma.leadHistory.findFirst({ where: { leadId: secondLead.id }, orderBy: { version: 'desc' } }),
     prisma.droneHistory.findFirst({ where: { droneId: drone.id }, orderBy: { version: 'desc' } }),
     prisma.lMVHistory.findFirst({ where: { lmvId: lmv.id }, orderBy: { version: 'desc' } }),
+    prisma.auditLog.findFirst({ where: { entityId: second.assignment.id, action: 'MISSION_COMPLETED' } }),
+    prisma.drone.findUnique({ where: { id: unrelatedDrone.id } }),
+    prisma.lMV.findUnique({ where: { id: unrelatedLmv.id } }),
   ]);
   assert.equal(completedLeadHistory.actorUserId, copilot.id);
   assert.equal(completedDroneHistory.actorUserId, copilot.id);
   assert.equal(completedLmvHistory.actorUserId, copilot.id);
+  assert.equal(completionAudit.actorId, copilot.id);
+  assert.equal(unrelatedDroneAfter.status, 'MAINTENANCE');
+  assert.equal(unrelatedLmvAfter.status, 'OUT_OF_SERVICE');
 });
 
 test('decommission atomically flags the lead, retires the drone from service, releases the LMV, and records the event', async () => {
@@ -228,6 +238,7 @@ test('decommission atomically flags the lead, retires the drone from service, re
   assert.equal(storedDrone.status, 'MAINTENANCE');
   assert.equal(storedLmv.status, 'AVAILABLE');
   assert.ok(event);
+  assert.equal(event.actorId, copilot.id);
   assert.ok(fleetNotice);
   assert.equal(droneHistory.actorUserId, copilot.id);
   assert.equal(lmvHistory.actorUserId, copilot.id);
