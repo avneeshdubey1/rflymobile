@@ -1,0 +1,21 @@
+{
+  "success": true,
+  "session": {
+    "accessToken": "__GENERATED_TOKEN__",
+    "tokenType": "Bearer",
+    "idleExpiresAt": "2026-08-12T08:30:00.000Z",
+    "absoluteExpiresAt": "2026-08-12T16:00:00.000Z"
+  },
+  "installation": {
+    "id": "00000000-0000-4000-8000-000000000010",
+    "platform": "ANDROID",
+    "appVersion": "1.0.0"
+  },
+  "profile": {
+    "id": "00000000-0000-4000-8000-000000000001",
+    "displayName": "Example Pilot",
+    "employeeCode": "EXAMPLE-PILOT",
+    "preferredLanguage": "en",
+    "homeCenterId": "00000000-0000-4000-8000-000000000020"
+  }
+}

@@ -1,0 +1,305 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rfly.invalid/contracts/mobile/v1/mobile-api.schema.json",
+  "title": "RFLY Pilot Mobile API v1 contract",
+  "$defs": {
+    "uuid": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "decimal": {
+      "type": "string",
+      "pattern": "^(0|[1-9]\\d*)(\\.\\d{1,2})?$"
+    },
+    "pilotProfile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "displayName", "employeeCode", "preferredLanguage", "homeCenterId"],
+      "properties": {
+        "id": { "$ref": "#/$defs/uuid" },
+        "displayName": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "employeeCode": { "type": ["string", "null"], "maxLength": 80 },
+        "preferredLanguage": { "type": "string", "minLength": 2, "maxLength": 12 },
+        "homeCenterId": { "$ref": "#/$defs/uuid" }
+      }
+    },
+    "operatingCenter": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "code", "displayName"],
+      "properties": {
+        "id": { "$ref": "#/$defs/uuid" },
+        "code": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "displayName": { "type": "string", "minLength": 1, "maxLength": 160 }
+      }
+    },
+    "crewMember": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "displayName", "crewRole"],
+      "properties": {
+        "id": { "$ref": "#/$defs/uuid" },
+        "displayName": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "crewRole": { "enum": ["PRIMARY_PILOT", "COPILOT"] }
+      }
+    },
+    "assignment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id", "leadId", "revision", "status", "dailySequence",
+        "serviceWindowStart", "serviceWindowEnd", "farmer", "farm", "crop",
+        "expectedAcreage", "actualAcreage", "crew", "drone", "lmv", "operatingCenter",
+        "operationalNotes", "updatedAt", "allowedActions"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/uuid" },
+        "leadId": { "$ref": "#/$defs/uuid" },
+        "revision": { "type": "integer", "minimum": 1 },
+        "status": { "enum": ["SCHEDULED", "PILOT_ACCEPTED", "IN_PROGRESS", "COMPLETED", "CANCELLED", "FLAGGED"] },
+        "dailySequence": { "type": "integer", "minimum": 1 },
+        "serviceWindowStart": { "$ref": "#/$defs/timestamp" },
+        "serviceWindowEnd": { "$ref": "#/$defs/timestamp" },
+        "farmer": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["displayName", "operationalPhone"],
+          "properties": {
+            "displayName": { "type": "string", "minLength": 1, "maxLength": 120 },
+            "operationalPhone": { "type": "string", "pattern": "^\\+[1-9]\\d{7,14}$" }
+          }
+        },
+        "farm": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["displayAddress", "plusCode", "latitude", "longitude"],
+          "properties": {
+            "displayAddress": { "type": "string", "minLength": 1, "maxLength": 300 },
+            "plusCode": { "type": ["string", "null"], "maxLength": 160 },
+            "latitude": { "type": "number", "minimum": -90, "maximum": 90 },
+            "longitude": { "type": "number", "minimum": -180, "maximum": 180 }
+          }
+        },
+        "crop": { "type": ["string", "null"], "maxLength": 120 },
+        "expectedAcreage": { "$ref": "#/$defs/decimal" },
+        "actualAcreage": {
+          "anyOf": [
+            { "$ref": "#/$defs/decimal" },
+            { "type": "null" }
+          ]
+        },
+        "crew": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": { "$ref": "#/$defs/crewMember" }
+        },
+        "drone": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "code", "serialNumber"],
+          "properties": {
+            "id": { "$ref": "#/$defs/uuid" },
+            "code": { "type": "string", "minLength": 1, "maxLength": 80 },
+            "serialNumber": { "type": "string", "minLength": 1, "maxLength": 160 }
+          }
+        },
+        "lmv": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "registrationNumber", "label"],
+          "properties": {
+            "id": { "$ref": "#/$defs/uuid" },
+            "registrationNumber": { "type": "string", "minLength": 1, "maxLength": 80 },
+            "label": { "type": ["string", "null"], "maxLength": 120 }
+          }
+        },
+        "operatingCenter": { "$ref": "#/$defs/operatingCenter" },
+        "operationalNotes": {
+          "type": "array",
+          "maxItems": 10,
+          "items": { "type": "string", "minLength": 1, "maxLength": 500 }
+        },
+        "updatedAt": { "$ref": "#/$defs/timestamp" },
+        "allowedActions": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "enum": ["ACCEPT", "START", "COMPLETE", "REPORT_ISSUE", "SEND_LOCATION"] }
+        }
+      }
+    },
+    "loginRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["email", "password", "platform", "appVersion", "deviceLabel"],
+      "properties": {
+        "email": { "type": "string", "format": "email", "maxLength": 254 },
+        "password": { "type": "string", "minLength": 12, "maxLength": 128 },
+        "platform": { "const": "ANDROID" },
+        "appVersion": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+        "deviceLabel": { "type": ["string", "null"], "maxLength": 80 }
+      }
+    },
+    "loginResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["success", "session", "installation", "profile"],
+      "properties": {
+        "success": { "const": true },
+        "session": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["accessToken", "tokenType", "idleExpiresAt", "absoluteExpiresAt"],
+          "properties": {
+            "accessToken": { "type": "string", "minLength": 32, "maxLength": 512 },
+            "tokenType": { "const": "Bearer" },
+            "idleExpiresAt": { "$ref": "#/$defs/timestamp" },
+            "absoluteExpiresAt": { "$ref": "#/$defs/timestamp" }
+          }
+        },
+        "installation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "platform", "appVersion"],
+          "properties": {
+            "id": { "$ref": "#/$defs/uuid" },
+            "platform": { "const": "ANDROID" },
+            "appVersion": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" }
+          }
+        },
+        "profile": { "$ref": "#/$defs/pilotProfile" }
+      }
+    },
+    "bootstrapResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["success", "apiVersion", "serverTime", "operatingTimeZone", "profile", "operatingCenter", "assignmentWindow", "assignments", "featureFlags", "appVersions", "sync", "policies"],
+      "properties": {
+        "success": { "const": true },
+        "apiVersion": { "const": "v1" },
+        "serverTime": { "$ref": "#/$defs/timestamp" },
+        "operatingTimeZone": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "profile": { "$ref": "#/$defs/pilotProfile" },
+        "operatingCenter": { "$ref": "#/$defs/operatingCenter" },
+        "assignmentWindow": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["from", "to"],
+          "properties": {
+            "from": { "$ref": "#/$defs/timestamp" },
+            "to": { "$ref": "#/$defs/timestamp" }
+          }
+        },
+        "assignments": { "type": "array", "maxItems": 100, "items": { "$ref": "#/$defs/assignment" } },
+        "featureFlags": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["chat", "foregroundLocation", "issueReporting"],
+          "properties": {
+            "chat": { "type": "boolean" },
+            "foregroundLocation": { "type": "boolean" },
+            "issueReporting": { "type": "boolean" }
+          }
+        },
+        "appVersions": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["minimum", "recommended"],
+          "properties": {
+            "minimum": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+            "recommended": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" }
+          }
+        },
+        "sync": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["cursor"],
+          "properties": {
+            "cursor": { "type": "string", "minLength": 1, "maxLength": 512 }
+          }
+        },
+        "policies": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["offlineGraceSeconds", "terminalCacheSeconds", "locationIntervalSeconds", "locationAccuracyMetres", "backgroundLocationEnabled"],
+          "properties": {
+            "offlineGraceSeconds": { "type": "integer", "minimum": 0 },
+            "terminalCacheSeconds": { "type": "integer", "minimum": 0 },
+            "locationIntervalSeconds": { "type": "integer", "minimum": 1 },
+            "locationAccuracyMetres": { "type": "integer", "minimum": 1 },
+            "backgroundLocationEnabled": { "const": false }
+          }
+        }
+      }
+    },
+    "mutationReceipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["clientActionId", "assignmentId", "action", "outcome", "resultingRevision", "receivedAt"],
+      "properties": {
+        "clientActionId": { "$ref": "#/$defs/uuid" },
+        "assignmentId": { "$ref": "#/$defs/uuid" },
+        "action": { "enum": ["ACCEPT", "START", "COMPLETE", "REPORT_ISSUE", "LOCATION"] },
+        "outcome": { "enum": ["APPLIED", "ALREADY_APPLIED", "CONFLICT", "REJECTED", "RETRY_LATER"] },
+        "resultingRevision": { "type": "integer", "minimum": 1 },
+        "receivedAt": { "$ref": "#/$defs/timestamp" }
+      }
+    },
+    "changePage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["success", "serverTime", "nextCursor", "fullResyncRequired", "changedAssignments", "removedAssignmentIds"],
+      "properties": {
+        "success": { "const": true },
+        "serverTime": { "$ref": "#/$defs/timestamp" },
+        "nextCursor": { "type": "string", "minLength": 1, "maxLength": 512 },
+        "fullResyncRequired": { "type": "boolean" },
+        "changedAssignments": { "type": "array", "maxItems": 100, "items": { "$ref": "#/$defs/assignment" } },
+        "removedAssignmentIds": { "type": "array", "maxItems": 100, "uniqueItems": true, "items": { "$ref": "#/$defs/uuid" } }
+      }
+    },
+    "errorResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["success", "error"],
+      "properties": {
+        "success": { "const": false },
+        "error": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["code", "message", "retryable", "requestId"],
+          "properties": {
+            "code": {
+              "enum": [
+                "VALIDATION_FAILED", "AUTHENTICATION_REQUIRED", "INVALID_CREDENTIALS",
+                "SESSION_EXPIRED", "SESSION_REVOKED", "ROLE_NOT_ALLOWED",
+                "RESOURCE_NOT_FOUND", "ASSIGNMENT_REVISION_CONFLICT", "ASSIGNMENT_REASSIGNED",
+                "ASSIGNMENT_CANCELLED", "MISSION_STATE_CONFLICT", "SEQUENCE_BLOCKED",
+                "RESOURCE_UNAVAILABLE", "ISSUE_REJECTED", "LOCATION_NOT_ALLOWED",
+                "LOCATION_INVALID", "RATE_LIMITED", "CLIENT_UPGRADE_REQUIRED",
+                "RETRY_LATER", "INTERNAL_ERROR"
+              ]
+            },
+            "message": { "type": "string", "minLength": 1, "maxLength": 240 },
+            "retryable": { "type": "boolean" },
+            "requestId": { "type": "string", "minLength": 1, "maxLength": 128 },
+            "details": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "assignmentId": { "$ref": "#/$defs/uuid" },
+                "currentRevision": { "type": "integer", "minimum": 1 },
+                "blockedBySequence": { "type": "integer", "minimum": 1 },
+                "retryAfterSeconds": { "type": "integer", "minimum": 1 }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
