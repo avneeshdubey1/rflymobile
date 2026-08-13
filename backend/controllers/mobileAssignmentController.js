@@ -1,5 +1,6 @@
 const crewFormationRepository = require('../src/repositories/crewFormationRepository');
 const mobileAssignmentRepository = require('../src/repositories/mobileAssignmentRepository');
+const mobileMutationService = require('../services/mobileMutationService');
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -148,4 +149,24 @@ async function overrideCopilot(req, res) {
   }
 }
 
-module.exports = { detail, eligibleCopilots, list, mobileError, overrideCopilot, selectCopilot };
+async function mutate(req, res) {
+  try {
+    requireBody(req.body, ['clientActionId', 'action', 'expectedRevision', 'actualAcreage']);
+    const assignmentId = requireUuid(req.params.assignmentId, 'assignmentId');
+    await mobileAssignmentRepository.findForPilot({ assignmentId, pilotId: req.auth.userId });
+    const receipt = await mobileMutationService.mutate({
+      installationId: req.mobileSession.installationId,
+      actorId: req.auth.userId,
+      assignmentId,
+      clientActionId: req.body.clientActionId,
+      action: req.body.action,
+      expectedRevision: req.body.expectedRevision,
+      actualAcreage: req.body.actualAcreage,
+    });
+    return res.json({ success: true, receipt });
+  } catch (error) {
+    return mobileError(res, req, error);
+  }
+}
+
+module.exports = { detail, eligibleCopilots, list, mobileError, mutate, overrideCopilot, selectCopilot };

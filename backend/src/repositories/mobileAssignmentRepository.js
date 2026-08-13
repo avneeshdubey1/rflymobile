@@ -93,6 +93,11 @@ function allowedActions(assignment, actorId) {
     && assignment.pilotId === actorId) {
     return ['SELECT_COPILOT'];
   }
+  if (assignment.crewFormationState === 'READY' && [assignment.pilotId, assignment.copilotId].includes(actorId)) {
+    if (assignment.lead.status === 'SCHEDULED') return ['ACCEPT'];
+    if (assignment.lead.status === 'PILOT_ACCEPTED') return ['START'];
+    if (assignment.lead.status === 'IN_PROGRESS') return ['COMPLETE'];
+  }
   return [];
 }
 

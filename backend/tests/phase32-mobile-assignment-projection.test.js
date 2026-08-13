@@ -136,7 +136,7 @@ test('Primary selects an eligible Copilot once and both crew members can then re
   assert.equal(selected.response.status, 200, JSON.stringify(selected.data));
   assert.equal(selected.data.assignment.crewFormationState, 'READY');
   assert.equal(selected.data.assignment.crew.length, 2);
-  assert.deepEqual(selected.data.assignment.allowedActions, []);
+  assert.deepEqual(selected.data.assignment.allowedActions, ['ACCEPT']);
 
   const copilotView = await request(`/api/mobile/v1/pilot/assignments/${assignment.id}`, { token: copilotToken });
   assert.equal(copilotView.response.status, 200);
@@ -162,6 +162,51 @@ test('Operations override requires Fleet or Admin and records a reasoned audit',
     orderBy: { createdAt: 'desc' },
   });
   assert.equal(audit.reason, 'Copilot availability changed.');
+});
+
+test('mobile mission actions are revision-guarded and idempotent across response-loss retries', async () => {
+  let current = await prisma.assignment.findUnique({ where: { id: assignment.id } });
+  const acceptActionId = crypto.randomUUID();
+  const acceptBody = { clientActionId: acceptActionId, action: 'ACCEPT', expectedRevision: current.revision };
+  const concurrent = await Promise.all([
+    request(`/api/mobile/v1/pilot/assignments/${assignment.id}/actions`, { method: 'POST', token: primaryToken, body: acceptBody }),
+    request(`/api/mobile/v1/pilot/assignments/${assignment.id}/actions`, { method: 'POST', token: primaryToken, body: acceptBody }),
+  ]);
+  assert.ok(concurrent.every(({ response }) => response.status === 200));
+  assert.deepEqual(concurrent.map(({ data }) => data.receipt.outcome).sort(), ['ALREADY_APPLIED', 'APPLIED']);
+  assert.equal(await prisma.auditLog.count({ where: { entityType: 'Assignment', entityId: assignment.id, action: 'PILOT_ACCEPTED' } }), 1);
+
+  const reused = await request(`/api/mobile/v1/pilot/assignments/${assignment.id}/actions`, {
+    method: 'POST', token: primaryToken,
+    body: { clientActionId: acceptActionId, action: 'START', expectedRevision: current.revision + 1 },
+  });
+  assert.equal(reused.response.status, 409);
+  assert.equal(reused.data.error.code, 'VALIDATION_FAILED');
+
+  current = await prisma.assignment.findUnique({ where: { id: assignment.id } });
+  const stale = await request(`/api/mobile/v1/pilot/assignments/${assignment.id}/actions`, {
+    method: 'POST', token: primaryToken,
+    body: { clientActionId: crypto.randomUUID(), action: 'START', expectedRevision: current.revision - 1 },
+  });
+  assert.equal(stale.response.status, 200);
+  assert.equal(stale.data.receipt.outcome, 'CONFLICT');
+  assert.equal(stale.data.receipt.resultingRevision, current.revision);
+
+  const started = await request(`/api/mobile/v1/pilot/assignments/${assignment.id}/actions`, {
+    method: 'POST', token: primaryToken,
+    body: { clientActionId: crypto.randomUUID(), action: 'START', expectedRevision: current.revision },
+  });
+  assert.equal(started.response.status, 200, JSON.stringify(started.data));
+  assert.equal(started.data.receipt.outcome, 'APPLIED');
+  current = await prisma.assignment.findUnique({ where: { id: assignment.id } });
+
+  const completed = await request(`/api/mobile/v1/pilot/assignments/${assignment.id}/actions`, {
+    method: 'POST', token: outsiderToken,
+    body: { clientActionId: crypto.randomUUID(), action: 'COMPLETE', expectedRevision: current.revision, actualAcreage: '4.25' },
+  });
+  assert.equal(completed.response.status, 200, JSON.stringify(completed.data));
+  assert.equal(completed.data.receipt.outcome, 'APPLIED');
+  assert.equal(await prisma.mobileMutationReceipt.count({ where: { assignmentId: assignment.id } }), 4);
 });
 
 test.after(async () => {

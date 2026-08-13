@@ -721,13 +721,23 @@ async function resequence({ assignmentId, dailySequence, actorId }) {
   });
 }
 
-async function transitionMission({ assignmentId, actorId, action, actualAcreage, reason }) {
+async function transitionMission({ assignmentId, actorId, action, actualAcreage, reason, expectedRevision }) {
   return serializable(async (transaction) => {
     await setHistoryActor(transaction, actorId);
     await lockKeys(transaction, [`assignment:${assignmentId}`]);
     const before = await transaction.assignment.findUnique({ where: { id: assignmentId }, include: assignmentInclude });
     if (!before) throw operationError('Assignment not found');
     if (![before.pilotId, before.copilotId].includes(actorId)) throw operationError('Only an assigned crew member can change this mission');
+    if (typeof expectedRevision !== 'undefined') {
+      if (!Number.isInteger(expectedRevision) || expectedRevision < 1) {
+        throw operationError('A positive assignment revision is required', 'ASSIGNMENT_REVISION_REQUIRED');
+      }
+      if (before.revision !== expectedRevision) {
+        const error = operationError('Assignment changed. Refresh before retrying this action.', 'ASSIGNMENT_REVISION_CONFLICT');
+        error.details = { currentRevision: before.revision };
+        throw error;
+      }
+    }
     await lockKeys(transaction, [before.pilotId, before.copilotId, before.droneId, before.lmvId]);
     let assignmentData;
     let leadStatus;
@@ -790,6 +800,7 @@ async function transitionMission({ assignmentId, actorId, action, actualAcreage,
     } else {
       throw operationError('Unsupported mission transition');
     }
+    assignmentData.revision = { increment: 1 };
     const assignment = await transaction.assignment.update({ where: { id: before.id }, data: assignmentData, include: assignmentInclude });
     const lead = await transaction.lead.update({ where: { id: before.leadId }, data: { status: leadStatus } });
     await audit(transaction, { entityType: 'Assignment', entityId: before.id, action: auditAction, actorId, beforeState: before, afterState: assignment, reason });
