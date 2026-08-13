@@ -22,9 +22,9 @@
     "to": "2026-08-27T00:00:00.000Z"
   },
   "assignments": [],
-  "capabilities": ["PILOT_ASSIGNMENTS_READ", "COPILOT_SELECT", "MISSION_MUTATE", "ISSUE_REPORT", "FOREGROUND_LOCATION"],
+  "capabilities": ["PILOT_ASSIGNMENTS_READ", "COPILOT_SELECT", "MISSION_MUTATE", "ISSUE_REPORT"],
   "featureFlags": {
-    "chat": true,
+    "chat": false,
     "foregroundLocation": false,
     "issueReporting": true
   },
