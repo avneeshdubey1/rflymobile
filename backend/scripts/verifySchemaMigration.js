@@ -5,7 +5,7 @@ const { spawnSync } = require('node:child_process');
 
 const backendDir = path.resolve(__dirname, '..');
 const migrationsDir = path.join(backendDir, 'prisma', 'migrations');
-const targetMigration = '20260813100000_add_assignment_crew_formation';
+const targetMigration = '20260813113000_add_mobile_installations_and_receipts';
 const containerName = process.env.POSTGRES_CONTAINER || 'rfly-postgres';
 const requestedDatabase = process.env.MIGRATION_VERIFY_DATABASE || 'rfly_schema_migration_test';
 
@@ -182,6 +182,11 @@ function verifyCleanReplay(migrations) {
   assert.equal(Number(scalar(cleanDatabase, `
     SELECT COUNT(*) FROM "AutoAssignmentPolicy" WHERE "singletonKey" = 'COMPANY';
   `)), 1, 'Clean replay did not create exactly one company policy');
+  assert.equal(Number(scalar(cleanDatabase, `
+    SELECT COUNT(*) FROM information_schema.tables
+    WHERE table_schema = 'public'
+      AND table_name IN ('MobileInstallation', 'MobileSession', 'MobileMutationReceipt');
+  `)), 3, 'Clean replay did not create all mobile security tables');
 
   const appliedBeforeSecondDeploy = applied;
   run(process.execPath, [prismaCli, 'migrate', 'deploy'], {
@@ -264,12 +269,12 @@ ALTER TABLE "Assignment" DISABLE TRIGGER "Assignment_guard_operational_unit";
 INSERT INTO "Assignment" (
   "id", "leadId", "pilotId", "droneId", "scheduledDate",
   "serviceWindowStart", "serviceWindowEnd", "dailySequence",
-  "expectedAcreage", "legacyCrewIncomplete"
+  "expectedAcreage", "legacyCrewIncomplete", "crewFormationState"
 ) VALUES (
   'migration-incomplete-assignment', 'migration-incomplete-lead',
   'migration-pilot', 'migration-drone', CURRENT_TIMESTAMP + INTERVAL '2 days',
   CURRENT_TIMESTAMP + INTERVAL '2 days', CURRENT_TIMESTAMP + INTERVAL '2 days 120 minutes',
-  1, 1.5, true
+  1, 1.5, true, 'LEGACY_INCOMPLETE'
 );
 ALTER TABLE "Assignment" ENABLE TRIGGER "Assignment_guard_operational_unit";
 `;
@@ -383,6 +388,30 @@ function verifyPopulatedLegacyUpgrade(migrations) {
       CURRENT_TIMESTAMP + INTERVAL '3 days', CURRENT_TIMESTAMP + INTERVAL '3 days 120 minutes',
       1, 'PENDING_COPILOT_SELECTION'
     );
+
+    INSERT INTO "MobileInstallation" (
+      "id", "userId", "app", "installationKeyHash"
+    ) VALUES (
+      'migration-mobile-installation', 'migration-pilot', 'PILOT_FIELD', repeat('a', 64)
+    );
+
+    INSERT INTO "MobileSession" (
+      "id", "userId", "installationId", "tokenHash", "authVersion",
+      "idleExpiresAt", "absoluteExpiresAt"
+    ) VALUES (
+      'migration-mobile-session', 'migration-pilot', 'migration-mobile-installation',
+      repeat('b', 64), 1, CURRENT_TIMESTAMP + INTERVAL '30 minutes',
+      CURRENT_TIMESTAMP + INTERVAL '8 hours'
+    );
+
+    INSERT INTO "MobileMutationReceipt" (
+      "id", "installationId", "assignmentId", "actionId", "operation",
+      "requestHash", "outcome", "safeResult"
+    ) VALUES (
+      'migration-mobile-receipt', 'migration-mobile-installation',
+      'migration-pending-assignment', 'migration-action-1', 'SELECT_COPILOT',
+      repeat('c', 64), 'APPLIED', '{"status":"ok"}'::jsonb
+    );
   `, { tuplesOnly: false });
 
   assert.equal(
@@ -403,6 +432,19 @@ function verifyPopulatedLegacyUpgrade(migrations) {
     `UPDATE "Assignment" SET "acceptedAt" = CURRENT_TIMESTAMP WHERE "id" = 'migration-pending-assignment';`,
     /Assignment_crew_formation_check|pending Copilot assignment must be a non-executable/i,
   );
+  assert.equal(Number(scalar(legacyDatabase, 'SELECT COUNT(*) FROM "MobileInstallation";')), 1);
+  assert.equal(Number(scalar(legacyDatabase, 'SELECT COUNT(*) FROM "MobileSession";')), 1);
+  assert.equal(Number(scalar(legacyDatabase, 'SELECT COUNT(*) FROM "MobileMutationReceipt";')), 1);
+  expectPsqlFailure(
+    legacyDatabase,
+    `INSERT INTO "MobileMutationReceipt" (
+       "id", "installationId", "actionId", "operation", "requestHash", "outcome", "safeResult"
+     ) VALUES (
+       'migration-mobile-receipt-duplicate', 'migration-mobile-installation',
+       'migration-action-1', 'SELECT_COPILOT', repeat('d', 64), 'APPLIED', '{}'::jsonb
+     );`,
+    /MobileMutationReceipt_installationId_actionId_key|duplicate key/i,
+  );
 
   return {
     priorMigrationsApplied: targetIndex,
@@ -418,6 +460,8 @@ function verifyPopulatedLegacyUpgrade(migrations) {
     postMigrationWrites: 5,
     provisionalAssignmentWrite: true,
     prematureAcceptanceRejected: true,
+    mobileSecurityRows: 3,
+    duplicateInstallationActionRejected: true,
   };
 }
 

@@ -37,6 +37,19 @@ enum CrewFormationState {
   LEGACY_INCOMPLETE
 }
 
+enum MobileApp {
+  PILOT_FIELD
+  OPERATIONS
+}
+
+enum MobileMutationOutcome {
+  APPLIED
+  ALREADY_APPLIED
+  CONFLICT
+  REJECTED
+  RETRY_LATER
+}
+
 enum DroneStatus {
   AVAILABLE
   ASSIGNED
@@ -277,6 +290,8 @@ model User {
   droneHistoryEvents            DroneHistory[]               @relation("DroneHistoryActor")
   lmvHistoryEvents              LMVHistory[]                 @relation("LMVHistoryActor")
   autoAssignmentPoliciesUpdated AutoAssignmentPolicy[]       @relation("AutoAssignmentPolicyUpdatedBy")
+  mobileInstallations           MobileInstallation[]
+  mobileSessions                MobileSession[]
 }
 
 model Customer {
@@ -442,6 +457,62 @@ model AuthSession {
 
   @@index([userId, revokedAt])
   @@index([idleExpiresAt])
+}
+
+model MobileInstallation {
+  id                  String    @id @default(uuid())
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId              String
+  app                 MobileApp
+  installationKeyHash String    @unique @db.VarChar(128)
+  label               String?   @db.VarChar(80)
+  createdAt           DateTime  @default(now())
+  lastSeenAt          DateTime  @default(now())
+  revokedAt           DateTime?
+  revokeReason        String?   @db.VarChar(200)
+
+  sessions MobileSession[]
+  receipts MobileMutationReceipt[]
+
+  @@index([userId, app, revokedAt])
+}
+
+model MobileSession {
+  id                String             @id @default(uuid())
+  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId            String
+  installation      MobileInstallation @relation(fields: [installationId], references: [id], onDelete: Cascade)
+  installationId    String
+  tokenHash         String             @unique @db.VarChar(128)
+  authVersion       Int
+  createdAt         DateTime           @default(now())
+  lastSeenAt        DateTime           @default(now())
+  idleExpiresAt     DateTime
+  absoluteExpiresAt DateTime
+  revokedAt         DateTime?
+  revokeReason      String?            @db.VarChar(200)
+
+  @@index([userId, revokedAt])
+  @@index([installationId, revokedAt])
+  @@index([idleExpiresAt])
+}
+
+model MobileMutationReceipt {
+  id             String                @id @default(uuid())
+  installation   MobileInstallation    @relation(fields: [installationId], references: [id], onDelete: Cascade)
+  installationId String
+  assignment     Assignment?           @relation(fields: [assignmentId], references: [id], onDelete: SetNull)
+  assignmentId   String?
+  actionId       String                @db.VarChar(128)
+  operation      String                @db.VarChar(64)
+  requestHash    String                @db.VarChar(128)
+  outcome        MobileMutationOutcome
+  safeResult     Json
+  createdAt      DateTime              @default(now())
+
+  @@unique([installationId, actionId])
+  @@index([assignmentId, createdAt])
+  @@index([createdAt])
 }
 
 model PasswordRecoveryChallenge {
@@ -679,6 +750,7 @@ model Assignment {
   rescheduleHistory      ScheduleChangeLog[]
   payments               PaymentRecord[]
   notificationEscalation NotificationEscalation?
+  mobileMutationReceipts MobileMutationReceipt[]
   createdAt              DateTime                @default(now())
 
   @@index([scheduledDate, dailySequence])
