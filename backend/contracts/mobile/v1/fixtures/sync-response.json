@@ -1,0 +1,18 @@
+{
+  "success": true,
+  "serverTime": "2026-08-12T09:05:00.000Z",
+  "mutationReceipts": [
+    {
+      "clientActionId": "00000000-0000-4000-8000-000000000080",
+      "assignmentId": "00000000-0000-4000-8000-000000000030",
+      "action": "ACCEPT",
+      "outcome": "APPLIED",
+      "resultingRevision": 4,
+      "receivedAt": "2026-08-12T09:05:00.000Z"
+    }
+  ],
+  "nextCursor": "example-next-cursor",
+  "fullResyncRequired": false,
+  "changedAssignments": [],
+  "removedAssignmentIds": []
+}

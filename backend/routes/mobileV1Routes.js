@@ -14,6 +14,8 @@ router.delete('/installations/:installationId', controller.revokeInstallation);
 router.delete('/operations/installations/:installationId', requireMobileApp('OPERATIONS'), controller.adminRevokeInstallation);
 router.get('/pilot/bootstrap', requireMobileApp('PILOT_FIELD'), controller.bootstrap);
 router.get('/pilot/assignments', requireMobileApp('PILOT_FIELD'), assignmentController.list);
+router.get('/pilot/changes', requireMobileApp('PILOT_FIELD'), assignmentController.changes);
+router.post('/pilot/sync', requireMobileApp('PILOT_FIELD'), assignmentController.sync);
 router.get('/pilot/assignments/:assignmentId', requireMobileApp('PILOT_FIELD'), assignmentController.detail);
 router.get('/pilot/assignments/:assignmentId/eligible-copilots', requireMobileApp('PILOT_FIELD'), assignmentController.eligibleCopilots);
 router.post('/pilot/assignments/:assignmentId/copilot', requireMobileApp('PILOT_FIELD'), assignmentController.selectCopilot);

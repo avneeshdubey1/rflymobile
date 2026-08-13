@@ -217,7 +217,7 @@ async function bootstrap(req, res) {
     assignments,
     featureFlags: { chat: false, foregroundLocation: false, issueReporting: false },
     appVersions: { minimum: config.mobile.minimumVersion, recommended: config.mobile.recommendedVersion },
-    sync: { cursor: Buffer.from(JSON.stringify({ at: now.toISOString() })).toString('base64url') },
+    sync: { cursor: await mobileAssignmentRepository.cursorForPilot(user.id, now) },
     policies: {
       offlineGraceSeconds: Math.floor(config.mobile.absoluteTimeoutMs / 1000),
       terminalCacheSeconds: 86400,

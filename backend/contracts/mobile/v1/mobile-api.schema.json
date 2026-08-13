@@ -280,6 +280,46 @@
         "receivedAt": { "$ref": "#/$defs/timestamp" }
       }
     },
+    "mutationRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["assignmentId", "clientActionId", "action", "expectedRevision"],
+      "properties": {
+        "assignmentId": { "$ref": "#/$defs/uuid" },
+        "clientActionId": { "$ref": "#/$defs/uuid" },
+        "action": { "enum": ["ACCEPT", "START", "COMPLETE"] },
+        "expectedRevision": { "type": "integer", "minimum": 1 },
+        "actualAcreage": { "$ref": "#/$defs/decimal" }
+      }
+    },
+    "syncRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cursor", "mutations"],
+      "properties": {
+        "cursor": { "type": "string", "minLength": 1, "maxLength": 512 },
+        "mutations": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 20,
+          "items": { "$ref": "#/$defs/mutationRequest" }
+        }
+      }
+    },
+    "syncResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["success", "serverTime", "mutationReceipts", "nextCursor", "fullResyncRequired", "changedAssignments", "removedAssignmentIds"],
+      "properties": {
+        "success": { "const": true },
+        "serverTime": { "$ref": "#/$defs/timestamp" },
+        "mutationReceipts": { "type": "array", "maxItems": 20, "items": { "$ref": "#/$defs/mutationReceipt" } },
+        "nextCursor": { "type": "string", "minLength": 1, "maxLength": 512 },
+        "fullResyncRequired": { "type": "boolean" },
+        "changedAssignments": { "type": "array", "maxItems": 100, "items": { "$ref": "#/$defs/assignment" } },
+        "removedAssignmentIds": { "type": "array", "maxItems": 100, "uniqueItems": true, "items": { "$ref": "#/$defs/uuid" } }
+      }
+    },
     "changePage": {
       "type": "object",
       "additionalProperties": false,

@@ -5,6 +5,7 @@ const { loadEnvironment } = require('./config/environment');
 const app = require('./app');
 const { startNotificationEscalationJob } = require('./jobs/notificationEscalationJob');
 const { startDeclinedEnquiryPurgeJob } = require('./jobs/declinedEnquiryPurgeJob');
+const { startMobileAssignmentChangePurgeJob } = require('./jobs/mobileAssignmentChangePurgeJob');
 const { installChatSocket } = require('./sockets/chatSocket');
 const { installLocationSocket } = require('./sockets/locationSocket');
 const { installSocketAuthentication } = require('./middleware/auth');
@@ -27,7 +28,9 @@ server.listen(config.port, () => {
 
 const notificationEscalationJob = startNotificationEscalationJob();
 const declinedEnquiryPurgeJob = startDeclinedEnquiryPurgeJob(config.intake.declinedEnquiryPurgeIntervalMs);
+const mobileAssignmentChangePurgeJob = startMobileAssignmentChangePurgeJob();
 process.on('SIGTERM', () => {
   clearInterval(notificationEscalationJob);
   clearInterval(declinedEnquiryPurgeJob);
+  clearInterval(mobileAssignmentChangePurgeJob);
 });

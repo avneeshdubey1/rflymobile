@@ -1,0 +1,11 @@
+{
+  "cursor": "example-sync-cursor",
+  "mutations": [
+    {
+      "assignmentId": "00000000-0000-4000-8000-000000000030",
+      "clientActionId": "00000000-0000-4000-8000-000000000080",
+      "action": "ACCEPT",
+      "expectedRevision": 3
+    }
+  ]
+}

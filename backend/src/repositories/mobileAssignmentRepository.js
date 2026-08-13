@@ -187,9 +187,104 @@ async function findForPilot({ assignmentId, pilotId, now = new Date() }) {
   return project(assignment, pilotId);
 }
 
+function encodeCursor({ at, sequence = 0n }) {
+  return Buffer.from(JSON.stringify({
+    v: 1,
+    at: new Date(at).toISOString(),
+    sequence: String(sequence),
+  })).toString('base64url');
+}
+
+function decodeCursor(value) {
+  try {
+    const parsed = JSON.parse(Buffer.from(String(value || ''), 'base64url').toString('utf8'));
+    const at = new Date(parsed.at);
+    if (parsed.v !== 1 || Number.isNaN(at.valueOf()) || !/^\d{1,30}$/.test(String(parsed.sequence || ''))) throw new Error();
+    return { at, sequence: BigInt(parsed.sequence) };
+  } catch (_error) {
+    throw mobileAssignmentError('Sync cursor is invalid');
+  }
+}
+
+async function cursorForPilot(pilotId, at = new Date()) {
+  const latest = await prisma.mobileAssignmentChange.findFirst({
+    where: { userId: pilotId },
+    select: { id: true },
+    orderBy: { id: 'desc' },
+  });
+  return encodeCursor({ at, sequence: latest?.id || 0n });
+}
+
+async function currentByIds(pilotId, assignmentIds, now) {
+  if (!assignmentIds.length) return [];
+  const earliest = new Date(now.getTime() - TERMINAL_RETENTION_DAYS * 24 * 60 * 60_000);
+  const latest = new Date(now.getTime() + FUTURE_HORIZON_DAYS * 24 * 60 * 60_000);
+  const assignments = await prisma.assignment.findMany({
+    where: {
+      id: { in: assignmentIds },
+      OR: [{ pilotId }, { copilotId: pilotId }],
+      scheduledDate: { gte: earliest, lte: latest },
+    },
+    select: assignmentSelect,
+  });
+  return assignments.map((assignment) => project(assignment, pilotId));
+}
+
+async function changesForPilot({ pilotId, cursor, limit = 100, now = new Date() }) {
+  const requestedLimit = Number(limit);
+  if (!Number.isInteger(requestedLimit) || requestedLimit < 1 || requestedLimit > MAX_LIST_ITEMS) {
+    throw mobileAssignmentError(`Sync limit must be between 1 and ${MAX_LIST_ITEMS}`);
+  }
+  const decoded = decodeCursor(cursor);
+  const cutoff = new Date(now.getTime() - TERMINAL_RETENTION_DAYS * 24 * 60 * 60_000);
+  if (decoded.at < cutoff) {
+    const from = new Date(now.getTime() - 24 * 60 * 60_000);
+    const to = new Date(now.getTime() + 30 * 24 * 60 * 60_000);
+    const nextCursor = await cursorForPilot(pilotId, now);
+    return {
+      fullResyncRequired: true,
+      changedAssignments: await listForPilot({ pilotId, from: from.toISOString(), to: to.toISOString(), now }),
+      removedAssignmentIds: [],
+      nextCursor,
+    };
+  }
+  if (decoded.at > new Date(now.getTime() + 60_000)) throw mobileAssignmentError('Sync cursor is from the future');
+  const rows = await prisma.mobileAssignmentChange.findMany({
+    where: {
+      userId: pilotId,
+      changedAt: { lte: now },
+      id: { gt: decoded.sequence },
+    },
+    orderBy: { id: 'asc' },
+    take: requestedLimit + 1,
+  });
+  const hasMore = rows.length > requestedLimit;
+  const page = rows.slice(0, requestedLimit);
+  const latestByAssignment = new Map();
+  for (const row of page) latestByAssignment.set(row.assignmentId, row);
+  const changedIds = [...latestByAssignment.values()].filter((row) => row.kind === 'CHANGED').map((row) => row.assignmentId);
+  const changedAssignments = await currentByIds(pilotId, changedIds, now);
+  const visibleIds = new Set(changedAssignments.map(({ id }) => id));
+  const removedAssignmentIds = [...latestByAssignment.values()]
+    .filter((row) => row.kind === 'REMOVED' || !visibleIds.has(row.assignmentId))
+    .map((row) => row.assignmentId);
+  const last = page.at(-1);
+  return {
+    fullResyncRequired: false,
+    changedAssignments,
+    removedAssignmentIds: [...new Set(removedAssignmentIds)],
+    nextCursor: hasMore && last
+      ? encodeCursor({ at: last.changedAt, sequence: last.id })
+      : encodeCursor({ at: now, sequence: last?.id || decoded.sequence }),
+  };
+}
+
 module.exports = {
   MAX_LIST_ITEMS,
   boundedWindow,
+  changesForPilot,
+  cursorForPilot,
+  encodeCursor,
   findForPilot,
   listForPilot,
   mobileAssignmentError,

@@ -50,6 +50,11 @@ enum MobileMutationOutcome {
   RETRY_LATER
 }
 
+enum MobileAssignmentChangeKind {
+  CHANGED
+  REMOVED
+}
+
 enum DroneStatus {
   AVAILABLE
   ASSIGNED
@@ -515,6 +520,18 @@ model MobileMutationReceipt {
   @@index([createdAt])
 }
 
+model MobileAssignmentChange {
+  id           BigInt                     @id @default(autoincrement())
+  userId       String
+  assignmentId String
+  kind         MobileAssignmentChangeKind
+  revision     Int?
+  changedAt    DateTime                   @default(now())
+
+  @@index([userId, id])
+  @@index([changedAt])
+}
+
 model PasswordRecoveryChallenge {
   id                  String    @id
   user                User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
@@ -750,18 +767,18 @@ model Assignment {
   rescheduleHistory      ScheduleChangeLog[]
   payments               PaymentRecord[]
   notificationEscalation NotificationEscalation?
-    mobileMutationReceipts MobileMutationReceipt[]
-    createdAt              DateTime                @default(now())
-    updatedAt              DateTime                @updatedAt
+  mobileMutationReceipts MobileMutationReceipt[]
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
 
   @@index([scheduledDate, dailySequence])
   @@index([pilotId, scheduledDate])
   @@index([copilotId, scheduledDate])
   @@index([droneId, scheduledDate])
   @@index([lmvId, scheduledDate])
-    @@index([crewFormationState, scheduledDate])
-    @@index([updatedAt])
-  }
+  @@index([crewFormationState, scheduledDate])
+  @@index([updatedAt])
+}
 
 // Persists the notification-cascade clock so a server restart never loses a pilot follow-up.
 model NotificationEscalation {

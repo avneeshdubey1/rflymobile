@@ -53,7 +53,7 @@ async function currentRevision(assignmentId) {
   return (await prisma.assignment.findUnique({ where: { id: assignmentId }, select: { revision: true } }))?.revision || 1;
 }
 
-async function mutate({ installationId, actorId, assignmentId, clientActionId, action, expectedRevision, actualAcreage }) {
+function validateMutation({ clientActionId, action, expectedRevision, actualAcreage }) {
   if (!UUID_PATTERN.test(String(clientActionId || ''))) {
     throw new MobileMutationError('clientActionId must be a valid generated identifier');
   }
@@ -64,6 +64,13 @@ async function mutate({ installationId, actorId, assignmentId, clientActionId, a
   if (action === 'COMPLETE' && (!Number.isFinite(Number(actualAcreage)) || Number(actualAcreage) <= 0)) {
     throw new MobileMutationError('A positive actual acreage is required');
   }
+  if (action !== 'COMPLETE' && typeof actualAcreage !== 'undefined') {
+    throw new MobileMutationError('actualAcreage is allowed only for COMPLETE');
+  }
+}
+
+async function mutate({ installationId, actorId, assignmentId, clientActionId, action, expectedRevision, actualAcreage }) {
+  validateMutation({ clientActionId, action, expectedRevision, actualAcreage });
   const input = { assignmentId, clientActionId, action, expectedRevision, actualAcreage };
   const locked = await mobileMutationRepository.executeLocked({
     installationId,
@@ -114,4 +121,4 @@ async function mutate({ installationId, actorId, assignmentId, clientActionId, a
   return receiptProjection(locked.receipt);
 }
 
-module.exports = { MobileMutationError, mutate };
+module.exports = { MobileMutationError, mutate, validateMutation };

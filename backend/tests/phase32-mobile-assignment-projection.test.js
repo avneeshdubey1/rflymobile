@@ -5,6 +5,7 @@ const app = require('../app');
 const prisma = require('../src/lib/prisma');
 const assignments = require('../src/repositories/assignmentOperationRepository');
 const { hashPassword } = require('../services/passwordService');
+const { purgeExpired } = require('../jobs/mobileAssignmentChangePurgeJob');
 
 const runId = `${process.pid}-${Date.now()}`;
 const ids = { centers: [], users: [], drones: [], lmvs: [], leads: [], assignments: [], installations: [] };
@@ -23,6 +24,7 @@ let primaryToken;
 let copilotToken;
 let outsiderToken;
 let fleetToken;
+let syncCursor;
 
 function loginBody(user) {
   return {
@@ -101,6 +103,9 @@ test.before(async () => {
 });
 
 test('only assigned Pilots receive bounded allow-listed assignment DTOs', async () => {
+  const bootstrap = await request('/api/mobile/v1/pilot/bootstrap', { token: primaryToken });
+  assert.equal(bootstrap.response.status, 200, JSON.stringify(bootstrap.data));
+  syncCursor = bootstrap.data.sync.cursor;
   const list = await request('/api/mobile/v1/pilot/assignments', { token: primaryToken });
   assert.equal(list.response.status, 200, JSON.stringify(list.data));
   assert.equal(list.data.assignments.length, 1);
@@ -192,27 +197,71 @@ test('mobile mission actions are revision-guarded and idempotent across response
   assert.equal(stale.data.receipt.outcome, 'CONFLICT');
   assert.equal(stale.data.receipt.resultingRevision, current.revision);
 
-  const started = await request(`/api/mobile/v1/pilot/assignments/${assignment.id}/actions`, {
+  const synchronized = await request('/api/mobile/v1/pilot/sync', {
     method: 'POST', token: primaryToken,
-    body: { clientActionId: crypto.randomUUID(), action: 'START', expectedRevision: current.revision },
+    body: {
+      cursor: syncCursor,
+      mutations: [
+        { assignmentId: assignment.id, clientActionId: crypto.randomUUID(), action: 'START', expectedRevision: current.revision },
+        { assignmentId: assignment.id, clientActionId: crypto.randomUUID(), action: 'COMPLETE', expectedRevision: current.revision + 1, actualAcreage: '4.25' },
+      ],
+    },
   });
-  assert.equal(started.response.status, 200, JSON.stringify(started.data));
-  assert.equal(started.data.receipt.outcome, 'APPLIED');
-  current = await prisma.assignment.findUnique({ where: { id: assignment.id } });
-
-  const completed = await request(`/api/mobile/v1/pilot/assignments/${assignment.id}/actions`, {
-    method: 'POST', token: outsiderToken,
-    body: { clientActionId: crypto.randomUUID(), action: 'COMPLETE', expectedRevision: current.revision, actualAcreage: '4.25' },
-  });
-  assert.equal(completed.response.status, 200, JSON.stringify(completed.data));
-  assert.equal(completed.data.receipt.outcome, 'APPLIED');
+  assert.equal(synchronized.response.status, 200, JSON.stringify(synchronized.data));
+  assert.deepEqual(synchronized.data.mutationReceipts.map(({ outcome }) => outcome), ['APPLIED', 'APPLIED']);
   assert.equal(await prisma.mobileMutationReceipt.count({ where: { assignmentId: assignment.id } }), 4);
+});
+
+test('cursor sync returns bounded changes and a tombstone after assignment removal', async () => {
+  const changedIds = new Set();
+  let cursor = syncCursor;
+  for (let pageNumber = 0; pageNumber < 20; pageNumber += 1) {
+    const page = await request(`/api/mobile/v1/pilot/changes?limit=1&cursor=${encodeURIComponent(cursor)}`, { token: primaryToken });
+    assert.equal(page.response.status, 200, JSON.stringify(page.data));
+    for (const item of page.data.changedAssignments) changedIds.add(item.id);
+    cursor = page.data.nextCursor;
+    if (!page.data.changedAssignments.length && !page.data.removedAssignmentIds.length) break;
+  }
+  assert.ok(changedIds.has(assignment.id));
+
+  await prisma.notificationEscalation.deleteMany({ where: { assignmentId: assignment.id } });
+  await prisma.$transaction(async (transaction) => {
+    await transaction.$queryRaw`SELECT set_config('rfly.allow_history_mutation', 'on', true)`;
+    await transaction.assignment.delete({ where: { id: assignment.id } });
+  });
+  const removed = await request(`/api/mobile/v1/pilot/changes?cursor=${encodeURIComponent(cursor)}`, { token: primaryToken });
+  assert.equal(removed.response.status, 200, JSON.stringify(removed.data));
+  assert.deepEqual(removed.data.removedAssignmentIds, [assignment.id]);
+  assert.equal(removed.data.changedAssignments.length, 0);
+
+  const invalid = await request('/api/mobile/v1/pilot/changes?cursor=not-a-cursor', { token: primaryToken });
+  assert.equal(invalid.response.status, 400);
+
+  const expiredCursor = Buffer.from(JSON.stringify({
+    v: 1,
+    at: new Date(Date.now() - 31 * 24 * 60 * 60_000).toISOString(),
+    sequence: '0',
+  })).toString('base64url');
+  const fullResync = await request(`/api/mobile/v1/pilot/changes?cursor=${expiredCursor}`, { token: primaryToken });
+  assert.equal(fullResync.response.status, 200);
+  assert.equal(fullResync.data.fullResyncRequired, true);
+
+  await prisma.mobileAssignmentChange.create({
+    data: {
+      userId: primary.id,
+      assignmentId: crypto.randomUUID(),
+      kind: 'REMOVED',
+      changedAt: new Date(Date.now() - 31 * 24 * 60 * 60_000),
+    },
+  });
+  assert.ok((await purgeExpired()).count >= 1);
 });
 
 test.after(async () => {
   await prisma.mobileSession.deleteMany({ where: { userId: { in: ids.users } } });
   await prisma.mobileMutationReceipt.deleteMany({ where: { installationId: { in: ids.installations } } });
   await prisma.mobileInstallation.deleteMany({ where: { userId: { in: ids.users } } });
+  await prisma.mobileAssignmentChange.deleteMany({ where: { userId: { in: ids.users } } });
   await prisma.notificationEscalation.deleteMany({ where: { assignmentId: { in: ids.assignments } } });
   await prisma.notification.deleteMany({ where: { leadId: { in: ids.leads } } });
   await prisma.auditLog.deleteMany({ where: { entityId: { in: [...ids.assignments, ...ids.leads] } } });

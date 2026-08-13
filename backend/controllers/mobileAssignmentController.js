@@ -169,4 +169,67 @@ async function mutate(req, res) {
   }
 }
 
-module.exports = { detail, eligibleCopilots, list, mobileError, mutate, overrideCopilot, selectCopilot };
+async function changes(req, res) {
+  try {
+    const allowedQuery = new Set(['cursor', 'limit']);
+    if (Object.keys(req.query).some((field) => !allowedQuery.has(field)) || typeof req.query.cursor !== 'string') {
+      throw mobileAssignmentRepository.mobileAssignmentError('Sync query is invalid');
+    }
+    const result = await mobileAssignmentRepository.changesForPilot({
+      pilotId: req.auth.userId,
+      cursor: req.query.cursor,
+      limit: typeof req.query.limit === 'undefined' ? 100 : Number(req.query.limit),
+    });
+    return res.json({ success: true, serverTime: new Date().toISOString(), ...result });
+  } catch (error) {
+    return mobileError(res, req, error);
+  }
+}
+
+async function sync(req, res) {
+  try {
+    requireBody(req.body, ['cursor', 'mutations']);
+    if (typeof req.body.cursor !== 'string' || !Array.isArray(req.body.mutations)
+      || req.body.mutations.length < 1 || req.body.mutations.length > 20) {
+      throw mobileAssignmentRepository.mobileAssignmentError('Sync requires 1 to 20 ordered mutations and a cursor');
+    }
+    const actionIds = new Set();
+    for (const mutation of req.body.mutations) {
+      requireBody(mutation, ['assignmentId', 'clientActionId', 'action', 'expectedRevision', 'actualAcreage']);
+      requireUuid(mutation.assignmentId, 'assignmentId');
+      requireUuid(mutation.clientActionId, 'clientActionId');
+      mobileMutationService.validateMutation(mutation);
+      if (actionIds.has(mutation.clientActionId)) {
+        throw mobileAssignmentRepository.mobileAssignmentError('A sync batch cannot repeat a clientActionId');
+      }
+      actionIds.add(mutation.clientActionId);
+      await mobileAssignmentRepository.findForPilot({ assignmentId: mutation.assignmentId, pilotId: req.auth.userId });
+    }
+    const mutationReceipts = [];
+    for (const mutation of req.body.mutations) {
+      mutationReceipts.push(await mobileMutationService.mutate({
+        installationId: req.mobileSession.installationId,
+        actorId: req.auth.userId,
+        assignmentId: mutation.assignmentId,
+        clientActionId: mutation.clientActionId,
+        action: mutation.action,
+        expectedRevision: mutation.expectedRevision,
+        actualAcreage: mutation.actualAcreage,
+      }));
+    }
+    const changesResult = await mobileAssignmentRepository.changesForPilot({
+      pilotId: req.auth.userId,
+      cursor: req.body.cursor,
+    });
+    return res.json({
+      success: true,
+      serverTime: new Date().toISOString(),
+      mutationReceipts,
+      ...changesResult,
+    });
+  } catch (error) {
+    return mobileError(res, req, error);
+  }
+}
+
+module.exports = { changes, detail, eligibleCopilots, list, mobileError, mutate, overrideCopilot, selectCopilot, sync };
