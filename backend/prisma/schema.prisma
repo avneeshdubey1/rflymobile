@@ -31,6 +31,12 @@ enum LeadStatus {
   REJECTED // request or operational rejection
 }
 
+enum CrewFormationState {
+  PENDING_COPILOT_SELECTION
+  READY
+  LEGACY_INCOMPLETE
+}
+
 enum DroneStatus {
   AVAILABLE
   ASSIGNED
@@ -635,6 +641,11 @@ model Assignment {
   lmv            LMV?    @relation(fields: [lmvId], references: [id])
   lmvId          String?
 
+  crewFormationState     CrewFormationState @default(READY)
+  revision               Int                @default(1)
+  copilotSelectedAt      DateTime?
+  crewFormationUpdatedAt DateTime           @default(now())
+
   scheduledDate        DateTime
   serviceWindowStart   DateTime?
   serviceWindowEnd     DateTime?
@@ -675,6 +686,7 @@ model Assignment {
   @@index([copilotId, scheduledDate])
   @@index([droneId, scheduledDate])
   @@index([lmvId, scheduledDate])
+  @@index([crewFormationState, scheduledDate])
 }
 
 // Persists the notification-cascade clock so a server restart never loses a pilot follow-up.
