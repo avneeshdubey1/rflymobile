@@ -24,7 +24,7 @@ function safeProfile(user) {
 
 function capabilities(app, role) {
   if (app === 'PILOT_FIELD' && role === 'PILOT') {
-    return ['PILOT_ASSIGNMENTS_READ', 'COPILOT_SELECT', 'MISSION_MUTATE', 'ISSUE_REPORT', 'FOREGROUND_LOCATION'];
+    return ['PILOT_ASSIGNMENTS_READ', 'COPILOT_SELECT', 'MISSION_MUTATE', 'ISSUE_REPORT'];
   }
   const byRole = {
     ADMIN: ['OPERATIONS_OVERVIEW', 'CUSTOMER_READ', 'SALES_INTAKE', 'FLEET_SCHEDULE', 'CREW_OVERRIDE'],
