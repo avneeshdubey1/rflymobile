@@ -26,7 +26,7 @@
   "featureFlags": {
     "chat": true,
     "foregroundLocation": false,
-    "issueReporting": false
+    "issueReporting": true
   },
   "appVersions": {
     "minimum": "1.0.0",

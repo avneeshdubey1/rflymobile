@@ -19,6 +19,9 @@ const assignmentSelect = {
   serviceWindowEnd: true,
   expectedAcreage: true,
   actualAcreage: true,
+  issueCategory: true,
+  issueNote: true,
+  issueReportedAt: true,
   createdAt: true,
   updatedAt: true,
   lead: {
@@ -95,8 +98,8 @@ function allowedActions(assignment, actorId) {
   }
   if (assignment.crewFormationState === 'READY' && [assignment.pilotId, assignment.copilotId].includes(actorId)) {
     if (assignment.lead.status === 'SCHEDULED') return ['ACCEPT'];
-    if (assignment.lead.status === 'PILOT_ACCEPTED') return ['START'];
-    if (assignment.lead.status === 'IN_PROGRESS') return ['COMPLETE'];
+    if (assignment.lead.status === 'PILOT_ACCEPTED') return ['START', 'REPORT_ISSUE'];
+    if (assignment.lead.status === 'IN_PROGRESS') return ['COMPLETE', 'REPORT_ISSUE'];
   }
   return [];
 }
@@ -135,6 +138,11 @@ function project(assignment, actorId) {
     crop: assignment.lead.crop?.displayName || assignment.lead.cropType || null,
     expectedAcreage: decimal(assignment.lead.acreageDecimal ?? assignment.expectedAcreage),
     actualAcreage: decimal(assignment.actualAcreage),
+    issue: assignment.issueCategory ? {
+      category: assignment.issueCategory,
+      note: assignment.issueNote,
+      reportedAt: assignment.issueReportedAt.toISOString(),
+    } : null,
     crew,
     drone: {
       id: assignment.drone.id,

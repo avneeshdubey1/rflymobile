@@ -215,7 +215,7 @@ async function bootstrap(req, res) {
     capabilities: capabilities(req.mobileSession.installation.app, user.role),
     assignmentWindow: { from: from.toISOString(), to: to.toISOString() },
     assignments,
-    featureFlags: { chat: false, foregroundLocation: false, issueReporting: false },
+    featureFlags: { chat: false, foregroundLocation: false, issueReporting: true },
     appVersions: { minimum: config.mobile.minimumVersion, recommended: config.mobile.recommendedVersion },
     sync: { cursor: await mobileAssignmentRepository.cursorForPilot(user.id, now) },
     policies: {

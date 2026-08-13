@@ -721,7 +721,7 @@ async function resequence({ assignmentId, dailySequence, actorId }) {
   });
 }
 
-async function transitionMission({ assignmentId, actorId, action, actualAcreage, reason, expectedRevision }) {
+async function transitionMission({ assignmentId, actorId, action, actualAcreage, reason, issueCategory, expectedRevision }) {
   return serializable(async (transaction) => {
     await setHistoryActor(transaction, actorId);
     await lockKeys(transaction, [`assignment:${assignmentId}`]);
@@ -797,6 +797,25 @@ async function transitionMission({ assignmentId, actorId, action, actualAcreage,
       assignmentData = { decommissionedMidMission: true, decommissionReason: String(reason).trim() };
       leadStatus = 'FLAGGED';
       auditAction = 'DRONE_DECOMMISSIONED';
+    } else if (action === 'reportIssue') {
+      if (!['PILOT_ACCEPTED', 'IN_PROGRESS'].includes(before.lead.status)) {
+        throw operationError('Only an accepted or in-progress mission can report an issue');
+      }
+      const approvedCategories = new Set(['DRONE_MALFUNCTION', 'SAFETY_HAZARD', 'WEATHER_BLOCKER', 'CUSTOMER_BLOCKER', 'OTHER']);
+      const normalizedReason = String(reason || '').trim();
+      if (!approvedCategories.has(issueCategory)) throw operationError('An approved issue category is required', 'ISSUE_REJECTED');
+      if (!normalizedReason || normalizedReason.length > 500) throw operationError('Issue note must contain 1 to 500 characters', 'ISSUE_REJECTED');
+      assignmentData = {
+        issueCategory,
+        issueNote: normalizedReason,
+        issueReportedAt: new Date(),
+        ...(issueCategory === 'DRONE_MALFUNCTION' ? {
+          decommissionedMidMission: true,
+          decommissionReason: normalizedReason,
+        } : {}),
+      };
+      leadStatus = 'FLAGGED';
+      auditAction = 'MISSION_ISSUE_REPORTED';
     } else {
       throw operationError('Unsupported mission transition');
     }
@@ -809,6 +828,18 @@ async function transitionMission({ assignmentId, actorId, action, actualAcreage,
       await transaction.notificationEscalation.updateMany({ where: { assignmentId: before.id, closedAt: null }, data: { closedAt: new Date() } });
     }
     if (action === 'complete') await syncResourceAvailability(transaction, before);
+    if (action === 'reportIssue') {
+      await syncResourceAvailability(transaction, before, {
+        ...(issueCategory === 'DRONE_MALFUNCTION' ? { droneStatusOverride: 'MAINTENANCE' } : {}),
+      });
+      await createRoleNotifications(
+        transaction,
+        'FLEET_MANAGER',
+        'MISSION_FLAGGED',
+        before.leadId,
+        `Assignment ${before.id} reported ${issueCategory}: ${String(reason).trim()}`,
+      );
+    }
     if (action === 'decommission') {
       await syncResourceAvailability(transaction, before, { droneStatusOverride: 'MAINTENANCE' });
       await createRoleNotifications(transaction, 'FLEET_MANAGER', 'DRONE_DECOMMISSIONED', before.leadId, `Drone ${before.droneId} was decommissioned during assignment ${before.id}: ${String(reason).trim()}`);

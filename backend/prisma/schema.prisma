@@ -55,6 +55,14 @@ enum MobileAssignmentChangeKind {
   REMOVED
 }
 
+enum MissionIssueCategory {
+  DRONE_MALFUNCTION
+  SAFETY_HAZARD
+  WEATHER_BLOCKER
+  CUSTOMER_BLOCKER
+  OTHER
+}
+
 enum DroneStatus {
   AVAILABLE
   ASSIGNED
@@ -757,8 +765,11 @@ model Assignment {
   hasDiscrepancy  Boolean @default(false)
   discrepancyNote String?
 
-  decommissionedMidMission Boolean @default(false)
+  decommissionedMidMission Boolean               @default(false)
   decommissionReason       String?
+  issueCategory            MissionIssueCategory?
+  issueNote                String?
+  issueReportedAt          DateTime?
 
   lastKnownLat Float? // live GPS, most recent ping only
   lastKnownLng Float?

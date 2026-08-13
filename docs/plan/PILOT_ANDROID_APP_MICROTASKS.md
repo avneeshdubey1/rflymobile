@@ -88,6 +88,7 @@ No commit/push/deployment/live-data action performed: confirmed
 | P00-01 to P00-02 | PASS | Bounded assignment list/detail DTOs expose only assigned work; Primary Pilot eligible-Copilot selection and reasoned Fleet/Admin override reuse the serialized crew domain service. Phase 32 passes 3/3. |
 | P10-01 | PASS | Accept/Start/Complete require generated client action IDs and expected revisions; concurrent/replayed requests use durable safe receipts and cannot double-apply. Phase 32 passes 4/4 and the complete backend gate passes 150/150. |
 | P10-02 | PASS | A database-backed per-Pilot sequence feed returns bounded changed DTOs and removal tombstones, supports ordered mutation batches, detects expired/invalid cursors and purges feed rows after 30 days; the complete backend gate passes 151/151 and 27-migration replay validates 59 checks. |
+| P10-03 | PASS | Idempotent issue reporting uses five controlled categories, coordinate-free notes, durable assignment state, Fleet alerts, audit history and immediate resource release; drone malfunction places only the drone into maintenance. Complete backend gate: 152/152; 28-migration replay: 61 validated checks. |
 | Old M01-01 onward | RETIRED AS EXECUTION ORDER | Existing tasks remain source material. Execute the D00/W00/S00/P00/P10/O00/O10/Q00 packages below instead. |
 
 ---

@@ -151,7 +151,7 @@ async function overrideCopilot(req, res) {
 
 async function mutate(req, res) {
   try {
-    requireBody(req.body, ['clientActionId', 'action', 'expectedRevision', 'actualAcreage']);
+    requireBody(req.body, ['clientActionId', 'action', 'expectedRevision', 'actualAcreage', 'issueCategory', 'issueNote']);
     const assignmentId = requireUuid(req.params.assignmentId, 'assignmentId');
     await mobileAssignmentRepository.findForPilot({ assignmentId, pilotId: req.auth.userId });
     const receipt = await mobileMutationService.mutate({
@@ -162,6 +162,8 @@ async function mutate(req, res) {
       action: req.body.action,
       expectedRevision: req.body.expectedRevision,
       actualAcreage: req.body.actualAcreage,
+      issueCategory: req.body.issueCategory,
+      issueNote: req.body.issueNote,
     });
     return res.json({ success: true, receipt });
   } catch (error) {
@@ -195,7 +197,7 @@ async function sync(req, res) {
     }
     const actionIds = new Set();
     for (const mutation of req.body.mutations) {
-      requireBody(mutation, ['assignmentId', 'clientActionId', 'action', 'expectedRevision', 'actualAcreage']);
+      requireBody(mutation, ['assignmentId', 'clientActionId', 'action', 'expectedRevision', 'actualAcreage', 'issueCategory', 'issueNote']);
       requireUuid(mutation.assignmentId, 'assignmentId');
       requireUuid(mutation.clientActionId, 'clientActionId');
       mobileMutationService.validateMutation(mutation);
@@ -215,6 +217,8 @@ async function sync(req, res) {
         action: mutation.action,
         expectedRevision: mutation.expectedRevision,
         actualAcreage: mutation.actualAcreage,
+        issueCategory: mutation.issueCategory,
+        issueNote: mutation.issueNote,
       }));
     }
     const changesResult = await mobileAssignmentRepository.changesForPilot({

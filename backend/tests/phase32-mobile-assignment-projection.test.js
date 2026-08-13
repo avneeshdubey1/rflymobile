@@ -212,6 +212,76 @@ test('mobile mission actions are revision-guarded and idempotent across response
   assert.equal(await prisma.mobileMutationReceipt.count({ where: { assignmentId: assignment.id } }), 4);
 });
 
+test('controlled issue reporting is idempotent, coordinate-free and visible to Fleet', async () => {
+  const lead = await prisma.lead.create({
+    data: {
+      farmerName: 'P32 Issue Farmer', farmerPhone: '+919000000033', farmerAddress: 'P32 Issue Farm', acreage: 2,
+      intakeChannel: 'MANUAL_SALES', status: 'PROCESSED', latitude: 11.5002, longitude: 77.2002, matchedCenterId: center.id,
+    },
+  });
+  ids.leads.push(lead.id);
+  const scheduled = await assignments.manualAssign({
+    leadId: lead.id,
+    pilotId: primary.id,
+    droneId: drone.id,
+    lmvId: lmv.id,
+    serviceWindowStart: new Date(Date.now() + 48 * 60 * 60_000),
+    serviceWindowEnd: new Date(Date.now() + 50 * 60 * 60_000),
+    actorId: fleet.id,
+  });
+  ids.assignments.push(scheduled.assignment.id);
+  const formed = await request(`/api/mobile/v1/pilot/assignments/${scheduled.assignment.id}/copilot`, {
+    method: 'POST', token: primaryToken,
+    body: { candidateId: outsider.id, expectedRevision: scheduled.assignment.revision },
+  });
+  assert.equal(formed.response.status, 200, JSON.stringify(formed.data));
+  let revision = formed.data.assignment.revision;
+  for (const action of ['ACCEPT', 'START']) {
+    const result = await request(`/api/mobile/v1/pilot/assignments/${scheduled.assignment.id}/actions`, {
+      method: 'POST', token: primaryToken,
+      body: { clientActionId: crypto.randomUUID(), action, expectedRevision: revision },
+    });
+    assert.equal(result.response.status, 200, JSON.stringify(result.data));
+    assert.equal(result.data.receipt.outcome, 'APPLIED');
+    revision = result.data.receipt.resultingRevision;
+  }
+
+  const coordinateLeak = await request(`/api/mobile/v1/pilot/assignments/${scheduled.assignment.id}/actions`, {
+    method: 'POST', token: primaryToken,
+    body: {
+      clientActionId: crypto.randomUUID(), action: 'REPORT_ISSUE', expectedRevision: revision,
+      issueCategory: 'DRONE_MALFUNCTION', issueNote: 'Stopped at 11.5001,77.2001',
+    },
+  });
+  assert.equal(coordinateLeak.response.status, 400);
+  assert.equal(coordinateLeak.data.error.code, 'ISSUE_REJECTED');
+
+  const issueActionId = crypto.randomUUID();
+  const issueBody = {
+    clientActionId: issueActionId,
+    action: 'REPORT_ISSUE',
+    expectedRevision: revision,
+    issueCategory: 'DRONE_MALFUNCTION',
+    issueNote: 'Motor vibration exceeded the safe operating limit.',
+  };
+  const reported = await request(`/api/mobile/v1/pilot/assignments/${scheduled.assignment.id}/actions`, {
+    method: 'POST', token: primaryToken, body: issueBody,
+  });
+  const replay = await request(`/api/mobile/v1/pilot/assignments/${scheduled.assignment.id}/actions`, {
+    method: 'POST', token: primaryToken, body: issueBody,
+  });
+  assert.equal(reported.response.status, 200, JSON.stringify(reported.data));
+  assert.equal(reported.data.receipt.outcome, 'APPLIED');
+  assert.equal(replay.data.receipt.outcome, 'ALREADY_APPLIED');
+  const stored = await prisma.assignment.findUnique({ where: { id: scheduled.assignment.id }, include: { lead: true } });
+  assert.equal(stored.issueCategory, 'DRONE_MALFUNCTION');
+  assert.equal(stored.lead.status, 'FLAGGED');
+  assert.equal((await prisma.drone.findUnique({ where: { id: drone.id } })).status, 'MAINTENANCE');
+  assert.equal((await prisma.lMV.findUnique({ where: { id: lmv.id } })).status, 'AVAILABLE');
+  assert.equal(await prisma.auditLog.count({ where: { entityId: scheduled.assignment.id, action: 'MISSION_ISSUE_REPORTED' } }), 1);
+  assert.ok(await prisma.notification.findFirst({ where: { leadId: lead.id, type: 'MISSION_FLAGGED' } }));
+});
+
 test('cursor sync returns bounded changes and a tombstone after assignment removal', async () => {
   const changedIds = new Set();
   let cursor = syncCursor;

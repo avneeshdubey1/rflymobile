@@ -20,6 +20,7 @@
   "crop": "Example Crop",
   "expectedAcreage": "4.50",
   "actualAcreage": null,
+  "issue": null,
   "crew": [
     {
       "id": "00000000-0000-4000-8000-000000000001",

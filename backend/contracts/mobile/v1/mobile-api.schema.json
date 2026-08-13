@@ -59,7 +59,7 @@
       "required": [
         "id", "leadId", "revision", "status", "crewFormationState", "dailySequence",
         "serviceWindowStart", "serviceWindowEnd", "farmer", "farm", "crop",
-        "expectedAcreage", "actualAcreage", "crew", "drone", "lmv", "operatingCenter",
+        "expectedAcreage", "actualAcreage", "issue", "crew", "drone", "lmv", "operatingCenter",
         "operationalNotes", "updatedAt", "allowedActions"
       ],
       "properties": {
@@ -96,6 +96,21 @@
         "actualAcreage": {
           "anyOf": [
             { "$ref": "#/$defs/decimal" },
+            { "type": "null" }
+          ]
+        },
+        "issue": {
+          "anyOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["category", "note", "reportedAt"],
+              "properties": {
+                "category": { "enum": ["DRONE_MALFUNCTION", "SAFETY_HAZARD", "WEATHER_BLOCKER", "CUSTOMER_BLOCKER", "OTHER"] },
+                "note": { "type": "string", "minLength": 1, "maxLength": 500 },
+                "reportedAt": { "$ref": "#/$defs/timestamp" }
+              }
+            },
             { "type": "null" }
           ]
         },
@@ -284,12 +299,32 @@
       "type": "object",
       "additionalProperties": false,
       "required": ["assignmentId", "clientActionId", "action", "expectedRevision"],
+      "allOf": [
+        {
+          "if": { "properties": { "action": { "const": "COMPLETE" } }, "required": ["action"] },
+          "then": { "properties": { "actualAcreage": {} }, "required": ["actualAcreage"] },
+          "else": { "properties": { "actualAcreage": {} }, "not": { "required": ["actualAcreage"] } }
+        },
+        {
+          "if": { "properties": { "action": { "const": "REPORT_ISSUE" } }, "required": ["action"] },
+          "then": { "properties": { "issueCategory": {}, "issueNote": {} }, "required": ["issueCategory", "issueNote"] },
+          "else": {
+            "properties": { "issueCategory": {}, "issueNote": {} },
+            "allOf": [
+              { "not": { "required": ["issueCategory"] } },
+              { "not": { "required": ["issueNote"] } }
+            ]
+          }
+        }
+      ],
       "properties": {
         "assignmentId": { "$ref": "#/$defs/uuid" },
         "clientActionId": { "$ref": "#/$defs/uuid" },
-        "action": { "enum": ["ACCEPT", "START", "COMPLETE"] },
+        "action": { "enum": ["ACCEPT", "START", "COMPLETE", "REPORT_ISSUE"] },
         "expectedRevision": { "type": "integer", "minimum": 1 },
-        "actualAcreage": { "$ref": "#/$defs/decimal" }
+        "actualAcreage": { "$ref": "#/$defs/decimal" },
+        "issueCategory": { "enum": ["DRONE_MALFUNCTION", "SAFETY_HAZARD", "WEATHER_BLOCKER", "CUSTOMER_BLOCKER", "OTHER"] },
+        "issueNote": { "type": "string", "minLength": 1, "maxLength": 500 }
       }
     },
     "syncRequest": {
