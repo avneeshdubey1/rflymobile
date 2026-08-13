@@ -1,8 +1,10 @@
 # Gemini Mobile Integration Handoff
 
-Status date: 2026-08-13  
-Backend branch: local `staging`  
-Backend acceptance commit: `8e50df5` and preceding mobile commits  
+Status date: 2026-08-13
+
+Backend branch: local `staging`
+
+Backend acceptance commit: `8e50df5` and preceding mobile commits
 Deployment status: not pushed and not deployed
 
 ## 1. Purpose and authority
