@@ -57,7 +57,7 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "id", "leadId", "revision", "status", "dailySequence",
+        "id", "leadId", "revision", "status", "crewFormationState", "dailySequence",
         "serviceWindowStart", "serviceWindowEnd", "farmer", "farm", "crop",
         "expectedAcreage", "actualAcreage", "crew", "drone", "lmv", "operatingCenter",
         "operationalNotes", "updatedAt", "allowedActions"
@@ -67,6 +67,7 @@
         "leadId": { "$ref": "#/$defs/uuid" },
         "revision": { "type": "integer", "minimum": 1 },
         "status": { "enum": ["SCHEDULED", "PILOT_ACCEPTED", "IN_PROGRESS", "COMPLETED", "CANCELLED", "FLAGGED"] },
+        "crewFormationState": { "enum": ["PENDING_COPILOT_SELECTION", "READY", "LEGACY_INCOMPLETE"] },
         "dailySequence": { "type": "integer", "minimum": 1 },
         "serviceWindowStart": { "$ref": "#/$defs/timestamp" },
         "serviceWindowEnd": { "$ref": "#/$defs/timestamp" },
@@ -100,7 +101,7 @@
         },
         "crew": {
           "type": "array",
-          "minItems": 2,
+          "minItems": 1,
           "maxItems": 2,
           "items": { "$ref": "#/$defs/crewMember" }
         },
@@ -115,14 +116,19 @@
           }
         },
         "lmv": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["id", "registrationNumber", "label"],
-          "properties": {
-            "id": { "$ref": "#/$defs/uuid" },
-            "registrationNumber": { "type": "string", "minLength": 1, "maxLength": 80 },
-            "label": { "type": ["string", "null"], "maxLength": 120 }
-          }
+          "anyOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "registrationNumber", "label"],
+              "properties": {
+                "id": { "$ref": "#/$defs/uuid" },
+                "registrationNumber": { "type": "string", "minLength": 1, "maxLength": 80 },
+                "label": { "type": ["string", "null"], "maxLength": 120 }
+              }
+            },
+            { "type": "null" }
+          ]
         },
         "operatingCenter": {
           "anyOf": [
@@ -139,7 +145,7 @@
         "allowedActions": {
           "type": "array",
           "uniqueItems": true,
-          "items": { "enum": ["ACCEPT", "START", "COMPLETE", "REPORT_ISSUE", "SEND_LOCATION"] }
+          "items": { "enum": ["SELECT_COPILOT", "ACCEPT", "START", "COMPLETE", "REPORT_ISSUE", "SEND_LOCATION"] }
         }
       }
     },
@@ -197,7 +203,12 @@
         "serverTime": { "$ref": "#/$defs/timestamp" },
         "operatingTimeZone": { "type": "string", "minLength": 1, "maxLength": 80 },
         "profile": { "$ref": "#/$defs/pilotProfile" },
-        "operatingCenter": { "$ref": "#/$defs/operatingCenter" },
+        "operatingCenter": {
+          "anyOf": [
+            { "$ref": "#/$defs/operatingCenter" },
+            { "type": "null" }
+          ]
+        },
         "assignmentWindow": {
           "type": "object",
           "additionalProperties": false,
@@ -299,6 +310,11 @@
                 "SESSION_EXPIRED", "SESSION_REVOKED", "ROLE_NOT_ALLOWED",
                 "RESOURCE_NOT_FOUND", "ASSIGNMENT_REVISION_CONFLICT", "ASSIGNMENT_REASSIGNED",
                 "ASSIGNMENT_CANCELLED", "MISSION_STATE_CONFLICT", "SEQUENCE_BLOCKED",
+                "ASSIGNMENT_LOCATION_INCOMPLETE", "PRIMARY_PILOT_REQUIRED",
+                "CREW_FORMATION_NOT_PENDING", "COPILOT_REPLACEMENT_CLOSED",
+                "COPILOT_SELECTION_DEADLINE_PASSED", "COPILOT_NOT_ELIGIBLE",
+                "COPILOT_SELF_SELECTION", "COPILOT_CROSS_CENTRE", "COPILOT_LICENCE_EXPIRED",
+                "COPILOT_SCHEDULE_CONFLICT", "LEGACY_CREW_REVIEW_REQUIRED",
                 "RESOURCE_UNAVAILABLE", "ISSUE_REJECTED", "LOCATION_NOT_ALLOWED",
                 "LOCATION_INVALID", "RATE_LIMITED", "CLIENT_UPGRADE_REQUIRED",
                 "RETRY_LATER", "INTERNAL_ERROR"

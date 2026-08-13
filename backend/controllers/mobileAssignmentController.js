@@ -1,0 +1,151 @@
+const crewFormationRepository = require('../src/repositories/crewFormationRepository');
+const mobileAssignmentRepository = require('../src/repositories/mobileAssignmentRepository');
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function mobileError(res, req, error) {
+  const knownStatus = {
+    ASSIGNMENT_NOT_FOUND: 404,
+    RESOURCE_NOT_FOUND: 404,
+    PRIMARY_PILOT_REQUIRED: 403,
+    CREW_OVERRIDE_FORBIDDEN: 403,
+    ASSIGNMENT_REVISION_CONFLICT: 409,
+    CREW_FORMATION_NOT_PENDING: 409,
+    COPILOT_REPLACEMENT_CLOSED: 409,
+    COPILOT_SELECTION_DEADLINE_PASSED: 409,
+    COPILOT_NOT_ELIGIBLE: 409,
+    COPILOT_SELF_SELECTION: 409,
+    COPILOT_CROSS_CENTRE: 409,
+    COPILOT_LICENCE_EXPIRED: 409,
+    COPILOT_SCHEDULE_CONFLICT: 409,
+    LEGACY_CREW_REVIEW_REQUIRED: 409,
+    CREW_FORMATION_RETRY_EXHAUSTED: 503,
+  };
+  const status = error.status || knownStatus[error.code] || 500;
+  const publicCode = {
+    ASSIGNMENT_NOT_FOUND: 'RESOURCE_NOT_FOUND',
+    CREW_OVERRIDE_FORBIDDEN: 'ROLE_NOT_ALLOWED',
+    CREW_OVERRIDE_REASON_REQUIRED: 'VALIDATION_FAILED',
+    ASSIGNMENT_REVISION_REQUIRED: 'VALIDATION_FAILED',
+    CREW_FORMATION_RETRY_EXHAUSTED: 'RETRY_LATER',
+  }[error.code] || error.code || 'INTERNAL_ERROR';
+  return res.status(status).json({
+    success: false,
+    error: {
+      code: publicCode,
+      message: status >= 500 ? 'Unable to complete the assignment request' : error.message,
+      retryable: status === 503,
+      requestId: req.requestId,
+      ...(error.details ? { details: error.details } : {}),
+    },
+  });
+}
+
+function requireUuid(value, name) {
+  if (!UUID_PATTERN.test(String(value || ''))) {
+    throw mobileAssignmentRepository.mobileAssignmentError(`${name} must be a valid identifier`);
+  }
+  return value;
+}
+
+function requireBody(body, fields) {
+  const allowed = new Set(fields);
+  if (!body || typeof body !== 'object' || Array.isArray(body)
+    || Object.keys(body).some((field) => !allowed.has(field))) {
+    throw mobileAssignmentRepository.mobileAssignmentError('Request body is invalid');
+  }
+}
+
+async function list(req, res) {
+  try {
+    const allowedQuery = new Set(['from', 'to']);
+    if (Object.keys(req.query).some((field) => !allowedQuery.has(field))) {
+      throw mobileAssignmentRepository.mobileAssignmentError('Assignment query is invalid');
+    }
+    const assignments = await mobileAssignmentRepository.listForPilot({
+      pilotId: req.auth.userId,
+      from: req.query.from,
+      to: req.query.to,
+    });
+    return res.json({ success: true, assignments });
+  } catch (error) {
+    return mobileError(res, req, error);
+  }
+}
+
+async function detail(req, res) {
+  try {
+    const assignment = await mobileAssignmentRepository.findForPilot({
+      assignmentId: requireUuid(req.params.assignmentId, 'assignmentId'),
+      pilotId: req.auth.userId,
+    });
+    return res.json({ success: true, assignment });
+  } catch (error) {
+    return mobileError(res, req, error);
+  }
+}
+
+async function eligibleCopilots(req, res) {
+  try {
+    const assignmentId = requireUuid(req.params.assignmentId, 'assignmentId');
+    await mobileAssignmentRepository.findForPilot({ assignmentId, pilotId: req.auth.userId });
+    const candidates = await crewFormationRepository.listEligibleCopilots({
+      assignmentId,
+      actorId: req.auth.userId,
+    });
+    return res.json({ success: true, assignmentId, candidates });
+  } catch (error) {
+    return mobileError(res, req, error);
+  }
+}
+
+async function selectCopilot(req, res) {
+  try {
+    requireBody(req.body, ['candidateId', 'expectedRevision']);
+    const assignmentId = requireUuid(req.params.assignmentId, 'assignmentId');
+    const candidateId = requireUuid(req.body.candidateId, 'candidateId');
+    await mobileAssignmentRepository.findForPilot({ assignmentId, pilotId: req.auth.userId });
+    await crewFormationRepository.selectCopilot({
+      assignmentId,
+      candidateId,
+      actorId: req.auth.userId,
+      expectedRevision: req.body.expectedRevision,
+    });
+    const assignment = await mobileAssignmentRepository.findForPilot({ assignmentId, pilotId: req.auth.userId });
+    return res.json({ success: true, assignment });
+  } catch (error) {
+    return mobileError(res, req, error);
+  }
+}
+
+async function overrideCopilot(req, res) {
+  try {
+    requireBody(req.body, ['candidateId', 'expectedRevision', 'reason']);
+    const assignmentId = requireUuid(req.params.assignmentId, 'assignmentId');
+    const candidateId = requireUuid(req.body.candidateId, 'candidateId');
+    if (typeof req.body.reason !== 'string' || !req.body.reason.trim() || req.body.reason.trim().length > 500) {
+      throw mobileAssignmentRepository.mobileAssignmentError('Override reason must contain 1 to 500 characters');
+    }
+    const updated = await crewFormationRepository.overrideCopilot({
+      assignmentId,
+      candidateId,
+      actorId: req.auth.userId,
+      expectedRevision: req.body.expectedRevision,
+      reason: req.body.reason,
+    });
+    return res.json({
+      success: true,
+      assignment: {
+        id: updated.id,
+        revision: updated.revision,
+        crewFormationState: updated.crewFormationState,
+        primaryPilot: { id: updated.pilot.id, displayName: updated.pilot.name },
+        copilot: { id: updated.copilot.id, displayName: updated.copilot.name },
+      },
+    });
+  } catch (error) {
+    return mobileError(res, req, error);
+  }
+}
+
+module.exports = { detail, eligibleCopilots, list, mobileError, overrideCopilot, selectCopilot };

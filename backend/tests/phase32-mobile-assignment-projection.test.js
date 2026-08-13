@@ -1,0 +1,185 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const crypto = require('node:crypto');
+const app = require('../app');
+const prisma = require('../src/lib/prisma');
+const assignments = require('../src/repositories/assignmentOperationRepository');
+const { hashPassword } = require('../services/passwordService');
+
+const runId = `${process.pid}-${Date.now()}`;
+const ids = { centers: [], users: [], drones: [], lmvs: [], leads: [], assignments: [], installations: [] };
+const password = 'phase32-password-strong';
+let server;
+let baseUrl;
+let center;
+let primary;
+let copilot;
+let outsider;
+let fleet;
+let drone;
+let lmv;
+let assignment;
+let primaryToken;
+let copilotToken;
+let outsiderToken;
+let fleetToken;
+
+function loginBody(user) {
+  return {
+    email: user.email,
+    password,
+    installationKey: crypto.randomBytes(48).toString('base64url'),
+    platform: 'ANDROID',
+    appVersion: '1.0.0',
+    deviceLabel: 'Phase 32 synthetic device',
+  };
+}
+
+async function request(path, { method = 'GET', token, body } = {}) {
+  const response = await fetch(`${baseUrl}${path}`, {
+    method,
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(body ? { 'Content-Type': 'application/json' } : {}),
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  return { response, data: await response.json().catch(() => ({})) };
+}
+
+async function login(user, route) {
+  const result = await request(`/api/mobile/v1/${route}/auth/login`, { method: 'POST', body: loginBody(user) });
+  assert.equal(result.response.status, 200, JSON.stringify(result.data));
+  ids.installations.push(result.data.installation.id);
+  return result.data.session.accessToken;
+}
+
+test.before(async () => {
+  server = app.listen(0);
+  await new Promise((resolve) => server.once('listening', resolve));
+  baseUrl = `http://127.0.0.1:${server.address().port}`;
+  center = await prisma.operatingCenter.create({
+    data: { name: `Phase 32 Centre ${runId}`, code: `P32-${runId}`, latitude: 11.5, longitude: 77.2 },
+  });
+  ids.centers.push(center.id);
+  const passwordHash = await hashPassword(password);
+  [primary, copilot, outsider, fleet] = await Promise.all([
+    prisma.user.create({ data: { name: 'P32 Primary', email: `p32-primary-${runId}@example.test`, passwordHash, role: 'PILOT', homeCenterId: center.id, pilotLicenseExpiry: new Date('2100-01-01') } }),
+    prisma.user.create({ data: { name: 'P32 Copilot', email: `p32-copilot-${runId}@example.test`, passwordHash, role: 'PILOT', homeCenterId: center.id, pilotLicenseExpiry: new Date('2100-01-01') } }),
+    prisma.user.create({ data: { name: 'P32 Outsider', email: `p32-outsider-${runId}@example.test`, passwordHash, role: 'PILOT', homeCenterId: center.id, pilotLicenseExpiry: new Date('2100-01-01') } }),
+    prisma.user.create({ data: { name: 'P32 Fleet', email: `p32-fleet-${runId}@example.test`, passwordHash, role: 'FLEET_MANAGER' } }),
+  ]);
+  ids.users.push(primary.id, copilot.id, outsider.id, fleet.id);
+  [drone, lmv] = await Promise.all([
+    prisma.drone.create({ data: { name: 'P32 Drone', model: 'P32', serialNumber: `P32-D-${runId}`, homeCenterId: center.id } }),
+    prisma.lMV.create({ data: { registrationNo: `P32-L-${runId}`, label: 'P32 Vehicle', homeCenterId: center.id } }),
+  ]);
+  ids.drones.push(drone.id);
+  ids.lmvs.push(lmv.id);
+  const lead = await prisma.lead.create({
+    data: {
+      farmerName: 'P32 Farmer', farmerPhone: '+919000000032', farmerAddress: 'P32 Assigned Farm', acreage: 4.5,
+      acreageDecimal: '4.50', cropType: 'Rice', notes: 'Use approved field procedure.', intakeChannel: 'MANUAL_SALES',
+      status: 'PROCESSED', latitude: 11.5001, longitude: 77.2001, matchedCenterId: center.id,
+    },
+  });
+  ids.leads.push(lead.id);
+  const scheduled = await assignments.manualAssign({
+    leadId: lead.id,
+    pilotId: primary.id,
+    droneId: drone.id,
+    lmvId: lmv.id,
+    serviceWindowStart: new Date(Date.now() + 24 * 60 * 60_000),
+    serviceWindowEnd: new Date(Date.now() + 26 * 60 * 60_000),
+    actorId: fleet.id,
+  });
+  assignment = scheduled.assignment;
+  ids.assignments.push(assignment.id);
+  [primaryToken, copilotToken, outsiderToken, fleetToken] = await Promise.all([
+    login(primary, 'pilot'), login(copilot, 'pilot'), login(outsider, 'pilot'), login(fleet, 'operations'),
+  ]);
+});
+
+test('only assigned Pilots receive bounded allow-listed assignment DTOs', async () => {
+  const list = await request('/api/mobile/v1/pilot/assignments', { token: primaryToken });
+  assert.equal(list.response.status, 200, JSON.stringify(list.data));
+  assert.equal(list.data.assignments.length, 1);
+  const projected = list.data.assignments[0];
+  assert.equal(projected.id, assignment.id);
+  assert.equal(projected.crewFormationState, 'PENDING_COPILOT_SELECTION');
+  assert.deepEqual(projected.allowedActions, ['SELECT_COPILOT']);
+  assert.equal(projected.crew.length, 1);
+  assert.equal(projected.farmer.operationalPhone, '+919000000032');
+  assert.equal(projected.farmer.crmHistory, undefined);
+  assert.equal(projected.drone.airworthinessExpiry, undefined);
+  assert.equal(projected.lmv.notes, undefined);
+
+  const hidden = await request(`/api/mobile/v1/pilot/assignments/${assignment.id}`, { token: outsiderToken });
+  assert.equal(hidden.response.status, 404);
+  assert.equal(hidden.data.error.code, 'RESOURCE_NOT_FOUND');
+  const invalidRange = await request('/api/mobile/v1/pilot/assignments?from=2099-01-01T00:00:00.000Z&to=2099-03-01T00:00:00.000Z', { token: primaryToken });
+  assert.equal(invalidRange.response.status, 400);
+});
+
+test('Primary selects an eligible Copilot once and both crew members can then read the assignment', async () => {
+  const candidates = await request(`/api/mobile/v1/pilot/assignments/${assignment.id}/eligible-copilots`, { token: primaryToken });
+  assert.equal(candidates.response.status, 200, JSON.stringify(candidates.data));
+  assert.ok(candidates.data.candidates.some((candidate) => candidate.id === copilot.id));
+  assert.equal(candidates.data.candidates[0].phone, undefined);
+  assert.equal(candidates.data.candidates[0].pilotLicenseExpiry, undefined);
+
+  const selected = await request(`/api/mobile/v1/pilot/assignments/${assignment.id}/copilot`, {
+    method: 'POST',
+    token: primaryToken,
+    body: { candidateId: copilot.id, expectedRevision: assignment.revision },
+  });
+  assert.equal(selected.response.status, 200, JSON.stringify(selected.data));
+  assert.equal(selected.data.assignment.crewFormationState, 'READY');
+  assert.equal(selected.data.assignment.crew.length, 2);
+  assert.deepEqual(selected.data.assignment.allowedActions, []);
+
+  const copilotView = await request(`/api/mobile/v1/pilot/assignments/${assignment.id}`, { token: copilotToken });
+  assert.equal(copilotView.response.status, 200);
+  assert.equal(copilotView.data.assignment.id, assignment.id);
+  const stale = await request(`/api/mobile/v1/pilot/assignments/${assignment.id}/copilot`, {
+    method: 'POST', token: primaryToken, body: { candidateId: outsider.id, expectedRevision: assignment.revision },
+  });
+  assert.equal(stale.response.status, 409);
+  assert.equal(stale.data.error.code, 'ASSIGNMENT_REVISION_CONFLICT');
+});
+
+test('Operations override requires Fleet or Admin and records a reasoned audit', async () => {
+  const current = await prisma.assignment.findUnique({ where: { id: assignment.id } });
+  const overridden = await request(`/api/mobile/v1/operations/assignments/${assignment.id}/copilot-override`, {
+    method: 'POST',
+    token: fleetToken,
+    body: { candidateId: outsider.id, expectedRevision: current.revision, reason: 'Copilot availability changed.' },
+  });
+  assert.equal(overridden.response.status, 200, JSON.stringify(overridden.data));
+  assert.equal(overridden.data.assignment.copilot.id, outsider.id);
+  const audit = await prisma.auditLog.findFirst({
+    where: { entityType: 'Assignment', entityId: assignment.id, action: 'COPILOT_OVERRIDDEN' },
+    orderBy: { createdAt: 'desc' },
+  });
+  assert.equal(audit.reason, 'Copilot availability changed.');
+});
+
+test.after(async () => {
+  await prisma.mobileSession.deleteMany({ where: { userId: { in: ids.users } } });
+  await prisma.mobileMutationReceipt.deleteMany({ where: { installationId: { in: ids.installations } } });
+  await prisma.mobileInstallation.deleteMany({ where: { userId: { in: ids.users } } });
+  await prisma.notificationEscalation.deleteMany({ where: { assignmentId: { in: ids.assignments } } });
+  await prisma.notification.deleteMany({ where: { leadId: { in: ids.leads } } });
+  await prisma.auditLog.deleteMany({ where: { entityId: { in: [...ids.assignments, ...ids.leads] } } });
+  await prisma.$transaction(async (transaction) => {
+    await transaction.$queryRaw`SELECT set_config('rfly.allow_history_mutation', 'on', true)`;
+    await transaction.assignment.deleteMany({ where: { id: { in: ids.assignments } } });
+    await transaction.lead.deleteMany({ where: { id: { in: ids.leads } } });
+    await transaction.drone.deleteMany({ where: { id: { in: ids.drones } } });
+    await transaction.lMV.deleteMany({ where: { id: { in: ids.lmvs } } });
+    await transaction.user.deleteMany({ where: { id: { in: ids.users } } });
+    await transaction.operatingCenter.deleteMany({ where: { id: { in: ids.centers } } });
+  });
+  await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+  await prisma.$disconnect();
+});

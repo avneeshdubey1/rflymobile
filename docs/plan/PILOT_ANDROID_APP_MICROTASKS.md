@@ -85,6 +85,7 @@ No commit/push/deployment/live-data action performed: confirmed
 | R00-01 to R00-09 | PASS | `MOBILE_R00_REQUIREMENTS_AND_ARCHITECTURE.md` records the approved backend-facing requirements, role/parity matrices, Copilot workflow, source gap, two-app boundary, Stitch review, contract classification and replacement graph. |
 | D00-01 to D00-04 | PASS | Crew-state and mobile-identity migrations pass clean/populated replay; transactional Copilot formation and provisional scheduling pass focused Phases 29/30. |
 | S00-01 to S00-03 | PASS | `/api/mobile/v1` uses hashed installation-bound bearer sessions, serialized installation limits, login identity-race protection, Pilot/Operations app-role separation, capability bootstrap, logout/revocation, audit events and production-off configuration; Phase 31 passes 4/4 and the complete backend gate passes 146/146. |
+| P00-01 to P00-02 | PASS | Bounded assignment list/detail DTOs expose only assigned work; Primary Pilot eligible-Copilot selection and reasoned Fleet/Admin override reuse the serialized crew domain service. Phase 32 passes 3/3. |
 | Old M01-01 onward | RETIRED AS EXECUTION ORDER | Existing tasks remain source material. Execute the D00/W00/S00/P00/P10/O00/O10/Q00 packages below instead. |
 
 ---

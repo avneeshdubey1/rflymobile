@@ -283,7 +283,6 @@ function verifyPopulatedLegacyUpgrade(migrations) {
   recreateDatabase(legacyDatabase);
   const targetIndex = migrations.indexOf(targetMigration);
   assert.notEqual(targetIndex, -1, `Missing target migration ${targetMigration}`);
-  assert.equal(targetIndex, migrations.length - 1, 'Harness requires the target migration to be the latest migration');
 
   for (const migration of migrations.slice(0, targetIndex)) applySqlMigration(legacyDatabase, migration);
   psql(legacyDatabase, legacyFixtureSql, { tuplesOnly: false });
@@ -298,7 +297,7 @@ function verifyPopulatedLegacyUpgrade(migrations) {
     Assignment: 2,
   });
 
-  applySqlMigration(legacyDatabase, targetMigration);
+  for (const migration of migrations.slice(targetIndex)) applySqlMigration(legacyDatabase, migration);
   const after = coreCounts(legacyDatabase);
   assert.deepEqual(after, before, 'Core business row counts changed during additive migration');
 
@@ -321,6 +320,11 @@ function verifyPopulatedLegacyUpgrade(migrations) {
     scalar(legacyDatabase, `SELECT "revision"::text FROM "Assignment" WHERE "id" = 'migration-assignment';`),
     '1',
     'Complete assignment revision was not initialized',
+  );
+  assert.equal(
+    scalar(legacyDatabase, `SELECT ("updatedAt" IS NOT NULL)::text FROM "Assignment" WHERE "id" = 'migration-assignment';`),
+    'true',
+    'Assignment sync timestamp was not backfilled',
   );
   assert.equal(
     scalar(legacyDatabase, `SELECT "crewFormationState"::text FROM "Assignment" WHERE "id" = 'migration-incomplete-assignment';`),
@@ -448,6 +452,7 @@ function verifyPopulatedLegacyUpgrade(migrations) {
 
   return {
     priorMigrationsApplied: targetIndex,
+    upgradeMigrationsApplied: migrations.length - targetIndex,
     before,
     after,
     canonicalPhone: '+919876543210',

@@ -2,6 +2,7 @@ const userRepository = require('../src/repositories/userRepository');
 const mobileSessionRepository = require('../src/repositories/mobileSessionRepository');
 const mobileSessionService = require('../services/mobileSessionService');
 const authAuditService = require('../services/authAuditService');
+const mobileAssignmentRepository = require('../src/repositories/mobileAssignmentRepository');
 const {
   hashPassword,
   INVALID_ACCOUNT_PASSWORD_HASH,
@@ -188,14 +189,18 @@ async function adminRevokeInstallation(req, res) {
 }
 
 async function bootstrap(req, res) {
-  const config = req.app.get('config');
-  const user = req.authUser;
-  const now = new Date();
-  const from = new Date(now);
-  from.setUTCDate(from.getUTCDate() - 1);
-  const to = new Date(now);
-  to.setUTCDate(to.getUTCDate() + 14);
-  return res.json({
+  try {
+    const config = req.app.get('config');
+    const user = req.authUser;
+    const now = new Date();
+    const from = new Date(now);
+    from.setUTCDate(from.getUTCDate() - 1);
+    const to = new Date(now);
+    to.setUTCDate(to.getUTCDate() + 14);
+    const assignments = req.mobileSession.installation.app === 'PILOT_FIELD'
+      ? await mobileAssignmentRepository.listForPilot({ pilotId: user.id, from: from.toISOString(), to: to.toISOString(), now })
+      : [];
+    return res.json({
     success: true,
     apiVersion: 'v1',
     serverTime: now.toISOString(),
@@ -209,7 +214,7 @@ async function bootstrap(req, res) {
     } : null,
     capabilities: capabilities(req.mobileSession.installation.app, user.role),
     assignmentWindow: { from: from.toISOString(), to: to.toISOString() },
-    assignments: [],
+    assignments,
     featureFlags: { chat: false, foregroundLocation: false, issueReporting: false },
     appVersions: { minimum: config.mobile.minimumVersion, recommended: config.mobile.recommendedVersion },
     sync: { cursor: Buffer.from(JSON.stringify({ at: now.toISOString() })).toString('base64url') },
@@ -220,7 +225,10 @@ async function bootstrap(req, res) {
       locationAccuracyMetres: 100,
       backgroundLocationEnabled: false,
     },
-  });
+    });
+  } catch (error) {
+    return authError(res, req, error);
+  }
 }
 
 module.exports = { adminRevokeInstallation, bootstrap, login, logout, logoutAll, revokeInstallation };

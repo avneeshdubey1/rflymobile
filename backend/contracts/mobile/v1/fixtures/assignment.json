@@ -3,6 +3,7 @@
   "leadId": "00000000-0000-4000-8000-000000000031",
   "revision": 3,
   "status": "PILOT_ACCEPTED",
+  "crewFormationState": "READY",
   "dailySequence": 1,
   "serviceWindowStart": "2026-08-12T09:00:00.000Z",
   "serviceWindowEnd": "2026-08-12T11:00:00.000Z",

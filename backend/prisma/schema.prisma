@@ -750,16 +750,18 @@ model Assignment {
   rescheduleHistory      ScheduleChangeLog[]
   payments               PaymentRecord[]
   notificationEscalation NotificationEscalation?
-  mobileMutationReceipts MobileMutationReceipt[]
-  createdAt              DateTime                @default(now())
+    mobileMutationReceipts MobileMutationReceipt[]
+    createdAt              DateTime                @default(now())
+    updatedAt              DateTime                @updatedAt
 
   @@index([scheduledDate, dailySequence])
   @@index([pilotId, scheduledDate])
   @@index([copilotId, scheduledDate])
   @@index([droneId, scheduledDate])
   @@index([lmvId, scheduledDate])
-  @@index([crewFormationState, scheduledDate])
-}
+    @@index([crewFormationState, scheduledDate])
+    @@index([updatedAt])
+  }
 
 // Persists the notification-cascade clock so a server restart never loses a pilot follow-up.
 model NotificationEscalation {
