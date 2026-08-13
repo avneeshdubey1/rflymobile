@@ -1,0 +1,19 @@
+{
+  "success": true,
+  "created": true,
+  "customer": {
+    "id": "33333333-3333-4333-8333-333333333333",
+    "displayName": "Example Farmer",
+    "phone": "__GENERATED_PHONE__",
+    "preferredLanguage": "ta",
+    "ownership": "OWNER",
+    "totalAcres": "7.50",
+    "location": {
+      "village": "Example Village",
+      "mandal": "Example Mandal",
+      "district": "Example District",
+      "state": "Example State"
+    },
+    "recentLeads": []
+  }
+}

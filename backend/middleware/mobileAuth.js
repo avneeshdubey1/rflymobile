@@ -40,4 +40,18 @@ function requireMobileApp(...apps) {
   };
 }
 
-module.exports = { authenticateMobile, mobileError, requireMobileApp };
+function requireMobileRole(...roles) {
+  const allowed = new Set(roles);
+  return (req, res, next) => {
+    if (!req.auth || !allowed.has(req.auth.role)) {
+      return mobileError(res, req, new mobileSessionService.MobileAuthError(
+        'Role capability is not allowed',
+        'ROLE_NOT_ALLOWED',
+        403,
+      ));
+    }
+    return next();
+  };
+}
+
+module.exports = { authenticateMobile, mobileError, requireMobileApp, requireMobileRole };

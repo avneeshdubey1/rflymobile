@@ -238,7 +238,7 @@
           "type": "array",
           "uniqueItems": true,
           "items": {
-            "enum": ["PILOT_ASSIGNMENTS_READ", "COPILOT_SELECT", "MISSION_MUTATE", "ISSUE_REPORT", "FOREGROUND_LOCATION", "OPERATIONS_OVERVIEW", "SALES_INTAKE", "FLEET_SCHEDULE", "CREW_OVERRIDE"]
+            "enum": ["PILOT_ASSIGNMENTS_READ", "COPILOT_SELECT", "MISSION_MUTATE", "ISSUE_REPORT", "FOREGROUND_LOCATION", "OPERATIONS_OVERVIEW", "CUSTOMER_READ", "SALES_INTAKE", "FLEET_SCHEDULE", "CREW_OVERRIDE"]
           }
         },
         "featureFlags": {
@@ -366,6 +366,93 @@
         "fullResyncRequired": { "type": "boolean" },
         "changedAssignments": { "type": "array", "maxItems": 100, "items": { "$ref": "#/$defs/assignment" } },
         "removedAssignmentIds": { "type": "array", "maxItems": 100, "uniqueItems": true, "items": { "$ref": "#/$defs/uuid" } }
+      }
+    },
+    "operationsCustomer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "displayName", "phone", "preferredLanguage", "ownership", "totalAcres", "location", "recentLeads"],
+      "properties": {
+        "id": { "$ref": "#/$defs/uuid" },
+        "displayName": { "type": "string", "minLength": 2, "maxLength": 120 },
+        "phone": { "type": "string", "pattern": "^\\+[1-9]\\d{7,14}$" },
+        "preferredLanguage": { "type": "string", "minLength": 2, "maxLength": 12 },
+        "ownership": { "type": ["string", "null"], "enum": ["OWNER", "TENANT", null] },
+        "totalAcres": {
+          "anyOf": [
+            { "$ref": "#/$defs/decimal" },
+            { "type": "null" }
+          ]
+        },
+        "location": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["village", "mandal", "district", "state"],
+          "properties": {
+            "village": { "type": ["string", "null"], "maxLength": 120 },
+            "mandal": { "type": ["string", "null"], "maxLength": 120 },
+            "district": { "type": ["string", "null"], "maxLength": 120 },
+            "state": { "type": ["string", "null"], "maxLength": 120 }
+          }
+        },
+        "recentLeads": {
+          "type": "array",
+          "maxItems": 5,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "status", "acreage", "crop", "createdAt"],
+            "properties": {
+              "id": { "$ref": "#/$defs/uuid" },
+              "status": { "type": "string", "minLength": 1, "maxLength": 40 },
+              "acreage": { "$ref": "#/$defs/decimal" },
+              "crop": { "type": ["string", "null"], "maxLength": 120 },
+              "createdAt": { "$ref": "#/$defs/timestamp" }
+            }
+          }
+        }
+      }
+    },
+    "operationsCustomerResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["success", "customer"],
+      "properties": {
+        "success": { "const": true },
+        "created": { "type": "boolean" },
+        "customer": { "$ref": "#/$defs/operationsCustomer" }
+      }
+    },
+    "operationsCustomerListResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["success", "customers"],
+      "properties": {
+        "success": { "const": true },
+        "customers": { "type": "array", "maxItems": 30, "items": { "$ref": "#/$defs/operationsCustomer" } }
+      }
+    },
+    "operationsLeadResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["success", "outcome", "lead", "assignmentOutcome"],
+      "properties": {
+        "success": { "const": true },
+        "outcome": { "const": "ACCEPTED" },
+        "lead": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "status", "acreage", "crop", "operatingCenterId", "createdAt"],
+          "properties": {
+            "id": { "$ref": "#/$defs/uuid" },
+            "status": { "type": "string", "minLength": 1, "maxLength": 40 },
+            "acreage": { "$ref": "#/$defs/decimal" },
+            "crop": { "type": ["string", "null"], "maxLength": 120 },
+            "operatingCenterId": { "$ref": "#/$defs/uuid" },
+            "createdAt": { "$ref": "#/$defs/timestamp" }
+          }
+        },
+        "assignmentOutcome": { "type": ["string", "null"], "maxLength": 80 }
       }
     },
     "errorResponse": {

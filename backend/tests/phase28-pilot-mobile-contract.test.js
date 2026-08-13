@@ -19,6 +19,8 @@ const fixtureContracts = Object.freeze({
   'sync-request.json': 'syncRequest',
   'sync-response.json': 'syncResponse',
   'change-page.json': 'changePage',
+  'operations-customer-response.json': 'operationsCustomerResponse',
+  'operations-lead-response.json': 'operationsLeadResponse',
   'conflict-response.json': 'errorResponse',
 });
 

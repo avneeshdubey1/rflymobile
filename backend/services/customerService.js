@@ -129,6 +129,10 @@ async function searchForSales({ query }) {
   return customers.map(safeCustomer);
 }
 
+async function findByPhoneForSales(phone) {
+  return safeCustomer(await customerRepository.findByPhone(normalizePhone(phone)));
+}
+
 async function createForSales(input, actorId) {
   const phone = normalizePhone(input.phone || input.farmerPhone);
   const existing = await customerRepository.findByPhone(phone);
@@ -288,6 +292,7 @@ module.exports = {
   createForSales,
   enableFarmerPortalAccess,
   ensureForFarmerUser,
+  findByPhoneForSales,
   getServiceContext,
   openServiceContext,
   searchForSales,

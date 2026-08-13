@@ -1,7 +1,8 @@
 const express = require('express');
 const controller = require('../controllers/mobileAuthController');
 const assignmentController = require('../controllers/mobileAssignmentController');
-const { authenticateMobile, requireMobileApp } = require('../middleware/mobileAuth');
+const operationsController = require('../controllers/mobileOperationsController');
+const { authenticateMobile, requireMobileApp, requireMobileRole } = require('../middleware/mobileAuth');
 
 const router = express.Router();
 
@@ -21,6 +22,10 @@ router.get('/pilot/assignments/:assignmentId/eligible-copilots', requireMobileAp
 router.post('/pilot/assignments/:assignmentId/copilot', requireMobileApp('PILOT_FIELD'), assignmentController.selectCopilot);
 router.post('/pilot/assignments/:assignmentId/actions', requireMobileApp('PILOT_FIELD'), assignmentController.mutate);
 router.get('/operations/bootstrap', requireMobileApp('OPERATIONS'), controller.bootstrap);
+router.get('/operations/sales/customers', requireMobileApp('OPERATIONS'), requireMobileRole('ADMIN', 'FLEET_MANAGER', 'SALES'), operationsController.searchCustomers);
+router.get('/operations/sales/customers/by-phone', requireMobileApp('OPERATIONS'), requireMobileRole('ADMIN', 'FLEET_MANAGER', 'SALES'), operationsController.findCustomerByPhone);
+router.post('/operations/sales/customers', requireMobileApp('OPERATIONS'), requireMobileRole('ADMIN', 'SALES'), operationsController.createCustomer);
+router.post('/operations/sales/customers/:customerId/leads', requireMobileApp('OPERATIONS'), requireMobileRole('ADMIN', 'SALES'), operationsController.createLead);
 router.post('/operations/assignments/:assignmentId/copilot-override', requireMobileApp('OPERATIONS'), assignmentController.overrideCopilot);
 
 module.exports = router;
