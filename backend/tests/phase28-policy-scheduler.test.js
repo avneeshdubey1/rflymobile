@@ -84,8 +84,10 @@ test('selection is stable by IDs and a reusable complete unit receives the next 
   const first = await autoAssignProcessedLead(firstLead.id, { now, operatingTimeZone: 'UTC' });
   assert.equal(first.outcome, 'SCHEDULED');
   assert.equal(first.reasonCode, 'AUTO_ASSIGNMENT_SUCCESS');
-  const expectedPilots = pilots.map(({ id }) => id).sort().slice(0, 2);
-  assert.deepEqual([first.assignment.pilotId, first.assignment.copilotId], expectedPilots);
+  const expectedPrimary = pilots.map(({ id }) => id).sort()[0];
+  assert.equal(first.assignment.pilotId, expectedPrimary);
+  assert.equal(first.assignment.copilotId, null);
+  assert.equal(first.assignment.crewFormationState, 'PENDING_COPILOT_SELECTION');
   assert.equal(first.assignment.droneId, drones.map(({ id }) => id).sort()[0]);
   assert.equal(first.assignment.lmvId, lmvs.map(({ id }) => id).sort()[0]);
   assert.equal(first.assignment.serviceWindowStart.toISOString(), '2026-08-12T09:00:00.000Z');
@@ -95,8 +97,8 @@ test('selection is stable by IDs and a reusable complete unit receives the next 
   const second = await autoAssignProcessedLead(secondLead.id, { now, operatingTimeZone: 'UTC' });
   assert.equal(second.outcome, 'SCHEDULED');
   assert.deepEqual(
-    [second.assignment.pilotId, second.assignment.copilotId, second.assignment.droneId, second.assignment.lmvId],
-    [first.assignment.pilotId, first.assignment.copilotId, first.assignment.droneId, first.assignment.lmvId],
+    [second.assignment.pilotId, second.assignment.droneId, second.assignment.lmvId],
+    [first.assignment.pilotId, first.assignment.droneId, first.assignment.lmvId],
   );
   assert.equal(second.assignment.dailySequence, 2);
   assert.equal(second.assignment.serviceWindowStart.toISOString(), '2026-08-12T11:30:00.000Z');

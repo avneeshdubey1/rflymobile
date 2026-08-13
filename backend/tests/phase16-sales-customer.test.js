@@ -336,18 +336,19 @@ test('Sales service view creates customer-linked manual leads and keeps strict g
   assert.equal(stored.farmerName, 'Phase 16 Service Farmer');
   assert.equal(stored.farmerPhone, created.data.customer.phone);
   assert.equal(stored.preferredLanguage, 'ml');
-  assert.equal(stored.status, 'NEEDS_MANUAL_SCHEDULING');
-  assert.match(stored.notes, /No eligible two-person Pilot\/Copilot crew is available/);
+  assert.equal(stored.status, 'SCHEDULED');
+  const assignment = await prisma.assignment.findUnique({ where: { leadId: stored.id } });
+  assert.equal(assignment.copilotId, null);
+  assert.equal(assignment.crewFormationState, 'PENDING_COPILOT_SELECTION');
   const schedulingAudit = await prisma.auditLog.findFirst({
     where: {
-      entityType: 'Lead',
-      entityId: stored.id,
-      action: 'NEEDS_MANUAL_SCHEDULING',
+      entityType: 'Assignment',
+      entityId: assignment.id,
+      action: 'COPILOT_SELECTION_PENDING',
     },
   });
-  assert.ok(schedulingAudit, 'accepted Sales intake must persist the manual-scheduling audit event');
-  assert.equal(schedulingAudit.beforeState.acreageDecimal, '2');
-  assert.equal(schedulingAudit.afterState.acreageDecimal, '2');
+  assert.ok(schedulingAudit, 'accepted Sales intake must persist the pending crew-formation audit event');
+  assert.equal(schedulingAudit.afterState.crewFormationState, 'PENDING_COPILOT_SELECTION');
 
   const beforeLeadCount = await prisma.lead.count();
   const declined = await request(`/api/customers/sales/${created.data.customer.id}/leads`, {

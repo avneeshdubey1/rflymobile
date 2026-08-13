@@ -251,6 +251,25 @@ async function formCrew({
         message: `You were selected as Copilot for assignment ${assignment.id}.`,
       },
     });
+    const configuredTimers = (process.env.NOTIFICATION_CASCADE_TIMERS_MS || '')
+      .split(',').map(Number).filter(Number.isFinite);
+    const timers = configuredTimers.length === 4
+      ? configuredTimers
+      : [0, 15 * 60_000, 45 * 60_000, 2 * 60 * 60_000];
+    await transaction.notificationEscalation.upsert({
+      where: { assignmentId: assignment.id },
+      create: {
+        assignmentId: assignment.id,
+        stage: 'PUSH_SENT',
+        nextActionAt: new Date(now.getTime() + timers[1]),
+      },
+      update: {
+        stage: 'PUSH_SENT',
+        nextActionAt: new Date(now.getTime() + timers[1]),
+        reassignCount: 0,
+        closedAt: null,
+      },
+    });
     return transaction.assignment.findUnique({
       where: { id: assignment.id },
       include: {

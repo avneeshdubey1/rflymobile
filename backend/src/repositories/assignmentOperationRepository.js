@@ -129,10 +129,24 @@ async function revalidateLead(transaction, lead, actorId) {
   return updated;
 }
 
-function validateCrewAndAssets({ lead, pilot, copilot, drone, lmv, scheduledDate, allowAssignedAssets = false }) {
-  if (!pilot || !copilot || !drone || !lmv) throw operationError('A valid primary Pilot, Copilot, drone, and LMV are required');
-  if (pilot.id === copilot.id) throw operationError('Primary Pilot and Copilot must be different people', 'CONFLICT');
-  for (const [label, crewMember] of [['Primary Pilot', pilot], ['Copilot', copilot]]) {
+function validateCrewAndAssets({
+  lead,
+  pilot,
+  copilot,
+  drone,
+  lmv,
+  scheduledDate,
+  allowAssignedAssets = false,
+  requireCopilot = true,
+}) {
+  if (!pilot || !drone || !lmv || (requireCopilot && !copilot)) {
+    throw operationError(requireCopilot
+      ? 'A valid primary Pilot, Copilot, drone, and LMV are required'
+      : 'A valid primary Pilot, drone, and LMV are required');
+  }
+  if (copilot && pilot.id === copilot.id) throw operationError('Primary Pilot and Copilot must be different people', 'CONFLICT');
+  const crew = [['Primary Pilot', pilot], ...(copilot ? [['Copilot', copilot]] : [])];
+  for (const [label, crewMember] of crew) {
     if (crewMember.role !== 'PILOT' || !crewMember.active || crewMember.archivedAt || crewMember.homeCenterId !== lead.matchedCenterId) {
       throw operationError(`${label} must be active and belong to the lead operating centre`, 'CONFLICT');
     }
@@ -188,6 +202,7 @@ function overlaps(leftStart, leftEnd, rightStart, rightEnd) {
 async function validateWindowConflicts(transaction, unit, serviceWindowStart, serviceWindowEnd, excludeId = null) {
   const window = validateServiceWindow(serviceWindowStart, serviceWindowEnd);
   const { start: dayStart, end: dayEnd } = dayBounds(window.start);
+  const crewIds = [unit.pilotId, unit.copilotId].filter(Boolean);
   const assignments = await transaction.assignment.findMany({
     where: {
       ...(excludeId ? { id: { not: excludeId } } : {}),
@@ -205,8 +220,8 @@ async function validateWindowConflicts(transaction, unit, serviceWindowStart, se
         ],
       }],
       OR: [
-        { pilotId: { in: [unit.pilotId, unit.copilotId] } },
-        { copilotId: { in: [unit.pilotId, unit.copilotId] } },
+        { pilotId: { in: crewIds } },
+        { copilotId: { in: crewIds } },
         { droneId: unit.droneId },
         { lmvId: unit.lmvId },
       ],
@@ -218,7 +233,7 @@ async function validateWindowConflicts(transaction, unit, serviceWindowStart, se
   });
   if (conflict) {
     const categories = [];
-    if ([conflict.pilotId, conflict.copilotId].some((id) => [unit.pilotId, unit.copilotId].includes(id))) categories.push('crew');
+    if ([conflict.pilotId, conflict.copilotId].some((id) => crewIds.includes(id))) categories.push('crew');
     if (conflict.droneId === unit.droneId) categories.push('drone');
     if (conflict.lmvId === unit.lmvId) categories.push('LMV');
     const error = operationError(`The selected ${categories.join(', ')} is unavailable during that service window`, 'CONFLICT');
@@ -229,7 +244,6 @@ async function validateWindowConflicts(transaction, unit, serviceWindowStart, se
     where: {
       ...(excludeId ? { id: { not: excludeId } } : {}),
       pilotId: unit.pilotId,
-      copilotId: unit.copilotId,
       droneId: unit.droneId,
       lmvId: unit.lmvId,
       serviceWindowStart: { gte: dayStart, lt: dayEnd },
@@ -242,7 +256,7 @@ async function validateWindowConflicts(transaction, unit, serviceWindowStart, se
 async function startAssignmentNotifications(transaction, assignment, now = new Date(), actorId = null) {
   const configured = (process.env.NOTIFICATION_CASCADE_TIMERS_MS || '').split(',').map(Number).filter(Number.isFinite);
   const timers = configured.length === 4 ? configured : [0, 15 * 60_000, 45 * 60_000, 2 * 60 * 60_000];
-  const recipients = [assignment.pilotId, assignment.copilotId];
+  const recipients = [assignment.pilotId, assignment.copilotId].filter(Boolean);
   await transaction.notification.createMany({
     data: recipients.map((recipientId) => ({
       type: 'PILOT_ASSIGNMENT',
@@ -275,6 +289,31 @@ async function createRoleNotifications(transaction, role, type, leadId, message)
   }
 }
 
+async function startPendingCrewNotification(transaction, assignment, actorId = null) {
+  await transaction.notification.create({
+    data: {
+      type: 'PILOT_ASSIGNMENT',
+      recipientId: assignment.pilotId,
+      leadId: assignment.leadId,
+      message: `Assignment ${assignment.id} is reserved. Select an eligible Copilot before the service window starts.`,
+    },
+  });
+  await createRoleNotifications(
+    transaction,
+    'FLEET_MANAGER',
+    'NEEDS_MANUAL_SCHEDULING',
+    assignment.leadId,
+    `Assignment ${assignment.id} is awaiting Copilot selection by its Primary Pilot.`,
+  );
+  await audit(transaction, {
+    entityType: 'Assignment',
+    entityId: assignment.id,
+    action: 'COPILOT_SELECTION_PENDING',
+    actorId,
+    afterState: { crewFormationState: 'PENDING_COPILOT_SELECTION', revision: assignment.revision },
+  });
+}
+
 async function syncResourceAvailability(transaction, assignment, { droneStatusOverride = null } = {}) {
   const [otherDroneJob, otherLmvJob] = await Promise.all([
     transaction.assignment.findFirst({
@@ -298,7 +337,7 @@ async function syncResourceAvailability(transaction, assignment, { droneStatusOv
   }
 }
 
-async function manualAssign({ leadId, pilotId, copilotId, droneId, lmvId, serviceWindowStart, serviceWindowEnd, scheduledDate, actorId }) {
+async function manualAssign({ leadId, pilotId, droneId, lmvId, serviceWindowStart, serviceWindowEnd, scheduledDate, actorId }) {
   return serializable(async (transaction) => {
     await setHistoryActor(transaction, actorId);
     const resolvedStart = serviceWindowStart || scheduledDate;
@@ -309,19 +348,20 @@ async function manualAssign({ leadId, pilotId, copilotId, droneId, lmvId, servic
     }
     const window = validateServiceWindow(resolvedStart, resolvedEnd);
     const { start: dayStart } = dayBounds(window.start);
-    await lockKeys(transaction, [`lead:${leadId}`, `schedule:${dayStart.toISOString()}`, pilotId, copilotId, droneId, lmvId]);
+    await lockKeys(transaction, [`lead:${leadId}`, `schedule:${dayStart.toISOString()}`, pilotId, droneId, lmvId]);
     let lead = await transaction.lead.findUnique({ where: { id: leadId } });
     if (!lead) throw operationError('A valid lead is required');
     if (!['PROCESSED', 'NEEDS_MANUAL_SCHEDULING'].includes(lead.status)) throw operationError('Only processed or manual-scheduling leads can be assigned', 'CONFLICT');
     lead = await revalidateLead(transaction, lead, actorId);
-    const [pilot, copilot, drone, lmv] = await Promise.all([
+    const [pilot, drone, lmv] = await Promise.all([
       transaction.user.findUnique({ where: { id: pilotId } }),
-      transaction.user.findUnique({ where: { id: copilotId } }),
       transaction.drone.findUnique({ where: { id: droneId } }),
       transaction.lMV.findUnique({ where: { id: lmvId } }),
     ]);
-    validateCrewAndAssets({ lead, pilot, copilot, drone, lmv, scheduledDate: window.start, allowAssignedAssets: true });
-    const unit = { pilotId, copilotId, droneId, lmvId };
+    validateCrewAndAssets({
+      lead, pilot, copilot: null, drone, lmv, scheduledDate: window.start, allowAssignedAssets: true, requireCopilot: false,
+    });
+    const unit = { pilotId, copilotId: null, droneId, lmvId };
     const dailySequence = await validateWindowConflicts(transaction, unit, window.start, window.end);
     const assignment = await transaction.assignment.create({
       data: {
@@ -333,6 +373,8 @@ async function manualAssign({ leadId, pilotId, copilotId, droneId, lmvId, servic
         dailySequence,
         expectedAcreage: lead.acreage,
         autoAssigned: false,
+        crewFormationState: 'PENDING_COPILOT_SELECTION',
+        crewFormationUpdatedAt: new Date(),
       },
       include: assignmentInclude,
     });
@@ -343,7 +385,7 @@ async function manualAssign({ leadId, pilotId, copilotId, droneId, lmvId, servic
     ]);
     await audit(transaction, { entityType: 'Assignment', entityId: assignment.id, action: 'MANUAL_ASSIGNMENT_CREATED', actorId, afterState: assignment });
     await audit(transaction, { entityType: 'Lead', entityId: lead.id, action: 'STATUS_CHANGE', actorId, beforeState: lead, afterState: scheduledLead });
-    await startAssignmentNotifications(transaction, assignment, new Date(), actorId);
+    await startPendingCrewNotification(transaction, assignment, actorId);
     return {
       assignment: await transaction.assignment.findUnique({ where: { id: assignment.id }, include: assignmentInclude }),
       lead: scheduledLead,
@@ -370,9 +412,9 @@ function resourceRank(resourceId, horizonAssignments, matches) {
   return { rank: [assignments.length, Number(acreage.toString()), last || -1], stableId: resourceId };
 }
 
-function completeUnitKey(assignment) {
-  if (!assignment.pilotId || !assignment.copilotId || !assignment.droneId || !assignment.lmvId || assignment.legacyCrewIncomplete) return null;
-  return [assignment.pilotId, assignment.copilotId, assignment.droneId, assignment.lmvId].join('|');
+function schedulableUnitKey(assignment) {
+  if (!assignment.pilotId || !assignment.droneId || !assignment.lmvId || assignment.legacyCrewIncomplete) return null;
+  return [assignment.pilotId, assignment.droneId, assignment.lmvId].join('|');
 }
 
 async function autoAssign({
@@ -419,7 +461,7 @@ async function autoAssign({
     const pilotById = new Map(eligiblePilots.map((pilot) => [pilot.id, pilot]));
     const droneById = new Map(eligibleDrones.map((drone) => [drone.id, drone]));
     const lmvById = new Map(lmvs.map((lmv) => [lmv.id, lmv]));
-    if (eligiblePilots.length < 2) return { outcome: 'NO_CAPACITY', reasonCode: 'NO_ELIGIBLE_PILOT_PAIR' };
+    if (!eligiblePilots.length) return { outcome: 'NO_CAPACITY', reasonCode: 'NO_ELIGIBLE_PRIMARY_PILOT' };
     if (!eligibleDrones.length) return { outcome: 'NO_CAPACITY', reasonCode: 'NO_ELIGIBLE_DRONE' };
     if (!lmvs.length) return { outcome: 'NO_CAPACITY', reasonCode: 'NO_ELIGIBLE_LMV' };
     const dayAssignments = horizonAssignments.filter((assignment) => assignment.scheduledDate >= dayStart && assignment.scheduledDate < dayEnd);
@@ -431,7 +473,7 @@ async function autoAssign({
     let serviceWindowStart = null;
     const reusableGroups = new Map();
     for (const assignment of dayAssignments) {
-      const key = completeUnitKey(assignment);
+      const key = schedulableUnitKey(assignment);
       if (!key) continue;
       const list = reusableGroups.get(key) || [];
       list.push(assignment);
@@ -439,8 +481,8 @@ async function autoAssign({
     }
     const reusable = [];
     for (const [key, assignments] of reusableGroups) {
-      const [pilotId, copilotId, droneId, lmvId] = key.split('|');
-      if (!pilotById.has(pilotId) || !pilotById.has(copilotId) || !droneById.has(droneId) || !lmvById.has(lmvId)) continue;
+      const [pilotId, droneId, lmvId] = key.split('|');
+      if (!pilotById.has(pilotId) || !droneById.has(droneId) || !lmvById.has(lmvId)) continue;
       if (policy.maxJobsPerUnitPerDay !== null && assignments.length >= policy.maxJobsPerUnitPerDay) continue;
       const acreage = assignments.reduce((total, assignment) => total.plus(decimalAcreage(assignment.expectedAcreage)), new Prisma.Decimal(0));
       if (policy.maxAcreagePerUnitPerDay !== null && acreage.plus(leadAcreage).greaterThan(policy.maxAcreagePerUnitPerDay)) continue;
@@ -452,7 +494,7 @@ async function autoAssign({
       if (nextStart.getTime() + durationMs > dayEnd.getTime()) continue;
       const mostRecent = assignments.reduce((latest, assignment) => Math.max(latest, assignment.scheduledDate.getTime()), 0);
       reusable.push({
-        unit: { pilotId, copilotId, droneId, lmvId },
+        unit: { pilotId, copilotId: null, droneId, lmvId },
         start: nextStart,
         rank: [nextStart.getTime(), assignments.length, Number(acreage.toString()), mostRecent],
         stableId: key,
@@ -483,17 +525,19 @@ async function autoAssign({
         lmvs.filter((item) => !usedLmvs.has(item.id)),
         (assignment, id) => assignment.lmvId === id,
       )[0]?.item;
-      if (freePilots.length >= 2 && drone && lmv) {
-        unit = { pilotId: freePilots[0].item.id, copilotId: freePilots[1].item.id, droneId: drone.id, lmvId: lmv.id };
+      if (freePilots.length >= 1 && drone && lmv) {
+        unit = { pilotId: freePilots[0].item.id, copilotId: null, droneId: drone.id, lmvId: lmv.id };
         serviceWindowStart = dayStart;
       }
     }
     if (!unit) return { outcome: 'NO_CAPACITY', reasonCode: 'NO_CAPACITY_IN_HORIZON' };
     const serviceWindowEnd = new Date(serviceWindowStart.getTime() + durationMs);
     if (serviceWindowEnd > dayEnd) return { outcome: 'NO_CAPACITY', reasonCode: 'NO_CAPACITY_IN_HORIZON' };
-    await lockKeys(transaction, [unit.pilotId, unit.copilotId, unit.droneId, unit.lmvId]);
-    const [pilot, copilot, drone, lmv] = [pilotById.get(unit.pilotId), pilotById.get(unit.copilotId), droneById.get(unit.droneId), lmvById.get(unit.lmvId)];
-    validateCrewAndAssets({ lead, pilot, copilot, drone, lmv, scheduledDate: serviceWindowStart, allowAssignedAssets: true });
+    await lockKeys(transaction, [unit.pilotId, unit.droneId, unit.lmvId]);
+    const [pilot, drone, lmv] = [pilotById.get(unit.pilotId), droneById.get(unit.droneId), lmvById.get(unit.lmvId)];
+    validateCrewAndAssets({
+      lead, pilot, copilot: null, drone, lmv, scheduledDate: serviceWindowStart, allowAssignedAssets: true, requireCopilot: false,
+    });
     const dailySequence = await validateWindowConflicts(transaction, unit, serviceWindowStart, serviceWindowEnd);
     const assignment = await transaction.assignment.create({
       data: {
@@ -508,6 +552,8 @@ async function autoAssign({
         weatherCheckedAt: new Date(),
         weatherSuitable: weather.suitable,
         weatherNote: weather.note,
+        crewFormationState: 'PENDING_COPILOT_SELECTION',
+        crewFormationUpdatedAt: new Date(),
       },
       include: assignmentInclude,
     });
@@ -522,7 +568,7 @@ async function autoAssign({
       afterState: {
         leadId: lead.id,
         pilotId: unit.pilotId,
-        copilotId: unit.copilotId,
+        copilotId: null,
         droneId: unit.droneId,
         lmvId: unit.lmvId,
         serviceWindowStart,
@@ -534,7 +580,7 @@ async function autoAssign({
       reason: 'AUTO_ASSIGNMENT_SUCCESS',
     });
     await audit(transaction, { entityType: 'Lead', entityId: lead.id, action: 'STATUS_CHANGE', actorId, beforeState: { status: lead.status }, afterState: { status: scheduledLead.status } });
-    await startAssignmentNotifications(transaction, assignment, new Date(), actorId);
+    await startPendingCrewNotification(transaction, assignment, actorId);
     if (weather.suitable === null) {
       await createRoleNotifications(transaction, 'FLEET_MANAGER', 'WEATHER_RISK', lead.id, `Weather data was unavailable for automatically scheduled lead ${lead.id}; manual review is required.`);
     }
@@ -588,11 +634,20 @@ async function reschedule({ assignmentId, serviceWindowStart, serviceWindowEnd, 
     await lockKeys(transaction, [unit.pilotId, unit.copilotId, unit.droneId, unit.lmvId]);
     const [pilot, copilot, drone, lmv] = await Promise.all([
       transaction.user.findUnique({ where: { id: unit.pilotId } }),
-      transaction.user.findUnique({ where: { id: unit.copilotId } }),
+      unit.copilotId ? transaction.user.findUnique({ where: { id: unit.copilotId } }) : null,
       transaction.drone.findUnique({ where: { id: unit.droneId } }),
       transaction.lMV.findUnique({ where: { id: unit.lmvId } }),
     ]);
-    validateCrewAndAssets({ lead, pilot, copilot, drone, lmv, scheduledDate: window.start, allowAssignedAssets: true });
+    validateCrewAndAssets({
+      lead,
+      pilot,
+      copilot,
+      drone,
+      lmv,
+      scheduledDate: window.start,
+      allowAssignedAssets: true,
+      requireCopilot: before.crewFormationState === 'READY',
+    });
     const { start: previousStart } = dayBounds(before.scheduledDate);
     const nextSequence = await validateWindowConflicts(transaction, unit, window.start, window.end, before.id);
     const sameCrewDay = previousStart.valueOf() === dayStart.valueOf() && sameUnit(before, unit);
@@ -679,6 +734,9 @@ async function transitionMission({ assignmentId, actorId, action, actualAcreage,
     let auditAction;
     if (action === 'accept') {
       if (before.lead.status !== 'SCHEDULED') throw operationError('Only scheduled missions can be accepted');
+      if (before.crewFormationState !== 'READY' || !before.copilotId) {
+        throw operationError('Select an eligible Copilot before accepting this mission', 'CREW_FORMATION_INCOMPLETE');
+      }
       validateCrewAndAssets({
         lead: before.lead,
         pilot: before.pilot,
@@ -693,6 +751,9 @@ async function transitionMission({ assignmentId, actorId, action, actualAcreage,
       auditAction = 'PILOT_ACCEPTED';
     } else if (action === 'start') {
       if (before.lead.status !== 'PILOT_ACCEPTED') throw operationError('A mission must be accepted before it can start');
+      if (before.crewFormationState !== 'READY' || !before.copilotId) {
+        throw operationError('Crew formation must be ready before this mission can start', 'CREW_FORMATION_INCOMPLETE');
+      }
       validateCrewAndAssets({ lead: before.lead, pilot: before.pilot, copilot: before.copilot, drone: before.drone, lmv: before.lmv, scheduledDate: new Date(), allowAssignedAssets: true });
       const conflicts = await transaction.assignment.findFirst({
         where: {

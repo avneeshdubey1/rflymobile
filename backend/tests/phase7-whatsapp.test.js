@@ -4,6 +4,7 @@ const app = require('../app');
 const prisma = require('../src/lib/prisma');
 const { issueToken } = require('../middleware/auth');
 const whatsappService = require('../services/whatsappService');
+const crewFormation = require('../src/repositories/crewFormationRepository');
 
 let server;
 let baseUrl;
@@ -67,6 +68,12 @@ test('lead processing, scheduling, mission start, and completion each send the c
   assert.deepEqual(templatesFor(scheduledLead.id), ['lead_processed', 'mission_scheduled']);
   assert.match(deliveries.find((delivery) => delivery.templateKey === 'mission_scheduled').text, /pilot has been scheduled/i);
 
+  await crewFormation.selectCopilot({
+    assignmentId: assignment.id,
+    candidateId: assignment.pilotId === pilot.id ? copilot.id : pilot.id,
+    actorId: assignment.pilotId,
+    expectedRevision: assignment.revision,
+  });
   assert.equal((await fetch(`${baseUrl}/api/assignments/${assignment.id}/accept`, { method: 'POST', headers: auth(pilot) })).status, 200);
   assert.equal((await fetch(`${baseUrl}/api/assignments/${assignment.id}/start`, { method: 'POST', headers: auth(pilot) })).status, 200);
   assert.equal((await fetch(`${baseUrl}/api/assignments/${assignment.id}/complete`, { method: 'POST', headers: auth(pilot), body: JSON.stringify({ actualAcreage: 3.5 }) })).status, 200);
@@ -88,14 +95,17 @@ test.after(async () => {
   await prisma.auditLog.deleteMany({ where: { entityId: { in: [...ids.leads, ...ids.assignments] } } });
   await prisma.paymentRecord.deleteMany({ where: { assignmentId: { in: ids.assignments } } });
   await prisma.scheduleChangeLog.deleteMany({ where: { assignmentId: { in: ids.assignments } } });
-  await prisma.assignment.deleteMany({ where: { id: { in: ids.assignments } } });
   await prisma.drone.updateMany({ where: { id: { in: ids.assignedDrones.filter((id) => !ids.drones.includes(id)) } }, data: { status: 'AVAILABLE' } });
   await prisma.lMV.updateMany({ where: { id: { in: ids.assignedLmvs.filter((id) => id && !ids.lmvs.includes(id)) } }, data: { status: 'AVAILABLE' } });
-  await prisma.lead.deleteMany({ where: { id: { in: ids.leads } } });
-  await prisma.drone.deleteMany({ where: { id: { in: ids.drones } } });
-  await prisma.lMV.deleteMany({ where: { id: { in: ids.lmvs } } });
-  await prisma.user.deleteMany({ where: { id: { in: ids.users } } });
-  await prisma.operatingCenter.delete({ where: { id: center.id } });
+  await prisma.$transaction(async (transaction) => {
+    await transaction.$queryRaw`SELECT set_config('rfly.allow_history_mutation', 'on', true)`;
+    await transaction.assignment.deleteMany({ where: { id: { in: ids.assignments } } });
+    await transaction.lead.deleteMany({ where: { id: { in: ids.leads } } });
+    await transaction.drone.deleteMany({ where: { id: { in: ids.drones } } });
+    await transaction.lMV.deleteMany({ where: { id: { in: ids.lmvs } } });
+    await transaction.user.deleteMany({ where: { id: { in: ids.users } } });
+    await transaction.operatingCenter.delete({ where: { id: center.id } });
+  });
   await new Promise((resolve, reject) => {
     server.close((error) => error ? reject(error) : resolve());
     server.closeIdleConnections?.();

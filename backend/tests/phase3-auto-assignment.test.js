@@ -4,6 +4,7 @@ const prisma = require('../src/lib/prisma');
 const weatherService = require('../services/weatherService');
 const { autoAssignProcessedLead } = require('../services/autoAssignmentService');
 const { processDueEscalations } = require('../jobs/notificationEscalationJob');
+const crewFormation = require('../src/repositories/crewFormationRepository');
 
 const ids = { centers: [], users: [], drones: [], lmvs: [], leads: [] };
 let firstAssignmentId;
@@ -58,9 +59,19 @@ test('auto-assignment schedules an eligible pilot and escalates through reassign
   assert.equal(scheduled.lead.status, 'SCHEDULED');
   assert.equal(scheduled.assignment.weatherSuitable, true);
   assert.ok(scheduled.assignment.lmvId);
+  assert.equal(scheduled.assignment.copilotId, null);
+  assert.equal(scheduled.assignment.crewFormationState, 'PENDING_COPILOT_SELECTION');
   firstAssignmentId = scheduled.assignment.id;
   const firstPilotId = scheduled.assignment.pilotId;
 
+  assert.equal(await prisma.notificationEscalation.count({ where: { assignmentId: firstAssignmentId } }), 0);
+  const selectedCopilot = pilots.find(({ id }) => id !== firstPilotId);
+  await crewFormation.selectCopilot({
+    assignmentId: firstAssignmentId,
+    candidateId: selectedCopilot.id,
+    actorId: firstPilotId,
+    expectedRevision: scheduled.assignment.revision,
+  });
   const firstEscalation = await prisma.notificationEscalation.findUnique({ where: { assignmentId: firstAssignmentId } });
   await processDueEscalations(new Date(firstEscalation.nextActionAt.getTime() + 10));
   const smsEscalation = await prisma.notificationEscalation.findUnique({ where: { assignmentId: firstAssignmentId } });
@@ -108,7 +119,7 @@ test('missing weather data fails open and a lack of candidates lands in the manu
   const manual = await autoAssignProcessedLead(noCandidateLead.id);
   assert.equal(manual.outcome, 'MANUAL_SCHEDULING');
   assert.equal(manual.lead.status, 'NEEDS_MANUAL_SCHEDULING');
-  assert.match(manual.lead.notes, /No eligible two-person Pilot\/Copilot crew is available/);
+  assert.match(manual.lead.notes, /No eligible Primary Pilot is available/);
   weatherService.setForecastProvider(async () => ({ windSpeedKph: 5, precipitationProbability: 5 }));
 });
 

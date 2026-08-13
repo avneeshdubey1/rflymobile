@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const app = require('../app');
 const prisma = require('../src/lib/prisma');
 const { issueToken } = require('../middleware/auth');
+const crewFormation = require('../src/repositories/crewFormationRepository');
 
 let server;
 let baseUrl;
@@ -173,6 +174,12 @@ test('manual scheduling requires an eligible same-centre LMV and releases it on 
   assert.equal(createdResponse.status, 201, JSON.stringify(created));
   ids.assignments.push(created.mission.id);
   assert.equal(created.mission.lmvId, lmv.id);
+  await crewFormation.selectCopilot({
+    assignmentId: created.mission.id,
+    candidateId: copilot.id,
+    actorId: pilot.id,
+    expectedRevision: created.mission.revision,
+  });
   assert.equal((await prisma.lMV.findUnique({ where: { id: lmv.id } })).status, 'ASSIGNED');
 
   const availableWhileActive = await fetch(`${baseUrl}/api/lmvs/update-status`, {

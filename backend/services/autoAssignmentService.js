@@ -144,10 +144,11 @@ async function autoAssignProcessedLead(leadId, {
     if (result.reasonCode) capacityReasonCode = result.reasonCode;
   }
   const capacityMessages = {
+    NO_ELIGIBLE_PRIMARY_PILOT: 'No eligible Primary Pilot is available; inactive accounts and expired licences are excluded.',
     NO_ELIGIBLE_PILOT_PAIR: 'No eligible two-person Pilot/Copilot crew is available; inactive accounts and expired licences are excluded.',
     NO_ELIGIBLE_DRONE: 'No eligible in-service and airworthy drone is available in the matched operating centre.',
     NO_ELIGIBLE_LMV: 'No eligible in-service LMV is available in the matched operating centre.',
-    NO_CAPACITY_IN_HORIZON: 'No eligible two-person Pilot/Copilot crew is available; inactive accounts, expired licences, and unavailable shared drone/LMV resources are excluded.',
+    NO_CAPACITY_IN_HORIZON: 'No eligible Primary Pilot, drone, and LMV reservation is available in the scheduling horizon.',
   };
   return moveToManualScheduling(
     lead,
