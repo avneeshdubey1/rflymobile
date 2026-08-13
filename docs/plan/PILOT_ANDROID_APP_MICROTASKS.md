@@ -91,6 +91,7 @@ No commit/push/deployment/live-data action performed: confirmed
 | P10-03 | PASS | Idempotent issue reporting uses five controlled categories, coordinate-free notes, durable assignment state, Fleet alerts, audit history and immediate resource release; drone malfunction places only the drone into maintenance. Complete backend gate: 152/152; 28-migration replay: 61 validated checks. |
 | P10-04 | DEFERRED | Foreground location remains disabled. Written production collection, retention and privacy policy is required before activation; no endpoint or route-history storage was added. |
 | O00-01 | PASS | Operations mobile sessions expose role-scoped customer search/phone lookup, Sales/Admin registration and customer-linked geofenced intake through existing canonical services. Fleet is read-only, request fields and DTOs are bounded, strict fixtures pass 3/3 and the complete backend gate passes 155/155. |
+| O10-01 | PASS | Fleet/Admin mobile sessions receive a bounded 14-day ordered schedule, minimal resource/crew state and a typed pending-Copilot/manual-scheduling exception queue. Sales remains denied and reasoned server-authoritative Copilot override is unchanged. Focused tests pass 3/3; complete backend gate passes 158/158. |
 | Old M01-01 onward | RETIRED AS EXECUTION ORDER | Existing tasks remain source material. Execute the D00/W00/S00/P00/P10/O00/O10/Q00 packages below instead. |
 
 ---

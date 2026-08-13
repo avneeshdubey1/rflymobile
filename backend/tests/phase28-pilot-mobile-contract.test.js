@@ -21,6 +21,8 @@ const fixtureContracts = Object.freeze({
   'change-page.json': 'changePage',
   'operations-customer-response.json': 'operationsCustomerResponse',
   'operations-lead-response.json': 'operationsLeadResponse',
+  'operations-fleet-schedule-response.json': 'operationsFleetScheduleResponse',
+  'operations-fleet-exception-response.json': 'operationsFleetExceptionResponse',
   'conflict-response.json': 'errorResponse',
 });
 

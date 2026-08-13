@@ -1,5 +1,6 @@
 const customerService = require('../services/customerService');
 const intakeService = require('../services/intakeService');
+const mobileOperationsRepository = require('../src/repositories/mobileOperationsRepository');
 
 class OperationsMobileError extends Error {
   constructor(message, code = 'VALIDATION_FAILED', status = 400) {
@@ -151,4 +152,28 @@ async function createLead(req, res) {
   }
 }
 
-module.exports = { createCustomer, createLead, findCustomerByPhone, searchCustomers };
+function assertScheduleQuery(query) {
+  if (Object.keys(query).some((field) => !['from', 'to'].includes(field))) {
+    throw new OperationsMobileError('Schedule query is invalid');
+  }
+}
+
+async function fleetSchedule(req, res) {
+  try {
+    assertScheduleQuery(req.query);
+    return res.json({ success: true, ...(await mobileOperationsRepository.listSchedule(req.query)) });
+  } catch (error) {
+    return mobileError(res, req, error);
+  }
+}
+
+async function fleetExceptions(req, res) {
+  try {
+    assertScheduleQuery(req.query);
+    return res.json({ success: true, ...(await mobileOperationsRepository.listExceptions(req.query)) });
+  } catch (error) {
+    return mobileError(res, req, error);
+  }
+}
+
+module.exports = { createCustomer, createLead, findCustomerByPhone, fleetExceptions, fleetSchedule, searchCustomers };
