@@ -31,6 +31,8 @@ function createApp({ config = loadEnvironment() } = {}) {
     '/api/auth/farmer/login',
     '/api/auth/farmer/complete-signup',
     '/api/auth/business/login',
+    '/api/mobile/v1/pilot/auth/login',
+    '/api/mobile/v1/operations/auth/login',
   ], limits.login);
   app.use(['/api/auth/recovery', '/api/auth/business/recovery'], limits.recovery);
   app.use('/api/leads/ingest/website', limits.publicIntake);
@@ -39,6 +41,7 @@ function createApp({ config = loadEnvironment() } = {}) {
   app.use(express.json({ limit: config.jsonBodyLimitBytes, strict: true }));
 
   app.use('/api/auth', require('./routes/authRoutes'));
+  app.use('/api/mobile/v1', require('./routes/mobileV1Routes'));
   app.use('/api/leads', require('./routes/leadRoutes'));
   app.use('/api/assignments', require('./routes/assignmentRoutes'));
   app.use('/api/auto-assignment-policy', require('./routes/autoAssignmentPolicyRoutes'));

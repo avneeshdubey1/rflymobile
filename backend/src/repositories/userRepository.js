@@ -109,6 +109,10 @@ async function updateSecuritySensitive(id, data, revokeReason) {
             where: { userId: id, revokedAt: null },
             data: { revokedAt: changedAt, revokeReason },
         });
+        await transaction.mobileSession.updateMany({
+            where: { userId: id, revokedAt: null },
+            data: { revokedAt: changedAt, revokeReason },
+        });
         await transaction.passwordRecoveryChallenge.updateMany({
             where: { userId: id, usedAt: null, revokedAt: null },
             data: { revokedAt: changedAt },

@@ -22,6 +22,7 @@ const fixtureContracts = Object.freeze({
 
 const runtimeValues = Object.freeze({
   __GENERATED_PASSWORD__: `generated-${crypto.randomBytes(18).toString('base64url')}`,
+  __GENERATED_INSTALLATION_KEY__: crypto.randomBytes(48).toString('base64url'),
   __GENERATED_TOKEN__: crypto.randomBytes(48).toString('base64url'),
   __GENERATED_PHONE__: '+919000000001',
   __GENERATED_PLUS_CODE__: '7JQJ+XX Example',
@@ -54,6 +55,7 @@ test('stored mobile fixtures contain placeholders instead of credentials, tokens
   const assignment = fixture('assignment.json');
 
   assert.equal(loginRequest.password, '__GENERATED_PASSWORD__');
+  assert.equal(loginRequest.installationKey, '__GENERATED_INSTALLATION_KEY__');
   assert.equal(loginResponse.session.accessToken, '__GENERATED_TOKEN__');
   assert.equal(assignment.farmer.operationalPhone, '__GENERATED_PHONE__');
   assert.equal(assignment.farm.plusCode, '__GENERATED_PLUS_CODE__');
@@ -90,4 +92,3 @@ test('assignment and error contracts reject accidental fields and keep error cod
   assert.ok(codes.includes('CLIENT_UPGRADE_REQUIRED'));
   assert.ok(codes.includes('INTERNAL_ERROR'));
 });
-

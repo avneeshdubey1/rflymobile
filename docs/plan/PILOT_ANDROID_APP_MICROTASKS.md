@@ -1,6 +1,6 @@
 # Pilot Android Application Microtask Execution Workbook
 
-**Status:** requirements/replanning hold after Phase M00; M01 and later are blocked
+**Status:** backend execution active; D00-01 through D00-04 and S00-01 through S00-03 complete locally
 **Prepared:** August 12, 2026
 **Parent plan:**
 [PILOT_ANDROID_APP_IMPLEMENTATION_PLAN.md](PILOT_ANDROID_APP_IMPLEMENTATION_PLAN.md)
@@ -83,6 +83,8 @@ No commit/push/deployment/live-data action performed: confirmed
 | M00-06 to M00-09 | PASS | `PILOT_MOBILE_API_CONTRACT.md` records the minimum DTO, visibility/retention boundaries, development-only session/location placeholders and stable safe error catalog |
 | M00-10 | PASS | Strict JSON Schema and seven sanitized fixture templates pass Phase 28 contract tests 3/3; stored templates contain no password, bearer token, phone or exact coordinate values |
 | R00-01 to R00-09 | PASS | `MOBILE_R00_REQUIREMENTS_AND_ARCHITECTURE.md` records the approved backend-facing requirements, role/parity matrices, Copilot workflow, source gap, two-app boundary, Stitch review, contract classification and replacement graph. |
+| D00-01 to D00-04 | PASS | Crew-state and mobile-identity migrations pass clean/populated replay; transactional Copilot formation and provisional scheduling pass focused Phases 29/30. |
+| S00-01 to S00-03 | PASS | `/api/mobile/v1` uses hashed installation-bound bearer sessions, serialized installation limits, login identity-race protection, Pilot/Operations app-role separation, capability bootstrap, logout/revocation, audit events and production-off configuration; Phase 31 passes 4/4 and the complete backend gate passes 146/146. |
 | Old M01-01 onward | RETIRED AS EXECUTION ORDER | Existing tasks remain source material. Execute the D00/W00/S00/P00/P10/O00/O10/Q00 packages below instead. |
 
 ---

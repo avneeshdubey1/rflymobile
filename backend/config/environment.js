@@ -31,6 +31,12 @@ function boolean(value, fallback, name) {
   throw new ConfigurationError(`${name} must be true or false`);
 }
 
+function semanticVersion(value, fallback, name) {
+  const resolved = String(value || fallback).trim();
+  if (!/^\d+\.\d+\.\d+$/.test(resolved)) throw new ConfigurationError(`${name} must use major.minor.patch format`);
+  return resolved;
+}
+
 function origins(value, nodeEnv, { name = 'CORS_ALLOWED_ORIGINS', developmentDefaults = LOCAL_DEVELOPMENT_ORIGINS, requiredInProduction = true } = {}) {
   const configured = String(value || '')
     .split(',')
@@ -103,6 +109,8 @@ function loadEnvironment(env = process.env) {
 
   const sessionIdleTimeoutMs = integer(env.SESSION_IDLE_TIMEOUT_MS, 30 * 60_000, 'SESSION_IDLE_TIMEOUT_MS', { min: 60_000, max: 24 * 60 * 60_000 });
   const sessionAbsoluteTimeoutMs = integer(env.SESSION_ABSOLUTE_TIMEOUT_MS, 8 * 60 * 60_000, 'SESSION_ABSOLUTE_TIMEOUT_MS', { min: sessionIdleTimeoutMs, max: 30 * 24 * 60 * 60_000 });
+  const mobileSessionIdleTimeoutMs = integer(env.MOBILE_SESSION_IDLE_TIMEOUT_MS, 30 * 60_000, 'MOBILE_SESSION_IDLE_TIMEOUT_MS', { min: 60_000, max: 24 * 60 * 60_000 });
+  const mobileSessionAbsoluteTimeoutMs = integer(env.MOBILE_SESSION_ABSOLUTE_TIMEOUT_MS, 8 * 60 * 60_000, 'MOBILE_SESSION_ABSOLUTE_TIMEOUT_MS', { min: mobileSessionIdleTimeoutMs, max: 30 * 24 * 60 * 60_000 });
 
   const operatingTimeZone = String(env.OPERATING_TIME_ZONE || (nodeEnv === 'production' ? '' : 'UTC')).trim();
   if (!operatingTimeZone) throw new ConfigurationError('OPERATING_TIME_ZONE is required in production');
@@ -135,6 +143,15 @@ function loadEnvironment(env = process.env) {
       idleTimeoutMs: sessionIdleTimeoutMs,
       absoluteTimeoutMs: sessionAbsoluteTimeoutMs,
       touchIntervalMs: integer(env.SESSION_TOUCH_INTERVAL_MS, 60_000, 'SESSION_TOUCH_INTERVAL_MS', { min: 5_000, max: Math.floor(sessionIdleTimeoutMs / 2) }),
+    }),
+    mobile: Object.freeze({
+      enabled: boolean(env.MOBILE_API_ENABLED, nodeEnv !== 'production', 'MOBILE_API_ENABLED'),
+      idleTimeoutMs: mobileSessionIdleTimeoutMs,
+      absoluteTimeoutMs: mobileSessionAbsoluteTimeoutMs,
+      touchIntervalMs: integer(env.MOBILE_SESSION_TOUCH_INTERVAL_MS, 60_000, 'MOBILE_SESSION_TOUCH_INTERVAL_MS', { min: 5_000, max: Math.floor(mobileSessionIdleTimeoutMs / 2) }),
+      maxInstallationsPerApp: integer(env.MOBILE_MAX_INSTALLATIONS_PER_APP, 2, 'MOBILE_MAX_INSTALLATIONS_PER_APP', { min: 1, max: 10 }),
+      minimumVersion: semanticVersion(env.MOBILE_MINIMUM_VERSION, '1.0.0', 'MOBILE_MINIMUM_VERSION'),
+      recommendedVersion: semanticVersion(env.MOBILE_RECOMMENDED_VERSION, '1.0.0', 'MOBILE_RECOMMENDED_VERSION'),
     }),
     recovery: Object.freeze({
       hashSecret: recoveryHashSecret,

@@ -1,6 +1,7 @@
 {
   "success": true,
   "apiVersion": "v1",
+  "app": "PILOT_FIELD",
   "serverTime": "2026-08-12T08:00:00.000Z",
   "operatingTimeZone": "Asia/Kolkata",
   "profile": {
@@ -8,7 +9,8 @@
     "displayName": "Example Pilot",
     "employeeCode": "EXAMPLE-PILOT",
     "preferredLanguage": "en",
-    "homeCenterId": "00000000-0000-4000-8000-000000000020"
+    "homeCenterId": "00000000-0000-4000-8000-000000000020",
+    "role": "PILOT"
   },
   "operatingCenter": {
     "id": "00000000-0000-4000-8000-000000000020",
@@ -20,6 +22,7 @@
     "to": "2026-08-27T00:00:00.000Z"
   },
   "assignments": [],
+  "capabilities": ["PILOT_ASSIGNMENTS_READ", "COPILOT_SELECT", "MISSION_MUTATE", "ISSUE_REPORT", "FOREGROUND_LOCATION"],
   "featureFlags": {
     "chat": true,
     "foregroundLocation": false,

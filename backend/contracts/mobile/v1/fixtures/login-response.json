@@ -16,6 +16,7 @@
     "displayName": "Example Pilot",
     "employeeCode": "EXAMPLE-PILOT",
     "preferredLanguage": "en",
-    "homeCenterId": "00000000-0000-4000-8000-000000000020"
+    "homeCenterId": "00000000-0000-4000-8000-000000000020",
+    "role": "PILOT"
   }
 }

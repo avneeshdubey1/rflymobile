@@ -1,14 +1,15 @@
 # Pilot Mobile API Contract Decisions
 
-**Status:** Pilot-track Phase M00 baseline; revision required before implementation
+**Status:** R00-revised v1 contract; authentication/bootstrap foundation implemented locally
 **Recorded:** August 12, 2026
 **Scope:** M00-06 through M00-10
 
-This document defines the original Pilot-track privacy boundary and error
-vocabulary for the future `/api/mobile/v1` API. The two-application client
-revision and Primary-Pilot Copilot-selection workflow require R00 contract
-review before an endpoint is implemented. It does not activate mobile
-authentication, location tracking, a provider, or a production endpoint.
+This document defines the privacy boundary and error vocabulary for
+`/api/mobile/v1`. R00 approved the two-application boundary and
+Primary-Pilot Copilot-selection workflow. The local backend now mounts
+installation-bound authentication and capability bootstrap for Pilot Field
+and Operations. Production remains explicitly disabled until staging and
+operator approval; location tracking and external providers remain disabled.
 
 ## 1. Minimum Pilot data exposure
 

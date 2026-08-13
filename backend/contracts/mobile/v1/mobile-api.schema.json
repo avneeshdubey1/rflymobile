@@ -18,13 +18,19 @@
     "pilotProfile": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "displayName", "employeeCode", "preferredLanguage", "homeCenterId"],
+      "required": ["id", "displayName", "employeeCode", "preferredLanguage", "homeCenterId", "role"],
       "properties": {
         "id": { "$ref": "#/$defs/uuid" },
         "displayName": { "type": "string", "minLength": 1, "maxLength": 120 },
         "employeeCode": { "type": ["string", "null"], "maxLength": 80 },
         "preferredLanguage": { "type": "string", "minLength": 2, "maxLength": 12 },
-        "homeCenterId": { "$ref": "#/$defs/uuid" }
+        "homeCenterId": {
+          "anyOf": [
+            { "$ref": "#/$defs/uuid" },
+            { "type": "null" }
+          ]
+        },
+        "role": { "enum": ["ADMIN", "FLEET_MANAGER", "SALES", "PILOT"] }
       }
     },
     "operatingCenter": {
@@ -118,7 +124,12 @@
             "label": { "type": ["string", "null"], "maxLength": 120 }
           }
         },
-        "operatingCenter": { "$ref": "#/$defs/operatingCenter" },
+        "operatingCenter": {
+          "anyOf": [
+            { "$ref": "#/$defs/operatingCenter" },
+            { "type": "null" }
+          ]
+        },
         "operationalNotes": {
           "type": "array",
           "maxItems": 10,
@@ -135,10 +146,11 @@
     "loginRequest": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["email", "password", "platform", "appVersion", "deviceLabel"],
+      "required": ["email", "password", "installationKey", "platform", "appVersion", "deviceLabel"],
       "properties": {
         "email": { "type": "string", "format": "email", "maxLength": 254 },
         "password": { "type": "string", "minLength": 12, "maxLength": 128 },
+        "installationKey": { "type": "string", "minLength": 32, "maxLength": 256 },
         "platform": { "const": "ANDROID" },
         "appVersion": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
         "deviceLabel": { "type": ["string", "null"], "maxLength": 80 }
@@ -177,10 +189,11 @@
     "bootstrapResponse": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["success", "apiVersion", "serverTime", "operatingTimeZone", "profile", "operatingCenter", "assignmentWindow", "assignments", "featureFlags", "appVersions", "sync", "policies"],
+      "required": ["success", "apiVersion", "app", "serverTime", "operatingTimeZone", "profile", "operatingCenter", "assignmentWindow", "assignments", "capabilities", "featureFlags", "appVersions", "sync", "policies"],
       "properties": {
         "success": { "const": true },
         "apiVersion": { "const": "v1" },
+        "app": { "enum": ["PILOT_FIELD", "OPERATIONS"] },
         "serverTime": { "$ref": "#/$defs/timestamp" },
         "operatingTimeZone": { "type": "string", "minLength": 1, "maxLength": 80 },
         "profile": { "$ref": "#/$defs/pilotProfile" },
@@ -195,6 +208,13 @@
           }
         },
         "assignments": { "type": "array", "maxItems": 100, "items": { "$ref": "#/$defs/assignment" } },
+        "capabilities": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": ["PILOT_ASSIGNMENTS_READ", "COPILOT_SELECT", "MISSION_MUTATE", "ISSUE_REPORT", "FOREGROUND_LOCATION", "OPERATIONS_OVERVIEW", "SALES_INTAKE", "FLEET_SCHEDULE", "CREW_OVERRIDE"]
+          }
+        },
         "featureFlags": {
           "type": "object",
           "additionalProperties": false,
