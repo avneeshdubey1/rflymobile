@@ -1,6 +1,6 @@
 # Pilot Android Application Microtask Execution Workbook
 
-**Status:** execution in progress; M00-01 through M00-05 verified
+**Status:** requirements/replanning hold after Phase M00; M01 and later are blocked
 **Prepared:** August 12, 2026
 **Parent plan:**
 [PILOT_ANDROID_APP_IMPLEMENTATION_PLAN.md](PILOT_ANDROID_APP_IMPLEMENTATION_PLAN.md)
@@ -80,7 +80,267 @@ No commit/push/deployment/live-data action performed: confirmed
 |---|---|---|
 | M00-01 to M00-02 | PASS | `PILOT_MOBILE_BACKEND_BASELINE.md` records the route, service, repository and database contract |
 | M00-03 to M00-05 | PASS | Phase 20 passed 1/1 and Phase 25 passed 5/5 on fresh disposable `_test` databases; actor audit/history, sequence ordering, final release and unrelated-resource isolation are asserted |
-| M00-06 onward | PENDING | Continue in dependency order; no later implementation is implied by this ledger |
+| M00-06 to M00-09 | PASS | `PILOT_MOBILE_API_CONTRACT.md` records the minimum DTO, visibility/retention boundaries, development-only session/location placeholders and stable safe error catalog |
+| M00-10 | PASS | Strict JSON Schema and seven sanitized fixture templates pass Phase 28 contract tests 3/3; stored templates contain no password, bearer token, phone or exact coordinate values |
+| R00-01 to R00-09 | PASS | `MOBILE_R00_REQUIREMENTS_AND_ARCHITECTURE.md` records the approved backend-facing requirements, role/parity matrices, Copilot workflow, source gap, two-app boundary, Stitch review, contract classification and replacement graph. |
+| Old M01-01 onward | RETIRED AS EXECUTION ORDER | Existing tasks remain source material. Execute the D00/W00/S00/P00/P10/O00/O10/Q00 packages below instead. |
+
+---
+
+# Phase R00 — Client-change consolidation and replanning
+
+These tasks now precede every unstarted implementation task.
+
+## R00-01 — Capture the complete client meeting requirement register
+
+**Depends on:** user-provided meeting notes
+**Objective:** give every requested change an ID, source, affected roles,
+priority, business reason, acceptance statement and unresolved questions.
+**Touch:** planning documents only.
+**Done when:** no meeting request exists only in chat/memory and the client list
+is explicitly marked awaiting confirmation or approved.
+**Verify:** user/client review.
+
+## R00-02 — Create the role-capability matrix
+
+**Depends on:** R00-01
+**Objective:** map each capability across Admin, Fleet Manager, Sales, Pilot,
+Copilot, Farmer and Business for web, Pilot Field app and Operations app.
+**Touch:** planning documents only.
+**Done when:** read/create/update/approve/override permissions and intentional
+exclusions are explicit.
+**Verify:** compare with server authorization and client intent.
+
+## R00-03 — Create the web/mobile parity matrix
+
+**Depends on:** R00-01, R00-02
+**Objective:** identify the single server capability, web interface, Pilot Field
+interface and Operations interface for every requirement.
+**Touch:** planning documents only.
+**Done when:** no one assumes a web screen automatically appears in an app and
+every client has `REQUIRED`, `DEFERRED`, or `NOT_APPLICABLE`.
+**Verify:** product/engineering review.
+
+## R00-04 — Approve the Copilot-selection state machine
+
+**Depends on:** R00-01, section 4 of the parent plan
+**Objective:** settle nomination acceptance, selection deadline, centre scope,
+Fleet/Admin approval, decline/replacement, reservation expiry and emergency
+replacement.
+**Touch:** decision/specification documents only.
+**Done when:** provisional assignment, eligibility, concurrency, audit,
+notification and Fleet fallback states are unambiguous.
+**Verify:** state-transition table reviewed by client and engineering.
+
+## R00-05 — Compare revised workflows with the current schema/server/web
+
+**Depends on:** R00-01 through R00-04
+**Objective:** produce a gap report for models, migrations, repositories,
+services, routes, web screens and existing test assumptions.
+**Touch:** read-only analysis/evidence.
+**Done when:** additive migration and compatibility needs are known without
+changing data or code.
+**Verify:** references point to current source, not historical documents.
+
+## R00-06 — Approve the two-application boundary
+
+**Depends on:** R00-02, R00-03
+**Objective:** confirm package identities, first-release roles, shared packages,
+separate navigation and release ownership for Pilot Field and Operations.
+**Touch:** architecture/decision documents only.
+**Done when:** Farmer/Business inclusion is explicit and neither app becomes an
+unbounded “all roles” container.
+**Verify:** security/product review.
+
+## R00-07 — Produce the RFLY/Coin-inspired design brief
+
+**Depends on:** client reference and R00-06
+**Objective:** translate the reference into original RFLY tokens, navigation,
+information hierarchy, components, accessibility and sample wireframes.
+**Touch:** `RFLY_MOBILE_UI_DESIGN_BRIEF.md` and sanitized design assets only.
+**Done when:** the brief states whether the web UI is included and copies no
+Zerodha branding, assets or exact protected screen design; generated Stitch
+code is explicitly excluded from the repository.
+**Verify:** client visual sign-off.
+
+## R00-08 — Revise shared and app-specific API contracts
+
+**Depends on:** R00-03 through R00-07
+**Objective:** generalize sessions/installations for two apps, revise Pilot crew
+formation contracts and define Operations capability contracts by slice.
+**Touch:** contract documentation/fixtures only in a later authorized task.
+**Done when:** existing Phase M00 fixtures are classified as reusable, revised
+or retired and no endpoint is built from a stale assumption.
+**Verify:** schema/contract review.
+
+## R00-09 — Replace the post-M00 dependency graph
+
+**Depends on:** R00-05, R00-08
+**Objective:** regenerate microtasks for domain-first web reference slices,
+shared mobile foundation, Pilot Field, Operations, QA and two releases.
+**Touch:** this workbook and parent plan only.
+**Done when:** every task is small, dependency-ordered and names focused tests.
+**Verify:** lead-agent execution review; completed in
+`MOBILE_R00_REQUIREMENTS_AND_ARCHITECTURE.md`.
+
+---
+
+# Replacement backend execution packages
+
+Each item is one focused commit unless verification proves no source change is
+required. Schema migration, authentication, idempotency, synchronization and
+location activation must never be combined into one commit.
+
+## D00-01 — Add crew-formation and assignment-revision schema
+
+**Depends on:** R00-09
+**Objective:** add explicit crew state, revision and formation timestamps without
+changing Lead lifecycle states.
+**Done when:** complete assignments backfill `READY`; legacy quarantined rows
+remain non-executable; clean and populated migration paths pass.
+**Verify:** Prisma validation plus disposable clean/populated migration harness.
+
+## D00-02 — Add installation and idempotency schema
+
+**Depends on:** D00-01
+**Objective:** add hashed/revocable app installation/session identity and durable
+installation-scoped mutation receipts.
+**Done when:** tokens are never stored raw and action IDs are unique per
+installation.
+**Verify:** schema constraints and disposable migration tests.
+
+## D00-03 — Add transactional Copilot formation repository
+
+**Depends on:** D00-01
+**Objective:** provide minimal eligibility, Primary selection and Fleet/Admin
+reasoned override under serialized conflict checks.
+**Done when:** stale revision, cross-centre, inactive, expired, overlapping,
+self-selection and post-start replacement are rejected atomically.
+**Verify:** focused repository tests including concurrent selection.
+
+## D00-04 — Adapt schedulers to provisional crew formation
+
+**Depends on:** D00-03
+**Objective:** reserve Primary Pilot, Drone and LMV without preselecting Copilot
+for ordinary new assignments.
+**Done when:** pending assignments cannot accept/start; complete-unit legacy rows
+and rollback/resource rules remain safe.
+**Verify:** auto/manual scheduling, transition and release regression suites.
+
+## W00-01 — Add web Primary-Pilot Copilot reference flow
+
+**Depends on:** D00-04
+**Objective:** expose pending crew, eligible list and selection in the existing
+web Pilot workspace using the shared server service.
+**Done when:** no client-side eligibility or direct `copilotId` update exists.
+**Verify:** role, stale conflict, no-candidate and success browser tests.
+
+## W00-02 — Add Fleet/Admin crew exception flow
+
+**Depends on:** D00-04
+**Objective:** show unresolved crew formation and reasoned override before start.
+**Done when:** exceptions are visible, auditable and close after resolution or
+cancellation.
+**Verify:** Fleet/Admin authorization and browser tests.
+
+## S00-01 — Implement shared mobile installation/session service
+
+**Depends on:** D00-02
+**Objective:** create opaque hashed bearer sessions separate from browser
+cookies while reusing password/authVersion/account controls.
+**Done when:** login is enumeration-safe; logout, logout-all, expiry, password
+change and Admin lost-device revocation work without weakening browser CSRF.
+**Verify:** focused auth tests for both app identities and revoked installations.
+
+## S00-02 — Mount `/api/mobile/v1` and stable middleware
+
+**Depends on:** S00-01
+**Objective:** add version/content-type/auth/request-context/error middleware and
+supported-client enforcement.
+**Done when:** routes return the strict safe envelope and never leak internals.
+**Verify:** unauthenticated, unauthorized, invalid-version and malformed-input tests.
+
+## S00-03 — Add capability/bootstrap endpoint
+
+**Depends on:** S00-02
+**Objective:** return own minimal profile, app/role capabilities, policy values
+and bounded initial cursor.
+**Done when:** Pilot and Operations responses contain no cross-role capabilities.
+**Verify:** DTO allow-list and role-matrix contract tests.
+
+## P00-01 — Add Pilot assignment list/detail projections
+
+**Depends on:** D00-04, S00-03
+**Objective:** return only bounded assigned work and the minimum operational DTO.
+**Done when:** unrelated jobs and broad Prisma relations cannot be inferred or
+serialized.
+**Verify:** Primary/Copilot visibility, ID substitution and retention tests.
+
+## P00-02 — Add eligible-Copilot and selection endpoints
+
+**Depends on:** D00-03, P00-01
+**Objective:** expose transactional formation to the assigned Primary and the
+reasoned Fleet/Admin exception endpoint.
+**Done when:** responses omit ratings, phones, licences and invented telemetry.
+**Verify:** eligibility, concurrency, replay, role and audit tests.
+
+## P10-01 — Add idempotent mission mutation endpoints
+
+**Depends on:** P00-01, D00-02
+**Objective:** adapt accept/start/complete/issue to action ID, expected revision
+and deterministic receipts.
+**Done when:** response loss/replay cannot double-apply and stale state cannot be
+overwritten.
+**Verify:** applied, already-applied, conflict, rejected and retry-later tests.
+
+## P10-02 — Add cursor-based Pilot change synchronization
+
+**Depends on:** P10-01
+**Objective:** return bounded ordered changes/tombstones and process ordered
+mutation batches without a client-authoritative merge.
+**Done when:** reassignment/cancellation removes work safely and malformed or
+oversized batches fail closed.
+**Verify:** replay, partial outcome, pagination and retention tests.
+
+## P10-03 — Add controlled issue reporting
+
+**Depends on:** P10-01
+**Objective:** expose approved issue categories and bounded notes through the
+existing decommission/alert workflow.
+**Done when:** issue actions are audited, coordinate-free and visible to Fleet.
+**Verify:** category, invalid input, replay and resource-release tests.
+
+## P10-04 — Add foreground location endpoint policy
+
+**Depends on:** P10-01 and written production policy before activation
+**Objective:** validate assignment/session eligibility, bounds, accuracy and
+capture time while retaining only the latest sample.
+**Done when:** background collection and route history remain absent.
+**Verify:** privacy, staleness, authorization, cleanup and redaction tests.
+
+## O00-01 — Add Operations Sales bootstrap and customer/lead DTOs
+
+**Depends on:** S00-03
+**Objective:** reuse existing Sales services through mobile minimum DTOs.
+**Done when:** phone lookup, registration and lead intake preserve geofence and
+normalization rules without exposing other roles.
+**Verify:** Sales role, duplicate phone, geofence and DTO tests.
+
+## O10-01 — Add Operations Fleet schedule/exception DTOs
+
+**Depends on:** W00-02, S00-03
+**Objective:** expose ordered day schedule, resource state and crew exceptions
+without granting scheduling authority to other roles.
+**Done when:** Fleet/Admin capabilities match the role matrix.
+**Verify:** bounded date range, role isolation and exception tests.
+
+## Q00-01 — Run complete compatibility and migration gates
+
+**Depends on:** completed applicable backend packages
+**Objective:** prove browser, mobile contracts, schema and containers together.
+**Done when:** backend suite, clean/populated migration replay, frontend
+lint/build, audits and isolated Compose health pass without weakening gates.
+**Verify:** local evidence followed by separately authorized staging acceptance.
 
 ---
 
@@ -1990,31 +2250,28 @@ no unsupported “production-ready” claim remains.
 # 5. Execution dependency map
 
 ```text
-M00 decisions and baseline
-  -> M01 session persistence
-  -> M02 authentication
-  -> M03 read API
-  -> M04 revisions/idempotency
-  -> M05 synchronization
-  -> M06 location/issue/completion
-  -> M07 backend acceptance/version safety
-  -> M08 mobile foundation
-  -> M09 authentication UI
-  -> M10 SQLite/pull sync
-  -> M11 online missions
-  -> M12 offline action queue
-  -> M13 foreground location
-  -> M14 i18n/accessibility/privacy
-  -> M15 E2E/destructive offline tests
-  -> M16 CI/internal distribution
-  -> M17 Play release
-  -> M18 production operations
+M00 current baseline evidence
+  -> R00 complete client-change consolidation
+  -> D00 domain workflow and migration microtasks
+  -> W00 web reference workflow microtasks
+  -> S00 shared two-app mobile foundation
+       -> Pilot Field track
+       -> Operations role-slice track
+  -> cross-client QA and parity
+  -> separate Play releases and operations
 ```
+
+The old M01–M18 sequence below remains detailed source material for the Pilot
+track. It is not executable until R00-09 replaces its dependencies and extracts
+shared two-app tasks.
 
 # 6. Lead-agent batch guide
 
 Safe small batches for a capable supervising agent are limited to:
 
+- R00-01 through R00-03 (documentation only);
+- R00-05 through R00-06 (analysis/architecture only);
+- R00-08 through R00-09 (contract/task replanning only);
 - M00-01 through M00-02;
 - M00-03 through M00-05;
 - M01-06 through M01-08;
@@ -2026,6 +2283,9 @@ Safe small batches for a capable supervising agent are limited to:
 - M11-01 through M11-05;
 - M14-01 through M14-04; and
 - documentation-only M18 tasks.
+
+No old M01–M18 batch is currently authorized while the replanning hold is
+active, even if it appears in the list above.
 
 Never batch a Prisma migration, authentication middleware, idempotency
 transaction, synchronization processor, secure storage, location permission,

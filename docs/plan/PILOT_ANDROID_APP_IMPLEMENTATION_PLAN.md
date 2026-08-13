@@ -1,22 +1,58 @@
-# Pilot Android Application Implementation Plan
+# RFLY Android Application Suite Implementation Plan
 
 Current server contract and verified Phase M00 baseline:
 [PILOT_MOBILE_BACKEND_BASELINE.md](PILOT_MOBILE_BACKEND_BASELINE.md).
+Privacy, session/location placeholders, errors and contract fixtures:
+[PILOT_MOBILE_API_CONTRACT.md](PILOT_MOBILE_API_CONTRACT.md).
+Draft design workflow and sanitized Stitch handoff:
+[RFLY_MOBILE_UI_DESIGN_BRIEF.md](RFLY_MOBILE_UI_DESIGN_BRIEF.md).
 
-**Status:** implementation in progress; server baseline M00-01 through M00-05 verified
+**Status:** R00 backend architecture approved; backend packages may proceed in
+the replacement dependency order while mobile UI remains a separate prototype
 **Prepared:** August 12, 2026
-**Primary target:** a production Android application for assigned Pilots and
-Copilots
-**Required sequence:** prepare and verify the existing Node.js platform first,
-then build the mobile client, then validate it in staging and the field before
-Play production release
+**Revised after client meeting:** August 12, 2026
+**Primary target:** two production Android applications backed by the existing
+Node.js platform: a dedicated Pilot Field application and a separate RFLY
+Operations application for approved non-Pilot roles
+**Required sequence:** consolidate the complete client requirement delta,
+implement each business capability once in the server, prove it through the web
+reference workflow, expose stable mobile contracts, then implement and release
+the applicable capability in each mobile application
+
+## 0. Client-meeting architecture revision
+
+The client has changed the mobile scope after the original Pilot-only plan was
+prepared:
+
+1. the Pilot/Copilot field workflow remains a dedicated application;
+2. the remainder of the approved website workspaces must be available through
+   a separate Operations application, with the same server-enforced role
+   permissions as the web application;
+3. the Pilot assigned to a job must choose the Copilot from an eligible list;
+4. the mobile visual direction should be calm, compact and information-led like
+   the interaction qualities demonstrated in Zerodha Coin; and
+5. further substantial workflow changes from the same meeting are still to be
+   captured.
+
+The known backend-facing requirements and conservative defaults are approved in
+`MOBILE_R00_REQUIREMENTS_AND_ARCHITECTURE.md`. Unlisted future meeting changes
+remain excluded until captured; the old M01-M18 sequence must not be executed
+as though it were current.
+
+The completed Phase M00 work is retained because it records the current server
+and proves existing safety behaviour. It is a comparison baseline, not a claim
+that current assignment creation is the new target.
 
 **Execution workbook:** use
 [PILOT_ANDROID_APP_MICROTASKS.md](PILOT_ANDROID_APP_MICROTASKS.md) for
 dependency-ordered, one-agent-sized implementation tasks. The present document
 defines architecture and acceptance; the workbook defines execution units.
 
-## 1. Objective
+## 1. Product objective
+
+Build a shared mobile platform with two separately packaged applications.
+
+### 1.1 Pilot Field application
 
 Build a native mobile application that lets an assigned Pilot or Copilot:
 
@@ -33,23 +69,103 @@ Build a native mobile application that lets an assigned Pilot or Copilot:
 11. synchronize safely when connectivity returns; and
 12. distinguish pending, synchronized, rejected, and conflicted actions.
 
-The mobile application is a new client of the existing platform. It is not a
-WebView wrapper and it does not own a separate operational backend.
+The revised workflow also lets the assigned Primary Pilot select an eligible
+Copilot before the mission becomes ready for acceptance or start.
+
+### 1.2 RFLY Operations application
+
+Build a separate role-aware application for the non-Pilot operational roles
+approved by the client. The exact first-release role list remains a requirement
+decision. The design must support Admin, Fleet Manager and Sales without
+granting any role another role's authority. Farmer and Business access must not
+be added to this employee application unless the client explicitly approves
+that product boundary.
+
+The long-term target is functional coverage of approved web workflows, adapted
+for a mobile interaction model. It is not a pixel-compressed desktop website,
+and complex Admin tasks may be delivered in later role-specific increments
+while the web console remains the operational fallback.
+
+Both mobile applications are new clients of the existing platform. Neither is
+a WebView wrapper and neither owns a separate operational backend.
 
 ```text
-React/Vite staff web application -----\
-                                      +--> HTTPS Node.js API --> PostgreSQL
-React Native Pilot application -------/
+React/Vite web application ------------\
+Pilot Field Android application --------+--> HTTPS Node.js API --> PostgreSQL
+RFLY Operations Android application ---/
 ```
 
 PostgreSQL remains private to the server. The Android application must never
 connect directly to it.
 
+## 1.3 What is shared and what is not
+
+Business capabilities are shared through the server, not by copying screens.
+
+| Change | Web and apps automatically benefit? | Required client work |
+|---|---|---|
+| Database record or server configuration changes | Yes, after the next API refresh/sync | None if the existing contract remains compatible |
+| Server business-rule or permission correction | Yes; the server immediately enforces it for every client | Each UI may need new guidance/error presentation |
+| New API field in an existing compatible contract | Only clients that consume it | Add it to the relevant web/app screen |
+| New workflow or feature | No automatic screen appears | Implement server once, then implement the applicable web and mobile interfaces |
+| Website layout, colour or component change | No | Implement separately in each app or through shared mobile design components |
+| Shared wording, feature flag or safe configuration | Yes when deliberately server-driven | Clients must already support that key safely |
+
+The web frontend and both mobile applications should share API contracts,
+validation vocabulary, localization resources and design tokens where
+practical. They should not share authorization decisions or duplicate the
+assignment state machine; those remain server-owned.
+
+## 1.4 Website UI decision
+
+The two-app requirement does not technically force a web UI overhaul. Node.js
+is the server technology; the visible website is the React frontend. A Coin-like
+mobile interface can be built while preserving the current web layout.
+
+For consistency, this plan recommends a progressive web design-system migration
+after the client approves the visual brief:
+
+- define shared colour, typography, spacing, status and icon tokens;
+- apply them first to newly changed web workflows;
+- migrate existing web pages in reviewed modules rather than performing a
+  risky full rewrite; and
+- keep functional changes and purely visual changes independently testable.
+
+If the client requires the website itself to match the new mobile visual
+direction, that becomes a separate web-redesign workstream with page-by-page
+acceptance. Do not infer that requirement solely from the Coin app reference.
+
+Coin is an interaction reference, not a template to copy. RFLY must use its own
+branding, assets and domain-specific information architecture. The intended
+qualities are restrained colour, strong typography, compact summaries,
+list-first navigation, clear status, progressive disclosure, predictable
+bottom navigation and minimal visual noise.
+
+## 1.5 Delivery strategy
+
+Do not build both finished apps first and attempt to insert changing business
+rules later. Do not wait for every future company feature before creating any
+mobile foundation either. Use domain-first vertical slices:
+
+1. capture and approve one client workflow;
+2. define its role/permission/state/audit/data contract;
+3. implement it once in the Node.js service/repository layer;
+4. expose and acceptance-test it in the web reference workflow;
+5. add a stable versioned mobile contract;
+6. implement it in only the app/roles that need it; and
+7. validate web/mobile parity, offline behaviour and staging evidence.
+
+Shared mobile authentication, transport, design tokens and test infrastructure
+may be built after the revised role/capability boundaries are approved. Deep
+domain features must follow the vertical-slice order above.
+
 ## 2. Scope boundaries
 
-### 2.1 First production release
+### 2.1 Pilot Field first release
 
 - Pilot employee login and session restoration.
+- Copilot eligibility list and Primary-Pilot selection workflow.
+- Visible pending-crew state and Fleet fallback when selection cannot complete.
 - Today and upcoming assignment views.
 - Assignment details, schedule order, service window, and navigation.
 - Primary Pilot and Copilot visibility.
@@ -63,10 +179,26 @@ connect directly to it.
 - Staging, internal testing, Play signing, gradual production release, and
   operational monitoring.
 
-### 2.2 Explicitly deferred
+### 2.2 Operations application release slices
 
-- Fleet scheduling or resource reassignment from the Pilot application.
-- Admin, Fleet, Sales, Farmer, or Business workspaces.
+The complete client meeting list must determine the final slice order. The
+provisional sequence is:
+
+1. shared employee authentication, profile and safe notifications;
+2. Sales customer lookup, customer registration and lead intake;
+3. Fleet assignment oversight, crew-selection exceptions and day schedule;
+4. operational alerts, resource availability and issue response;
+5. Admin user/role controls and approved master-data tasks; and
+6. later approved billing, reporting and business workflows.
+
+Every slice needs a role-capability matrix. A menu item being visible in the
+website is not evidence that it belongs in every mobile role.
+
+### 2.3 Explicitly deferred until separately approved
+
+- Fleet scheduling or resource reassignment from the Pilot Field application,
+  except the narrowly defined Primary-Pilot Copilot-selection action.
+- Farmer or Business access inside either employee application.
 - Billing approval and settlement.
 - Raw drone telemetry processing.
 - Route optimization.
@@ -76,6 +208,59 @@ connect directly to it.
 - Push notifications until the provider decision is approved.
 - Firebase Authentication or an accidental Firebase dependency.
 - iOS release; the architecture should remain portable to iOS later.
+
+### 2.4 Required requirement artefacts before coding resumes
+
+The client meeting must be converted into all of the following:
+
+- a numbered requirement register with source, owner, priority and acceptance;
+- a role-capability matrix for web, Pilot Field and Operations applications;
+- state diagrams for every changed workflow;
+- a web/mobile parity matrix identifying shared server logic and client UIs;
+- an approved two-app boundary and first-release role list;
+- a Copilot-selection decision record;
+- Coin-inspired wireframes/design tokens approved as RFLY branding; and
+- the safe Stitch/Figma workflow in
+  [RFLY_MOBILE_UI_DESIGN_BRIEF.md](RFLY_MOBILE_UI_DESIGN_BRIEF.md); and
+- an updated dependency-ordered microtask workbook.
+
+Unresolved requirements must be explicit placeholders. They must not be filled
+by copying current UI behaviour or guessing from the reference application.
+
+### 2.5 Client-change intake format
+
+Record every remaining meeting request before estimating or implementing it.
+One row may describe only one independently testable behaviour.
+
+| Field | What to record |
+|---|---|
+| Requirement ID | Stable identifier such as `CM-2026-08-12-01` |
+| Exact client request | The closest available wording from the meeting, message or document |
+| Business purpose | The operational problem the client expects it to solve |
+| Actors | Every role that creates, views, approves, changes or receives the result |
+| Current behaviour | What staging currently does, supported by route/UI/test evidence |
+| Target workflow | Ordered happy path plus exception and cancellation paths |
+| Authority | Who may initiate, approve, override and close the workflow |
+| Data/state impact | Records, states, history, notifications and retention affected |
+| Client surfaces | Web, Pilot Field app, Operations app or more than one |
+| Offline requirement | Whether the action must work offline and how conflicts are resolved |
+| Priority/release | Must-have, later increment or explicitly deferred |
+| Open decisions | Questions that must be answered instead of guessed |
+| Acceptance evidence | Tests and staging behaviour that prove completion |
+
+After capture, classify each requirement as one of:
+
+- **server/domain first:** changes data, authority, state, conflicts, audit or
+  synchronization;
+- **client parity:** server capability exists but one or more approved clients
+  need a screen and acceptance coverage;
+- **presentation only:** layout, navigation or visual-system change with no
+  business-rule effect; or
+- **future/deferred:** recorded but excluded from the current release.
+
+Pilot-selected Copilot is `server/domain first`, followed by web reference,
+Pilot Field implementation and Fleet/Admin exception handling in the Operations
+app. It is not a presentation-only mobile task.
 
 ## 3. Existing platform baseline
 
@@ -98,9 +283,15 @@ business-logic system. The browser dashboard is a behavioural reference, not a
 screen to embed in Android. Its queue is not sufficient evidence for a native,
 durable offline implementation.
 
-## 4. Approved operating rules
+The current scheduler chooses both Pilot roles before creating an ordinary new
+assignment. That creation rule conflicts with the revised client requirement.
+Do not conceal the difference in the mobile UI. The domain workflow, database
+state, auto-assignment policy, web scheduling UI and tests must change together
+before the Pilot selection screen is implemented.
 
-Before implementation, preserve these rules as server-enforced contracts:
+## 4. Operating rules and revised Copilot formation
+
+Preserve these post-formation safety rules as server-enforced contracts:
 
 - Both the Primary Pilot and Copilot can see their shared assignment.
 - Either assigned crew member may perform the permitted mission action.
@@ -111,7 +302,9 @@ Before implementation, preserve these rules as server-enforced contracts:
 - A crew/drone/LMV unit cannot have two simultaneous in-progress jobs.
 - Actual acreage is required for completion.
 - Completion releases the drone and LMV without waiting for billing.
-- Fleet Manager/Admin control scheduling and reassignment.
+- Fleet Manager/Admin control initial scheduling, resource reservation,
+  exception handling and reassignment. The assigned Primary Pilot controls only
+  the approved Copilot-selection step.
 - The mobile application never bypasses service-area or resource validation.
 - Location is collected only when operationally justified and never copied to
   ordinary audit logs.
@@ -121,9 +314,68 @@ Any change to these rules requires an explicit product decision and coordinated
 changes to the web application, server, mobile application, tests, and
 documentation.
 
+### 4.1 Target Copilot-selection workflow
+
+The recommended target is a two-stage assignment rather than allowing the app
+to overwrite `copilotId` directly:
+
+1. Fleet/manual or automatic scheduling selects the Primary Pilot, Drone, LMV,
+   operating centre and service window.
+2. The server creates a revision-protected provisional assignment with a
+   dedicated `PENDING_COPILOT_SELECTION` crew-formation state. It reserves the
+   selected resources but cannot be accepted or started.
+3. Only the assigned Primary Pilot may request eligible Copilot candidates.
+4. The server returns a minimal candidate DTO from the same operating centre
+   after checking active role, archive state, licence/compliance, service-window
+   conflicts, daily limits and any approved pairing restrictions.
+5. The Primary Pilot submits one candidate with expected assignment revision
+   and unique action ID.
+6. Inside one serialized transaction, the server rechecks actor, assignment,
+   candidate and conflicts, records the Copilot, advances crew formation to
+   `READY`, increments revision, writes coordinate/credential-free audit and
+   history, and creates the approved notification/follow-up.
+7. The selected Copilot then sees the shared assignment. Neither crew member
+   may bypass sequence, resource or mission-state rules.
+8. If selection expires, conflicts, or has no candidate, the assignment enters
+   a visible Fleet exception queue; it is never silently dropped.
+9. Fleet/Admin may override or replace the selection only through an audited,
+   reason-required path and only before mission start unless an emergency
+   workflow is separately approved.
+
+Do not use Lead lifecycle status alone for crew formation. Keep mission state
+and crew-formation state explicit so a provisional reservation cannot be
+mistaken for an executable job. Existing legacy nullable-Copilot rows require a
+reviewed additive migration/backfill strategy.
+
+### 4.2 Copilot decisions still required from the client
+
+- Does the selected Copilot have to accept the nomination before `READY`?
+- How long may the Primary Pilot take to choose?
+- May the Primary Pilot choose only within the same operating centre?
+- Is Fleet/Admin approval required after selection, or only for overrides?
+- Can a preferred crew pairing be saved, and who owns it?
+- What happens when the Primary Pilot does not select anyone?
+- Can the Copilot decline, and how many replacements are permitted?
+- At what point are Drone and LMV reservations allowed to expire?
+- May Copilot change after acceptance, and what is the emergency process?
+
+The maintainer approved conservative v1 answers for these decisions in
+`MOBILE_R00_REQUIREMENTS_AND_ARCHITECTURE.md`. Future client revisions must be
+recorded as new decisions and must not silently change the implemented v1
+state machine.
+
 ---
 
 # Part I — Existing Node.js application preparation
+
+The detailed `MOB-BE`, `MOB-APP`, QA and release sections below remain source
+material for the Pilot Field track. Execute the replacement D00/W00/S00/P00/
+P10/O00/O10/Q00 packages instead. Shared infrastructure must serve both apps
+through one reviewed implementation rather than parallel authentication stacks.
+
+The Operations application needs its own screen/module decomposition after the
+role-capability and web/mobile parity matrices are approved. Do not mechanically
+copy every web route into mobile tasks.
 
 ## MOB-BE-00 — Freeze and test the current Pilot contract
 
@@ -982,28 +1234,30 @@ Consider only after the core application has field evidence:
 
 ---
 
-# Part VI — Ordered implementation packages
+# Part VI — Revised ordered implementation packages
 
 | Package | Work | Exit condition |
 |---|---|---|
-| P1 | `MOB-BE-00`–`MOB-BE-05` | Tested, minimal, versioned mobile API and opaque mobile authentication |
-| P2 | `MOB-BE-06`–`MOB-BE-09` | Revision-safe, idempotent bidirectional synchronization |
-| P3 | `MOB-BE-10`–`MOB-BE-15` | Location, issue/completion rules, security, and backend acceptance complete |
-| P4 | `MOB-APP-00`–`MOB-APP-06` | Android foundation, secure login, local database, and bootstrap work |
-| P5 | `MOB-APP-07`–`MOB-APP-12` | Complete online mission workflow on physical Android devices |
-| P6 | `MOB-APP-13`–`MOB-APP-18` | Durable offline operation, conflicts, location, i18n, and accessibility |
-| P7 | `MOB-QA-00`–`MOB-QA-05` | Automated, destructive-offline, device, security, and field acceptance |
-| P8 | `MOB-REL-00`–`MOB-REL-07` | Signed, compliant, monitored gradual Play release |
-| P9 | `MOB-OPS-00`–`MOB-OPS-02` | Repeatable support and release operations |
+| R0 | Complete client-meeting intake, role-capability matrix, parity matrix, Copilot decisions and RFLY/Coin-inspired design brief | Requirements have identifiers, owners, acceptance and explicit unresolved placeholders |
+| D0 | Implement Copilot formation and other changed domain workflows in Node.js with migrations, authorization, audit and focused tests | Domain rules pass independently of any UI |
+| W0 | Implement and acceptance-test each changed workflow in the React web application | Web is the operational reference and staging fallback |
+| S0 | Generalize mobile installation/session, API transport, contracts, design tokens and CI for two apps | Shared foundation passes without granting role capabilities |
+| PF1 | `MOB-BE-01` onward plus Pilot Field UI, offline, location and Copilot-selection slices | Signed Pilot Field build passes device and field acceptance |
+| OP1 | Operations app authentication plus Sales/Fleet/Admin slices in approved priority | Each role sees and can perform only approved workflows |
+| UX1 | Progressive web token/component migration if separately approved | No functional regression and client signs off each converted module |
+| Q0 | Web, both apps, backend, offline/conflict, privacy, accessibility and device gates | Cross-client state and permission parity proven |
+| REL | Separate signed, compliant, monitored Play releases and support/rollback operations | Company-owned gradual rollout for both package IDs |
 
-Packages are sequential acceptance boundaries. Some investigation may overlap,
-but screen development must not substitute for completing the mobile server
-contract and offline consistency model.
+Packages are sequential acceptance boundaries. Requirements/design exploration
+may overlap, but functional app screens must not precede their domain and web
+reference workflow. A feature is not complete merely because it exists in one
+client; its parity matrix must state whether the other clients intentionally
+support, defer or exclude it.
 
 # Part VII — Definition of functional completion
 
-The Pilot Android application is functional only when all of the following are
-true:
+The mobile suite is functional only when the shared foundation, Pilot Field
+application and approved Operations slices meet their defined scope:
 
 - A real Pilot and Copilot can install a signed build and authenticate.
 - Each sees only assigned, operationally relevant work.
@@ -1019,6 +1273,14 @@ true:
 - Physical-device and field-pilot acceptance is recorded.
 - The Play release is company-owned, signed, compliant, gradual, and monitored.
 - A documented support and rollback procedure exists.
+- Admin/Fleet/Sales mobile capabilities match the approved role matrix and
+  cannot cross role boundaries.
+- A business action performed through web or either app produces one shared
+  server state visible to the other applicable clients after refresh/sync.
+- The Primary Pilot can select only an eligible Copilot through the audited,
+  revision-safe server workflow, with Fleet fallback for failure.
+- Website-only, Pilot-only and Operations-only capabilities are explicitly
+  identified rather than silently missing.
 
 # Part VIII — Decisions required before activation
 
@@ -1035,8 +1297,14 @@ release capability:
 - issue categories and Fleet escalation ownership;
 - supported offline retention period;
 - privacy policy and Data Safety owner;
-- mobile monitoring/crash provider; and
-- whether/when push notifications or evidence uploads are approved.
+- mobile monitoring/crash provider;
+- whether/when push notifications or evidence uploads are approved;
+- complete client meeting requirement list and priority;
+- Operations app first-release roles and modules;
+- answers to every Copilot-selection decision in section 4.2;
+- whether Coin-inspired styling applies only to mobile or also to the web
+  frontend; and
+- approved RFLY wireframes, branding tokens and accessibility targets.
 
 Until those values are supplied, implement configurable safe defaults and keep
 provider-dependent functionality disabled.
