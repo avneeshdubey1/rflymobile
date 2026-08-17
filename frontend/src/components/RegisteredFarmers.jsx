@@ -7,46 +7,43 @@ function RegisteredFarmers() {
     const [farmers, setFarmers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
-    // pagination
     const [currentPage, setCurrentPage] = useState(1);
+    const [totalFarmers, setTotalFarmers] = useState(0);
+    const [totalPages, setTotalPages] = useState(0);
     const farmersPerPage = 10;
 
     useEffect(() => {
-        fetchFarmers();
-    }, []);
+        const controller = new AbortController();
+        const timer = setTimeout(async () => {
+            setLoading(true);
+            try {
+                const params = new URLSearchParams({
+                    q: search.trim(),
+                    page: String(currentPage),
+                    pageSize: String(farmersPerPage),
+                });
+                const response = await fetch(`${API}/api/customers/sales?${params}`, {
+                    signal: controller.signal,
+                });
+                const data = await response.json().catch(() => ({}));
 
-    const fetchFarmers = async () => {
-        setLoading(true);
-        try {
-            const response = await fetch(`${API}/api/customers/sales?q=`);
-            const data = await response.json().catch(() => ({}));
-
-            if (!response.ok || !data.success) throw new Error(data.error || "Failed to fetch customers");
-            setFarmers(data.customers || []);
-        } catch (error) {
-            console.error("Failed to fetch farmers:", error);
-        } finally {
-            setLoading(false);
-        }
-    };
-    const filteredFarmers = farmers.filter((farmer) => {
-        const value = search.toLowerCase();
-
-        return (
-            farmer.displayName?.toLowerCase().includes(value) ||
-            farmer.phone?.includes(value)
-        );
-    });
-
-    const totalPages = Math.ceil(filteredFarmers.length / farmersPerPage);
-
-    const indexOfLastFarmer = currentPage * farmersPerPage;
-    const indexOfFirstFarmer = indexOfLastFarmer - farmersPerPage;
-
-    const currentFarmers = filteredFarmers.slice(
-        indexOfFirstFarmer,
-        indexOfLastFarmer
-    );
+                if (!response.ok || !data.success) throw new Error(data.error || "Failed to fetch customers");
+                setFarmers(data.customers || []);
+                setTotalFarmers(data.pagination?.total || 0);
+                setTotalPages(data.pagination?.totalPages || 0);
+            } catch (error) {
+                if (error.name !== "AbortError") console.error("Failed to fetch farmers:", error);
+            } finally {
+                if (!controller.signal.aborted) setLoading(false);
+            }
+        }, search ? 250 : 0);
+        return () => {
+            clearTimeout(timer);
+            controller.abort();
+        };
+    }, [currentPage, search]);
+    const indexOfFirstFarmer = (currentPage - 1) * farmersPerPage;
+    const indexOfLastFarmer = indexOfFirstFarmer + farmers.length;
 
     return (
         <section className="panel panel--raised">
@@ -106,14 +103,14 @@ function RegisteredFarmers() {
                         <tbody>
                             {loading ? (
                                 <SkeletonTableRows rows={6} columns={14} />
-                            ) : currentFarmers.length === 0 ? (
+                            ) : farmers.length === 0 ? (
                                 <tr>
                                     <td colSpan="14" style={{ textAlign: "center" }}>
                                         No customers registered.
                                     </td>
                                 </tr>
                             ) : (
-                                currentFarmers.map((farmer) => (
+                                farmers.map((farmer) => (
                                     <tr key={farmer.id}>
                                         <td>{farmer.displayName}</td>
 
@@ -168,9 +165,9 @@ function RegisteredFarmers() {
                 </div>
                 <div className="pagination-container">
                     <span className="pagination-info">
-                        Showing {filteredFarmers.length === 0 ? 0 : indexOfFirstFarmer + 1} -
-                        {Math.min(indexOfLastFarmer, filteredFarmers.length)} of{" "}
-                        {filteredFarmers.length} farmers
+                        Showing {totalFarmers === 0 ? 0 : indexOfFirstFarmer + 1} -
+                        {indexOfLastFarmer} of{" "}
+                        {totalFarmers} customers
                     </span>
 
                     {/* <div className="pagination-controls">

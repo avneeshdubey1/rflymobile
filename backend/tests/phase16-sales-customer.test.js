@@ -209,6 +209,44 @@ test('Sales can create and search staff-confirmed customers without issuing Farm
   assert.equal(JSON.stringify(audit).match(/9333333331|password|otp|latitude|longitude/i), null);
 });
 
+test('Registered-customer search paginates beyond 30 records without hiding older customers', async () => {
+  const prefix = `Phase 16 Pagination ${process.pid}`;
+  for (let index = 0; index < 35; index += 1) {
+    const created = await request('/api/customers/sales', {
+      method: 'POST',
+      authorization: salesAuthorization,
+      body: {
+        displayName: `${prefix} ${String(index).padStart(2, '0')}`,
+        phone: `94444${String(index).padStart(5, '0')}`,
+      },
+    });
+    assert.equal(created.response.status, 201, JSON.stringify(created.data));
+    ids.customers.push(created.data.customer.id);
+  }
+
+  const firstPage = await request(`/api/customers/sales?q=${encodeURIComponent(prefix)}&page=1&pageSize=30`, {
+    authorization: salesAuthorization,
+  });
+  assert.equal(firstPage.response.status, 200, JSON.stringify(firstPage.data));
+  assert.equal(firstPage.data.customers.length, 30);
+  assert.deepEqual(firstPage.data.pagination, {
+    page: 1,
+    pageSize: 30,
+    total: 35,
+    totalPages: 2,
+  });
+
+  const secondPage = await request(`/api/customers/sales?q=${encodeURIComponent(prefix)}&page=2&pageSize=30`, {
+    authorization: salesAuthorization,
+  });
+  assert.equal(secondPage.response.status, 200, JSON.stringify(secondPage.data));
+  assert.equal(secondPage.data.customers.length, 5);
+  assert.equal(new Set([
+    ...firstPage.data.customers.map((customer) => customer.id),
+    ...secondPage.data.customers.map((customer) => customer.id),
+  ]).size, 35);
+});
+
 test('existing Farmer users are linked for Sales service view without impersonation', async () => {
   const linked = await request('/api/customers/sales', {
     method: 'POST',
