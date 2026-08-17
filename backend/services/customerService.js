@@ -124,9 +124,29 @@ async function findLinkedFarmer(phone) {
   return userRepository.findIdentityByPhone(phone, 'FARMER');
 }
 
-async function searchForSales({ query }) {
-  const customers = await customerRepository.search({ query, take: 30 });
-  return customers.map(safeCustomer);
+function positiveInteger(value, fallback, maximum) {
+  const number = Number(value);
+  if (!Number.isInteger(number) || number < 1) return fallback;
+  return Math.min(number, maximum);
+}
+
+async function searchForSales({ query, page, pageSize }) {
+  const resolvedPage = positiveInteger(page, 1, 1000000);
+  const resolvedPageSize = positiveInteger(pageSize, 30, 100);
+  const { customers, total } = await customerRepository.searchPage({
+    query,
+    skip: (resolvedPage - 1) * resolvedPageSize,
+    take: resolvedPageSize,
+  });
+  return {
+    customers: customers.map(safeCustomer),
+    pagination: {
+      page: resolvedPage,
+      pageSize: resolvedPageSize,
+      total,
+      totalPages: Math.ceil(total / resolvedPageSize),
+    },
+  };
 }
 
 async function findByPhoneForSales(phone) {

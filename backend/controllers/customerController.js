@@ -3,8 +3,12 @@ const intakeController = require('./intakeController');
 
 exports.search = async (req, res) => {
   try {
-    const customers = await customerService.searchForSales({ query: req.query.q });
-    return res.json({ success: true, customers });
+    const result = await customerService.searchForSales({
+      query: req.query.q,
+      page: req.query.page,
+      pageSize: req.query.pageSize,
+    });
+    return res.json({ success: true, ...result });
   } catch (_error) {
     return res.status(500).json({ error: 'Failed to search customers' });
   }

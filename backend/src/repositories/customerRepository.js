@@ -60,12 +60,20 @@ module.exports = {
   findById: (id) => prisma.customer.findUnique({ where: { id }, include: includeRecentLeads }),
   findByFarmerUserId: (farmerUserId) => prisma.customer.findUnique({ where: { farmerUserId }, include: includeRecentLeads }),
   findByPhone: (phone) => prisma.customer.findUnique({ where: { phone }, include: includeRecentLeads }),
-  search: ({ query, take = 25 } = {}) => prisma.customer.findMany({
-    where: searchableWhere(query),
-    include: includeRecentLeads,
-    orderBy: { updatedAt: 'desc' },
-    take,
-  }),
+  searchPage: async ({ query, skip = 0, take = 25 } = {}) => {
+    const where = searchableWhere(query);
+    const [customers, total] = await prisma.$transaction([
+      prisma.customer.findMany({
+        where,
+        include: includeRecentLeads,
+        orderBy: [{ updatedAt: 'desc' }, { id: 'asc' }],
+        skip,
+        take,
+      }),
+      prisma.customer.count({ where }),
+    ]);
+    return { customers, total };
+  },
   update: (id, data, options = {}) => prisma.$transaction(async (transaction) => {
     await setHistoryActor(transaction, options.actorId);
     const customer = await transaction.customer.update({ where: { id }, data });

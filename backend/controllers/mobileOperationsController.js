@@ -71,8 +71,16 @@ async function searchCustomers(req, res) {
   try {
     const query = typeof req.query.q === 'string' ? req.query.q.trim() : '';
     if (query.length > 120) throw new OperationsMobileError('Search query must not exceed 120 characters');
-    const customers = await customerService.searchForSales({ query });
-    return res.json({ success: true, customers: customers.map(customerDto) });
+    const result = await customerService.searchForSales({
+      query,
+      page: req.query.page,
+      pageSize: req.query.pageSize,
+    });
+    return res.json({
+      success: true,
+      customers: result.customers.map(customerDto),
+      pagination: result.pagination,
+    });
   } catch (error) {
     return mobileError(res, req, error);
   }
