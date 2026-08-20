@@ -92,6 +92,7 @@ test('Pilot login creates an installation-bound opaque session and capability bo
   const bootstrap = await request('/api/mobile/v1/pilot/bootstrap', { token: result.data.session.accessToken });
   assert.equal(bootstrap.response.status, 200, JSON.stringify(bootstrap.data));
   assert.equal(bootstrap.data.app, 'PILOT_FIELD');
+  assert.equal(bootstrap.data.profile.pilotAvailabilityState, 'AVAILABLE');
   assert.deepEqual(bootstrap.data.capabilities, [
     'PILOT_ASSIGNMENTS_READ', 'COPILOT_SELECT', 'MISSION_MUTATE', 'ISSUE_REPORT', 'FOREGROUND_LOCATION',
   ]);

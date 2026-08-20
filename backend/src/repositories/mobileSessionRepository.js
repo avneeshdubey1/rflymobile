@@ -7,6 +7,7 @@ const sessionUserSelect = {
   employeeCode: true,
   preferredLanguage: true,
   homeCenterId: true,
+  pilotAvailabilityState: true,
   authVersion: true,
   active: true,
   archivedAt: true,
