@@ -42,6 +42,14 @@ kept under `docs/unrealted_docs_for_current_version/` and is never authoritative
     For UI exploration, also read
     [RFLY_MOBILE_UI_DESIGN_BRIEF.md](RFLY_MOBILE_UI_DESIGN_BRIEF.md); never
     paste generated Stitch prototype code into the production clients.
+    When regenerating the design package, use
+    [STITCH_MOBILE_REDESIGN_HANDOFF.md](STITCH_MOBILE_REDESIGN_HANDOFF.md).
+    For the separate non-Pilot application spanning Admin, Sales, Fleet,
+    Farmer/customer, and Business/B2B roles, use
+    [STITCH_NON_PILOT_MOBILE_APP_HANDOFF.md](STITCH_NON_PILOT_MOBILE_APP_HANDOFF.md).
+    When repairing or rebuilding the current Expo Pilot client, use
+    [GEMINI_PILOT_MOBILE_REBUILD_HANDOFF.md](GEMINI_PILOT_MOBILE_REBUILD_HANDOFF.md)
+    as the coding-agent execution workbook.
     The old M01-M18 graph is retired as an execution order. Follow the R00
     replacement graph and its small backend packages instead.
 

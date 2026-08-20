@@ -78,6 +78,8 @@ test('Pilot login creates an installation-bound opaque session and capability bo
   assert.equal(result.response.status, 200, JSON.stringify(result.data));
   assert.equal(result.response.headers.get('set-cookie'), null);
   assert.equal(result.data.profile.role, 'PILOT');
+  assert.equal(result.data.profile.employeeCode, pilot.employeeCode);
+  assert.equal(result.data.profile.pilotAvailabilityState, 'AVAILABLE');
   ids.installations.push(result.data.installation.id);
   const stored = await prisma.mobileSession.findFirst({
     where: { installationId: result.data.installation.id },
@@ -91,11 +93,11 @@ test('Pilot login creates an installation-bound opaque session and capability bo
   assert.equal(bootstrap.response.status, 200, JSON.stringify(bootstrap.data));
   assert.equal(bootstrap.data.app, 'PILOT_FIELD');
   assert.deepEqual(bootstrap.data.capabilities, [
-    'PILOT_ASSIGNMENTS_READ', 'COPILOT_SELECT', 'MISSION_MUTATE', 'ISSUE_REPORT',
+    'PILOT_ASSIGNMENTS_READ', 'COPILOT_SELECT', 'MISSION_MUTATE', 'ISSUE_REPORT', 'FOREGROUND_LOCATION',
   ]);
   assert.equal(bootstrap.data.profile.email, undefined);
   assert.equal(bootstrap.data.profile.phone, undefined);
-  assert.equal(bootstrap.data.featureFlags.foregroundLocation, false);
+  assert.equal(bootstrap.data.featureFlags.foregroundLocation, true);
   assert.equal(bootstrap.data.policies.backgroundLocationEnabled, false);
 });
 

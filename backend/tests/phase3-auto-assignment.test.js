@@ -54,7 +54,12 @@ test('auto-assignment schedules an eligible pilot and escalates through reassign
     ids.lmvs.push(lmv.id);
   }));
   const lead = await createLead(center, '0001');
-  const scheduled = await autoAssignProcessedLead(lead.id);
+  // Keep the crew-selection window ahead of the wall clock. Otherwise this
+  // regression becomes time-of-day dependent when it runs after working hours.
+  const schedulingNow = new Date();
+  schedulingNow.setUTCDate(schedulingNow.getUTCDate() + 1);
+  schedulingNow.setUTCHours(0, 0, 0, 0);
+  const scheduled = await autoAssignProcessedLead(lead.id, { now: schedulingNow });
   assert.equal(scheduled.outcome, 'SCHEDULED');
   assert.equal(scheduled.lead.status, 'SCHEDULED');
   assert.equal(scheduled.assignment.weatherSuitable, true);
@@ -81,6 +86,15 @@ test('auto-assignment schedules an eligible pilot and escalates through reassign
   assert.equal(callEscalation.stage, 'CALL_TASK_CREATED');
   const callTasks = await prisma.notification.count({ where: { type: 'DISPATCH_CALL_TASK', leadId: lead.id } });
   assert.ok(callTasks > 0);
+  await prisma.scheduleChangeLog.create({
+    data: {
+      assignmentId: firstAssignmentId,
+      oldDate: scheduled.assignment.scheduledDate,
+      newDate: scheduled.assignment.scheduledDate,
+      changedBy: 'phase3-regression',
+      reason: 'A calendar history row must not block timeout reassignment',
+    },
+  });
   await processDueEscalations(new Date(callEscalation.nextActionAt.getTime() + 10));
 
   const reassignedLead = await prisma.lead.findUnique({ where: { id: lead.id }, include: { assignment: true } });
@@ -88,6 +102,10 @@ test('auto-assignment schedules an eligible pilot and escalates through reassign
   assert.notEqual(reassignedLead.assignment.pilotId, firstPilotId);
   assert.ok(reassignedLead.assignment.lmvId);
   assert.ok(pilots.some((pilot) => pilot.id === reassignedLead.assignment.pilotId));
+  const reassignmentAudit = await prisma.auditLog.findFirst({
+    where: { entityType: 'Assignment', entityId: firstAssignmentId, action: 'AUTO_ASSIGNMENT_REASSIGNED_AFTER_TIMEOUT' },
+  });
+  assert.equal(reassignmentAudit.beforeState.rescheduleHistory.length, 1);
 });
 
 test('missing weather data fails open and a lack of candidates lands in the manual queue', async () => {
@@ -104,6 +122,39 @@ test('missing weather data fails open and a lack of candidates lands in the manu
     homeCenterId: center.id,
     airworthinessExpiry: new Date('2027-01-01'),
   },
+});
+
+test('offline Pilots are excluded from automatic assignment capacity', async () => {
+  const center = await createCenter('Phase 3 Offline Pilot Center');
+  const offlinePilot = await prisma.user.create({
+    data: {
+      name: 'Phase 3 Offline Pilot',
+      email: `phase3-offline-${Date.now()}@example.test`,
+      passwordHash: 'test',
+      role: 'PILOT',
+      homeCenterId: center.id,
+      pilotAvailabilityState: 'OFFLINE',
+      pilotLicenseExpiry: new Date('2027-01-01'),
+    },
+  });
+  ids.users.push(offlinePilot.id);
+  const drone = await prisma.drone.create({
+    data: {
+      model: 'Test', serialNumber: `PHASE3-OFFLINE-${Date.now()}`,
+      uin: `UIN-PHASE3-OFFLINE-${Date.now()}`, status: 'AVAILABLE',
+      homeCenterId: center.id, airworthinessExpiry: new Date('2027-01-01'),
+    },
+  });
+  const lmv = await prisma.lMV.create({
+    data: { registrationNo: `PHASE3-OFFLINE-LMV-${Date.now()}`, status: 'AVAILABLE', homeCenterId: center.id },
+  });
+  ids.drones.push(drone.id);
+  ids.lmvs.push(lmv.id);
+  const lead = await createLead(center, '0004');
+  const result = await autoAssignProcessedLead(lead.id);
+  assert.equal(result.outcome, 'MANUAL_SCHEDULING');
+  assert.match(result.lead.notes, /No eligible Primary Pilot is available/);
+  assert.equal(await prisma.assignment.count({ where: { leadId: lead.id } }), 0);
 });
   ids.drones.push(drone.id);
   const lmv = await prisma.lMV.create({ data: { registrationNo: `PHASE3-FAILOPEN-LMV-${Date.now()}`, label: 'Phase 3 Fail-open LMV', status: 'AVAILABLE', homeCenterId: center.id } });

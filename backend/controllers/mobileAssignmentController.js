@@ -1,6 +1,7 @@
 const crewFormationRepository = require('../src/repositories/crewFormationRepository');
 const mobileAssignmentRepository = require('../src/repositories/mobileAssignmentRepository');
 const mobileMutationService = require('../services/mobileMutationService');
+const locationService = require('../services/locationService');
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -21,6 +22,10 @@ function mobileError(res, req, error) {
     COPILOT_SCHEDULE_CONFLICT: 409,
     LEGACY_CREW_REVIEW_REQUIRED: 409,
     CREW_FORMATION_RETRY_EXHAUSTED: 503,
+    LOCATION_NOT_ALLOWED: 409,
+    LOCATION_INVALID: 400,
+    RATE_LIMITED: 429,
+    ACTIVE_ASSIGNMENT_BLOCKS_OFFLINE: 409,
   };
   const status = error.status || knownStatus[error.code] || 500;
   const publicCode = {
@@ -171,6 +176,38 @@ async function mutate(req, res) {
   }
 }
 
+async function recordLocation(req, res) {
+  try {
+    requireBody(req.body, ['latitude', 'longitude', 'accuracyMetres', 'capturedAt']);
+    const assignmentId = requireUuid(req.params.assignmentId, 'assignmentId');
+    await mobileAssignmentRepository.findForPilot({ assignmentId, pilotId: req.auth.userId });
+    const config = req.app.get('config');
+    if (!config.mobile.foregroundLocationEnabled) {
+      throw locationService.locationError('Foreground location is not enabled for this deployment');
+    }
+    const location = await locationService.recordLocation(
+      assignmentId,
+      req.auth,
+      req.body.latitude,
+      req.body.longitude,
+      {
+        accuracyMetres: req.body.accuracyMetres,
+        capturedAt: req.body.capturedAt,
+        intervalSeconds: config.mobile.locationIntervalSeconds,
+        maximumAccuracyMetres: config.mobile.locationAccuracyMetres,
+      },
+    );
+    const io = req.app.get('io');
+    if (io) io.to(`location:${assignmentId}`).emit('location:update', location);
+    return res.json({
+      success: true,
+      location: { assignmentId: location.assignmentId, acceptedAt: location.lastPingAt.toISOString() },
+    });
+  } catch (error) {
+    return mobileError(res, req, error);
+  }
+}
+
 async function changes(req, res) {
   try {
     const allowedQuery = new Set(['cursor', 'limit']);
@@ -236,4 +273,4 @@ async function sync(req, res) {
   }
 }
 
-module.exports = { changes, detail, eligibleCopilots, list, mobileError, mutate, overrideCopilot, selectCopilot, sync };
+module.exports = { changes, detail, eligibleCopilots, list, mobileError, mutate, overrideCopilot, recordLocation, selectCopilot, sync };

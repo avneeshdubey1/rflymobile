@@ -73,6 +73,7 @@ test('lead processing, scheduling, mission start, and completion each send the c
     candidateId: assignment.pilotId === pilot.id ? copilot.id : pilot.id,
     actorId: assignment.pilotId,
     expectedRevision: assignment.revision,
+    now: new Date(new Date(assignment.serviceWindowStart || assignment.scheduledDate).getTime() - 1),
   });
   assert.equal((await fetch(`${baseUrl}/api/assignments/${assignment.id}/accept`, { method: 'POST', headers: auth(pilot) })).status, 200);
   assert.equal((await fetch(`${baseUrl}/api/assignments/${assignment.id}/start`, { method: 'POST', headers: auth(pilot) })).status, 200);

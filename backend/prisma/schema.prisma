@@ -17,6 +17,11 @@ enum Role {
   BUSINESS
 }
 
+enum PilotAvailabilityState {
+  AVAILABLE
+  OFFLINE
+}
+
 enum LeadStatus {
   NEW // accepted website request awaiting Sales review
   PROCESSED // verified, inside range, ready for auto-assignment
@@ -243,21 +248,22 @@ model OperatingCenter {
 }
 
 model User {
-  id                String    @id @default(uuid())
-  name              String
-  email             String    @unique
-  phone             String?   @unique
-  passwordHash      String
-  role              Role
-  preferredLanguage String    @default("ta") // ISO-ish code, see §10
-  preferences       Json      @default("{}")
-  active            Boolean   @default(true)
-  authVersion       Int       @default(1)
-  emailVerifiedAt   DateTime?
-  phoneVerifiedAt   DateTime?
-  archivedAt        DateTime?
-  employeeCode      String?   @unique
-  createdAt         DateTime  @default(now())
+  id                     String                 @id @default(uuid())
+  name                   String
+  email                  String                 @unique
+  phone                  String?                @unique
+  passwordHash           String
+  role                   Role
+  preferredLanguage      String                 @default("ta") // ISO-ish code, see §10
+  preferences            Json                   @default("{}")
+  active                 Boolean                @default(true)
+  pilotAvailabilityState PilotAvailabilityState @default(AVAILABLE)
+  authVersion            Int                    @default(1)
+  emailVerifiedAt        DateTime?
+  phoneVerifiedAt        DateTime?
+  archivedAt             DateTime?
+  employeeCode           String?                @unique
+  createdAt              DateTime               @default(now())
 
   // Pilot-specific
   homeCenter         OperatingCenter? @relation(fields: [homeCenterId], references: [id])
@@ -305,6 +311,8 @@ model User {
   autoAssignmentPoliciesUpdated AutoAssignmentPolicy[]       @relation("AutoAssignmentPolicyUpdatedBy")
   mobileInstallations           MobileInstallation[]
   mobileSessions                MobileSession[]
+
+  @@index([role, pilotAvailabilityState, homeCenterId, active, archivedAt])
 }
 
 model Customer {
@@ -715,7 +723,7 @@ model AutoAssignmentPolicy {
   updatedByUser             User?                    @relation("AutoAssignmentPolicyUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
   updatedByUserId           String?
   createdAt                 DateTime                 @default(now())
-  updatedAt                 DateTime                 @updatedAt
+  updatedAt                 DateTime                 @default(now()) @updatedAt
 
   @@index([updatedByUserId])
 }
@@ -780,14 +788,19 @@ model Assignment {
   notificationEscalation NotificationEscalation?
   mobileMutationReceipts MobileMutationReceipt[]
   createdAt              DateTime                @default(now())
-  updatedAt              DateTime                @updatedAt
+  updatedAt              DateTime                @default(now()) @updatedAt
 
   @@index([scheduledDate, dailySequence])
   @@index([pilotId, scheduledDate])
   @@index([copilotId, scheduledDate])
   @@index([droneId, scheduledDate])
   @@index([lmvId, scheduledDate])
+  @@index([pilotId, serviceWindowStart])
+  @@index([copilotId, serviceWindowStart])
+  @@index([droneId, serviceWindowStart])
+  @@index([lmvId, serviceWindowStart])
   @@index([crewFormationState, scheduledDate])
+  @@index([issueCategory, issueReportedAt])
   @@index([updatedAt])
 }
 

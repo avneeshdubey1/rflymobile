@@ -92,7 +92,8 @@ async function findCandidateConflict(transaction, assignment, candidateId) {
 }
 
 function assertCandidateProfile(assignment, candidate) {
-  if (!candidate || candidate.role !== 'PILOT' || !candidate.active || candidate.archivedAt) {
+  if (!candidate || candidate.role !== 'PILOT' || !candidate.active || candidate.archivedAt
+    || candidate.pilotAvailabilityState !== 'AVAILABLE') {
     throw crewError('The selected Copilot is not an active Pilot', 'COPILOT_NOT_ELIGIBLE');
   }
   if (candidate.id === assignment.pilotId) {
@@ -143,6 +144,7 @@ async function listEligibleCopilots({ assignmentId, actorId, now = new Date() })
       role: 'PILOT',
       active: true,
       archivedAt: null,
+      pilotAvailabilityState: 'AVAILABLE',
       homeCenterId: assignment.lead.matchedCenterId,
       id: { not: assignment.pilotId },
       OR: [{ pilotLicenseExpiry: null }, { pilotLicenseExpiry: { gt: assignmentWindow(assignment).start } }],

@@ -28,6 +28,7 @@ const { normalizePhone } = require('../../services/identityService');
 const safeSelect = {
     id: true,
     name: true,
+    employeeCode: true,
     email: true,
     phone: true,
     role: true,
@@ -38,6 +39,7 @@ const safeSelect = {
     pilotLicenseExpiry: true,
     homeCenter: true,
     active: true,
+    pilotAvailabilityState: true,
     emailVerifiedAt: true,
     phoneVerifiedAt: true,
     archivedAt: true,

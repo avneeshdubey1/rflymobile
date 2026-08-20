@@ -1,4 +1,5 @@
 const prisma = require('../lib/prisma');
+const { normalizePhone } = require('../../services/identityService');
 
 const TERMINAL_STATUSES = ['COMPLETED', 'CANCELLED', 'FLAGGED'];
 const MAX_LIST_ITEMS = 100;
@@ -98,8 +99,8 @@ function allowedActions(assignment, actorId) {
   }
   if (assignment.crewFormationState === 'READY' && [assignment.pilotId, assignment.copilotId].includes(actorId)) {
     if (assignment.lead.status === 'SCHEDULED') return ['ACCEPT'];
-    if (assignment.lead.status === 'PILOT_ACCEPTED') return ['START', 'REPORT_ISSUE'];
-    if (assignment.lead.status === 'IN_PROGRESS') return ['COMPLETE', 'REPORT_ISSUE'];
+    if (assignment.lead.status === 'PILOT_ACCEPTED') return ['START', 'REPORT_ISSUE', 'SEND_LOCATION'];
+    if (assignment.lead.status === 'IN_PROGRESS') return ['COMPLETE', 'REPORT_ISSUE', 'SEND_LOCATION'];
   }
   return [];
 }
@@ -128,7 +129,10 @@ function project(assignment, actorId) {
     dailySequence: assignment.dailySequence,
     serviceWindowStart: window.start.toISOString(),
     serviceWindowEnd: window.end.toISOString(),
-    farmer: { displayName: assignment.lead.farmerName, operationalPhone: assignment.lead.farmerPhone },
+    farmer: {
+      displayName: assignment.lead.farmerName,
+      operationalPhone: normalizePhone(assignment.lead.farmerPhone),
+    },
     farm: {
       displayAddress: location?.addressText || assignment.lead.farmerAddress || 'Assigned farm',
       plusCode: location?.plusCode || null,

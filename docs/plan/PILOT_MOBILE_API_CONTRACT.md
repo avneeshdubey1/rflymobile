@@ -1,6 +1,6 @@
 # Pilot Mobile API Contract Decisions
 
-**Status:** R00-revised v1 contract; authentication/bootstrap foundation implemented locally
+**Status:** R00-revised v1 contract; authentication/bootstrap and foreground mission-location foundation implemented locally
 **Recorded:** August 12, 2026
 **Scope:** M00-06 through M00-10
 
@@ -9,7 +9,9 @@ This document defines the privacy boundary and error vocabulary for
 Primary-Pilot Copilot-selection workflow. The local backend now mounts
 installation-bound authentication and capability bootstrap for Pilot Field
 and Operations. Production remains explicitly disabled until staging and
-operator approval; location tracking and external providers remain disabled.
+operator approval. Foreground-only mission location is implemented locally but
+remains production-gated; background location, route history, and external
+providers remain disabled.
 
 ## 1. Minimum Pilot data exposure
 
@@ -68,8 +70,8 @@ approved, tested for revocation, and supported by an operator procedure.
   background-location permission.
 - Foreground capture is permitted only for an assignment visible to the
   authenticated Primary Pilot/Copilot.
-- An accepted assignment may submit an explicit on-demand location for
-  navigation/support. Periodic foreground capture is limited to `IN_PROGRESS`.
+- An accepted or in-progress assignment may submit periodic foreground
+  location while the app is open and the signed-in Pilot is part of its crew.
 - Development cadence is no more frequent than one accepted sample every 60
   seconds. Development accuracy target is 100 metres or better.
 - A sample more than five minutes old or more than two minutes in the future is
@@ -88,6 +90,34 @@ approved, tested for revocation, and supported by an operator procedure.
 Location denial must not block downloaded job details, non-location mission
 actions, chat or support. The app must explain that navigation/live visibility
 is unavailable rather than pretending a coordinate was submitted.
+
+## 3.1 Pilot operational availability
+
+`pilotAvailabilityState` is separate from the security-sensitive account
+`active` flag. A Pilot may switch between `AVAILABLE` and `OFFLINE` through
+`PUT /api/mobile/v1/pilot/availability`. Going offline is rejected while that
+Pilot is Primary Pilot or Copilot on a `SCHEDULED`, `PILOT_ACCEPTED`, or
+`IN_PROGRESS` assignment. Offline Pilots are excluded by auto-assignment,
+manual scheduling, Copilot selection, and crew formation on the server.
+
+The switch does not disable the account or revoke the mobile session. The
+server remains authoritative and records a coordinate-free availability audit
+event. The mobile client stops foreground location capture whenever the Pilot
+is offline.
+
+## 3.2 Foreground mission-location endpoint
+
+`POST /api/mobile/v1/pilot/assignments/:assignmentId/location` accepts only
+`latitude`, `longitude`, `accuracyMetres`, and `capturedAt`. It requires an
+active, nonarchived, available Primary Pilot/Copilot and a
+`PILOT_ACCEPTED`/`IN_PROGRESS` mission. Samples outside coordinate, accuracy,
+age, future-skew, or cadence bounds are rejected. The response acknowledges
+only the assignment and accepted timestamp; it does not echo coordinates.
+
+Admin and Fleet continue to view the latest location through the existing
+authorized assignment-location flow. A terminal mission clears the stored
+latest coordinate immediately. No route history or background collection is
+implemented.
 
 ## 4. Stable mobile error envelope
 
@@ -131,6 +161,7 @@ payloads, or another user's/resource's existence.
 | `ISSUE_REJECTED` | 422 | No | Correct controlled issue input or contact Fleet |
 | `LOCATION_NOT_ALLOWED` | 409 | No | Stop capture; assignment/session is no longer eligible |
 | `LOCATION_INVALID` | 422 | No | Invalid bounds, accuracy or capture time |
+| `ACTIVE_ASSIGNMENT_BLOCKS_OFFLINE` | 409 | No | Finish or release active work before going offline |
 | `RATE_LIMITED` | 429 | Yes | Retry only after server-provided seconds |
 | `CLIENT_UPGRADE_REQUIRED` | 426 | No | Install a supported app version before continuing |
 | `RETRY_LATER` | 503 | Yes | Preserve ordered queue and use bounded backoff |

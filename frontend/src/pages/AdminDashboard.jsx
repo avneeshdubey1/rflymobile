@@ -412,7 +412,7 @@ function AdminDashboard() {
     { id: 'pilots', label: 'Pilots', icon: 'users' },
     // { id: 'chat', label: 'Pilot Support Chat', icon: 'chat' },
     // { id: 'payments', label: 'Payment Collection', icon: 'wallet' },
-    // { id: 'location', label: 'Live Pilot GPS', icon: 'location' },
+    { id: 'location', label: 'Live Pilot GPS', icon: 'location' },
     { id: 'assignments', label: 'Assignments', icon: 'assignment' },
     { id: "registeredFarmers", label: "Registered Customers", icon: "customers" },
     { id: 'logbook', label: 'Lead Details', icon: 'book' },
@@ -430,7 +430,7 @@ function AdminDashboard() {
     logbook: ['Lead Records', 'Lead Details', 'Review each lead’s complete recorded lifecycle.'],
     // chat: ['Support desk', 'Pilot support chat', 'Coordinate directly with field teams and retain the conversation state.'],
     // payments: ['Revenue operations', 'Payment collection', 'Resolve completed missions waiting for settlement.'],
-    // location: ['Live operations', 'Pilot GPS', 'View the latest position for accepted and active missions.'],
+    location: ['Live operations', 'Pilot GPS', 'View the latest position for accepted and active missions.'],
     assignments: [
       'Operations Planning',
       'Spraying Assignments',
@@ -783,6 +783,7 @@ function AdminDashboard() {
 
       {activeTab === 'logbook' && <LogbookTimelinePanel />}
       {activeTab === 'pilots' && <ManagePilots />}
+      {activeTab === 'location' && <section id="location" className="section-gap"><LiveLocationPanel /></section>}
 
       {/* {activeTab === "farmerRegistration" && (
         <section className="panel panel--raised">

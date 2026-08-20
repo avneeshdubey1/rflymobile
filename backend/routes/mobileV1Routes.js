@@ -14,6 +14,7 @@ router.post('/auth/logout-all', controller.logoutAll);
 router.delete('/installations/:installationId', controller.revokeInstallation);
 router.delete('/operations/installations/:installationId', requireMobileApp('OPERATIONS'), controller.adminRevokeInstallation);
 router.get('/pilot/bootstrap', requireMobileApp('PILOT_FIELD'), controller.bootstrap);
+router.put('/pilot/availability', requireMobileApp('PILOT_FIELD'), controller.updatePilotAvailability);
 router.get('/pilot/assignments', requireMobileApp('PILOT_FIELD'), assignmentController.list);
 router.get('/pilot/changes', requireMobileApp('PILOT_FIELD'), assignmentController.changes);
 router.post('/pilot/sync', requireMobileApp('PILOT_FIELD'), assignmentController.sync);
@@ -21,6 +22,7 @@ router.get('/pilot/assignments/:assignmentId', requireMobileApp('PILOT_FIELD'), 
 router.get('/pilot/assignments/:assignmentId/eligible-copilots', requireMobileApp('PILOT_FIELD'), assignmentController.eligibleCopilots);
 router.post('/pilot/assignments/:assignmentId/copilot', requireMobileApp('PILOT_FIELD'), assignmentController.selectCopilot);
 router.post('/pilot/assignments/:assignmentId/actions', requireMobileApp('PILOT_FIELD'), assignmentController.mutate);
+router.post('/pilot/assignments/:assignmentId/location', requireMobileApp('PILOT_FIELD'), assignmentController.recordLocation);
 router.get('/operations/bootstrap', requireMobileApp('OPERATIONS'), controller.bootstrap);
 router.get('/operations/sales/customers', requireMobileApp('OPERATIONS'), requireMobileRole('ADMIN', 'FLEET_MANAGER', 'SALES'), operationsController.searchCustomers);
 router.get('/operations/sales/customers/by-phone', requireMobileApp('OPERATIONS'), requireMobileRole('ADMIN', 'FLEET_MANAGER', 'SALES'), operationsController.findCustomerByPhone);

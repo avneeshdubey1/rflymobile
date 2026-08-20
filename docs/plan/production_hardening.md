@@ -26,7 +26,7 @@
 - [x] Database-backed opaque sessions, secure production cookie contract, CSRF, session revocation, auth-version checks, and Socket.io revalidation have local test evidence.
 - [x] Password hashing, account-state enforcement, canonical account phone identity, recovery challenge controls, and non-sensitive recovery responses have local test evidence.
 - [x] Coordinate-free GPS auditing has local test evidence.
-- [x] Current local regression evidence: backend 95/95, real Edge browser audit 33/33, frontend lint/production build, disposable production Compose build/start/migration, and edge/API health checks.
+- [x] Current local regression evidence: backend 160/160, Pilot mobile 18/18 with Expo Doctor 21/21, frontend lint/production build, clean/populated 29-migration replay with 61 validated checks, prior real-browser audit, disposable production Compose build/start/migration, and edge/API health checks.
 - [x] Guarded fresh-handover bootstrap was locally verified to leave exactly one active Admin and no demo operational data.
 
 These results prove only the current local baseline. They include lightweight LMV scheduling, Pilot centre enforcement, hierarchical operational chat, strict intake, portal isolation, OTP/Firebase retirement, and explicit retirement of incomplete immediate-payment and public Business-registration surfaces. They do not replace production-like staging evidence and do not cover evidence-backed billing, live provider delivery, backups/restore, monitoring, or client acceptance.

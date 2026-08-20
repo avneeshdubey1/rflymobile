@@ -130,6 +130,13 @@ Permanent Android package IDs, Play Console ownership and signing remain
 external placeholders. No package is released until company ownership is
 approved.
 
+Pilot operational availability is an explicit server-owned state, distinct
+from account activation. Available Pilots may be scheduled; Offline Pilots are
+excluded from every crew/assignment path. A Pilot with scheduled, accepted, or
+in-progress work cannot switch offline until Fleet/Admin releases or completes
+that work. Foreground location operates only for an available assigned crew
+member on an accepted/in-progress mission and stops when the app backgrounds.
+
 ## 8. Stitch review decision
 
 The exported navy/orange visual system, typography, status hierarchy and large

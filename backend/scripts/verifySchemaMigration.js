@@ -385,12 +385,12 @@ function verifyPopulatedLegacyUpgrade(migrations) {
 
     INSERT INTO "Assignment" (
       "id", "leadId", "pilotId", "droneId", "lmvId", "scheduledDate",
-      "serviceWindowStart", "serviceWindowEnd", "expectedAcreage", "crewFormationState"
+      "serviceWindowStart", "serviceWindowEnd", "expectedAcreage", "crewFormationState", "updatedAt"
     ) VALUES (
       'migration-pending-assignment', 'migration-pending-lead', 'migration-pilot',
       'migration-drone', 'migration-lmv', CURRENT_TIMESTAMP + INTERVAL '3 days',
       CURRENT_TIMESTAMP + INTERVAL '3 days', CURRENT_TIMESTAMP + INTERVAL '3 days 120 minutes',
-      1, 'PENDING_COPILOT_SELECTION'
+      1, 'PENDING_COPILOT_SELECTION', CURRENT_TIMESTAMP
     );
 
     INSERT INTO "MobileInstallation" (
@@ -417,6 +417,12 @@ function verifyPopulatedLegacyUpgrade(migrations) {
       repeat('c', 64), 'APPLIED', '{"status":"ok"}'::jsonb
     );
   `, { tuplesOnly: false });
+
+  assert.equal(
+    scalar(legacyDatabase, `SELECT "pilotAvailabilityState"::text FROM "User" WHERE "id" = 'migration-pilot';`),
+    'AVAILABLE',
+    'Legacy Pilot was not made operationally available by default',
+  );
 
   assert.equal(
     scalar(legacyDatabase, `SELECT "displayName" FROM "Customer" WHERE "id" = 'migration-customer';`),

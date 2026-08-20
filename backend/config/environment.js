@@ -152,6 +152,9 @@ function loadEnvironment(env = process.env) {
       maxInstallationsPerApp: integer(env.MOBILE_MAX_INSTALLATIONS_PER_APP, 2, 'MOBILE_MAX_INSTALLATIONS_PER_APP', { min: 1, max: 10 }),
       minimumVersion: semanticVersion(env.MOBILE_MINIMUM_VERSION, '1.0.0', 'MOBILE_MINIMUM_VERSION'),
       recommendedVersion: semanticVersion(env.MOBILE_RECOMMENDED_VERSION, '1.0.0', 'MOBILE_RECOMMENDED_VERSION'),
+      foregroundLocationEnabled: boolean(env.MOBILE_FOREGROUND_LOCATION_ENABLED, true, 'MOBILE_FOREGROUND_LOCATION_ENABLED'),
+      locationIntervalSeconds: integer(env.MOBILE_LOCATION_INTERVAL_SECONDS, 60, 'MOBILE_LOCATION_INTERVAL_SECONDS', { min: 15, max: 900 }),
+      locationAccuracyMetres: integer(env.MOBILE_LOCATION_ACCURACY_METRES, 100, 'MOBILE_LOCATION_ACCURACY_METRES', { min: 10, max: 1000 }),
     }),
     recovery: Object.freeze({
       hashSecret: recoveryHashSecret,

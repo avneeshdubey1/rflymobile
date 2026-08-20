@@ -14,6 +14,7 @@ const pilotSelect = {
   homeCenterId: true,
   pilotLicenseExpiry: true,
   active: true,
+  pilotAvailabilityState: true,
   archivedAt: true,
   assignedDrone: true,
   createdAt: true,
@@ -147,7 +148,8 @@ function validateCrewAndAssets({
   if (copilot && pilot.id === copilot.id) throw operationError('Primary Pilot and Copilot must be different people', 'CONFLICT');
   const crew = [['Primary Pilot', pilot], ...(copilot ? [['Copilot', copilot]] : [])];
   for (const [label, crewMember] of crew) {
-    if (crewMember.role !== 'PILOT' || !crewMember.active || crewMember.archivedAt || crewMember.homeCenterId !== lead.matchedCenterId) {
+    if (crewMember.role !== 'PILOT' || !crewMember.active || crewMember.archivedAt
+      || crewMember.pilotAvailabilityState !== 'AVAILABLE' || crewMember.homeCenterId !== lead.matchedCenterId) {
       throw operationError(`${label} must be active and belong to the lead operating centre`, 'CONFLICT');
     }
     if (crewMember.pilotLicenseExpiry && crewMember.pilotLicenseExpiry <= scheduledDate) {
@@ -444,7 +446,10 @@ async function autoAssign({
 
     const [pilots, drones, lmvs, horizonAssignments] = await Promise.all([
       transaction.user.findMany({
-        where: { role: 'PILOT', active: true, archivedAt: null, homeCenterId: lead.matchedCenterId, id: { notIn: excludePilotIds } },
+        where: {
+          role: 'PILOT', active: true, archivedAt: null, pilotAvailabilityState: 'AVAILABLE',
+          homeCenterId: lead.matchedCenterId, id: { notIn: excludePilotIds },
+        },
       }),
       transaction.drone.findMany({
         where: { homeCenterId: lead.matchedCenterId, archivedAt: null, status: { in: ['AVAILABLE', 'ASSIGNED'] }, operationalState: 'IN_SERVICE', availabilityState: { not: 'UNAVAILABLE' } },
@@ -788,13 +793,17 @@ async function transitionMission({ assignmentId, actorId, action, actualAcreage,
     } else if (action === 'complete') {
       if (before.lead.status !== 'IN_PROGRESS') throw operationError('Only an in-progress mission can be completed');
       if (!Number.isFinite(Number(actualAcreage)) || Number(actualAcreage) <= 0) throw operationError('A positive actual acreage is required');
-      assignmentData = { completedAt: new Date(), actualAcreage: Number(actualAcreage) };
+      assignmentData = {
+        completedAt: new Date(), actualAcreage: Number(actualAcreage),
+        lastKnownLat: null, lastKnownLng: null, lastPingAt: null,
+      };
       leadStatus = 'COMPLETED';
       auditAction = 'MISSION_COMPLETED';
     } else if (action === 'decommission') {
       if (!['PILOT_ACCEPTED', 'IN_PROGRESS'].includes(before.lead.status)) throw operationError('Only an accepted or in-progress mission can be decommissioned');
       if (!reason || !String(reason).trim()) throw operationError('A decommission reason is required');
       assignmentData = { decommissionedMidMission: true, decommissionReason: String(reason).trim() };
+      Object.assign(assignmentData, { lastKnownLat: null, lastKnownLng: null, lastPingAt: null });
       leadStatus = 'FLAGGED';
       auditAction = 'DRONE_DECOMMISSIONED';
     } else if (action === 'reportIssue') {
@@ -813,6 +822,9 @@ async function transitionMission({ assignmentId, actorId, action, actualAcreage,
           decommissionedMidMission: true,
           decommissionReason: normalizedReason,
         } : {}),
+        lastKnownLat: null,
+        lastKnownLng: null,
+        lastPingAt: null,
       };
       leadStatus = 'FLAGGED';
       auditAction = 'MISSION_ISSUE_REPORTED';
@@ -864,10 +876,20 @@ async function unassignForReassignment({ assignmentId, actorId = null }) {
       where: { leadId: assignment.leadId, readAt: null, type: { in: ['PILOT_ASSIGNMENT', 'PILOT_SMS'] } },
       data: { readAt: new Date() },
     });
+    // A timed-out assignment can already have calendar changes. Preserve the
+    // complete assignment (including those changes) in the append-only audit
+    // record before releasing its one-to-one Lead slot, then remove the child
+    // rows that would otherwise make the reassignment transaction fail.
+    await audit(transaction, {
+      entityType: 'Assignment',
+      entityId: assignment.id,
+      action: 'AUTO_ASSIGNMENT_REASSIGNED_AFTER_TIMEOUT',
+      beforeState: assignment,
+    });
+    await transaction.scheduleChangeLog.deleteMany({ where: { assignmentId } });
     await transaction.assignment.delete({ where: { id: assignmentId } });
     const lead = await transaction.lead.update({ where: { id: assignment.leadId }, data: { status: 'PROCESSED' } });
     await syncResourceAvailability(transaction, assignment);
-    await audit(transaction, { entityType: 'Assignment', entityId: assignment.id, action: 'AUTO_ASSIGNMENT_REASSIGNED_AFTER_TIMEOUT', beforeState: assignment });
     return { assignment, lead };
   });
 }

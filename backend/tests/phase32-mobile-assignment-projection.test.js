@@ -80,7 +80,7 @@ test.before(async () => {
   ids.lmvs.push(lmv.id);
   const lead = await prisma.lead.create({
     data: {
-      farmerName: 'P32 Farmer', farmerPhone: '+919000000032', farmerAddress: 'P32 Assigned Farm', acreage: 4.5,
+      farmerName: 'P32 Farmer', farmerPhone: '9000000032', farmerAddress: 'P32 Assigned Farm', acreage: 4.5,
       acreageDecimal: '4.50', cropType: 'Rice', notes: 'Use approved field procedure.', intakeChannel: 'MANUAL_SALES',
       status: 'PROCESSED', latitude: 11.5001, longitude: 77.2001, matchedCenterId: center.id,
     },
@@ -133,6 +133,19 @@ test('Primary selects an eligible Copilot once and both crew members can then re
   assert.equal(candidates.data.candidates[0].phone, undefined);
   assert.equal(candidates.data.candidates[0].pilotLicenseExpiry, undefined);
 
+  const offline = await request('/api/mobile/v1/pilot/availability', {
+    method: 'PUT', token: outsiderToken, body: { state: 'OFFLINE' },
+  });
+  assert.equal(offline.response.status, 200, JSON.stringify(offline.data));
+  assert.equal(offline.data.profile.pilotAvailabilityState, 'OFFLINE');
+  const withoutOfflinePilot = await request(`/api/mobile/v1/pilot/assignments/${assignment.id}/eligible-copilots`, { token: primaryToken });
+  assert.equal(withoutOfflinePilot.response.status, 200, JSON.stringify(withoutOfflinePilot.data));
+  assert.equal(withoutOfflinePilot.data.candidates.some((candidate) => candidate.id === outsider.id), false);
+  const available = await request('/api/mobile/v1/pilot/availability', {
+    method: 'PUT', token: outsiderToken, body: { state: 'AVAILABLE' },
+  });
+  assert.equal(available.response.status, 200, JSON.stringify(available.data));
+
   const selected = await request(`/api/mobile/v1/pilot/assignments/${assignment.id}/copilot`, {
     method: 'POST',
     token: primaryToken,
@@ -142,6 +155,12 @@ test('Primary selects an eligible Copilot once and both crew members can then re
   assert.equal(selected.data.assignment.crewFormationState, 'READY');
   assert.equal(selected.data.assignment.crew.length, 2);
   assert.deepEqual(selected.data.assignment.allowedActions, ['ACCEPT']);
+
+  const activeCrewCannotGoOffline = await request('/api/mobile/v1/pilot/availability', {
+    method: 'PUT', token: primaryToken, body: { state: 'OFFLINE' },
+  });
+  assert.equal(activeCrewCannotGoOffline.response.status, 409);
+  assert.equal(activeCrewCannotGoOffline.data.error.code, 'ACTIVE_ASSIGNMENT_BLOCKS_OFFLINE');
 
   const copilotView = await request(`/api/mobile/v1/pilot/assignments/${assignment.id}`, { token: copilotToken });
   assert.equal(copilotView.response.status, 200);
@@ -177,9 +196,41 @@ test('mobile mission actions are revision-guarded and idempotent across response
     request(`/api/mobile/v1/pilot/assignments/${assignment.id}/actions`, { method: 'POST', token: primaryToken, body: acceptBody }),
     request(`/api/mobile/v1/pilot/assignments/${assignment.id}/actions`, { method: 'POST', token: primaryToken, body: acceptBody }),
   ]);
-  assert.ok(concurrent.every(({ response }) => response.status === 200));
+  assert.ok(
+    concurrent.every(({ response }) => response.status === 200),
+    JSON.stringify(concurrent.map(({ response, data }) => ({ status: response.status, data }))),
+  );
   assert.deepEqual(concurrent.map(({ data }) => data.receipt.outcome).sort(), ['ALREADY_APPLIED', 'APPLIED']);
   assert.equal(await prisma.auditLog.count({ where: { entityType: 'Assignment', entityId: assignment.id, action: 'PILOT_ACCEPTED' } }), 1);
+
+  const inaccurate = await request(`/api/mobile/v1/pilot/assignments/${assignment.id}/location`, {
+    method: 'POST', token: primaryToken,
+    body: { latitude: 11.5003, longitude: 77.2003, accuracyMetres: 150, capturedAt: new Date().toISOString() },
+  });
+  assert.equal(inaccurate.response.status, 400);
+  assert.equal(inaccurate.data.error.code, 'LOCATION_INVALID');
+
+  const capturedAt = new Date();
+  const location = await request(`/api/mobile/v1/pilot/assignments/${assignment.id}/location`, {
+    method: 'POST', token: primaryToken,
+    body: { latitude: 11.5003, longitude: 77.2003, accuracyMetres: 25, capturedAt: capturedAt.toISOString() },
+  });
+  assert.equal(location.response.status, 200, JSON.stringify(location.data));
+  assert.equal(location.data.location.assignmentId, assignment.id);
+  assert.equal(location.data.location.latitude, undefined);
+  assert.equal(location.data.location.longitude, undefined);
+  const locationAudit = await prisma.auditLog.findFirst({
+    where: { entityType: 'Assignment', entityId: assignment.id, action: 'GPS_LOCATION_UPDATED' },
+    orderBy: { createdAt: 'desc' },
+  });
+  assert.equal(JSON.stringify(locationAudit).includes('11.5003'), false);
+
+  const tooSoon = await request(`/api/mobile/v1/pilot/assignments/${assignment.id}/location`, {
+    method: 'POST', token: primaryToken,
+    body: { latitude: 11.5004, longitude: 77.2004, accuracyMetres: 25, capturedAt: new Date(capturedAt.getTime() + 1000).toISOString() },
+  });
+  assert.equal(tooSoon.response.status, 429);
+  assert.equal(tooSoon.data.error.code, 'RATE_LIMITED');
 
   const reused = await request(`/api/mobile/v1/pilot/assignments/${assignment.id}/actions`, {
     method: 'POST', token: primaryToken,
@@ -210,6 +261,10 @@ test('mobile mission actions are revision-guarded and idempotent across response
   assert.equal(synchronized.response.status, 200, JSON.stringify(synchronized.data));
   assert.deepEqual(synchronized.data.mutationReceipts.map(({ outcome }) => outcome), ['APPLIED', 'APPLIED']);
   assert.equal(await prisma.mobileMutationReceipt.count({ where: { assignmentId: assignment.id } }), 4);
+  const completed = await prisma.assignment.findUnique({ where: { id: assignment.id } });
+  assert.equal(completed.lastKnownLat, null);
+  assert.equal(completed.lastKnownLng, null);
+  assert.equal(completed.lastPingAt, null);
 });
 
 test('controlled issue reporting is idempotent, coordinate-free and visible to Fleet', async () => {
@@ -285,13 +340,18 @@ test('controlled issue reporting is idempotent, coordinate-free and visible to F
 test('cursor sync returns bounded changes and a tombstone after assignment removal', async () => {
   const changedIds = new Set();
   let cursor = syncCursor;
-  for (let pageNumber = 0; pageNumber < 20; pageNumber += 1) {
+  let drainedInitialFeed = false;
+  for (let pageNumber = 0; pageNumber < 500; pageNumber += 1) {
     const page = await request(`/api/mobile/v1/pilot/changes?limit=1&cursor=${encodeURIComponent(cursor)}`, { token: primaryToken });
     assert.equal(page.response.status, 200, JSON.stringify(page.data));
     for (const item of page.data.changedAssignments) changedIds.add(item.id);
     cursor = page.data.nextCursor;
-    if (!page.data.changedAssignments.length && !page.data.removedAssignmentIds.length) break;
+    if (!page.data.changedAssignments.length && !page.data.removedAssignmentIds.length) {
+      drainedInitialFeed = true;
+      break;
+    }
   }
+  assert.equal(drainedInitialFeed, true, 'Initial Pilot change feed did not drain within the safety bound');
   assert.ok(changedIds.has(assignment.id));
 
   await prisma.notificationEscalation.deleteMany({ where: { assignmentId: assignment.id } });

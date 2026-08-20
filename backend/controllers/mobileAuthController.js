@@ -3,6 +3,7 @@ const mobileSessionRepository = require('../src/repositories/mobileSessionReposi
 const mobileSessionService = require('../services/mobileSessionService');
 const authAuditService = require('../services/authAuditService');
 const mobileAssignmentRepository = require('../src/repositories/mobileAssignmentRepository');
+const pilotAvailabilityRepository = require('../src/repositories/pilotAvailabilityRepository');
 const {
   hashPassword,
   INVALID_ACCOUNT_PASSWORD_HASH,
@@ -19,12 +20,13 @@ function safeProfile(user) {
     preferredLanguage: user.preferredLanguage,
     homeCenterId: user.homeCenterId,
     role: user.role,
+    pilotAvailabilityState: user.pilotAvailabilityState,
   };
 }
 
 function capabilities(app, role) {
   if (app === 'PILOT_FIELD' && role === 'PILOT') {
-    return ['PILOT_ASSIGNMENTS_READ', 'COPILOT_SELECT', 'MISSION_MUTATE', 'ISSUE_REPORT'];
+    return ['PILOT_ASSIGNMENTS_READ', 'COPILOT_SELECT', 'MISSION_MUTATE', 'ISSUE_REPORT', 'FOREGROUND_LOCATION'];
   }
   const byRole = {
     ADMIN: ['OPERATIONS_OVERVIEW', 'CUSTOMER_READ', 'SALES_INTAKE', 'FLEET_SCHEDULE', 'CREW_OVERRIDE'],
@@ -215,14 +217,14 @@ async function bootstrap(req, res) {
     capabilities: capabilities(req.mobileSession.installation.app, user.role),
     assignmentWindow: { from: from.toISOString(), to: to.toISOString() },
     assignments,
-    featureFlags: { chat: false, foregroundLocation: false, issueReporting: true },
+    featureFlags: { chat: false, foregroundLocation: config.mobile.foregroundLocationEnabled, issueReporting: true },
     appVersions: { minimum: config.mobile.minimumVersion, recommended: config.mobile.recommendedVersion },
     sync: { cursor: await mobileAssignmentRepository.cursorForPilot(user.id, now) },
     policies: {
       offlineGraceSeconds: Math.floor(config.mobile.absoluteTimeoutMs / 1000),
       terminalCacheSeconds: 86400,
-      locationIntervalSeconds: 60,
-      locationAccuracyMetres: 100,
+      locationIntervalSeconds: config.mobile.locationIntervalSeconds,
+      locationAccuracyMetres: config.mobile.locationAccuracyMetres,
       backgroundLocationEnabled: false,
     },
     });
@@ -231,4 +233,20 @@ async function bootstrap(req, res) {
   }
 }
 
-module.exports = { adminRevokeInstallation, bootstrap, login, logout, logoutAll, revokeInstallation };
+async function updatePilotAvailability(req, res) {
+  try {
+    if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)
+      || Object.keys(req.body).some((field) => field !== 'state')) {
+      throw new mobileSessionService.MobileAuthError('Availability request is invalid', 'VALIDATION_FAILED', 400);
+    }
+    const user = await pilotAvailabilityRepository.updateForPilot({
+      pilotId: req.auth.userId,
+      state: req.body.state,
+    });
+    return res.json({ success: true, profile: safeProfile(user) });
+  } catch (error) {
+    return authError(res, req, error);
+  }
+}
+
+module.exports = { adminRevokeInstallation, bootstrap, login, logout, logoutAll, revokeInstallation, updatePilotAvailability };

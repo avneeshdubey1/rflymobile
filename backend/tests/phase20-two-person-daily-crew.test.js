@@ -87,6 +87,7 @@ test('one two-person operational unit performs several ordered non-overlapping j
       candidateId: copilot.id,
       actorId: primary.id,
       expectedRevision: created.data.mission.revision,
+      now: new Date(new Date(windows[index][0]).getTime() - 1),
     });
   }
 
