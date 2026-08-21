@@ -1,0 +1,13 @@
+{
+  "success": false,
+  "error": {
+    "code": "ASSIGNMENT_REVISION_CONFLICT",
+    "message": "This assignment changed. Refresh it before continuing.",
+    "retryable": false,
+    "requestId": "example-request-id",
+    "details": {
+      "assignmentId": "00000000-0000-4000-8000-000000000030",
+      "currentRevision": 4
+    }
+  }
+}

@@ -17,6 +17,29 @@ enum Role {
   BUSINESS
 }
 
+enum PilotAvailabilityState {
+  AVAILABLE
+  OFFLINE
+}
+
+enum ClusterType {
+  HUB
+  SPOKE
+  MINIHUB
+}
+
+enum RequestType {
+  B2B
+  B2C
+}
+
+enum MasterDataCategory {
+  SPRAY_PURPOSE
+  B2B_SUBCATEGORY
+  LEAD_SOURCE
+  REPORTING_ADMIN
+}
+
 enum LeadStatus {
   NEW // accepted website request awaiting Sales review
   PROCESSED // verified, inside range, ready for auto-assignment
@@ -29,6 +52,38 @@ enum LeadStatus {
   FLAGGED // discrepancy, decommission, or admin flag
   CANCELLED
   REJECTED // request or operational rejection
+}
+
+enum CrewFormationState {
+  PENDING_COPILOT_SELECTION
+  READY
+  LEGACY_INCOMPLETE
+}
+
+enum MobileApp {
+  PILOT_FIELD
+  OPERATIONS
+}
+
+enum MobileMutationOutcome {
+  APPLIED
+  ALREADY_APPLIED
+  CONFLICT
+  REJECTED
+  RETRY_LATER
+}
+
+enum MobileAssignmentChangeKind {
+  CHANGED
+  REMOVED
+}
+
+enum MissionIssueCategory {
+  DRONE_MALFUNCTION
+  SAFETY_HAZARD
+  WEATHER_BLOCKER
+  CUSTOMER_BLOCKER
+  OTHER
 }
 
 enum DroneStatus {
@@ -211,21 +266,22 @@ model OperatingCenter {
 }
 
 model User {
-  id                String    @id @default(uuid())
-  name              String
-  email             String    @unique
-  phone             String?   @unique
-  passwordHash      String
-  role              Role
-  preferredLanguage String    @default("ta") // ISO-ish code, see §10
-  preferences       Json      @default("{}")
-  active            Boolean   @default(true)
-  authVersion       Int       @default(1)
-  emailVerifiedAt   DateTime?
-  phoneVerifiedAt   DateTime?
-  archivedAt        DateTime?
-  employeeCode      String?   @unique
-  createdAt         DateTime  @default(now())
+  id                     String                 @id @default(uuid())
+  name                   String
+  email                  String                 @unique
+  phone                  String?                @unique
+  passwordHash           String
+  role                   Role
+  preferredLanguage      String                 @default("ta") // ISO-ish code, see §10
+  preferences            Json                   @default("{}")
+  active                 Boolean                @default(true)
+  pilotAvailabilityState PilotAvailabilityState @default(AVAILABLE)
+  authVersion            Int                    @default(1)
+  emailVerifiedAt        DateTime?
+  phoneVerifiedAt        DateTime?
+  archivedAt             DateTime?
+  employeeCode           String?                @unique
+  createdAt              DateTime               @default(now())
 
   // Pilot-specific
   homeCenter         OperatingCenter? @relation(fields: [homeCenterId], references: [id])
@@ -235,6 +291,8 @@ model User {
   // carries exactly one operational drone for both Pilot and Copilot.
   assignedDrone      Drone?           @relation("PilotAssignedDrone", fields: [assignedDroneId], references: [id])
   assignedDroneId    String?          @unique
+  assignedLmv        LMV?             @relation("PilotAssignedLmv", fields: [assignedLmvId], references: [id])
+  assignedLmvId      String?          @unique
   idProof            String?
   licenseId          String?
   addressLine1       String?
@@ -271,6 +329,11 @@ model User {
   droneHistoryEvents            DroneHistory[]               @relation("DroneHistoryActor")
   lmvHistoryEvents              LMVHistory[]                 @relation("LMVHistoryActor")
   autoAssignmentPoliciesUpdated AutoAssignmentPolicy[]       @relation("AutoAssignmentPolicyUpdatedBy")
+  mobileInstallations           MobileInstallation[]
+  mobileSessions                MobileSession[]
+  assignmentRejections          PilotAssignmentRejection[]   @relation("PilotAssignmentRejections")
+
+  @@index([role, pilotAvailabilityState, homeCenterId, active, archivedAt])
 }
 
 model Customer {
@@ -309,6 +372,8 @@ model Customer {
   staffConfirmedAt       DateTime?
   createdAt              DateTime  @default(now())
   updatedAt              DateTime  @updatedAt
+  cluster                Cluster?  @relation(fields: [clusterId], references: [id], onDelete: SetNull)
+  clusterId              String?
 
   leads                       Lead[]
   phoneVerificationChallenges PhoneVerificationChallenge[]
@@ -327,6 +392,7 @@ model Customer {
   @@index([createdAt])
   @@index([active, updatedAt])
   @@index([createdByImportBatchId])
+  @@index([clusterId, active])
 }
 
 model PhoneVerificationChallenge {
@@ -438,6 +504,74 @@ model AuthSession {
   @@index([idleExpiresAt])
 }
 
+model MobileInstallation {
+  id                  String    @id @default(uuid())
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId              String
+  app                 MobileApp
+  installationKeyHash String    @unique @db.VarChar(128)
+  label               String?   @db.VarChar(80)
+  createdAt           DateTime  @default(now())
+  lastSeenAt          DateTime  @default(now())
+  revokedAt           DateTime?
+  revokeReason        String?   @db.VarChar(200)
+
+  sessions MobileSession[]
+  receipts MobileMutationReceipt[]
+
+  @@index([userId, app, revokedAt])
+}
+
+model MobileSession {
+  id                String             @id @default(uuid())
+  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId            String
+  installation      MobileInstallation @relation(fields: [installationId], references: [id], onDelete: Cascade)
+  installationId    String
+  tokenHash         String             @unique @db.VarChar(128)
+  authVersion       Int
+  createdAt         DateTime           @default(now())
+  lastSeenAt        DateTime           @default(now())
+  idleExpiresAt     DateTime
+  absoluteExpiresAt DateTime
+  revokedAt         DateTime?
+  revokeReason      String?            @db.VarChar(200)
+
+  @@index([userId, revokedAt])
+  @@index([installationId, revokedAt])
+  @@index([idleExpiresAt])
+}
+
+model MobileMutationReceipt {
+  id             String                @id @default(uuid())
+  installation   MobileInstallation    @relation(fields: [installationId], references: [id], onDelete: Cascade)
+  installationId String
+  assignment     Assignment?           @relation(fields: [assignmentId], references: [id], onDelete: SetNull)
+  assignmentId   String?
+  actionId       String                @db.VarChar(128)
+  operation      String                @db.VarChar(64)
+  requestHash    String                @db.VarChar(128)
+  outcome        MobileMutationOutcome
+  safeResult     Json
+  createdAt      DateTime              @default(now())
+
+  @@unique([installationId, actionId])
+  @@index([assignmentId, createdAt])
+  @@index([createdAt])
+}
+
+model MobileAssignmentChange {
+  id           BigInt                     @id @default(autoincrement())
+  userId       String
+  assignmentId String
+  kind         MobileAssignmentChangeKind
+  revision     Int?
+  changedAt    DateTime                   @default(now())
+
+  @@index([userId, id])
+  @@index([changedAt])
+}
+
 model PasswordRecoveryChallenge {
   id                  String    @id
   user                User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
@@ -509,8 +643,9 @@ model LMV {
   createdAt         DateTime               @default(now())
   updatedAt         DateTime               @updatedAt
 
-  assignments Assignment[]
-  history     LMVHistory[]
+  assignments   Assignment[]
+  history       LMVHistory[]
+  assignedPilot User?        @relation("PilotAssignedLmv")
 
   @@index([homeCenterId, status])
   @@index([homeCenterId, operationalState, availabilityState])
@@ -541,6 +676,12 @@ model Lead {
   matchedCenter          OperatingCenter?      @relation(fields: [matchedCenterId], references: [id])
   matchedCenterId        String?
   distanceFromCenterKm   Float?
+  requestType            RequestType?
+  b2bSubcategoryCode     String?
+  cluster                Cluster?              @relation(fields: [clusterId], references: [id], onDelete: SetNull)
+  clusterId              String?
+  reportingAdminCode     String?
+  leadSourceCode         String?
 
   // Comprehensive form fields
   soilType         String?
@@ -557,17 +698,64 @@ model Lead {
   createdAt   DateTime  @default(now())
   processedAt DateTime?
 
-  assignment    Assignment?
-  notifications Notification[]
-  payments      PaymentRecord[]
-  chatSessions  ChatSession[]
-  sprayPurposes LeadSprayPurpose[]
-  history       LeadHistory[]
+  assignment           Assignment?
+  notifications        Notification[]
+  payments             PaymentRecord[]
+  chatSessions         ChatSession[]
+  sprayPurposes        LeadSprayPurpose[]
+  history              LeadHistory[]
+  assignmentRejections PilotAssignmentRejection[]
 
   @@index([customerId, createdAt])
   @@index([businessOrganizationId, createdAt])
   @@index([farmLocationId, createdAt])
   @@index([cropId, createdAt])
+  @@index([clusterId, createdAt])
+  @@index([reportingAdminCode, createdAt])
+}
+
+model Cluster {
+  id          String      @id @default(uuid())
+  code        String      @unique @db.VarChar(40)
+  displayName String      @db.VarChar(120)
+  type        ClusterType
+  active      Boolean     @default(true)
+  sortOrder   Int         @default(0)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  customers Customer[]
+  leads     Lead[]
+
+  @@index([active, sortOrder, displayName])
+}
+
+model MasterDataValue {
+  id          String             @id @default(uuid())
+  category    MasterDataCategory
+  code        String             @db.VarChar(60)
+  displayName String             @db.VarChar(160)
+  active      Boolean            @default(true)
+  sortOrder   Int                @default(0)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  @@unique([category, code])
+  @@index([category, active, sortOrder, displayName])
+}
+
+model PilotAssignmentRejection {
+  id                 String   @id @default(uuid())
+  formerAssignmentId String
+  lead               Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  leadId             String
+  rejectedByPilot    User     @relation("PilotAssignmentRejections", fields: [rejectedByPilotId], references: [id])
+  rejectedByPilotId  String
+  reason             String   @db.VarChar(500)
+  createdAt          DateTime @default(now())
+
+  @@index([leadId, createdAt])
+  @@index([rejectedByPilotId, createdAt])
 }
 
 // This is deliberately not a Lead: a declined request must never become
@@ -613,7 +801,7 @@ model AutoAssignmentPolicy {
   updatedByUser             User?                    @relation("AutoAssignmentPolicyUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
   updatedByUserId           String?
   createdAt                 DateTime                 @default(now())
-  updatedAt                 DateTime                 @updatedAt
+  updatedAt                 DateTime                 @default(now()) @updatedAt
 
   @@index([updatedByUserId])
 }
@@ -634,6 +822,11 @@ model Assignment {
   copilotDroneId String?
   lmv            LMV?    @relation(fields: [lmvId], references: [id])
   lmvId          String?
+
+  crewFormationState     CrewFormationState @default(READY)
+  revision               Int                @default(1)
+  copilotSelectedAt      DateTime?
+  crewFormationUpdatedAt DateTime           @default(now())
 
   scheduledDate        DateTime
   serviceWindowStart   DateTime?
@@ -658,8 +851,11 @@ model Assignment {
   hasDiscrepancy  Boolean @default(false)
   discrepancyNote String?
 
-  decommissionedMidMission Boolean @default(false)
+  decommissionedMidMission Boolean               @default(false)
   decommissionReason       String?
+  issueCategory            MissionIssueCategory?
+  issueNote                String?
+  issueReportedAt          DateTime?
 
   lastKnownLat Float? // live GPS, most recent ping only
   lastKnownLng Float?
@@ -668,13 +864,22 @@ model Assignment {
   rescheduleHistory      ScheduleChangeLog[]
   payments               PaymentRecord[]
   notificationEscalation NotificationEscalation?
+  mobileMutationReceipts MobileMutationReceipt[]
   createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @default(now()) @updatedAt
 
   @@index([scheduledDate, dailySequence])
   @@index([pilotId, scheduledDate])
   @@index([copilotId, scheduledDate])
   @@index([droneId, scheduledDate])
   @@index([lmvId, scheduledDate])
+  @@index([pilotId, serviceWindowStart])
+  @@index([copilotId, serviceWindowStart])
+  @@index([droneId, serviceWindowStart])
+  @@index([lmvId, serviceWindowStart])
+  @@index([crewFormationState, scheduledDate])
+  @@index([issueCategory, issueReportedAt])
+  @@index([updatedAt])
 }
 
 // Persists the notification-cascade clock so a server restart never loses a pilot follow-up.

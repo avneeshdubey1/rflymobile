@@ -1,19 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "../context/useAuth";
 import { useTranslation } from "react-i18next";
 import { API_URL as API } from "../config";
+import { csrfHeaders } from "../utils/csrf";
 
 import OpsIcon from "../components/OpsIcon";
 import TerrainMap from "../components/TerrainMap";
-
-const SEASON_CROPS = [
-    'Paddy', 'Black gram', 'Maize', 'Green gram', 'Red gram', 'Cotton',
-    'Chilly', 'Sugar cane', 'Jowar', 'Bengal gram', 'Ground nut', 'Tobacco', 'Others'
-];
-
-const SUMMER_CROPS = [
-    'Sugar Cane', 'Paddy', 'Others'
-];
 
 const SUBSCRIPTION_YEARS = ['2026-27', '2027-28'];
 const localMobileNumber = (value) => String(value || '').replace(/\D/g, '').slice(-10);
@@ -23,46 +15,21 @@ const initialForm = {
     phone: "",
     acreage: "",
     cropType: "",
+    cropTypeOther: "",
     village: "",
     district: "",
     mapsLink: "",
     soilType: "",
     cropAgeWeeks: "",
-    chemicalBrand: "",
     sprayPurpose: [],
-    hasChemical: true,
-    chemicalProofUrl: "",
     expectedDate: "",
     expectedTime: "",
     waterBodyNearby: false,
     terrainType: "",
 
-    // Which season this lead/spraying is for
-    season: "", // "kharif" | "rabi" | "summer"
-
     // Ownership & acreage
     farmerOwnership: "",
     totalAcres: "",
-
-    // Kharif
-    kharifCrop: "",
-    kharifCropOther: "",
-    kharifAcres: "",
-    kharifTanks: "",
-    kharifSprayings: "",
-
-    // Rabi
-    rabiCrop: "",
-    rabiCropOther: "",
-    rabiAcres: "",
-    rabiTanks: "",
-    rabiSprayings: "",
-
-    // Summer
-    summerCrop: "",
-    summerCropOther: "",
-    summerAcres: "",
-    summerTanks: "",
 
     // Location extras
     mandal: "",
@@ -73,7 +40,12 @@ const initialForm = {
     subscriptionYear: "2026-27",
 
     // Remarks
-    remarks: ""
+    remarks: "",
+    requestType: "B2C",
+    b2bSubcategoryCode: "",
+    clusterId: "",
+    reportingAdminCode: "",
+    leadSourceCode: ""
 };
 
 
@@ -86,8 +58,18 @@ function FarmDetails() {
     const [farmerMessage, setFarmerMessage] = useState("");
     const [notice, setNotice] = useState(null);
     const [mapKey, setMapKey] = useState(0); // forces TerrainMap to remount/reset
+    const [masters, setMasters] = useState({ clusters: [], crops: [], sprayPurposes: [], b2bSubcategories: [], leadSources: [], reportingAdmins: [] });
 
     const [form, setForm] = useState(initialForm);
+    useEffect(() => {
+        fetch(`${API}/api/master-data/choices`, { credentials: 'include' })
+            .then(async (response) => {
+                const body = await response.json();
+                if (!response.ok) throw new Error(body.error || 'Failed to load intake master data');
+                setMasters(body.data);
+            })
+            .catch((error) => setNotice({ kind: 'error', message: error.message }));
+    }, []);
     const showNotice = (kind, message, duration = 6000) => {
         setNotice({ kind, message });
         setTimeout(() => setNotice(null), duration);
@@ -104,8 +86,13 @@ function FarmDetails() {
             showNotice("error", "Select a registered customer by entering their mobile number first.");
             return;
         }
-        if (!form.season) {
-            showNotice("error", "Please select a season for this request.");
+        const selectedCrop = form.cropType;
+        if (!selectedCrop) {
+            showNotice("error", "Please select a crop type.");
+            return;
+        }
+        if (!form.totalAcres || Number(form.totalAcres) <= 0) {
+            showNotice("error", "Total acres must be greater than zero.");
             return;
         }
         setBusy(true);
@@ -116,30 +103,6 @@ function FarmDetails() {
                 setBusy(false);
                 return;
             }
-
-            const isSeasonFilled = (cropField, cropOtherField, acresField) => {
-                const cropValue = form[cropField];
-                if (!cropValue) return false;
-                if (cropValue === 'Others' && !form[cropOtherField].trim()) return false;
-                if (!form[acresField] || parseFloat(form[acresField]) <= 0) return false;
-                return true;
-            };
-
-            const seasonFieldMap = {
-                kharif: ['kharifCrop', 'kharifCropOther', 'kharifAcres'],
-                rabi: ['rabiCrop', 'rabiCropOther', 'rabiAcres'],
-                summer: ['summerCrop', 'summerCropOther', 'summerAcres'],
-            };
-
-            const [cropField, cropOtherField, acresField] = seasonFieldMap[form.season];
-            if (!isSeasonFilled(cropField, cropOtherField, acresField)) {
-                showNotice("error", `Please fill in the crop and acres for the selected season (${form.season}).`);
-                setBusy(false);
-                return;
-            }
-            const selectedCrop = form[cropField] === 'Others'
-                ? form[cropOtherField].trim()
-                : form[cropField];
 
             const payload = {
                 farmerName: form.farmerName,
@@ -152,12 +115,7 @@ function FarmDetails() {
                 cropAgeWeeks: form.cropAgeWeeks
                     ? parseInt(form.cropAgeWeeks)
                     : undefined,
-                chemicalBrand: form.chemicalBrand,
-                sprayPurpose: Array.isArray(form.sprayPurpose)
-                    ? form.sprayPurpose.join(', ')
-                    : form.sprayPurpose,
-                hasChemical: form.hasChemical,
-                chemicalProofUrl: form.chemicalProofUrl,
+                sprayPurpose: form.sprayPurpose,
                 expectedDate: form.expectedDate,
                 expectedTime: form.expectedTime,
                 waterBodyNearby: form.waterBodyNearby,
@@ -166,36 +124,26 @@ function FarmDetails() {
                 farmerOwnership: form.farmerOwnership,
                 totalAcres: form.totalAcres ? parseFloat(form.totalAcres) : undefined,
 
-                // Which season this lead is for
-                season: form.season,
-
-                kharifCrop: form.kharifCrop === 'Others' ? form.kharifCropOther : form.kharifCrop,
-                kharifAcres: form.kharifAcres ? parseFloat(form.kharifAcres) : undefined,
-                kharifTanks: form.kharifTanks ? parseFloat(form.kharifTanks) : undefined,
-                kharifSprayings: form.kharifSprayings ? parseInt(form.kharifSprayings) : undefined,
-
-                rabiCrop: form.rabiCrop === 'Others' ? form.rabiCropOther : form.rabiCrop,
-                rabiAcres: form.rabiAcres ? parseFloat(form.rabiAcres) : undefined,
-                rabiTanks: form.rabiTanks ? parseFloat(form.rabiTanks) : undefined,
-                rabiSprayings: form.rabiSprayings ? parseInt(form.rabiSprayings) : undefined,
-
-                summerCrop: form.summerCrop === 'Others' ? form.summerCropOther : form.summerCrop,
-                summerAcres: form.summerAcres ? parseFloat(form.summerAcres) : undefined,
-                summerTanks: form.summerTanks ? parseFloat(form.summerTanks) : undefined,
-
                 mandal: form.mandal,
                 state: form.state,
 
                 subscriptionCardNumber: form.subscriptionCardNumber,
                 subscriptionYear: form.subscriptionYear,
 
-                remarks: form.remarks
+                notes: form.remarks,
+                requestType: form.requestType,
+                b2bSubcategoryCode: form.requestType === 'B2B' ? form.b2bSubcategoryCode : null,
+                clusterId: form.clusterId,
+                reportingAdminCode: form.reportingAdminCode,
+                leadSourceCode: form.leadSourceCode
             };
             const response = await fetch(`${API}/api/customers/sales/${encodeURIComponent(customerId)}/leads`, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    ...csrfHeaders()
                 },
+                credentials: 'include',
                 body: JSON.stringify(payload)
             });
             const data = await response.json();
@@ -227,7 +175,7 @@ function FarmDetails() {
             return;
         }
         try {
-            const response = await fetch(`${API}/api/customers/sales?q=${encodeURIComponent(phone)}`);
+            const response = await fetch(`${API}/api/customers/sales?q=${encodeURIComponent(phone)}`, { credentials: 'include' });
             const data = await response.json().catch(() => ({}));
             if (!response.ok || !data.success) throw new Error(data.error || "Customer lookup failed");
             const normalizedPhone = phone.replace(/\D/g, "").slice(-10);
@@ -248,31 +196,12 @@ function FarmDetails() {
                     farmerOwnership: farmer.ownership === "OWNER" ? "Owner" : farmer.ownership === "TENANT" ? "Tenant" : "",
                     totalAcres: farmer.totalAcres?.toString() || "",
 
-                    // Kharif
-                    kharifCrop: farmer.kharifCrop || "",
-                    kharifCropOther: farmer.kharifOtherCrop || "",
-                    kharifAcres: farmer.kharifAcres?.toString() || "",
-                    kharifTanks: farmer.kharifTanks?.toString() || "",
-                    kharifSprayings: farmer.kharifSprayings?.toString() || "",
-
-                    // Rabi
-                    rabiCrop: farmer.rabiCrop || "",
-                    rabiCropOther: farmer.rabiOtherCrop || "",
-                    rabiAcres: farmer.rabiAcres?.toString() || "",
-                    rabiTanks: farmer.rabiTanks?.toString() || "",
-                    rabiSprayings: farmer.rabiSprayings?.toString() || "",
-
-                    // Summer
-                    summerCrop: farmer.summerCrop || "",
-                    summerCropOther: farmer.summerOtherCrop || "",
-                    summerAcres: farmer.summerAcres?.toString() || "",
-                    summerTanks: farmer.summerTanks?.toString() || "",
-
                     // Location
                     village: farmer.village || "",
                     mandal: farmer.mandal || "",
                     district: farmer.district || "",
                     state: farmer.state || "",
+                    clusterId: farmer.clusterId || "",
 
                     // Subscription
                     subscriptionCardNumber: farmer.subscriptionCardNumber || "",
@@ -295,27 +224,11 @@ function FarmDetails() {
                     farmerOwnership: "",
                     totalAcres: "",
 
-                    kharifCrop: "",
-                    kharifCropOther: "",
-                    kharifAcres: "",
-                    kharifTanks: "",
-                    kharifSprayings: "",
-
-                    rabiCrop: "",
-                    rabiCropOther: "",
-                    rabiAcres: "",
-                    rabiTanks: "",
-                    rabiSprayings: "",
-
-                    summerCrop: "",
-                    summerCropOther: "",
-                    summerAcres: "",
-                    summerTanks: "",
-
                     village: "",
                     mandal: "",
                     district: "",
                     state: "",
+                    clusterId: "",
 
                     subscriptionCardNumber: "",
                     subscriptionYear: "2026-27",
@@ -330,84 +243,6 @@ function FarmDetails() {
             setFarmerMessage(error.message || "Customer lookup failed.");
         }
     };
-
-    // Shared renderer for the Kharif / Rabi / Summer crop blocks so the three
-    // seasons stay visually and behaviourally consistent.
-    const renderSeasonBlock = ({
-        label, cropOptions, cropField, cropOtherField, acresField, tanksField, sprayingsField
-    }) => (
-        <div style={{ padding: '1rem', background: 'var(--surface)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', marginBottom: '1rem' }}>
-            <h4 style={{ margin: '0 0 0.85rem', color: 'var(--text-primary)', fontSize: '1rem', fontWeight: 700 }}>{t(label)}</h4>
-            <div className="form-stack">
-                <div className="row-group">
-                    <div className="input-group">
-                        <label>{t(`${label} Crop`)}</label>
-                        <select
-                            disabled={busy}
-                            value={form[cropField]}
-                            onChange={e => setForm({ ...form, [cropField]: e.target.value })}
-                        >
-                            <option value="">{t('Select crop')}</option>
-                            {cropOptions.map(crop => (
-                                <option key={crop} value={crop}>{t(crop)}</option>
-                            ))}
-                        </select>
-                    </div>
-                    {form[cropField] === 'Others' && (
-                        <div className="input-group">
-                            <label>{t('Specify Crop')}</label>
-                            <input
-                                type="text"
-                                disabled={busy}
-                                value={form[cropOtherField]}
-                                onChange={e => setForm({ ...form, [cropOtherField]: e.target.value })}
-                                placeholder={t('Enter crop name')}
-                            />
-                        </div>
-                    )}
-                </div>
-                <div className="row-group">
-                    <div className="input-group">
-                        <label>{t(`${label} Acres`)}</label>
-                        <input
-                            type="number"
-                            step="0.1"
-                            min="0"
-                            disabled={busy}
-                            value={form[acresField]}
-                            onChange={e => setForm({ ...form, [acresField]: e.target.value })}
-                            placeholder={t('e.g. 2.5')}
-                        />
-                    </div>
-                    <div className="input-group">
-                        <label>{t(`${label} Tanks`)}</label>
-                        <input
-                            type="number"
-                            step="0.1"
-                            min="0"
-                            disabled={busy}
-                            value={form[tanksField]}
-                            onChange={e => setForm({ ...form, [tanksField]: e.target.value })}
-                            placeholder={t('e.g. 10')}
-                        />
-                    </div>
-                    {sprayingsField && (
-                        <div className="input-group">
-                            <label>{t(`${label} Sprayings`)}</label>
-                            <input
-                                type="number"
-                                min="0"
-                                disabled={busy}
-                                value={form[sprayingsField]}
-                                onChange={e => setForm({ ...form, [sprayingsField]: e.target.value })}
-                                placeholder={t('Number of sprayings')}
-                            />
-                        </div>
-                    )}
-                </div>
-            </div>
-        </div>
-    );
 
     return (
         <section className="panel panel--raised" style={{ maxWidth: '900px' }}>
@@ -484,7 +319,18 @@ function FarmDetails() {
                             </div>
                             <div className="input-group">
                                 <label>{t('Total Acres')}</label>
-                                <input type="number" step="0.1" min="0" disabled={busy} value={form.totalAcres} onChange={e => setForm({ ...form, totalAcres: e.target.value })} placeholder={t('e.g. 5')} />
+                                <input type="number" step="0.1" min="0.1" required disabled={busy} value={form.totalAcres} onChange={e => setForm({ ...form, totalAcres: e.target.value })} placeholder={t('e.g. 5')} />
+                            </div>
+                        </div>
+                        <div className="row-group">
+                            <div className="input-group">
+                                <label>{t('Crop Type')}</label>
+                                <select required disabled={busy} value={form.cropType} onChange={e => setForm({ ...form, cropType: e.target.value })}>
+                                    <option value="">{t('Select crop')}</option>
+                                    {masters.crops.map(crop => (
+                                        <option key={crop.id} value={crop.displayName}>{crop.displayName}</option>
+                                    ))}
+                                </select>
                             </div>
                         </div>
                         <div className="row-group">
@@ -516,64 +362,7 @@ function FarmDetails() {
                     </div>
                 </div>
 
-                {/* Section 2: Seasonal Crop Details */}
-                <div style={{ background: 'var(--surface-raised)', padding: '1.25rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', marginBottom: '1.25rem', boxShadow: 'var(--shadow-sm)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.1rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.6rem' }}>
-                        <OpsIcon name="leaf" size={20} style={{ color: 'var(--primary)' }} />
-                        <h3 style={{ margin: 0, color: 'var(--text-primary)', fontSize: '1.15rem', fontWeight: 750 }}>{t('Seasonal Crop Details')}</h3>
-                    </div>
-
-                    <div className="input-group" style={{ marginBottom: '1rem' }}>
-                        <label>{t('Season')}</label>
-                        <select
-                            required
-                            disabled={busy}
-                            value={form.season}
-                            onChange={e => setForm({ ...form, season: e.target.value })}
-                        >
-                            <option value="">{t('Select season')}</option>
-                            <option value="kharif">{t('Kharif')}</option>
-                            <option value="rabi">{t('Rabi')}</option>
-                            <option value="summer">{t('Summer')}</option>
-                        </select>
-                        <span className="field-hint" style={{ marginTop: '0.25rem', display: 'block' }}>
-                            {t('Crop details are pulled from the farmer\'s registration for the selected season and can be edited if the crop has changed.')}
-                        </span>
-                    </div>
-
-                    {form.season === 'kharif' && renderSeasonBlock({
-                        label: 'Kharif',
-                        cropOptions: SEASON_CROPS,
-                        cropField: 'kharifCrop',
-                        cropOtherField: 'kharifCropOther',
-                        acresField: 'kharifAcres',
-                        tanksField: 'kharifTanks',
-                        sprayingsField: 'kharifSprayings'
-                    })}
-
-                    {form.season === 'rabi' && renderSeasonBlock({
-                        label: 'Rabi',
-                        cropOptions: SEASON_CROPS,
-                        cropField: 'rabiCrop',
-                        cropOtherField: 'rabiCropOther',
-                        acresField: 'rabiAcres',
-                        tanksField: 'rabiTanks',
-                        sprayingsField: 'rabiSprayings'
-                    })}
-
-                    {form.season === 'summer' && renderSeasonBlock({
-                        label: 'Summer',
-                        cropOptions: SUMMER_CROPS,
-                        cropField: 'summerCrop',
-                        cropOtherField: 'summerCropOther',
-                        acresField: 'summerAcres',
-                        tanksField: 'summerTanks',
-                        sprayingsField: null
-                    })}
-                </div>
-
-
-                {/* Section 3: Spraying Requirements */}
+                {/* Section 2: Spraying Requirements */}
                 <div style={{ background: 'var(--surface-raised)', padding: '1.25rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', marginBottom: '1.25rem', boxShadow: 'var(--shadow-sm)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.1rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.6rem' }}>
                         <OpsIcon name="drone" size={20} style={{ color: 'var(--primary)' }} />
@@ -605,10 +394,10 @@ function FarmDetails() {
                         <div className="input-group">
                             <label style={{ marginBottom: '0.2rem' }}>{t('Spray Purpose')}</label>
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '0.65rem' }}>
-                                {['Pest Control', 'Nutrient Spray', 'Weed Control', 'Disease Control'].map(purpose => {
-                                    const isChecked = Array.isArray(form.sprayPurpose) && form.sprayPurpose.includes(purpose);
+                                {masters.sprayPurposes.map(purpose => {
+                                    const isChecked = Array.isArray(form.sprayPurpose) && form.sprayPurpose.includes(purpose.code);
                                     return (
-                                        <label key={purpose} style={{
+                                        <label key={purpose.id} style={{
                                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                                             padding: '0.85rem 0.5rem',
                                             border: `2px solid ${isChecked ? 'var(--primary)' : 'var(--border)'}`,
@@ -630,12 +419,12 @@ function FarmDetails() {
                                                 onChange={(e) => {
                                                     const current = Array.isArray(form.sprayPurpose) ? form.sprayPurpose : [];
                                                     const newPurposes = e.target.checked
-                                                        ? [...current, purpose]
-                                                        : current.filter(p => p !== purpose);
+                                                        ? [...current, purpose.code]
+                                                        : current.filter(p => p !== purpose.code);
                                                     setForm({ ...form, sprayPurpose: newPurposes });
                                                 }}
                                             />
-                                            {t(purpose)}
+                                            {purpose.displayName}
                                         </label>
                                     );
                                 })}
@@ -647,43 +436,55 @@ function FarmDetails() {
                             <input type="checkbox" disabled={busy} checked={form.waterBodyNearby} onChange={e => setForm({ ...form, waterBodyNearby: e.target.checked })} style={{ width: '22px', height: '22px', margin: 0, cursor: 'pointer' }} />
                         </label>
 
-                        <div className="row-group">
-                            <div className="input-group">
-                                <label>{t('Chemical/Fertilizer Availability')}</label>
-                                <select required disabled={busy} value={form.hasChemical ? 'yes' : 'no'} onChange={e => setForm({ ...form, hasChemical: e.target.value === 'yes' })}>
-                                    <option value="yes">{t('Yes, I have it')}</option>
-                                    <option value="no">{t('No, Daas should procure it')}</option>
-                                </select>
-                            </div>
-                            <div className="input-group">
-                                <label>{t('Chemical Brand (if known)')}</label>
-                                <input type="text" disabled={busy} value={form.chemicalBrand} onChange={e => setForm({ ...form, chemicalBrand: e.target.value })} placeholder={t('e.g. Coragen, Urea')} />
-                            </div>
-                        </div>
-
-                        {form.hasChemical && (
-                            <div className="input-group" style={{ padding: '0.85rem', background: 'var(--surface-muted)', borderRadius: 'var(--radius-sm)', border: '1px dashed var(--border-strong)' }}>
-                                <label>{t('Upload proof of chemical (Optional)')}</label>
-                                <input type="file" disabled={busy} style={{ background: 'transparent', border: 'none', padding: '0.5rem 0' }} onChange={e => {
-                                    if (e.target.files.length) {
-                                        setForm({ ...form, chemicalProofUrl: 'https://example.com/dummy-proof.jpg' });
-                                    } else {
-                                        setForm({ ...form, chemicalProofUrl: '' });
-                                    }
-                                }} />
-                                <span className="field-hint" style={{ marginTop: '0.25rem', display: 'block' }}>{t('Uploading proof avoids manual confirmation calls.')}</span>
-                            </div>
-                        )}
                     </div>
                 </div>
 
-                {/* Section 4: Location */}
+                {/* Section 3: Location */}
                 <div style={{ background: 'var(--surface-raised)', padding: '1.25rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', marginBottom: '1.25rem', boxShadow: 'var(--shadow-sm)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.1rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.6rem' }}>
                         <OpsIcon name="location" size={20} style={{ color: 'var(--primary)' }} />
                         <h3 style={{ margin: 0, color: 'var(--text-primary)', fontSize: '1.15rem', fontWeight: 750 }}>{t('Location')}</h3>
                     </div>
                     <div className="form-stack">
+                        <div className="row-group">
+                            <div className="input-group">
+                                <label>{t('Request Type')}</label>
+                                <select required disabled={busy} value={form.requestType} onChange={e => setForm({ ...form, requestType: e.target.value, b2bSubcategoryCode: '' })}>
+                                    <option value="B2C">B2C</option><option value="B2B">B2B</option>
+                                </select>
+                            </div>
+                            {form.requestType === 'B2B' && <div className="input-group">
+                                <label>{t('B2B Sub-Category')}</label>
+                                <select required disabled={busy} value={form.b2bSubcategoryCode} onChange={e => setForm({ ...form, b2bSubcategoryCode: e.target.value })}>
+                                    <option value="">Select B2B category</option>
+                                    {masters.b2bSubcategories.map(item => <option key={item.id} value={item.code}>{item.displayName}</option>)}
+                                </select>
+                            </div>}
+                        </div>
+                        <div className="row-group">
+                            <div className="input-group">
+                                <label>{t('Cluster')}</label>
+                                <select required disabled={busy} value={form.clusterId} onChange={e => setForm({ ...form, clusterId: e.target.value })}>
+                                    <option value="">Select cluster</option>
+                                    {masters.clusters.map(item => <option key={item.id} value={item.id}>{item.displayName}</option>)}
+                                </select>
+                                <span className="field-hint">Cluster Type: {masters.clusters.find(item => item.id === form.clusterId)?.type || '—'}</span>
+                            </div>
+                            <div className="input-group">
+                                <label>{t('Reporting Admin')}</label>
+                                <select required disabled={busy} value={form.reportingAdminCode} onChange={e => setForm({ ...form, reportingAdminCode: e.target.value })}>
+                                    <option value="">Select reporting Admin</option>
+                                    {masters.reportingAdmins.map(item => <option key={item.id} value={item.code}>{item.displayName}</option>)}
+                                </select>
+                            </div>
+                        </div>
+                        <div className="input-group">
+                            <label>{t('Lead Source')}</label>
+                            <select required disabled={busy} value={form.leadSourceCode} onChange={e => setForm({ ...form, leadSourceCode: e.target.value })}>
+                                <option value="">Select lead source</option>
+                                {masters.leadSources.map(item => <option key={item.id} value={item.code}>{item.displayName}</option>)}
+                            </select>
+                        </div>
                         <div className="row-group">
                             <div className="input-group">
                                 <label>{t('Village Location')}</label>
@@ -729,7 +530,7 @@ function FarmDetails() {
                     </div>
                 </div>
 
-                {/* Section 5: Subscription & Remarks */}
+                {/* Section 4: Subscription & Remarks */}
                 <div style={{ background: 'var(--surface-raised)', padding: '1.25rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', marginBottom: '1.5rem', boxShadow: 'var(--shadow-sm)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.1rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.6rem' }}>
                         <OpsIcon name="plus" size={20} style={{ color: 'var(--primary)' }} />

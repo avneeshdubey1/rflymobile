@@ -2,6 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const prisma = require('../src/lib/prisma');
 const assignmentOperations = require('../src/repositories/assignmentOperationRepository');
+const crewFormation = require('../src/repositories/crewFormationRepository');
 const missionStateService = require('../services/missionStateService');
 
 const runId = `${process.pid}-${Date.now()}`;
@@ -12,6 +13,8 @@ let pilot;
 let copilot;
 let drone;
 let lmv;
+let unrelatedDrone;
+let unrelatedLmv;
 
 async function createLead(label, data = {}) {
   const lead = await prisma.lead.create({
@@ -42,12 +45,14 @@ test.before(async () => {
     prisma.user.create({ data: { name: 'Phase 25 Copilot', email: `phase25-copilot-${runId}@example.test`, passwordHash: 'test', role: 'PILOT', homeCenterId: center.id } }),
   ]);
   ids.users.push(fleet.id, pilot.id, copilot.id);
-  [drone, lmv] = await Promise.all([
+  [drone, lmv, unrelatedDrone, unrelatedLmv] = await Promise.all([
     prisma.drone.create({ data: { model: 'Atomic', serialNumber: `PHASE25-DRONE-${runId}`, uin: `PHASE25-UIN-${runId}`, homeCenterId: center.id } }),
     prisma.lMV.create({ data: { registrationNo: `PHASE25-LMV-${runId}`, homeCenterId: center.id } }),
+    prisma.drone.create({ data: { model: 'Unrelated', serialNumber: `PHASE25-UNRELATED-DRONE-${runId}`, uin: `PHASE25-UNRELATED-UIN-${runId}`, homeCenterId: center.id, status: 'MAINTENANCE' } }),
+    prisma.lMV.create({ data: { registrationNo: `PHASE25-UNRELATED-LMV-${runId}`, homeCenterId: center.id, status: 'OUT_OF_SERVICE' } }),
   ]);
-  ids.drones.push(drone.id);
-  ids.lmvs.push(lmv.id);
+  ids.drones.push(drone.id, unrelatedDrone.id);
+  ids.lmvs.push(lmv.id, unrelatedLmv.id);
 });
 
 test('a failure after service-area revalidation rolls every scheduling write back', async () => {
@@ -60,14 +65,13 @@ test('a failure after service-area revalidation rolls every scheduling write bac
   await assert.rejects(
     assignmentOperations.manualAssign({
       leadId: lead.id,
-      pilotId: pilot.id,
-      copilotId: inactive.id,
+      pilotId: inactive.id,
       droneId: drone.id,
       lmvId: lmv.id,
       scheduledDate: new Date('2026-09-01T09:00:00.000Z'),
       actorId: fleet.id,
     }),
-    /Copilot must be active/,
+    /Primary Pilot must be active/,
   );
 
   const [storedLead, assignments, auditCount, storedDrone, storedLmv] = await Promise.all([
@@ -117,7 +121,9 @@ test('concurrent scheduling creates one mission and commits all related state to
   assert.equal(leadHistory.actorUserId, fleet.id);
   assert.equal(droneHistory.actorUserId, fleet.id);
   assert.equal(lmvHistory.actorUserId, fleet.id);
-  assert.equal(await prisma.notificationEscalation.count({ where: { assignmentId: assignments[0].id } }), 1);
+  assert.equal(assignments[0].copilotId, null);
+  assert.equal(assignments[0].crewFormationState, 'PENDING_COPILOT_SELECTION');
+  assert.equal(await prisma.notificationEscalation.count({ where: { assignmentId: assignments[0].id } }), 0);
   assert.equal(await prisma.auditLog.count({ where: { entityId: assignments[0].id, action: 'MANUAL_ASSIGNMENT_CREATED' } }), 1);
 });
 
@@ -162,6 +168,14 @@ test('one crew unit can run ordered same-day jobs, but cannot start them out of 
     where: { id: { in: ids.assignments } },
     include: { lead: true },
   });
+  if (first.crewFormationState === 'PENDING_COPILOT_SELECTION') {
+    await crewFormation.selectCopilot({
+      assignmentId: first.id,
+      candidateId: copilot.id,
+      actorId: pilot.id,
+      expectedRevision: first.revision,
+    });
+  }
   const secondLead = await createLead('second-job');
   const second = await assignmentOperations.manualAssign({
     leadId: secondLead.id,
@@ -173,6 +187,12 @@ test('one crew unit can run ordered same-day jobs, but cannot start them out of 
     actorId: fleet.id,
   });
   ids.assignments.push(second.assignment.id);
+  await crewFormation.selectCopilot({
+    assignmentId: second.assignment.id,
+    candidateId: copilot.id,
+    actorId: pilot.id,
+    expectedRevision: second.assignment.revision,
+  });
   assert.equal(first.dailySequence, 1);
   assert.equal(second.assignment.dailySequence, 2);
 
@@ -192,14 +212,20 @@ test('one crew unit can run ordered same-day jobs, but cannot start them out of 
   await missionStateService.complete(second.assignment.id, copilot.id, 2);
   assert.equal((await prisma.drone.findUnique({ where: { id: drone.id } })).status, 'AVAILABLE');
   assert.equal((await prisma.lMV.findUnique({ where: { id: lmv.id } })).status, 'AVAILABLE');
-  const [completedLeadHistory, completedDroneHistory, completedLmvHistory] = await Promise.all([
+  const [completedLeadHistory, completedDroneHistory, completedLmvHistory, completionAudit, unrelatedDroneAfter, unrelatedLmvAfter] = await Promise.all([
     prisma.leadHistory.findFirst({ where: { leadId: secondLead.id }, orderBy: { version: 'desc' } }),
     prisma.droneHistory.findFirst({ where: { droneId: drone.id }, orderBy: { version: 'desc' } }),
     prisma.lMVHistory.findFirst({ where: { lmvId: lmv.id }, orderBy: { version: 'desc' } }),
+    prisma.auditLog.findFirst({ where: { entityId: second.assignment.id, action: 'MISSION_COMPLETED' } }),
+    prisma.drone.findUnique({ where: { id: unrelatedDrone.id } }),
+    prisma.lMV.findUnique({ where: { id: unrelatedLmv.id } }),
   ]);
   assert.equal(completedLeadHistory.actorUserId, copilot.id);
   assert.equal(completedDroneHistory.actorUserId, copilot.id);
   assert.equal(completedLmvHistory.actorUserId, copilot.id);
+  assert.equal(completionAudit.actorId, copilot.id);
+  assert.equal(unrelatedDroneAfter.status, 'MAINTENANCE');
+  assert.equal(unrelatedLmvAfter.status, 'OUT_OF_SERVICE');
 });
 
 test('decommission atomically flags the lead, retires the drone from service, releases the LMV, and records the event', async () => {
@@ -214,6 +240,12 @@ test('decommission atomically flags the lead, retires the drone from service, re
     actorId: fleet.id,
   });
   ids.assignments.push(scheduled.assignment.id);
+  await crewFormation.selectCopilot({
+    assignmentId: scheduled.assignment.id,
+    candidateId: copilot.id,
+    actorId: pilot.id,
+    expectedRevision: scheduled.assignment.revision,
+  });
   await missionStateService.accept(scheduled.assignment.id, pilot.id);
   const result = await missionStateService.decommission(scheduled.assignment.id, copilot.id, 'Propulsion inspection required');
   const [storedDrone, storedLmv, event, fleetNotice, droneHistory, lmvHistory] = await Promise.all([
@@ -228,6 +260,7 @@ test('decommission atomically flags the lead, retires the drone from service, re
   assert.equal(storedDrone.status, 'MAINTENANCE');
   assert.equal(storedLmv.status, 'AVAILABLE');
   assert.ok(event);
+  assert.equal(event.actorId, copilot.id);
   assert.ok(fleetNotice);
   assert.equal(droneHistory.actorUserId, copilot.id);
   assert.equal(lmvHistory.actorUserId, copilot.id);

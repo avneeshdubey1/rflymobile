@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const app = require('../app');
 const prisma = require('../src/lib/prisma');
 const { issueToken } = require('../middleware/auth');
+const crewFormation = require('../src/repositories/crewFormationRepository');
 
 let server;
 let baseUrl;
@@ -81,6 +82,13 @@ test('one two-person operational unit performs several ordered non-overlapping j
     });
     assert.equal(created.response.status, 201, JSON.stringify(created.data));
     ids.assignments.push(created.data.mission.id);
+    await crewFormation.selectCopilot({
+      assignmentId: created.data.mission.id,
+      candidateId: copilot.id,
+      actorId: primary.id,
+      expectedRevision: created.data.mission.revision,
+      now: new Date(new Date(windows[index][0]).getTime() - 1),
+    });
   }
 
   const stored = await prisma.assignment.findMany({

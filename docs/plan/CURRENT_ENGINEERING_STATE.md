@@ -1,7 +1,7 @@
 # Current Engineering State
 
 **Status:** current shared handoff
-**Observed:** August 11, 2026
+**Observed:** August 20, 2026
 
 ## Source and deployment
 
@@ -51,10 +51,26 @@ not proof that production has been imported.
 
 ## Current gates and next work
 
+The local Pilot mobile candidate now has a distinct AVAILABLE/OFFLINE
+operational state and foreground-only live mission location. Offline Pilots are
+excluded server-side from automatic/manual assignment and crew formation, and
+cannot go offline while scheduled or engaged. Admin/Fleet can view only the
+latest sample for accepted/in-progress work; terminal transitions clear it.
+Background tracking and route history remain disabled, and production
+activation still requires the privacy/notice and physical-device gates in the
+placeholder register.
+
+The staging CI also compiles an arm64 standalone release-mode Android APK on
+the office runner after every hosted staging gate passes. It embeds the
+VPN-only staging API address, verifies its package and permission boundary, and
+retains the private artifact for seven days. The APK uses internal debug
+signing and is staging evidence only; it is not a Play Store or production
+release.
+
 The local auto-assignment candidate covers `AA-00` through `AA-09` and most
-of `AA-10`. The complete backend suite passes 133/133; frontend lint/build and
-both production dependency audits pass; the migration harness replays all 23
-migrations with 49 validated checks; and the rebuilt isolated Compose stack
+of `AA-10`. The complete backend suite now passes 160/160; frontend lint/build,
+Pilot mobile typecheck and 18/18 tests, and Expo Doctor 21/21 pass. The migration
+harness replays all 29 migrations with 61 validated checks. The rebuilt isolated Compose stack
 migrates once and reports healthy database/jobs without exposing PostgreSQL or
 the backend on host ports. A focused real-browser audit passes 6/6 for policy
 roles, bounded views, persisted four-resource/window/sequence edits, overlap

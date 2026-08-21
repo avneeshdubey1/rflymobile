@@ -1,0 +1,45 @@
+{
+  "success": true,
+  "apiVersion": "v1",
+  "app": "PILOT_FIELD",
+  "serverTime": "2026-08-12T08:00:00.000Z",
+  "operatingTimeZone": "Asia/Kolkata",
+  "profile": {
+    "id": "00000000-0000-4000-8000-000000000001",
+    "displayName": "Example Pilot",
+    "employeeCode": "EXAMPLE-PILOT",
+    "preferredLanguage": "en",
+    "homeCenterId": "00000000-0000-4000-8000-000000000020",
+    "role": "PILOT"
+  },
+  "operatingCenter": {
+    "id": "00000000-0000-4000-8000-000000000020",
+    "code": "EXAMPLE-CENTER",
+    "displayName": "Example Operating Center"
+  },
+  "assignmentWindow": {
+    "from": "2026-08-11T00:00:00.000Z",
+    "to": "2026-08-27T00:00:00.000Z"
+  },
+  "assignments": [],
+  "capabilities": ["PILOT_ASSIGNMENTS_READ", "COPILOT_SELECT", "MISSION_MUTATE", "ISSUE_REPORT"],
+  "featureFlags": {
+    "chat": false,
+    "foregroundLocation": false,
+    "issueReporting": true
+  },
+  "appVersions": {
+    "minimum": "1.0.0",
+    "recommended": "1.0.0"
+  },
+  "sync": {
+    "cursor": "example-cursor"
+  },
+  "policies": {
+    "offlineGraceSeconds": 28800,
+    "terminalCacheSeconds": 86400,
+    "locationIntervalSeconds": 60,
+    "locationAccuracyMetres": 100,
+    "backgroundLocationEnabled": false
+  }
+}

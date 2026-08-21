@@ -26,7 +26,7 @@
 - [x] Database-backed opaque sessions, secure production cookie contract, CSRF, session revocation, auth-version checks, and Socket.io revalidation have local test evidence.
 - [x] Password hashing, account-state enforcement, canonical account phone identity, recovery challenge controls, and non-sensitive recovery responses have local test evidence.
 - [x] Coordinate-free GPS auditing has local test evidence.
-- [x] Current local regression evidence: backend 95/95, real Edge browser audit 33/33, frontend lint/production build, disposable production Compose build/start/migration, and edge/API health checks.
+- [x] Current local regression evidence: backend 160/160, Pilot mobile 18/18 with Expo Doctor 21/21, frontend lint/production build, clean/populated 29-migration replay with 61 validated checks, prior real-browser audit, disposable production Compose build/start/migration, and edge/API health checks.
 - [x] Guarded fresh-handover bootstrap was locally verified to leave exactly one active Admin and no demo operational data.
 
 These results prove only the current local baseline. They include lightweight LMV scheduling, Pilot centre enforcement, hierarchical operational chat, strict intake, portal isolation, OTP/Firebase retirement, and explicit retirement of incomplete immediate-payment and public Business-registration surfaces. They do not replace production-like staging evidence and do not cover evidence-backed billing, live provider delivery, backups/restore, monitoring, or client acceptance.
@@ -106,6 +106,7 @@ These results prove only the current local baseline. They include lightweight LM
 | Date | Item | Evidence | Result |
 |---|---|---|---|
 | August 11, 2026 | Auto-assignment AA-11 local regression candidate | Backend 133/133; frontend lint/build; dependency audits; 23-migration clean/populated replay; isolated Compose migrate/health; focused browser 6/6 | Local gates pass except real pointer drag/resize acceptance, which remains open. No commit, staging deployment, production migration, or production approval. |
+| August 12, 2026 | Pilot mobile M00 contract baseline | Route/schema inventory; disposable 23-migration replay; Phase 20 1/1; Phase 25 5/5; schema-validated sanitized API fixtures | Server crew/order/release semantics are frozen and the minimum-data/session/location/error contract is documented. No mobile endpoint, bearer session, location activation, push or deployment. |
 | July 14, 2026 | Demo/browser baseline | Browser audit and local backend/frontend/schema checks | Local demo evidence only; production blockers remained open. |
 | July 22, 2026 | Opaque-session and recovery foundation | Fresh-database backend suite and migration replay | Passed locally; live recovery provider delivery remained open. |
 | July 23, 2026 | Authentication hardening closeout | Backend 74/74, browser 30/30, schema/lint/build/Compose rendering | Passed locally; not production approval. |

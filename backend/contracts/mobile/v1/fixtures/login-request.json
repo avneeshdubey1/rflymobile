@@ -1,0 +1,8 @@
+{
+  "email": "pilot@example.invalid",
+  "password": "__GENERATED_PASSWORD__",
+  "installationKey": "__GENERATED_INSTALLATION_KEY__",
+  "platform": "ANDROID",
+  "appVersion": "1.0.0",
+  "deviceLabel": "Example Android device"
+}

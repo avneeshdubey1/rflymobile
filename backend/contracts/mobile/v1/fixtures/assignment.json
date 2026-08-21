@@ -1,0 +1,60 @@
+{
+  "id": "00000000-0000-4000-8000-000000000030",
+  "leadId": "00000000-0000-4000-8000-000000000031",
+  "revision": 3,
+  "status": "PILOT_ACCEPTED",
+  "crewFormationState": "READY",
+  "dailySequence": 1,
+  "serviceWindowStart": "2026-08-12T09:00:00.000Z",
+  "serviceWindowEnd": "2026-08-12T11:00:00.000Z",
+  "farmer": {
+    "displayName": "Example Farmer",
+    "operationalPhone": "__GENERATED_PHONE__"
+  },
+  "farm": {
+    "displayAddress": "Assigned farm",
+    "plusCode": "__GENERATED_PLUS_CODE__",
+    "latitude": "__GENERATED_LATITUDE__",
+    "longitude": "__GENERATED_LONGITUDE__"
+  },
+  "crop": "Example Crop",
+  "expectedAcreage": "4.50",
+  "actualAcreage": null,
+  "issue": null,
+  "crew": [
+    {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "displayName": "Example Pilot",
+      "crewRole": "PRIMARY_PILOT"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000002",
+      "displayName": "Example Copilot",
+      "crewRole": "COPILOT"
+    }
+  ],
+  "drone": {
+    "id": "00000000-0000-4000-8000-000000000040",
+    "code": "EXAMPLE-DRONE",
+    "serialNumber": "EXAMPLE-SERIAL"
+  },
+  "lmv": {
+    "id": "00000000-0000-4000-8000-000000000050",
+    "registrationNumber": "EXAMPLE-LMV",
+    "label": "Example vehicle"
+  },
+  "operatingCenter": {
+    "id": "00000000-0000-4000-8000-000000000020",
+    "code": "EXAMPLE-CENTER",
+    "displayName": "Example Operating Center"
+  },
+  "operationalNotes": [
+    "Use the approved field-entry procedure."
+  ],
+  "updatedAt": "2026-08-12T08:00:00.000Z",
+  "allowedActions": [
+    "START",
+    "REPORT_ISSUE",
+    "SEND_LOCATION"
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "success": true,
+  "serverTime": "2026-08-12T09:05:00.000Z",
+  "nextCursor": "example-next-cursor",
+  "fullResyncRequired": false,
+  "changedAssignments": [],
+  "removedAssignmentIds": [
+    "00000000-0000-4000-8000-000000000070"
+  ]
+}

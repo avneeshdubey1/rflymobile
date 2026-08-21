@@ -28,6 +28,7 @@ const { normalizePhone } = require('../../services/identityService');
 const safeSelect = {
     id: true,
     name: true,
+    employeeCode: true,
     email: true,
     phone: true,
     role: true,
@@ -38,6 +39,7 @@ const safeSelect = {
     pilotLicenseExpiry: true,
     homeCenter: true,
     active: true,
+    pilotAvailabilityState: true,
     emailVerifiedAt: true,
     phoneVerifiedAt: true,
     archivedAt: true,
@@ -56,6 +58,8 @@ const safeSelect = {
     pincode: true,
     assignedDroneId: true,
     assignedDrone: true,
+    assignedLmvId: true,
+    assignedLmv: true,
 };
 
 const identitySelect = {
@@ -106,6 +110,10 @@ async function updateSecuritySensitive(id, data, revokeReason) {
             select: safeSelect,
         });
         await transaction.authSession.updateMany({
+            where: { userId: id, revokedAt: null },
+            data: { revokedAt: changedAt, revokeReason },
+        });
+        await transaction.mobileSession.updateMany({
             where: { userId: id, revokedAt: null },
             data: { revokedAt: changedAt, revokeReason },
         });

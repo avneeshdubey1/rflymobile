@@ -1,0 +1,21 @@
+{
+  "success": true,
+  "from": "2026-01-15T00:00:00.000Z",
+  "to": "2026-01-16T00:00:00.000Z",
+  "exceptions": [
+    {
+      "type": "UNSCHEDULED_LEAD",
+      "id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      "codes": ["NEEDS_MANUAL_SCHEDULING"],
+      "assignment": null,
+      "lead": {
+        "id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+        "farmerDisplayName": "Example Farmer",
+        "expectedAcreage": "4.00",
+        "crop": "Example Crop",
+        "createdAt": "2026-01-15T08:00:00.000Z",
+        "operatingCenter": { "id": "55555555-5555-4555-8555-555555555555", "code": "EX-1", "displayName": "Example Centre" }
+      }
+    }
+  ]
+}

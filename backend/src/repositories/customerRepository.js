@@ -3,6 +3,7 @@ const normalizedCompatibilityRepository = require('./normalizedCompatibilityRepo
 const { setHistoryActor } = require('./historyActorRepository');
 
 const includeRecentLeads = {
+  cluster: { select: { id: true, code: true, displayName: true, type: true, active: true } },
   leads: {
     orderBy: { createdAt: 'desc' },
     take: 5,

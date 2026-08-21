@@ -3,6 +3,7 @@ const auditLogRepository = require('../src/repositories/auditLogRepository');
 const assignmentRepository = require('../src/repositories/assignmentRepository');
 const operatingCenterRepository = require('../src/repositories/operatingCenterRepository');
 const droneRepository = require('../src/repositories/droneRepository');
+const lmvRepository = require('../src/repositories/lmvRepository');
 const { hashPassword, validatePassword } = require('../services/passwordService');
 const { normalizePhone } = require('../services/identityService');
 const { disconnectUserSockets } = require('../middleware/auth');
@@ -27,6 +28,11 @@ function isEligiblePreferredDrone(drone, homeCenterId) {
         drone.operationalState === 'IN_SERVICE' &&
         ['AVAILABLE', 'ASSIGNED'].includes(drone.availabilityState)
     );
+}
+
+function isEligiblePreferredLmv(lmv, homeCenterId) {
+    return Boolean(lmv && lmv.homeCenterId === homeCenterId && ['AVAILABLE', 'ASSIGNED'].includes(lmv.status)
+        && lmv.operationalState === 'IN_SERVICE' && ['AVAILABLE', 'ASSIGNED'].includes(lmv.availabilityState));
 }
 
 exports.getAllUsers = async(_req, res) => { try { res.json({ success: true, users: await userRepository.findAll() }); } catch { res.status(500).json({ error: 'Failed to fetch users' }); } };
@@ -79,6 +85,10 @@ exports.addUser = async(req, res) => {
                     return res.status(409).json({ error: 'The preferred drone must be operational at the Pilot operating center' });
                 }
             }
+            const assignedLmvId = String(req.body.assignedLmvId || '').trim() || null;
+            if (assignedLmvId && !isEligiblePreferredLmv(await lmvRepository.findById(assignedLmvId), homeCenterId)) {
+                return res.status(409).json({ error: 'The preferred vehicle must be operational at the Pilot operating center' });
+            }
 
             pilotFields = {
                 idProof,
@@ -89,6 +99,7 @@ exports.addUser = async(req, res) => {
                 city,
                 pincode,
                 assignedDroneId,
+                assignedLmvId,
             };
         }
 
@@ -114,6 +125,7 @@ exports.addUser = async(req, res) => {
         const conflictTarget = Array.isArray(error.meta?.target) ? error.meta.target : [];
         const conflictMessage = conflictTarget.includes('assignedDroneId')
             ? 'That drone is already assigned to another pilot'
+            : conflictTarget.includes('assignedLmvId') ? 'That vehicle is already assigned to another pilot'
             : 'That work email or mobile is already registered';
         const message = error.code === 'P2002' ? conflictMessage : validationError ? error.message : 'Failed to add user';
         res.status(error.code === 'P2002' ? 409 : validationError ? 400 : 500).json({ error: message });
@@ -137,14 +149,14 @@ exports.updatePilotOperatingCenter = async(req, res) => {
             return res.status(409).json({ error: 'A pilot with an active assignment cannot be moved to another operating center' });
         }
 
-        const updated = await userRepository.update(pilot.id, { homeCenterId, assignedDroneId: null });
+        const updated = await userRepository.update(pilot.id, { homeCenterId, assignedDroneId: null, assignedLmvId: null });
         await auditLogRepository.create({
             entityType: 'User',
             entityId: pilot.id,
             action: 'PILOT_OPERATING_CENTER_CHANGED',
             actorId: req.auth.userId,
-            beforeState: { role: pilot.role, homeCenterId: pilot.homeCenterId, assignedDroneId: pilot.assignedDroneId },
-            afterState: { role: updated.role, homeCenterId: updated.homeCenterId, assignedDroneId: updated.assignedDroneId },
+            beforeState: { role: pilot.role, homeCenterId: pilot.homeCenterId, assignedDroneId: pilot.assignedDroneId, assignedLmvId: pilot.assignedLmvId },
+            afterState: { role: updated.role, homeCenterId: updated.homeCenterId, assignedDroneId: updated.assignedDroneId, assignedLmvId: updated.assignedLmvId },
         });
         return res.json({ success: true, user: updated });
     } catch {
@@ -320,6 +332,17 @@ exports.updateUser = async(req, res) => {
         } else if (homeCenterChanged) {
             updateData.assignedDroneId = null;
         }
+        if (req.body.assignedLmvId !== undefined) {
+            if (existing.role !== 'PILOT') return res.status(400).json({ error: 'Only Pilots can have a preferred vehicle' });
+            const assignedLmvId = String(req.body.assignedLmvId || '').trim() || null;
+            const effectiveCenterId = updateData.homeCenterId || existing.homeCenterId;
+            if (assignedLmvId && !isEligiblePreferredLmv(await lmvRepository.findById(assignedLmvId), effectiveCenterId)) {
+                return res.status(409).json({ error: 'The preferred vehicle must be operational at the Pilot operating center' });
+            }
+            updateData.assignedLmvId = assignedLmvId;
+        } else if (homeCenterChanged) {
+            updateData.assignedLmvId = null;
+        }
 
         if (!Object.keys(updateData).length) return res.status(400).json({ error: 'At least one supported profile field is required' });
 
@@ -333,6 +356,7 @@ exports.updateUser = async(req, res) => {
             if (target.includes('email')) message = 'That work email is already registered';
             else if (target.includes('phone')) message = 'That mobile number is already registered';
             else if (target.includes('assignedDroneId')) message = 'That drone is already assigned to another pilot';
+            else if (target.includes('assignedLmvId')) message = 'That vehicle is already assigned to another pilot';
             return res.status(409).json({ error: message });
         }
         const validationError = /required|between|valid|only Pilots|operating center|activation control/i.test(error.message || '');

@@ -5,7 +5,7 @@ const { spawnSync } = require('node:child_process');
 
 const backendDir = path.resolve(__dirname, '..');
 const migrationsDir = path.join(backendDir, 'prisma', 'migrations');
-const targetMigration = '20260811090000_add_auto_assignment_policy';
+const targetMigration = '20260813113000_add_mobile_installations_and_receipts';
 const containerName = process.env.POSTGRES_CONTAINER || 'rfly-postgres';
 const requestedDatabase = process.env.MIGRATION_VERIFY_DATABASE || 'rfly_schema_migration_test';
 
@@ -76,6 +76,22 @@ function psql(databaseName, sql, { tuplesOnly = true } = {}) {
   ];
   if (tuplesOnly) args.push('-A', '-t');
   return run('docker', args, { input: sql });
+}
+
+function expectPsqlFailure(databaseName, sql, expectedMessage) {
+  assertDisposableDatabaseName(databaseName);
+  const result = spawnSync('docker', [
+    'exec', '-i', containerName,
+    'psql', '-X', '-U', 'postgres', '-d', databaseName,
+    '-v', 'ON_ERROR_STOP=1',
+  ], {
+    cwd: backendDir,
+    encoding: 'utf8',
+    windowsHide: true,
+    input: sql,
+  });
+  assert.notEqual(result.status, 0, 'Expected SQL statement to fail');
+  assert.match(`${result.stdout || ''}\n${result.stderr || ''}`, expectedMessage);
 }
 
 function adminSql(sql) {
@@ -166,6 +182,11 @@ function verifyCleanReplay(migrations) {
   assert.equal(Number(scalar(cleanDatabase, `
     SELECT COUNT(*) FROM "AutoAssignmentPolicy" WHERE "singletonKey" = 'COMPANY';
   `)), 1, 'Clean replay did not create exactly one company policy');
+  assert.equal(Number(scalar(cleanDatabase, `
+    SELECT COUNT(*) FROM information_schema.tables
+    WHERE table_schema = 'public'
+      AND table_name IN ('MobileInstallation', 'MobileSession', 'MobileMutationReceipt');
+  `)), 3, 'Clean replay did not create all mobile security tables');
 
   const appliedBeforeSecondDeploy = applied;
   run(process.execPath, [prismaCli, 'migrate', 'deploy'], {
@@ -227,20 +248,41 @@ INSERT INTO "Lead" (
   'Legacy Village, Legacy District', 2.5, 'Paddy', 'SCHEDULED', 'MANUAL_SALES', 'migration-center'
 );
 
+INSERT INTO "Lead" (
+  "id", "customerId", "farmerName", "farmerPhone", "farmerAddress", "acreage",
+  "cropType", "status", "intakeChannel", "matchedCenterId"
+) VALUES (
+  'migration-incomplete-lead', 'migration-customer', 'Legacy Customer', '+919876543210',
+  'Legacy Village, Legacy District', 1.5, 'Paddy', 'SCHEDULED', 'MANUAL_SALES', 'migration-center'
+);
+
 INSERT INTO "Assignment" (
   "id", "leadId", "pilotId", "copilotId", "droneId", "lmvId",
-  "scheduledDate", "dailySequence", "expectedAcreage"
+  "scheduledDate", "serviceWindowStart", "serviceWindowEnd", "dailySequence", "expectedAcreage"
 ) VALUES (
   'migration-assignment', 'migration-lead', 'migration-pilot', 'migration-copilot',
-  'migration-drone', 'migration-lmv', CURRENT_TIMESTAMP + INTERVAL '1 day', 1, 2.5
+  'migration-drone', 'migration-lmv', CURRENT_TIMESTAMP + INTERVAL '1 day',
+  CURRENT_TIMESTAMP + INTERVAL '1 day', CURRENT_TIMESTAMP + INTERVAL '1 day 120 minutes', 1, 2.5
 );
+
+ALTER TABLE "Assignment" DISABLE TRIGGER "Assignment_guard_operational_unit";
+INSERT INTO "Assignment" (
+  "id", "leadId", "pilotId", "droneId", "scheduledDate",
+  "serviceWindowStart", "serviceWindowEnd", "dailySequence",
+  "expectedAcreage", "legacyCrewIncomplete", "crewFormationState"
+) VALUES (
+  'migration-incomplete-assignment', 'migration-incomplete-lead',
+  'migration-pilot', 'migration-drone', CURRENT_TIMESTAMP + INTERVAL '2 days',
+  CURRENT_TIMESTAMP + INTERVAL '2 days', CURRENT_TIMESTAMP + INTERVAL '2 days 120 minutes',
+  1, 1.5, true, 'LEGACY_INCOMPLETE'
+);
+ALTER TABLE "Assignment" ENABLE TRIGGER "Assignment_guard_operational_unit";
 `;
 
 function verifyPopulatedLegacyUpgrade(migrations) {
   recreateDatabase(legacyDatabase);
   const targetIndex = migrations.indexOf(targetMigration);
   assert.notEqual(targetIndex, -1, `Missing target migration ${targetMigration}`);
-  assert.equal(targetIndex, migrations.length - 1, 'Harness requires the target migration to be the latest migration');
 
   for (const migration of migrations.slice(0, targetIndex)) applySqlMigration(legacyDatabase, migration);
   psql(legacyDatabase, legacyFixtureSql, { tuplesOnly: false });
@@ -251,11 +293,11 @@ function verifyPopulatedLegacyUpgrade(migrations) {
     Customer: 1,
     Drone: 1,
     LMV: 1,
-    Lead: 1,
-    Assignment: 1,
+    Lead: 2,
+    Assignment: 2,
   });
 
-  applySqlMigration(legacyDatabase, targetMigration);
+  for (const migration of migrations.slice(targetIndex)) applySqlMigration(legacyDatabase, migration);
   const after = coreCounts(legacyDatabase);
   assert.deepEqual(after, before, 'Core business row counts changed during additive migration');
 
@@ -268,6 +310,26 @@ function verifyPopulatedLegacyUpgrade(migrations) {
     scalar(legacyDatabase, `SELECT "legacyCrewIncomplete"::text FROM "Assignment" WHERE "id" = 'migration-assignment';`),
     'false',
     'Valid complete legacy assignment was unexpectedly quarantined',
+  );
+  assert.equal(
+    scalar(legacyDatabase, `SELECT "crewFormationState"::text FROM "Assignment" WHERE "id" = 'migration-assignment';`),
+    'READY',
+    'Complete assignment was not backfilled as READY',
+  );
+  assert.equal(
+    scalar(legacyDatabase, `SELECT "revision"::text FROM "Assignment" WHERE "id" = 'migration-assignment';`),
+    '1',
+    'Complete assignment revision was not initialized',
+  );
+  assert.equal(
+    scalar(legacyDatabase, `SELECT ("updatedAt" IS NOT NULL)::text FROM "Assignment" WHERE "id" = 'migration-assignment';`),
+    'true',
+    'Assignment sync timestamp was not backfilled',
+  );
+  assert.equal(
+    scalar(legacyDatabase, `SELECT "crewFormationState"::text FROM "Assignment" WHERE "id" = 'migration-incomplete-assignment';`),
+    'LEGACY_INCOMPLETE',
+    'Quarantined legacy assignment was not preserved as LEGACY_INCOMPLETE',
   );
   assert.equal(Number(scalar(legacyDatabase, `
     SELECT COUNT(*)
@@ -288,7 +350,7 @@ function verifyPopulatedLegacyUpgrade(migrations) {
       FROM "Assignment" WHERE "id" = 'migration-assignment';
     `),
     'true',
-    'Legacy assignment start was not backfilled from scheduledDate',
+    'Existing assignment service-window start changed unexpectedly',
   );
   assert.equal(
     scalar(legacyDatabase, `
@@ -296,7 +358,7 @@ function verifyPopulatedLegacyUpgrade(migrations) {
       FROM "Assignment" WHERE "id" = 'migration-assignment';
     `),
     'true',
-    'Legacy assignment end was not backfilled with the compatibility duration',
+    'Existing assignment service-window end changed unexpectedly',
   );
 
   const validatedChecks = assertAllChecksValidated(legacyDatabase);
@@ -312,7 +374,55 @@ function verifyPopulatedLegacyUpgrade(migrations) {
 
     INSERT INTO "Customer" ("id", "displayName", "phone", "preferredLanguage", "updatedAt")
     VALUES ('migration-new-customer', 'New Customer', '+919876543211', 'ta', CURRENT_TIMESTAMP);
+
+    INSERT INTO "Lead" (
+      "id", "customerId", "farmerName", "farmerPhone", "farmerAddress", "acreage",
+      "cropType", "status", "intakeChannel", "matchedCenterId"
+    ) VALUES (
+      'migration-pending-lead', 'migration-customer', 'Pending Customer', '+919876543210',
+      'Pending Village', 1, 'Paddy', 'SCHEDULED', 'MANUAL_SALES', 'migration-center'
+    );
+
+    INSERT INTO "Assignment" (
+      "id", "leadId", "pilotId", "droneId", "lmvId", "scheduledDate",
+      "serviceWindowStart", "serviceWindowEnd", "expectedAcreage", "crewFormationState", "updatedAt"
+    ) VALUES (
+      'migration-pending-assignment', 'migration-pending-lead', 'migration-pilot',
+      'migration-drone', 'migration-lmv', CURRENT_TIMESTAMP + INTERVAL '3 days',
+      CURRENT_TIMESTAMP + INTERVAL '3 days', CURRENT_TIMESTAMP + INTERVAL '3 days 120 minutes',
+      1, 'PENDING_COPILOT_SELECTION', CURRENT_TIMESTAMP
+    );
+
+    INSERT INTO "MobileInstallation" (
+      "id", "userId", "app", "installationKeyHash"
+    ) VALUES (
+      'migration-mobile-installation', 'migration-pilot', 'PILOT_FIELD', repeat('a', 64)
+    );
+
+    INSERT INTO "MobileSession" (
+      "id", "userId", "installationId", "tokenHash", "authVersion",
+      "idleExpiresAt", "absoluteExpiresAt"
+    ) VALUES (
+      'migration-mobile-session', 'migration-pilot', 'migration-mobile-installation',
+      repeat('b', 64), 1, CURRENT_TIMESTAMP + INTERVAL '30 minutes',
+      CURRENT_TIMESTAMP + INTERVAL '8 hours'
+    );
+
+    INSERT INTO "MobileMutationReceipt" (
+      "id", "installationId", "assignmentId", "actionId", "operation",
+      "requestHash", "outcome", "safeResult"
+    ) VALUES (
+      'migration-mobile-receipt', 'migration-mobile-installation',
+      'migration-pending-assignment', 'migration-action-1', 'SELECT_COPILOT',
+      repeat('c', 64), 'APPLIED', '{"status":"ok"}'::jsonb
+    );
   `, { tuplesOnly: false });
+
+  assert.equal(
+    scalar(legacyDatabase, `SELECT "pilotAvailabilityState"::text FROM "User" WHERE "id" = 'migration-pilot';`),
+    'AVAILABLE',
+    'Legacy Pilot was not made operationally available by default',
+  );
 
   assert.equal(
     scalar(legacyDatabase, `SELECT "displayName" FROM "Customer" WHERE "id" = 'migration-customer';`),
@@ -323,17 +433,46 @@ function verifyPopulatedLegacyUpgrade(migrations) {
     'post-migration metadata update',
   );
   assert.equal(Number(scalar(legacyDatabase, 'SELECT COUNT(*) FROM "Customer";')), 2);
+  assert.equal(
+    scalar(legacyDatabase, `SELECT "crewFormationState"::text FROM "Assignment" WHERE "id" = 'migration-pending-assignment';`),
+    'PENDING_COPILOT_SELECTION',
+  );
+  expectPsqlFailure(
+    legacyDatabase,
+    `UPDATE "Assignment" SET "acceptedAt" = CURRENT_TIMESTAMP WHERE "id" = 'migration-pending-assignment';`,
+    /Assignment_crew_formation_check|pending Copilot assignment must be a non-executable/i,
+  );
+  assert.equal(Number(scalar(legacyDatabase, 'SELECT COUNT(*) FROM "MobileInstallation";')), 1);
+  assert.equal(Number(scalar(legacyDatabase, 'SELECT COUNT(*) FROM "MobileSession";')), 1);
+  assert.equal(Number(scalar(legacyDatabase, 'SELECT COUNT(*) FROM "MobileMutationReceipt";')), 1);
+  expectPsqlFailure(
+    legacyDatabase,
+    `INSERT INTO "MobileMutationReceipt" (
+       "id", "installationId", "actionId", "operation", "requestHash", "outcome", "safeResult"
+     ) VALUES (
+       'migration-mobile-receipt-duplicate', 'migration-mobile-installation',
+       'migration-action-1', 'SELECT_COPILOT', repeat('d', 64), 'APPLIED', '{}'::jsonb
+     );`,
+    /MobileMutationReceipt_installationId_actionId_key|duplicate key/i,
+  );
 
   return {
     priorMigrationsApplied: targetIndex,
+    upgradeMigrationsApplied: migrations.length - targetIndex,
     before,
     after,
     canonicalPhone: '+919876543210',
     legacyCrewIncomplete: false,
+    completeCrewFormationState: 'READY',
+    incompleteCrewFormationState: 'LEGACY_INCOMPLETE',
     autoAssignmentPolicyRows: 1,
     assignmentWindowsBackfilled: true,
     validatedChecks,
-    postMigrationWrites: 3,
+    postMigrationWrites: 5,
+    provisionalAssignmentWrite: true,
+    prematureAcceptanceRejected: true,
+    mobileSecurityRows: 3,
+    duplicateInstallationActionRejected: true,
   };
 }
 

@@ -22,6 +22,7 @@ import CustomerRegistration from '../components/CustomerRegistration';
 import ManagePilots from '../components/ManagePilots';
 import AssignmentDetails from '../components/AssignmentDetails';
 import AutoAssignmentPolicyPanel from '../components/AutoAssignmentPolicyPanel';
+import MasterDataManagement from '../components/MasterDataManagement';
 import { useTranslation } from 'react-i18next';
 
 let DefaultIcon = L.icon({
@@ -412,12 +413,13 @@ function AdminDashboard() {
     { id: 'pilots', label: 'Pilots', icon: 'users' },
     // { id: 'chat', label: 'Pilot Support Chat', icon: 'chat' },
     // { id: 'payments', label: 'Payment Collection', icon: 'wallet' },
-    // { id: 'location', label: 'Live Pilot GPS', icon: 'location' },
+    { id: 'location', label: 'Live Pilot GPS', icon: 'location' },
     { id: 'assignments', label: 'Assignments', icon: 'assignment' },
     { id: "registeredFarmers", label: "Registered Customers", icon: "customers" },
     { id: 'logbook', label: 'Lead Details', icon: 'book' },
     { id: 'users', label: 'My Team', icon: 'team' },
     { id: 'autoPolicy', label: t('auto_policy_title'), icon: 'calendar' },
+    { id: 'masterData', label: 'Master Data', icon: 'overview' },
     // { id: 'trend', label: 'Acreage Trend', icon: 'trend' },
     { id: 'profile', label: 'Profile', icon: 'user' },
   ];
@@ -430,7 +432,7 @@ function AdminDashboard() {
     logbook: ['Lead Records', 'Lead Details', 'Review each lead’s complete recorded lifecycle.'],
     // chat: ['Support desk', 'Pilot support chat', 'Coordinate directly with field teams and retain the conversation state.'],
     // payments: ['Revenue operations', 'Payment collection', 'Resolve completed missions waiting for settlement.'],
-    // location: ['Live operations', 'Pilot GPS', 'View the latest position for accepted and active missions.'],
+    location: ['Live operations', 'Pilot GPS', 'View the latest position for accepted and active missions.'],
     assignments: [
       'Operations Planning',
       'Spraying Assignments',
@@ -442,6 +444,7 @@ function AdminDashboard() {
     registeredFarmers: ['Customer records', 'Registered Customers', 'View all registered Customers and their registration details.'],
     profile: ['Account', 'Administrator Profile', 'View and manage your profile, account information, and security settings.'],
     autoPolicy: [t('auto_policy_eyebrow'), t('auto_policy_title'), t('auto_policy_description')],
+    masterData: ['Configuration', 'Master Data', 'Maintain approved dropdown values and cluster classifications.'],
     trend: ['Acreage Trend', 'Acreage Analysis', 'View and analyze total acreage trends and growth patterns'],
   };
   const [eyebrow, title, description] = pageCopy[activeTab];
@@ -502,6 +505,7 @@ function AdminDashboard() {
       )}
 
       {activeTab === 'autoPolicy' && <AutoAssignmentPolicyPanel editable />}
+      {activeTab === 'masterData' && <MasterDataManagement />}
 
       {activeTab === 'fleet' && (
         <>
@@ -783,6 +787,7 @@ function AdminDashboard() {
 
       {activeTab === 'logbook' && <LogbookTimelinePanel />}
       {activeTab === 'pilots' && <ManagePilots />}
+      {activeTab === 'location' && <section id="location" className="section-gap"><LiveLocationPanel /></section>}
 
       {/* {activeTab === "farmerRegistration" && (
         <section className="panel panel--raised">

@@ -55,11 +55,10 @@ exports.createManualAssignment = async(req, res) => {
     try {
         const leadId = req.body.leadId || (req.body.lead && req.body.lead.id);
         const pilotId = req.body.pilotId || (req.body.pilot && req.body.pilot.id);
-        const copilotId = req.body.copilotId || (req.body.copilot && req.body.copilot.id);
         const droneId = req.body.droneId;
         const lmvId = req.body.lmvId;
-        if (!pilotId || !copilotId || !droneId || !lmvId) {
-            return res.status(400).json({ error: 'A valid primary Pilot, Copilot, drone, and LMV are required' });
+        if (!pilotId || !droneId || !lmvId) {
+            return res.status(400).json({ error: 'A valid primary Pilot, drone, and LMV are required' });
         }
         const serviceWindowStart = new Date(req.body.serviceWindowStart || req.body.scheduledDate || Date.now());
         const policy = await autoAssignmentPolicyService.getPolicy();
@@ -68,7 +67,7 @@ exports.createManualAssignment = async(req, res) => {
             : new Date(serviceWindowStart.getTime() + policy.defaultJobDurationMinutes * 60_000);
         if (Number.isNaN(serviceWindowStart.valueOf()) || Number.isNaN(serviceWindowEnd.valueOf())) return res.status(400).json({ error: 'Valid service window values are required' });
         const result = await assignmentOperationRepository.manualAssign({
-            leadId, pilotId, copilotId, droneId, lmvId, serviceWindowStart, serviceWindowEnd, actorId: req.auth.userId,
+            leadId, pilotId, droneId, lmvId, serviceWindowStart, serviceWindowEnd, actorId: req.auth.userId,
         });
         await deliverAfterCommit(
             () => whatsappService.sendMissionScheduled(result.lead, result.assignment.scheduledDate),

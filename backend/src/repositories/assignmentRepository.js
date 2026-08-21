@@ -10,6 +10,7 @@ const pilotSelect = {
     homeCenterId: true,
     pilotLicenseExpiry: true,
     active: true,
+    pilotAvailabilityState: true,
     archivedAt: true,
     assignedDrone: true
 };

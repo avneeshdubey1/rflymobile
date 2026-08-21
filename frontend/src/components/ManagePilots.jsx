@@ -11,6 +11,7 @@ const emptyForm = {
     email: '',
     phone: '',
     assignedDroneId: '',
+    assignedLmvId: '',
     password: '',
     confirmPassword: '',
     homeCenterId: '',
@@ -55,6 +56,7 @@ export default function ManagePilots() {
     const [deleteTarget, setDeleteTarget] = useState(null);
     const [deleteError, setDeleteError] = useState('');
     const [drones, setDrones] = useState([]);
+    const [lmvs, setLmvs] = useState([]);
 
     const activeCenters = useMemo(() => centers.filter((center) => center.active), [centers]);
     const eligibleDrones = useMemo(() => drones.filter((drone) => (
@@ -64,11 +66,15 @@ export default function ManagePilots() {
         drone.operationalState === 'IN_SERVICE' &&
         ['AVAILABLE', 'ASSIGNED'].includes(drone.availabilityState)
     )), [drones, form.homeCenterId]);
+    const eligibleLmvs = useMemo(() => lmvs.filter((lmv) => (
+        lmv.homeCenterId === form.homeCenterId && ['AVAILABLE', 'ASSIGNED'].includes(lmv.status)
+        && lmv.operationalState === 'IN_SERVICE' && ['AVAILABLE', 'ASSIGNED'].includes(lmv.availabilityState)
+    )), [lmvs, form.homeCenterId]);
 
     const handleChange = (e) => setForm((current) => ({
         ...current,
         [e.target.name]: e.target.value,
-        ...(e.target.name === 'homeCenterId' ? { assignedDroneId: '' } : {}),
+        ...(e.target.name === 'homeCenterId' ? { assignedDroneId: '', assignedLmvId: '' } : {}),
     }));
     const closeModal = () => { setShowAdd(false); setEditingId(null); setForm(emptyForm); };
 
@@ -80,6 +86,12 @@ export default function ManagePilots() {
             } catch (error) { console.error(error); }
         };
         fetchDrones();
+    }, []);
+
+    useEffect(() => {
+        axios.get(`${API_URL}/api/lmvs/all`, { withCredentials: true })
+            .then((response) => setLmvs(response.data.lmvs || []))
+            .catch(console.error);
     }, []);
 
     const fetchPilots = async () => {
@@ -393,6 +405,15 @@ export default function ManagePilots() {
                                     </select>
                                 </label>
                             </div>
+                            <label className="block">
+                                <span className="text-xs font-medium text-gray-500">Assign Vehicle</span>
+                                <select name="assignedLmvId" value={form.assignedLmvId} onChange={handleChange}
+                                    className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100">
+                                    <option value="">No preferred vehicle</option>
+                                    {eligibleLmvs.map((lmv) => <option key={lmv.id} value={lmv.id}>{lmv.registrationNo}{lmv.label ? ` · ${lmv.label}` : ''}</option>)}
+                                </select>
+                                <span className="mt-1 block text-xs text-gray-500">Scheduling prefers this vehicle when it is safe and available; it never bypasses centre, maintenance, or conflict checks.</span>
+                            </label>
 
                             <div className="grid grid-cols-2 gap-3">
                                 <Field label="First Line Address" name="addressLine1" value={form.addressLine1} onChange={handleChange} />
