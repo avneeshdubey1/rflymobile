@@ -55,6 +55,7 @@ function createApp({ config = loadEnvironment() } = {}) {
   app.use('/api/lmvs', require('./routes/lmvRoutes'));
   app.use('/api/system', require('./routes/systemRoutes'));
   app.use('/api/centers', require('./routes/centerRoutes'));
+  app.use('/api/master-data', require('./routes/masterDataRoutes'));
   app.use(notFound);
   app.use(errorHandler);
   return app;

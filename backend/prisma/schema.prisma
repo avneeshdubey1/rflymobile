@@ -22,6 +22,24 @@ enum PilotAvailabilityState {
   OFFLINE
 }
 
+enum ClusterType {
+  HUB
+  SPOKE
+  MINIHUB
+}
+
+enum RequestType {
+  B2B
+  B2C
+}
+
+enum MasterDataCategory {
+  SPRAY_PURPOSE
+  B2B_SUBCATEGORY
+  LEAD_SOURCE
+  REPORTING_ADMIN
+}
+
 enum LeadStatus {
   NEW // accepted website request awaiting Sales review
   PROCESSED // verified, inside range, ready for auto-assignment
@@ -273,6 +291,8 @@ model User {
   // carries exactly one operational drone for both Pilot and Copilot.
   assignedDrone      Drone?           @relation("PilotAssignedDrone", fields: [assignedDroneId], references: [id])
   assignedDroneId    String?          @unique
+  assignedLmv        LMV?             @relation("PilotAssignedLmv", fields: [assignedLmvId], references: [id])
+  assignedLmvId      String?          @unique
   idProof            String?
   licenseId          String?
   addressLine1       String?
@@ -311,6 +331,7 @@ model User {
   autoAssignmentPoliciesUpdated AutoAssignmentPolicy[]       @relation("AutoAssignmentPolicyUpdatedBy")
   mobileInstallations           MobileInstallation[]
   mobileSessions                MobileSession[]
+  assignmentRejections          PilotAssignmentRejection[]   @relation("PilotAssignmentRejections")
 
   @@index([role, pilotAvailabilityState, homeCenterId, active, archivedAt])
 }
@@ -351,6 +372,8 @@ model Customer {
   staffConfirmedAt       DateTime?
   createdAt              DateTime  @default(now())
   updatedAt              DateTime  @updatedAt
+  cluster                Cluster?  @relation(fields: [clusterId], references: [id], onDelete: SetNull)
+  clusterId              String?
 
   leads                       Lead[]
   phoneVerificationChallenges PhoneVerificationChallenge[]
@@ -369,6 +392,7 @@ model Customer {
   @@index([createdAt])
   @@index([active, updatedAt])
   @@index([createdByImportBatchId])
+  @@index([clusterId, active])
 }
 
 model PhoneVerificationChallenge {
@@ -619,8 +643,9 @@ model LMV {
   createdAt         DateTime               @default(now())
   updatedAt         DateTime               @updatedAt
 
-  assignments Assignment[]
-  history     LMVHistory[]
+  assignments   Assignment[]
+  history       LMVHistory[]
+  assignedPilot User?        @relation("PilotAssignedLmv")
 
   @@index([homeCenterId, status])
   @@index([homeCenterId, operationalState, availabilityState])
@@ -651,6 +676,12 @@ model Lead {
   matchedCenter          OperatingCenter?      @relation(fields: [matchedCenterId], references: [id])
   matchedCenterId        String?
   distanceFromCenterKm   Float?
+  requestType            RequestType?
+  b2bSubcategoryCode     String?
+  cluster                Cluster?              @relation(fields: [clusterId], references: [id], onDelete: SetNull)
+  clusterId              String?
+  reportingAdminCode     String?
+  leadSourceCode         String?
 
   // Comprehensive form fields
   soilType         String?
@@ -667,17 +698,64 @@ model Lead {
   createdAt   DateTime  @default(now())
   processedAt DateTime?
 
-  assignment    Assignment?
-  notifications Notification[]
-  payments      PaymentRecord[]
-  chatSessions  ChatSession[]
-  sprayPurposes LeadSprayPurpose[]
-  history       LeadHistory[]
+  assignment           Assignment?
+  notifications        Notification[]
+  payments             PaymentRecord[]
+  chatSessions         ChatSession[]
+  sprayPurposes        LeadSprayPurpose[]
+  history              LeadHistory[]
+  assignmentRejections PilotAssignmentRejection[]
 
   @@index([customerId, createdAt])
   @@index([businessOrganizationId, createdAt])
   @@index([farmLocationId, createdAt])
   @@index([cropId, createdAt])
+  @@index([clusterId, createdAt])
+  @@index([reportingAdminCode, createdAt])
+}
+
+model Cluster {
+  id          String      @id @default(uuid())
+  code        String      @unique @db.VarChar(40)
+  displayName String      @db.VarChar(120)
+  type        ClusterType
+  active      Boolean     @default(true)
+  sortOrder   Int         @default(0)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  customers Customer[]
+  leads     Lead[]
+
+  @@index([active, sortOrder, displayName])
+}
+
+model MasterDataValue {
+  id          String             @id @default(uuid())
+  category    MasterDataCategory
+  code        String             @db.VarChar(60)
+  displayName String             @db.VarChar(160)
+  active      Boolean            @default(true)
+  sortOrder   Int                @default(0)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  @@unique([category, code])
+  @@index([category, active, sortOrder, displayName])
+}
+
+model PilotAssignmentRejection {
+  id                 String   @id @default(uuid())
+  formerAssignmentId String
+  lead               Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  leadId             String
+  rejectedByPilot    User     @relation("PilotAssignmentRejections", fields: [rejectedByPilotId], references: [id])
+  rejectedByPilotId  String
+  reason             String   @db.VarChar(500)
+  createdAt          DateTime @default(now())
+
+  @@index([leadId, createdAt])
+  @@index([rejectedByPilotId, createdAt])
 }
 
 // This is deliberately not a Lead: a declined request must never become

@@ -58,6 +58,8 @@ const safeSelect = {
     pincode: true,
     assignedDroneId: true,
     assignedDrone: true,
+    assignedLmvId: true,
+    assignedLmv: true,
 };
 
 const identitySelect = {

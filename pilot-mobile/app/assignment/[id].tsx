@@ -286,6 +286,13 @@ export default function AssignmentDetailScreen() {
               }
             />
           ) : null}
+          {allowed.includes("REJECT") ? (
+            <Button
+              title="Reject Assignment"
+              variant="destructive"
+              onPress={() => router.push({ pathname: "/action-confirm", params: { id: assignment.id, action: "REJECT" } })}
+            />
+          ) : null}
           {allowed.includes("START") ? (
             <Button
               title="Start Mission"

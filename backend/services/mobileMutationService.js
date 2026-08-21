@@ -4,7 +4,7 @@ const mobileMutationRepository = require('../src/repositories/mobileMutationRepo
 const prisma = require('../src/lib/prisma');
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const ACTIONS = Object.freeze({ ACCEPT: 'accept', START: 'start', COMPLETE: 'complete', REPORT_ISSUE: 'reportIssue' });
+const ACTIONS = Object.freeze({ ACCEPT: 'accept', START: 'start', COMPLETE: 'complete', REPORT_ISSUE: 'reportIssue', REJECT: 'reject' });
 const ISSUE_CATEGORIES = new Set(['DRONE_MALFUNCTION', 'SAFETY_HAZARD', 'WEATHER_BLOCKER', 'CUSTOMER_BLOCKER', 'OTHER']);
 
 class MobileMutationError extends Error {
@@ -78,6 +78,10 @@ function validateMutation({ clientActionId, action, expectedRevision, actualAcre
     if (!ISSUE_CATEGORIES.has(issueCategory) || !normalizedNote || normalizedNote.length > 500 || resemblesExactLocation) {
       throw new MobileMutationError('Use an approved issue category and a coordinate-free note of 1 to 500 characters', 'ISSUE_REJECTED');
     }
+  } else if (action === 'REJECT') {
+    const normalizedNote = String(issueNote || '').trim();
+    if (normalizedNote.length < 3 || normalizedNote.length > 500) throw new MobileMutationError('Rejection reason must contain 3 to 500 characters');
+    if (typeof issueCategory !== 'undefined') throw new MobileMutationError('issueCategory is not allowed for REJECT');
   } else if (typeof issueCategory !== 'undefined' || typeof issueNote !== 'undefined') {
     throw new MobileMutationError('Issue fields are allowed only for REPORT_ISSUE');
   }
@@ -92,7 +96,9 @@ async function mutate({ installationId, actorId, assignmentId, clientActionId, a
     requestHash: hashRequest(input),
     execute: async () => {
       try {
-        const result = await assignmentOperationRepository.transitionMission({
+        const result = action === 'REJECT'
+          ? await assignmentOperationRepository.rejectAssignment({ assignmentId, actorId, expectedRevision, reason: issueNote })
+          : await assignmentOperationRepository.transitionMission({
           assignmentId,
           actorId,
           action: ACTIONS[action],
@@ -100,12 +106,12 @@ async function mutate({ installationId, actorId, assignmentId, clientActionId, a
           actualAcreage,
           issueCategory,
           reason: typeof issueNote === 'string' ? issueNote.trim() : undefined,
-        });
+          });
         return {
           assignmentId,
           operation: action,
           outcome: 'APPLIED',
-          safeResult: { resultingRevision: result.assignment.revision },
+          safeResult: { resultingRevision: result.assignment?.revision || expectedRevision },
         };
       } catch (error) {
         if (/assigned crew member/i.test(error.message || '')) {

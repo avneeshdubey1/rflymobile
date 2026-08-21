@@ -112,7 +112,7 @@ test('only assigned Pilots receive bounded allow-listed assignment DTOs', async 
   const projected = list.data.assignments[0];
   assert.equal(projected.id, assignment.id);
   assert.equal(projected.crewFormationState, 'PENDING_COPILOT_SELECTION');
-  assert.deepEqual(projected.allowedActions, ['SELECT_COPILOT']);
+  assert.deepEqual(projected.allowedActions, ['SELECT_COPILOT', 'REJECT']);
   assert.equal(projected.crew.length, 1);
   assert.equal(projected.farmer.operationalPhone, '+919000000032');
   assert.equal(projected.farmer.crmHistory, undefined);
@@ -154,7 +154,7 @@ test('Primary selects an eligible Copilot once and both crew members can then re
   assert.equal(selected.response.status, 200, JSON.stringify(selected.data));
   assert.equal(selected.data.assignment.crewFormationState, 'READY');
   assert.equal(selected.data.assignment.crew.length, 2);
-  assert.deepEqual(selected.data.assignment.allowedActions, ['ACCEPT']);
+  assert.deepEqual(selected.data.assignment.allowedActions, ['ACCEPT', 'REJECT']);
 
   const activeCrewCannotGoOffline = await request('/api/mobile/v1/pilot/availability', {
     method: 'PUT', token: primaryToken, body: { state: 'OFFLINE' },

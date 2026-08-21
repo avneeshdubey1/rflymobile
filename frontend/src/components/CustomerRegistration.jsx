@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import OpsIcon from "./OpsIcon";
 import '../style/CustomerRegistration.css';
+import { csrfHeaders } from '../utils/csrf';
 
 const initialFarmerData = {
     name: "",
@@ -28,6 +29,7 @@ const initialFarmerData = {
     subscriptionCardNumber: "",
     subscriptionYear: "2026-27",
     remarks: "",
+    clusterId: "",
 };
 
 const cropOptions = [
@@ -61,6 +63,17 @@ function CustomerRegistration({ API, user, confirmModal, setConfirmModal }) {
     const [farmerData, setFarmerData] = useState(initialFarmerData);
     const [farmerNotice, setFarmerNotice] = useState(null);
     const [submitting, setSubmitting] = useState(false);
+    const [clusters, setClusters] = useState([]);
+
+    useEffect(() => {
+        fetch(`${API}/api/master-data/choices`, { credentials: 'include' })
+            .then(async (response) => {
+                const body = await response.json();
+                if (!response.ok) throw new Error(body.error || 'Failed to load clusters');
+                setClusters(body.data.clusters || []);
+            })
+            .catch((error) => setFarmerNotice({ type: 'error', message: error.message }));
+    }, [API]);
 
     useEffect(() => {
         if (!farmerNotice) return;
@@ -85,7 +98,8 @@ function CustomerRegistration({ API, user, confirmModal, setConfirmModal }) {
             };
             const response = await fetch(`${API}/api/customers/sales`, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: { "Content-Type": "application/json", ...csrfHeaders() },
+                credentials: 'include',
                 body: JSON.stringify(payload),
             });
             const data = await response.json();
@@ -553,6 +567,20 @@ function CustomerRegistration({ API, user, confirmModal, setConfirmModal }) {
                             </div>
 
                             <div className="form-stack">
+
+                                <div className="row-group">
+                                    <div className="input-group">
+                                        <label>Cluster</label>
+                                        <select value={farmerData.clusterId} onChange={handleChange("clusterId")} required>
+                                            <option value="">Select cluster</option>
+                                            {clusters.map(cluster => <option key={cluster.id} value={cluster.id}>{cluster.displayName}</option>)}
+                                        </select>
+                                    </div>
+                                    <div className="input-group">
+                                        <label>Cluster Type</label>
+                                        <input value={clusters.find(cluster => cluster.id === farmerData.clusterId)?.type || ''} readOnly placeholder="Derived from cluster" />
+                                    </div>
+                                </div>
 
                                 <div className="row-group">
                                     <div className="input-group">

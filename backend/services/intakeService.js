@@ -7,6 +7,7 @@ const { normalizePhone } = require('./identityService');
 const pricingConfigRepository = require('../src/repositories/pricingConfigRepository');
 const autoAssignmentService = require('./autoAssignmentService');
 const logger = require('./loggerService');
+const masterDataRepository = require('../src/repositories/masterDataRepository');
 
 const ACCEPTED_CHANNELS = new Set(['WEBSITE', 'MANUAL_SALES']);
 const MAX_TEXT_LENGTH = 120;
@@ -75,6 +76,42 @@ async function validateAcreage(value) {
   return acreage;
 }
 
+async function controlledMetadata(input) {
+  const requestType = String(input.requestType || '').toUpperCase();
+  if (!['B2B', 'B2C'].includes(requestType)) throw new Error('Request type must be B2B or B2C');
+  const b2bSubcategoryCode = optionalText(input.b2bSubcategoryCode, 'B2B sub-category', { maximum: 60 });
+  if (requestType === 'B2B' && !b2bSubcategoryCode) throw new Error('B2B sub-category is required for B2B requests');
+  if (requestType === 'B2C' && b2bSubcategoryCode) throw new Error('B2B sub-category is not allowed for B2C requests');
+  const clusterId = optionalText(input.clusterId, 'Cluster', { maximum: 80 });
+  if (!clusterId || !(await masterDataRepository.findClusterById(clusterId))?.active) throw new Error('Select an active cluster');
+  const reportingAdminCode = optionalText(input.reportingAdminCode, 'Reporting Admin', { maximum: 60 });
+  if (!(await masterDataRepository.findValue('REPORTING_ADMIN', reportingAdminCode))?.active) throw new Error('Select an active Reporting Admin');
+  const leadSourceCode = optionalText(input.leadSourceCode, 'Lead source', { maximum: 60 });
+  const leadSource = leadSourceCode ? await masterDataRepository.findValue('LEAD_SOURCE', leadSourceCode) : null;
+  if (!leadSource?.active) throw new Error('Select an active Lead Source');
+  if (requestType === 'B2B') {
+    const category = await masterDataRepository.findValue('B2B_SUBCATEGORY', b2bSubcategoryCode);
+    if (!category?.active) throw new Error('Select an active B2B sub-category');
+  }
+  const purposes = Array.isArray(input.sprayPurpose) ? input.sprayPurpose : String(input.sprayPurpose || '').split(/[,;]/);
+  const purposeCodes = purposes.map((item) => String(item).trim()).filter(Boolean);
+  if (!purposeCodes.length) throw new Error('Select at least one Spray Purpose');
+  for (const purposeCode of purposeCodes) {
+    if (!(await masterDataRepository.findValue('SPRAY_PURPOSE', purposeCode))?.active) throw new Error('Select only active Spray Purpose values');
+  }
+  return { requestType, b2bSubcategoryCode: requestType === 'B2B' ? b2bSubcategoryCode : null, clusterId, reportingAdminCode, leadSourceCode, purposeCodes };
+}
+
+function includesControlledMetadata(input) {
+  return [
+    'requestType',
+    'b2bSubcategoryCode',
+    'clusterId',
+    'reportingAdminCode',
+    'leadSourceCode',
+  ].some((field) => input[field] !== undefined && input[field] !== null && input[field] !== '');
+}
+
 function allowlistedLeadFields(input) {
   const hasChemical = optionalBoolean(input.hasChemical, 'hasChemical', true);
   const waterBodyNearby = optionalBoolean(input.waterBodyNearby, 'waterBodyNearby', false);
@@ -125,6 +162,12 @@ async function createIntake(input) {
     throw new Error('A valid latitude and longitude are required for geofencing');
   }
   const fields = allowlistedLeadFields(input);
+  // Older staff-assisted clients predate the controlled master-data fields.
+  // Preserve that compatibility path only when none of the new fields is sent;
+  // once a caller opts into the new contract, validate the complete selection.
+  const metadata = input.intakeChannel === 'MANUAL_SALES' && includesControlledMetadata(input)
+    ? await controlledMetadata(input)
+    : null;
   const geofence = await geofenceService.evaluate(latitude, longitude);
 
   if (!geofence.matchedCenter) {
@@ -151,7 +194,14 @@ async function createIntake(input) {
     distanceFromCenterKm: geofence.distanceKm,
     processedAt: status === 'PROCESSED' ? new Date() : null,
     ...fields,
-  }, { actorId, sprayPurposes: input.sprayPurpose ?? fields.sprayPurpose });
+    ...(metadata ? {
+      requestType: metadata.requestType,
+      b2bSubcategoryCode: metadata.b2bSubcategoryCode,
+      clusterId: metadata.clusterId,
+      reportingAdminCode: metadata.reportingAdminCode,
+      leadSourceCode: metadata.leadSourceCode,
+    } : {}),
+  }, { actorId, sprayPurposes: metadata?.purposeCodes ?? input.sprayPurpose ?? fields.sprayPurpose });
   await auditLogService.record({
     entityType: 'Lead',
     entityId: lead.id,

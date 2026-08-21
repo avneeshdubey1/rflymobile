@@ -160,7 +160,7 @@
         "allowedActions": {
           "type": "array",
           "uniqueItems": true,
-          "items": { "enum": ["SELECT_COPILOT", "ACCEPT", "START", "COMPLETE", "REPORT_ISSUE", "SEND_LOCATION"] }
+          "items": { "enum": ["SELECT_COPILOT", "ACCEPT", "REJECT", "START", "COMPLETE", "REPORT_ISSUE", "SEND_LOCATION"] }
         }
       }
     },
@@ -289,7 +289,7 @@
       "properties": {
         "clientActionId": { "$ref": "#/$defs/uuid" },
         "assignmentId": { "$ref": "#/$defs/uuid" },
-        "action": { "enum": ["ACCEPT", "START", "COMPLETE", "REPORT_ISSUE", "LOCATION"] },
+        "action": { "enum": ["ACCEPT", "REJECT", "START", "COMPLETE", "REPORT_ISSUE", "LOCATION"] },
         "outcome": { "enum": ["APPLIED", "ALREADY_APPLIED", "CONFLICT", "REJECTED", "RETRY_LATER"] },
         "resultingRevision": { "type": "integer", "minimum": 1 },
         "receivedAt": { "$ref": "#/$defs/timestamp" }
@@ -309,18 +309,20 @@
           "if": { "properties": { "action": { "const": "REPORT_ISSUE" } }, "required": ["action"] },
           "then": { "properties": { "issueCategory": {}, "issueNote": {} }, "required": ["issueCategory", "issueNote"] },
           "else": {
-            "properties": { "issueCategory": {}, "issueNote": {} },
-            "allOf": [
-              { "not": { "required": ["issueCategory"] } },
-              { "not": { "required": ["issueNote"] } }
-            ]
+            "properties": { "issueCategory": {} },
+            "not": { "required": ["issueCategory"] }
           }
+        },
+        {
+          "if": { "properties": { "action": { "enum": ["REPORT_ISSUE", "REJECT"] } }, "required": ["action"] },
+          "then": { "required": ["issueNote"] },
+          "else": { "not": { "required": ["issueNote"] } }
         }
       ],
       "properties": {
         "assignmentId": { "$ref": "#/$defs/uuid" },
         "clientActionId": { "$ref": "#/$defs/uuid" },
-        "action": { "enum": ["ACCEPT", "START", "COMPLETE", "REPORT_ISSUE"] },
+        "action": { "enum": ["ACCEPT", "REJECT", "START", "COMPLETE", "REPORT_ISSUE"] },
         "expectedRevision": { "type": "integer", "minimum": 1 },
         "actualAcreage": { "$ref": "#/$defs/decimal" },
         "issueCategory": { "enum": ["DRONE_MALFUNCTION", "SAFETY_HAZARD", "WEATHER_BLOCKER", "CUSTOMER_BLOCKER", "OTHER"] },

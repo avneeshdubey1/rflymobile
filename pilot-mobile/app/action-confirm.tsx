@@ -4,6 +4,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -31,7 +32,7 @@ const safetyChecks = [
 export default function ActionConfirmScreen() {
   const { id, action } = useLocalSearchParams<{
     id: string;
-    action: "ACCEPT" | "START";
+    action: "ACCEPT" | "START" | "REJECT";
   }>();
   const router = useRouter();
   const profile = useAuthStore((state) => state.profile);
@@ -42,17 +43,19 @@ export default function ActionConfirmScreen() {
   );
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [rejectionReason, setRejectionReason] = useState("");
 
   useEffect(() => {
     if (profile && id) void getAssignment(profile.id, id).then(setAssignment);
   }, [id, profile]);
 
   const isStart = action === "START";
+  const isReject = action === "REJECT";
   const enabled =
     Boolean(assignment) &&
     Boolean(action) &&
     assignment!.allowedActions.includes(action!) &&
-    (!isStart || checked.every(Boolean));
+    (!isStart || checked.every(Boolean)) && (!isReject || rejectionReason.trim().length >= 3);
 
   const confirm = async () => {
     if (!assignment || !action || !enabled) return;
@@ -64,9 +67,12 @@ export default function ActionConfirmScreen() {
         clientActionId: Crypto.randomUUID(),
         action,
         expectedRevision: assignment.revision,
+        ...(isReject ? { issueNote: rejectionReason.trim() } : {}),
       };
       await queueMutation(mutation);
-      if (action === "START") {
+      if (action === "REJECT") {
+        router.replace("/(tabs)");
+      } else if (action === "START") {
         router.replace({
           pathname: "/mission-active",
           params: { id: assignment.id },
@@ -93,7 +99,7 @@ export default function ActionConfirmScreen() {
           <MaterialIcons name="close" size={28} color={colors.primary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>
-          {isStart ? "Pre-Flight Brief" : "Accept Assignment"}
+          {isStart ? "Pre-Flight Brief" : isReject ? "Reject Assignment" : "Accept Assignment"}
         </Text>
         <View style={styles.headerButton} />
       </View>
@@ -117,7 +123,13 @@ export default function ActionConfirmScreen() {
               <Text style={styles.meta}>{assignment.farm.displayAddress}</Text>
             </Card>
 
-            {isStart ? (
+            {isReject ? (
+              <View style={styles.checkSection}>
+                <Banner tone="error" title="Manual rescheduling required" message="Rejecting releases the reserved drone and vehicle and sends this request to Admin and Fleet for manual rescheduling." />
+                <Text style={styles.sectionTitle}>Reason</Text>
+                <TextInput value={rejectionReason} onChangeText={setRejectionReason} multiline maxLength={500} placeholder="Explain why you cannot accept this assignment" style={{ minHeight: 110, borderWidth: 1, borderColor: colors.textSecondary, borderRadius: radius.md, padding: spacing.md, textAlignVertical: 'top', backgroundColor: colors.surface }} />
+              </View>
+            ) : isStart ? (
               <View style={styles.checkSection}>
                 <Text style={styles.sectionTitle}>Safety checklist</Text>
                 {safetyChecks.map((label, index) => (
@@ -171,7 +183,7 @@ export default function ActionConfirmScreen() {
             ) : null}
             <View style={styles.actions}>
               <Button
-                title={isStart ? "Start Mission" : "Accept Assignment"}
+                title={isStart ? "Start Mission" : isReject ? "Reject Assignment" : "Accept Assignment"}
                 onPress={confirm}
                 disabled={!enabled}
                 loading={submitting}

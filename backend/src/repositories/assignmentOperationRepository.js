@@ -17,6 +17,8 @@ const pilotSelect = {
   pilotAvailabilityState: true,
   archivedAt: true,
   assignedDrone: true,
+  assignedDroneId: true,
+  assignedLmvId: true,
   createdAt: true,
 };
 const assignmentInclude = {
@@ -522,16 +524,17 @@ async function autoAssign({
         eligiblePilots.filter((pilot) => !usedPilots.has(pilot.id)),
         (assignment, id) => assignment.pilotId === id || assignment.copilotId === id,
       );
-      const drone = rank(
-        eligibleDrones.filter((item) => !usedDrones.has(item.id)),
-        (assignment, id) => assignment.droneId === id,
-      )[0]?.item;
-      const lmv = rank(
-        lmvs.filter((item) => !usedLmvs.has(item.id)),
-        (assignment, id) => assignment.lmvId === id,
-      )[0]?.item;
-      if (freePilots.length >= 1 && drone && lmv) {
-        unit = { pilotId: freePilots[0].item.id, copilotId: null, droneId: drone.id, lmvId: lmv.id };
+      const freeDrones = rank(eligibleDrones.filter((item) => !usedDrones.has(item.id)), (assignment, id) => assignment.droneId === id);
+      const freeLmvs = rank(lmvs.filter((item) => !usedLmvs.has(item.id)), (assignment, id) => assignment.lmvId === id);
+      const selectedPilot = freePilots[0]?.item;
+      const drone = selectedPilot?.assignedDroneId
+        ? freeDrones.find(({ item }) => item.id === selectedPilot.assignedDroneId)?.item || freeDrones[0]?.item
+        : freeDrones[0]?.item;
+      const lmv = selectedPilot?.assignedLmvId
+        ? freeLmvs.find(({ item }) => item.id === selectedPilot.assignedLmvId)?.item || freeLmvs[0]?.item
+        : freeLmvs[0]?.item;
+      if (selectedPilot && drone && lmv) {
+        unit = { pilotId: selectedPilot.id, copilotId: null, droneId: drone.id, lmvId: lmv.id };
         serviceWindowStart = dayStart;
       }
     }
@@ -894,12 +897,47 @@ async function unassignForReassignment({ assignmentId, actorId = null }) {
   });
 }
 
+async function rejectAssignment({ assignmentId, actorId, reason, expectedRevision }) {
+  return serializable(async (transaction) => {
+    await setHistoryActor(transaction, actorId);
+    await lockKeys(transaction, [`assignment:${assignmentId}`]);
+    const assignment = await transaction.assignment.findUnique({ where: { id: assignmentId }, include: assignmentInclude });
+    if (!assignment) throw operationError('Assignment not found');
+    if (assignment.pilotId !== actorId) throw operationError('Only the assigned Primary Pilot can reject this mission');
+    if (assignment.lead.status !== 'SCHEDULED' || assignment.startedAt) throw operationError('Only an unstarted scheduled mission can be rejected');
+    if (assignment.revision !== expectedRevision) {
+      const error = operationError('Assignment changed. Refresh before retrying this action.', 'ASSIGNMENT_REVISION_CONFLICT');
+      error.details = { currentRevision: assignment.revision };
+      throw error;
+    }
+    const normalizedReason = String(reason || '').trim();
+    if (normalizedReason.length < 3 || normalizedReason.length > 500) throw operationError('Rejection reason must contain 3 to 500 characters', 'REJECTION_REASON_REQUIRED');
+    await lockKeys(transaction, [assignment.droneId, assignment.lmvId, `lead:${assignment.leadId}`]);
+    await transaction.pilotAssignmentRejection.create({ data: { formerAssignmentId: assignment.id, leadId: assignment.leadId, rejectedByPilotId: actorId, reason: normalizedReason } });
+    await transaction.notificationEscalation.deleteMany({ where: { assignmentId } });
+    await transaction.notification.updateMany({ where: { leadId: assignment.leadId, readAt: null, type: { in: ['PILOT_ASSIGNMENT', 'PILOT_SMS'] } }, data: { readAt: new Date() } });
+    await audit(transaction, { entityType: 'Assignment', entityId: assignment.id, action: 'PILOT_ASSIGNMENT_REJECTED', actorId, beforeState: assignment, reason: normalizedReason });
+    await transaction.scheduleChangeLog.deleteMany({ where: { assignmentId } });
+    await transaction.assignment.delete({ where: { id: assignment.id } });
+    const schedulingNote = `[Scheduling] Primary Pilot rejected assignment: ${normalizedReason}`;
+    const lead = await transaction.lead.update({ where: { id: assignment.leadId }, data: { status: 'NEEDS_MANUAL_SCHEDULING', notes: assignment.lead.notes ? `${assignment.lead.notes}\n${schedulingNote}` : schedulingNote } });
+    await syncResourceAvailability(transaction, assignment);
+    await Promise.all([
+      createRoleNotifications(transaction, 'ADMIN', 'NEEDS_MANUAL_SCHEDULING', lead.id, `Pilot rejection requires manual rescheduling for lead ${lead.id}.`),
+      createRoleNotifications(transaction, 'FLEET_MANAGER', 'NEEDS_MANUAL_SCHEDULING', lead.id, `Pilot rejection requires manual rescheduling for lead ${lead.id}.`),
+    ]);
+    await audit(transaction, { entityType: 'Lead', entityId: lead.id, action: 'NEEDS_MANUAL_SCHEDULING', actorId, beforeState: { status: assignment.lead.status }, afterState: { status: lead.status }, reason: 'PILOT_REJECTED_ASSIGNMENT' });
+    return { assignmentId, lead };
+  });
+}
+
 module.exports = {
   autoAssign,
   manualAssign,
   moveToManualScheduling,
   resequence,
   reschedule,
+  rejectAssignment,
   transitionMission,
   unassignForReassignment,
 };

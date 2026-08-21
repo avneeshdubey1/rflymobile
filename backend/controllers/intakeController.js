@@ -50,6 +50,11 @@ function allowedFields(body, { farmerName, farmerPhone, intakeChannel, actorId, 
     expectedTime: body.expectedTime,
     waterBodyNearby: body.waterBodyNearby,
     terrainType: body.terrainType,
+    requestType: body.requestType,
+    b2bSubcategoryCode: body.b2bSubcategoryCode,
+    clusterId: body.clusterId,
+    reportingAdminCode: body.reportingAdminCode,
+    leadSourceCode: body.leadSourceCode,
     actorId,
   };
 }

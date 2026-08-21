@@ -5,6 +5,7 @@ const auditLogService = require('./auditLogService');
 const { hashPassword } = require('./passwordService');
 const { normalizePhone } = require('./identityService');
 const i18nService = require('./i18nService');
+const masterDataRepository = require('../src/repositories/masterDataRepository');
 
 function safeCustomer(customer) {
   if (!customer) return null;
@@ -37,6 +38,8 @@ function safeCustomer(customer) {
     subscriptionCardNumber: customer.subscriptionCardNumber,
     subscriptionYear: customer.subscriptionYear,
     remarks: customer.remarks,
+    cluster: customer.cluster || null,
+    clusterId: customer.clusterId || null,
     hasFarmerPortalUser: Boolean(customer.farmerUserId),
     farmerPortalUserId: customer.farmerUserId || null,
     staffConfirmedAt: customer.staffConfirmedAt,
@@ -161,11 +164,14 @@ async function createForSales(input, actorId) {
   const linkedFarmer = await findLinkedFarmer(phone);
   const displayName = validateName(input.displayName || input.name || linkedFarmer?.name);
   const preferredLanguage = i18nService.normalizeLanguage(input.preferredLanguage || linkedFarmer?.preferredLanguage || 'ta');
+  const clusterId = optionalText(input.clusterId, 'Cluster', 80);
+  if (clusterId && !(await masterDataRepository.findClusterById(clusterId))?.active) throw new Error('Select an active cluster');
   const customer = await customerRepository.create({
     displayName,
     phone,
     preferredLanguage,
     ...customerProfileInput(input),
+    clusterId,
     farmerUserId: linkedFarmer?.id || null,
     createdByUserId: actorId,
     staffConfirmedAt: new Date(),
@@ -195,6 +201,11 @@ async function updateForSales(customerId, input, actorId) {
   const changes = customerProfileInput(input, { partial: true });
   if (input.displayName !== undefined) changes.displayName = validateName(input.displayName);
   if (input.preferredLanguage !== undefined) changes.preferredLanguage = i18nService.normalizeLanguage(input.preferredLanguage);
+  if (input.clusterId !== undefined) {
+    const clusterId = optionalText(input.clusterId, 'Cluster', 80);
+    if (clusterId && !(await masterDataRepository.findClusterById(clusterId))?.active) throw new Error('Select an active cluster');
+    changes.clusterId = clusterId;
+  }
   const definedChanges = Object.fromEntries(Object.entries(changes).filter(([, value]) => value !== undefined));
   if (!Object.keys(definedChanges).length) throw new Error('At least one customer field is required');
   const customer = await customerRepository.update(customerId, definedChanges, { actorId });

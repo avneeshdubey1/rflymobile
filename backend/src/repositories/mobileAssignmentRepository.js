@@ -95,10 +95,10 @@ function allowedActions(assignment, actorId) {
   if (assignment.lead.status === 'SCHEDULED'
     && assignment.crewFormationState === 'PENDING_COPILOT_SELECTION'
     && assignment.pilotId === actorId) {
-    return ['SELECT_COPILOT'];
+    return ['SELECT_COPILOT', 'REJECT'];
   }
   if (assignment.crewFormationState === 'READY' && [assignment.pilotId, assignment.copilotId].includes(actorId)) {
-    if (assignment.lead.status === 'SCHEDULED') return ['ACCEPT'];
+    if (assignment.lead.status === 'SCHEDULED') return assignment.pilotId === actorId ? ['ACCEPT', 'REJECT'] : ['ACCEPT'];
     if (assignment.lead.status === 'PILOT_ACCEPTED') return ['START', 'REPORT_ISSUE', 'SEND_LOCATION'];
     if (assignment.lead.status === 'IN_PROGRESS') return ['COMPLETE', 'REPORT_ISSUE', 'SEND_LOCATION'];
   }

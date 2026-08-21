@@ -22,6 +22,7 @@ import CustomerRegistration from '../components/CustomerRegistration';
 import ManagePilots from '../components/ManagePilots';
 import AssignmentDetails from '../components/AssignmentDetails';
 import AutoAssignmentPolicyPanel from '../components/AutoAssignmentPolicyPanel';
+import MasterDataManagement from '../components/MasterDataManagement';
 import { useTranslation } from 'react-i18next';
 
 let DefaultIcon = L.icon({
@@ -418,6 +419,7 @@ function AdminDashboard() {
     { id: 'logbook', label: 'Lead Details', icon: 'book' },
     { id: 'users', label: 'My Team', icon: 'team' },
     { id: 'autoPolicy', label: t('auto_policy_title'), icon: 'calendar' },
+    { id: 'masterData', label: 'Master Data', icon: 'overview' },
     // { id: 'trend', label: 'Acreage Trend', icon: 'trend' },
     { id: 'profile', label: 'Profile', icon: 'user' },
   ];
@@ -442,6 +444,7 @@ function AdminDashboard() {
     registeredFarmers: ['Customer records', 'Registered Customers', 'View all registered Customers and their registration details.'],
     profile: ['Account', 'Administrator Profile', 'View and manage your profile, account information, and security settings.'],
     autoPolicy: [t('auto_policy_eyebrow'), t('auto_policy_title'), t('auto_policy_description')],
+    masterData: ['Configuration', 'Master Data', 'Maintain approved dropdown values and cluster classifications.'],
     trend: ['Acreage Trend', 'Acreage Analysis', 'View and analyze total acreage trends and growth patterns'],
   };
   const [eyebrow, title, description] = pageCopy[activeTab];
@@ -502,6 +505,7 @@ function AdminDashboard() {
       )}
 
       {activeTab === 'autoPolicy' && <AutoAssignmentPolicyPanel editable />}
+      {activeTab === 'masterData' && <MasterDataManagement />}
 
       {activeTab === 'fleet' && (
         <>

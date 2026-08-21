@@ -69,6 +69,7 @@ export const ZLmv = z.object({
 export const ZAssignmentAllowedAction = z.enum([
   "SELECT_COPILOT",
   "ACCEPT",
+  "REJECT",
   "START",
   "COMPLETE",
   "REPORT_ISSUE",
@@ -230,7 +231,7 @@ export const ZMutationOutcome = z.enum([
 export const ZMutationReceipt = z.object({
   clientActionId: ZUuid,
   assignmentId: ZUuid,
-  action: z.enum(["ACCEPT", "START", "COMPLETE", "REPORT_ISSUE", "LOCATION"]),
+  action: z.enum(["ACCEPT", "REJECT", "START", "COMPLETE", "REPORT_ISSUE", "LOCATION"]),
   outcome: ZMutationOutcome,
   resultingRevision: z.number().int().min(1),
   receivedAt: ZTimestamp,
@@ -240,7 +241,7 @@ export const ZMutationRequest = z
   .object({
     assignmentId: ZUuid,
     clientActionId: ZUuid,
-    action: z.enum(["ACCEPT", "START", "COMPLETE", "REPORT_ISSUE"]),
+    action: z.enum(["ACCEPT", "REJECT", "START", "COMPLETE", "REPORT_ISSUE"]),
     expectedRevision: z.number().int().min(1),
     actualAcreage: ZDecimal.optional(),
     issueCategory: ZIssue.shape.category.optional(),
@@ -251,6 +252,7 @@ export const ZMutationRequest = z
       if (data.action === "COMPLETE") return data.actualAcreage !== undefined;
       if (data.action === "REPORT_ISSUE")
         return data.issueCategory !== undefined && data.issueNote !== undefined;
+      if (data.action === "REJECT") return data.issueNote !== undefined;
       return true;
     },
     { message: "Missing required payload for action" },
