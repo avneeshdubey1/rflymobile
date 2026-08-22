@@ -64,7 +64,7 @@ export default function FarmerLogin() {
     <main className="login-container">
       <LanguageSelector style={{ position: 'absolute', top: '1.5rem', right: '1.5rem', zIndex: 50 }} />
       <section className="login-context">
-        <div className="login-context__brand logo">Daas</div>
+        <div className="login-context__brand logo">RFLY DaaS</div>
         <div className="login-context__copy">
           <p className="hero-kicker">{t('farmer_portal', 'Farmer Portal')}</p>
           <h1>{t('farmer_login_heading', 'Request drone services instantly.')}</h1>

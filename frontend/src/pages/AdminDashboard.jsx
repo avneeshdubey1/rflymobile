@@ -408,7 +408,7 @@ function AdminDashboard() {
     { id: 'fleet', label: 'Fleet Overview', icon: 'overview' },
     { id: 'centers', label: 'Feasible Regions', icon: 'location' },
     { id: 'farmerRegistration', label: 'Customer Registration', icon: 'user-plus' },
-    { id: 'manual', label: 'Enter New Lead', icon: 'plus' },
+    { id: 'manual', label: 'New Lead', icon: 'plus' },
     { id: 'drone', label: 'Drones', icon: 'drone' },
     { id: 'pilots', label: 'Pilots', icon: 'users' },
     // { id: 'chat', label: 'Pilot Support Chat', icon: 'chat' },
@@ -428,7 +428,7 @@ function AdminDashboard() {
   const pageCopy = {
     fleet: ['Operations overview', 'Fleet readiness', 'Monitor availability, active allocations, and maintenance exceptions.'],
     users: ['Access administration', 'User management', 'Create and maintain secure operational accounts.'],
-    manual: ['Service Request', 'Enter a new lead', 'Register a new spraying request with farm and scheduling details.'],
+    manual: ['Service Request', 'New Lead', 'Register a new spraying request with farm and scheduling details.'],
     centers: ['Geo-fencing', 'Feasible Regions', 'Configure geographic areas of operation.'],
     logbook: ['Lead Records', 'Lead Details', 'Review each lead’s complete recorded lifecycle.'],
     // chat: ['Support desk', 'Pilot support chat', 'Coordinate directly with field teams and retain the conversation state.'],

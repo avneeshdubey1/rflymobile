@@ -13,6 +13,7 @@ import { API_URL as API } from '../config';
 import MyDrones from '../components/MyDrones';
 import AutoAssignmentPolicyPanel from '../components/AutoAssignmentPolicyPanel';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 
 const localizer = dateFnsLocalizer({ format, parse, startOfWeek, getDay, locales: { 'en-US': enUS } });
 const withDragAndDrop = dragAndDropModule.default ?? dragAndDropModule;
@@ -31,6 +32,7 @@ const calendarBounds = (date, view) => {
 
 function FleetManagerDashboard() {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const isAdmin = user?.role === 'admin' || user?.role === 'ADMIN';
   const { t } = useTranslation();
   const [activeSection, setActiveSection] = useState('schedule');
@@ -43,6 +45,8 @@ function FleetManagerDashboard() {
   const [calendarView, setCalendarView] = useState('month');
   const [selectedLead, setSelectedLead] = useState(null);
   const [selectedAssignment, setSelectedAssignment] = useState(null);
+  const [cancelTarget, setCancelTarget] = useState(null);
+  const [cancelReason, setCancelReason] = useState('');
   const [scheduleDraft, setScheduleDraft] = useState({ pilotId: '', copilotId: '', droneId: '', lmvId: '', serviceWindowStart: '', serviceWindowEnd: '' });
   const [editDraft, setEditDraft] = useState(null);
   const [showTerminal, setShowTerminal] = useState(false);
@@ -137,6 +141,23 @@ function FleetManagerDashboard() {
       await fetchData();
     } catch (error) { showNotice('error', error.message); }
   }, [fetchData, request, scheduleDraft, selectedLead, showNotice]);
+
+  const cancelRequest = useCallback(async (event) => {
+    event.preventDefault();
+    if (!cancelTarget) return;
+    try {
+      await request(`/api/leads/${cancelTarget.id}/cancel`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: cancelReason }),
+      });
+      showNotice('success', `${cancelTarget.farmerName}'s unscheduled request was removed from the queue.`);
+      if (selectedLead?.id === cancelTarget.id) setSelectedLead(null);
+      setCancelTarget(null);
+      setCancelReason('');
+      await fetchData();
+    } catch (error) { showNotice('error', error.message); }
+  }, [cancelReason, cancelTarget, fetchData, request, selectedLead, showNotice]);
 
   const openAssignment = useCallback((event) => {
     const assignment = event.assignment;
@@ -246,6 +267,7 @@ const [eyebrow, title, description] = pageCopy[activeSection] || pageCopy.schedu
        <header className="page-header">
              <div className="page-header__copy"><p className="eyebrow">{eyebrow}</p><h1>{title}</h1><p>{description}</p></div>
              <div className="page-header__actions">
+               {isAdmin && <button type="button" className="action-btn" onClick={() => navigate('/admin')}>Return to Admin dashboard</button>}
                <div className="profile-menu">
                  <button
                    className="profile-trigger"
@@ -313,6 +335,7 @@ const [eyebrow, title, description] = pageCopy[activeSection] || pageCopy.schedu
                 {manualQueue.map((lead) => <article key={lead.id} className="queue-card"><strong>{lead.farmerName}</strong><p className="caption">{lead.village || 'Location pending'} · {lead.acreage} acres</p><p className="caption">Center: {lead.matchedCenter?.name || 'Not matched'}</p><p className="queue-card__warning">{lead.notes || 'Manual crew assignment required.'}</p><button type="button" className="submit-btn button-wide" onClick={() => selectLeadForScheduling(lead)}>Choose crew and time</button></article>)}
               </div>}
               {selectedLead && <form className="form-stack" onSubmit={submitCrewSchedule}>
+                <div className="button-row button-row--end"><button type="button" className="danger-btn" onClick={() => { setCancelTarget(selectedLead); setCancelReason(''); }}>Remove request</button></div>
                 <div className="panel-title-row"><div><strong>{selectedLead.farmerName}</strong><p className="caption">{selectedLead.acreage} acres · {selectedLead.matchedCenter?.name || 'No operating center'}</p></div><button type="button" className="action-btn" onClick={() => setSelectedLead(null)}>Change request</button></div>
                 {!eligiblePilots.length && <div className="notice notice--error" role="alert">An active Primary Pilot at this operating center is required.</div>}
                 {!eligibleDrones.length && <div className="notice notice--error" role="alert">No schedulable drone is registered at this operating center.</div>}
@@ -402,6 +425,7 @@ const [eyebrow, title, description] = pageCopy[activeSection] || pageCopy.schedu
       )}
 
       {activeSection === 'location' && <section id="location" className="section-gap"><LiveLocationPanel /></section>}
+      {cancelTarget && <div className="modal-backdrop" role="presentation"><section className="modal-card" role="dialog" aria-modal="true" aria-labelledby="cancel-request-title"><div className="modal-card__header"><div><p className="eyebrow">Remove unscheduled request</p><h2 id="cancel-request-title">Remove {cancelTarget.farmerName}'s request?</h2></div><button type="button" className="icon-button" aria-label="Close removal dialog" onClick={() => setCancelTarget(null)}>×</button></div><p className="muted">This clears the obsolete request from the manual scheduling queue and preserves its audit history. Scheduled or started missions cannot be removed here.</p><form className="form-stack" onSubmit={cancelRequest}><div className="input-group"><label htmlFor="cancel-request-reason">Reason</label><textarea id="cancel-request-reason" value={cancelReason} onChange={(event) => setCancelReason(event.target.value)} minLength="3" maxLength="500" required /></div><div className="button-row button-row--end"><button type="button" className="action-btn" onClick={() => setCancelTarget(null)}>Keep request</button><button type="submit" className="danger-btn">Remove request</button></div></form></section></div>}
     </OperationsShell>
   );
 }

@@ -99,7 +99,7 @@ export default function EmployeeRegistration() {
                     zIndex: 50
                 }} />
             <section className="login-context">
-                <div className="login-context__brand logo">Daas</div>
+                <div className="login-context__brand logo">RFLY DaaS</div>
                 <div className="login-context__copy">
                     <p className="hero-kicker">Employee Portal </p>
                     <h1> Manage drone operations efficiently.</h1>
@@ -114,7 +114,7 @@ export default function EmployeeRegistration() {
                     <p className="eyebrow eyebrow--accent"> EMPLOYEE REGISTRATION </p>
                     <h2> Create employee account </h2>
                     <p className="subtitle">
-                        Register employee access for Daas platform.
+                        Register employee access for the RFLY DaaS platform.
                     </p>
 
                     {error && (

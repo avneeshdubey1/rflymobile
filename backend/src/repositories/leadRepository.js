@@ -1,6 +1,7 @@
 const prisma = require('../lib/prisma');
 const normalizedCompatibilityRepository = require('./normalizedCompatibilityRepository');
 const { setHistoryActor } = require('./historyActorRepository');
+const { createWithClient, sanitizeAuditState } = require('./auditLogRepository');
 
 const defaultInclude = { matchedCenter: true, assignment: true, customer: true };
 const DERIVED_PROFILE_FIELDS = new Set(['acreageDecimal', 'cropId', 'farmLocationId']);
@@ -80,6 +81,35 @@ async function updateProfile(id, data, options = {}) {
   }, { isolationLevel: 'Serializable' });
 }
 
+async function cancelUnscheduled(id, { actorId, reason }) {
+  const normalizedReason = String(reason || '').trim();
+  if (normalizedReason.length < 3 || normalizedReason.length > 500) {
+    throw repositoryError('CANCELLATION_REASON_REQUIRED', 'A removal reason between 3 and 500 characters is required');
+  }
+  return prisma.$transaction(async (transaction) => {
+    await setHistoryActor(transaction, actorId);
+    const current = await transaction.lead.findUnique({ where: { id }, include: defaultInclude });
+    if (!current) throw repositoryError('LEAD_NOT_FOUND', 'Request not found');
+    if (current.assignment) {
+      throw repositoryError('SCHEDULED_REQUEST_CANNOT_BE_REMOVED', 'A scheduled request must be rescheduled or cancelled through its assignment workflow');
+    }
+    if (!['NEW', 'MANUAL_CALL_REQUIRED', 'PROCESSED', 'NEEDS_MANUAL_SCHEDULING'].includes(current.status)) {
+      throw repositoryError('REQUEST_NOT_REMOVABLE', 'Only open, unscheduled requests can be removed');
+    }
+    const lead = await transaction.lead.update({ where: { id }, data: { status: 'CANCELLED' }, include: defaultInclude });
+    await createWithClient(transaction, {
+      entityType: 'Lead',
+      entityId: lead.id,
+      action: 'REQUEST_CANCELLED_BY_OPERATIONS',
+      actorId,
+      beforeState: sanitizeAuditState({ status: current.status, hadAssignment: false }),
+      afterState: sanitizeAuditState({ status: lead.status, hadAssignment: false }),
+      reason: normalizedReason,
+    });
+    return lead;
+  }, { isolationLevel: 'Serializable' });
+}
+
 module.exports = {
   create: (data, options = {}) => prisma.$transaction(async (transaction) => {
     await setHistoryActor(transaction, options.actorId);
@@ -93,6 +123,7 @@ module.exports = {
   update: updateOperational,
   updateOperational,
   updateProfile,
+  cancelUnscheduled,
   delete: (id) => prisma.lead.delete({ where: { id } }),
   deleteAll: () => prisma.lead.deleteMany(),
 };

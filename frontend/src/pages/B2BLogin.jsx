@@ -41,7 +41,7 @@ export default function B2BLogin() {
     <main className="login-container">
       <LanguageSelector style={{ position: 'absolute', top: '1.5rem', right: '1.5rem', zIndex: 50 }} />
       <section className="login-context">
-        <div className="login-context__brand logo">Daas</div>
+        <div className="login-context__brand logo">RFLY DaaS</div>
         <div className="login-context__copy">
           <p className="hero-kicker">Business Portal</p>
           <h1>Manage your drone operations.</h1>

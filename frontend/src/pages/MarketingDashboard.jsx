@@ -231,7 +231,7 @@ function MarketingDashboard() {
     // { id: 'logbook', label: 'Lead managament', icon: 'book' },
     // { id: 'process', label: 'Process Leads', icon: 'clipboard', badge: newLeads.length || null },
     { id: 'farmerRegistration', label: 'Customer Registration', icon: 'user-plus' },
-    { id: 'manual', label: 'Enter New Lead', icon: 'plus' },
+    { id: 'manual', label: 'New Lead', icon: 'plus' },
     // { id: 'appeals', label: 'Appeals & alerts', icon: 'alert', badge: followUpCount || null },
     // { id: 'payments', label: 'Payment Collection', icon: 'wallet' },
     { id: 'profile', label: 'Profile', icon: 'user' },
@@ -239,7 +239,7 @@ function MarketingDashboard() {
   ];
   const pageCopy = {
     // process: ['Lead operations', 'Incoming service requests', 'Verify new requests and move complete field information into scheduling.'],
-    manual: ['Service Request', 'Enter a new lead', 'Register a new spraying request with farm and scheduling details.'],
+    manual: ['Service Request', 'New Lead', 'Register a new spraying request with farm and scheduling details.'],
     // appeals: ['Customer follow-up', 'Appeals & operational alerts', 'Resolve out-of-range requests and mission exceptions that need Sales action.'],
     // payments: ['Revenue follow-up', 'Payment collection', 'Complete cash collection or retry configured payment methods.'],
     // logbook: ['Customer history', 'Lead managament', 'Search and review every recorded step in a service request.'],

@@ -370,7 +370,7 @@ export default function FarmerDashboard() {
                     <label>{t('Chemical/Fertilizer Availability')}</label>
                     <select required disabled={busy} value={form.hasChemical ? 'yes' : 'no'} onChange={e => setForm({ ...form, hasChemical: e.target.value === 'yes' })}>
                       <option value="yes">{t('Yes, I have it')}</option>
-                      <option value="no">{t('No, Daas should procure it')}</option>
+                      <option value="no">{t('No, RFLY DaaS should procure it')}</option>
                     </select>
                   </div>
                   <div className="input-group">

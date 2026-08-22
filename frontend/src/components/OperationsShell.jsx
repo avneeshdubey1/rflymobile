@@ -10,7 +10,7 @@ function OperationsShell({ roleLabel, navItems, activeTab, onTabChange, user, on
       <aside className="ops-sidebar">
         <div className="ops-brand">
           <span className="ops-brand__mark"><OpsIcon name="leaf" size={21} /></span>
-          <span><strong>Daas</strong><small>Control workspace</small></span>
+          <span><strong>RFLY DaaS</strong><small>Control workspace</small></span>
         </div>
 
         <div className="ops-role-block">

@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const { getPendingLeads, processLead, getAllLeads } = require("../controllers/leadController");
+const { getPendingLeads, processLead, getAllLeads, cancelUnscheduledLead } = require("../controllers/leadController");
 const intakeController = require('../controllers/intakeController');
 const autoAssignmentController = require('../controllers/autoAssignmentController');
 const { authenticate, authorize } = require('../middleware/auth');
@@ -11,6 +11,7 @@ router.post('/ingest/manual', authenticate, authorize('SALES', 'ADMIN'), intakeC
 router.get("/all", authenticate, authorize('ADMIN', 'SALES', 'FLEET_MANAGER'), getAllLeads);
 router.get("/pending", authenticate, authorize('ADMIN', 'SALES', 'FLEET_MANAGER'), getPendingLeads);
 router.post("/process", authenticate, authorize('SALES', 'ADMIN'), processLead);
+router.post('/:leadId/cancel', authenticate, authorize('FLEET_MANAGER', 'ADMIN'), cancelUnscheduledLead);
 router.post('/:leadId/auto-assign', authenticate, authorize('FLEET_MANAGER', 'ADMIN'), autoAssignmentController.assign);
 
 module.exports = router;

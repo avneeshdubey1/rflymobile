@@ -61,3 +61,18 @@ exports.processLead = async (req, res) => {
     return res.status(500).json({ error: error.message || 'Failed to process lead' });
   }
 };
+
+exports.cancelUnscheduledLead = async (req, res) => {
+  try {
+    const lead = await leadRepository.cancelUnscheduled(req.params.leadId, {
+      actorId: req.auth.userId,
+      reason: req.body?.reason,
+    });
+    return res.json({ success: true, lead });
+  } catch (error) {
+    const status = error.code === 'LEAD_NOT_FOUND' ? 404
+      : ['SCHEDULED_REQUEST_CANNOT_BE_REMOVED', 'REQUEST_NOT_REMOVABLE'].includes(error.code) ? 409
+        : 400;
+    return res.status(status).json({ error: error.message || 'Request could not be removed', code: error.code });
+  }
+};

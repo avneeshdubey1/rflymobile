@@ -92,6 +92,27 @@ test('a fleet manager can turn a manual-scheduling lead into an assignment, then
   assert.match(notification.message, /rescheduled/i);
 });
 
+test('Fleet can remove an obsolete unscheduled request but cannot erase a scheduled mission', async () => {
+  const staleLead = await prisma.lead.create({
+    data: { farmerName: 'Phase 5 Obsolete', farmerPhone: '955550006', acreage: 2, intakeChannel: 'MANUAL_SALES', status: 'NEEDS_MANUAL_SCHEDULING', latitude: 11, longitude: 76, matchedCenterId: ids.center },
+  });
+  ids.leads.push(staleLead.id);
+  const cancelled = await fetch(`${baseUrl}/api/leads/${staleLead.id}/cancel`, {
+    method: 'POST', headers: auth(fleetManager), body: JSON.stringify({ reason: 'Duplicate legacy request' }),
+  });
+  const cancelledData = await cancelled.json();
+  assert.equal(cancelled.status, 200, JSON.stringify(cancelledData));
+  assert.equal(cancelledData.lead.status, 'CANCELLED');
+  const audit = await prisma.auditLog.findFirst({ where: { entityType: 'Lead', entityId: staleLead.id, action: 'REQUEST_CANCELLED_BY_OPERATIONS' } });
+  assert.ok(audit);
+
+  const scheduledLeadId = ids.leads[0];
+  const blocked = await fetch(`${baseUrl}/api/leads/${scheduledLeadId}/cancel`, {
+    method: 'POST', headers: auth(fleetManager), body: JSON.stringify({ reason: 'Should remain traceable' }),
+  });
+  assert.equal(blocked.status, 409);
+});
+
 test.after(async () => {
   await prisma.notificationEscalation.deleteMany({ where: { assignmentId: { in: ids.assignments } } });
   await prisma.notification.deleteMany({ where: { leadId: { in: ids.leads } } });
