@@ -1,8 +1,8 @@
 const masterDataRepository = require('../src/repositories/masterDataRepository');
 const auditLogService = require('./auditLogService');
 
-const CATEGORIES = new Set(['SPRAY_PURPOSE', 'B2B_SUBCATEGORY', 'LEAD_SOURCE', 'REPORTING_ADMIN']);
-const CLUSTER_TYPES = new Set(['HUB', 'SPOKE', 'MINIHUB']);
+const CATEGORIES = new Set(['SPRAY_PURPOSE', 'B2B_SUBCATEGORY', 'B2C_CLASSIFICATION', 'LEAD_SOURCE', 'REPORTING_ADMIN']);
+const CLUSTER_TYPES = new Set(['CLUSTER', 'HUB', 'SPOKE', 'MINIHUB']);
 
 function text(value, field, maximum) {
   const normalized = String(value || '').trim();
@@ -25,10 +25,11 @@ async function choices() {
     masterDataRepository.listClusters(true), masterDataRepository.listCrops(),
     masterDataRepository.listValues('SPRAY_PURPOSE', true),
     masterDataRepository.listValues('B2B_SUBCATEGORY', true),
+    masterDataRepository.listValues('B2C_CLASSIFICATION', true),
     masterDataRepository.listValues('LEAD_SOURCE', true),
     masterDataRepository.listValues('REPORTING_ADMIN', true),
   ]);
-  return { requestTypes: ['B2B', 'B2C'], clusters, crops, sprayPurposes, b2bSubcategories, leadSources, reportingAdmins };
+  return { requestTypes: ['B2B', 'B2C'], clusters, crops, sprayPurposes, b2bSubcategories, b2cClassifications, leadSources, reportingAdmins };
 }
 
 async function listAdmin() {
@@ -42,7 +43,7 @@ async function listAdmin() {
 
 async function createCluster(input, actorId) {
   const type = String(input.type || '').toUpperCase();
-  if (!CLUSTER_TYPES.has(type)) throw Object.assign(new Error('Cluster type must be HUB, SPOKE, or MINIHUB'), { status: 400 });
+  if (!CLUSTER_TYPES.has(type)) throw Object.assign(new Error('Cluster type must be CLUSTER, HUB, SPOKE, or MINIHUB'), { status: 400 });
   const cluster = await masterDataRepository.createCluster({ code: code(input.code), displayName: text(input.displayName, 'Display name', 120), type, sortOrder: sortOrder(input.sortOrder), active: input.active !== false });
   await auditLogService.record({ entityType: 'Cluster', entityId: cluster.id, action: 'CREATED', actorId, afterState: { code: cluster.code, type: cluster.type, active: cluster.active } });
   return cluster;
@@ -55,7 +56,7 @@ async function updateCluster(id, input, actorId) {
   if (input.displayName !== undefined) data.displayName = text(input.displayName, 'Display name', 120);
   if (input.type !== undefined) {
     const type = String(input.type).toUpperCase();
-    if (!CLUSTER_TYPES.has(type)) throw Object.assign(new Error('Cluster type must be HUB, SPOKE, or MINIHUB'), { status: 400 });
+    if (!CLUSTER_TYPES.has(type)) throw Object.assign(new Error('Cluster type must be CLUSTER, HUB, SPOKE, or MINIHUB'), { status: 400 });
     data.type = type;
   }
   if (input.active !== undefined) data.active = Boolean(input.active);

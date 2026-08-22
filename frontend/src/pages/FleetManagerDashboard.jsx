@@ -31,6 +31,7 @@ const calendarBounds = (date, view) => {
 
 function FleetManagerDashboard() {
   const { user, logout } = useAuth();
+  const isAdmin = user?.role === 'admin' || user?.role === 'ADMIN';
   const { t } = useTranslation();
   const [activeSection, setActiveSection] = useState('schedule');
   const [leads, setLeads] = useState([]);
@@ -125,7 +126,6 @@ function FleetManagerDashboard() {
   const submitCrewSchedule = useCallback(async (event) => {
     event.preventDefault();
     if (!selectedLead) return;
-    if (scheduleDraft.pilotId === scheduleDraft.copilotId) { showNotice('error', 'Primary Pilot and Copilot must be different people.'); return; }
     try {
       await request('/api/assignments/manual', {
         method: 'POST',
@@ -156,11 +156,15 @@ function FleetManagerDashboard() {
   const saveAssignment = useCallback(async (event) => {
     event.preventDefault();
     try {
+      const payload = {
+        ...editDraft,
+        serviceWindowStart: new Date(editDraft.serviceWindowStart).toISOString(),
+        serviceWindowEnd: new Date(editDraft.serviceWindowEnd).toISOString(),
+      };
+      if (!isAdmin) delete payload.copilotId;
       await request(`/api/assignments/${selectedAssignment.id}/reschedule`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
-          ...editDraft,
-          serviceWindowStart: new Date(editDraft.serviceWindowStart).toISOString(),
-          serviceWindowEnd: new Date(editDraft.serviceWindowEnd).toISOString(),
+          ...payload,
         }),
       });
       if (Number(editDraft.dailySequence) !== selectedAssignment.dailySequence) {
@@ -171,7 +175,7 @@ function FleetManagerDashboard() {
       showNotice('success', t('calendar_assignment_updated'));
       await fetchData();
     } catch (error) { showNotice('error', error.message); }
-  }, [editDraft, fetchData, request, selectedAssignment, showNotice, t]);
+  }, [editDraft, fetchData, isAdmin, request, selectedAssignment, showNotice, t]);
 
   const selectSection = (id) => {
     setActiveSection(id);
@@ -310,16 +314,16 @@ const [eyebrow, title, description] = pageCopy[activeSection] || pageCopy.schedu
               </div>}
               {selectedLead && <form className="form-stack" onSubmit={submitCrewSchedule}>
                 <div className="panel-title-row"><div><strong>{selectedLead.farmerName}</strong><p className="caption">{selectedLead.acreage} acres · {selectedLead.matchedCenter?.name || 'No operating center'}</p></div><button type="button" className="action-btn" onClick={() => setSelectedLead(null)}>Change request</button></div>
-                {eligiblePilots.length < 2 && <div className="notice notice--error" role="alert">Two active Pilots at this operating center are required. Admin must activate both accounts and assign their center.</div>}
+                {!eligiblePilots.length && <div className="notice notice--error" role="alert">An active Primary Pilot at this operating center is required.</div>}
                 {!eligibleDrones.length && <div className="notice notice--error" role="alert">No schedulable drone is registered at this operating center.</div>}
                 {!eligibleLmvs.length && <div className="notice notice--error" role="alert">No schedulable LMV is registered at this operating center. Add one from the LMVs tab.</div>}
                 <div className="input-group"><label htmlFor="crew-start">{t('calendar_service_start')}</label><input id="crew-start" type="datetime-local" value={scheduleDraft.serviceWindowStart} onChange={(event) => setScheduleDraft({ ...scheduleDraft, serviceWindowStart: event.target.value })} required /></div>
                 <div className="input-group"><label htmlFor="crew-end">{t('calendar_service_end')}</label><input id="crew-end" type="datetime-local" value={scheduleDraft.serviceWindowEnd} onChange={(event) => setScheduleDraft({ ...scheduleDraft, serviceWindowEnd: event.target.value })} required /></div>
                 <div className="input-group"><label htmlFor="primary-pilot">Primary Pilot</label><select id="primary-pilot" value={scheduleDraft.pilotId} onChange={(event) => setScheduleDraft({ ...scheduleDraft, pilotId: event.target.value })} required><option value="">Select primary Pilot</option>{eligiblePilots.map((pilot) => <option key={pilot.id} value={pilot.id}>{pilot.name}</option>)}</select></div>
-                <div className="input-group"><label htmlFor="copilot">Copilot</label><select id="copilot" value={scheduleDraft.copilotId} onChange={(event) => setScheduleDraft({ ...scheduleDraft, copilotId: event.target.value })} required><option value="">Select Copilot</option>{eligiblePilots.filter((pilot) => pilot.id !== scheduleDraft.pilotId).map((pilot) => <option key={pilot.id} value={pilot.id}>{pilot.name}</option>)}</select></div>
+                {isAdmin ? <div className="input-group"><label htmlFor="crew-copilot">Copilot <span className="field-hint">(optional Admin override)</span></label><select id="crew-copilot" value={scheduleDraft.copilotId} onChange={(event) => setScheduleDraft({ ...scheduleDraft, copilotId: event.target.value })}><option value="">Let the Primary Pilot choose</option>{eligiblePilots.filter((pilot) => pilot.id !== scheduleDraft.pilotId).map((pilot) => <option key={pilot.id} value={pilot.id}>{pilot.name}</option>)}</select></div> : <p className="caption">After Fleet reserves the Primary Pilot, drone and LMV, the Primary Pilot selects one eligible Copilot in the Pilot app.</p>}
                 <div className="input-group"><label htmlFor="crew-drone">Drone</label><select id="crew-drone" value={scheduleDraft.droneId} onChange={(event) => setScheduleDraft({ ...scheduleDraft, droneId: event.target.value })} required><option value="">Select drone</option>{eligibleDrones.map((drone) => <option key={drone.id} value={drone.id}>{drone.model} · {drone.serialNumber} ({readableStatus(drone.status)})</option>)}</select></div>
                 <div className="input-group"><label htmlFor="crew-lmv">LMV</label><select id="crew-lmv" value={scheduleDraft.lmvId} onChange={(event) => setScheduleDraft({ ...scheduleDraft, lmvId: event.target.value })} required><option value="">Select LMV</option>{eligibleLmvs.map((lmv) => <option key={lmv.id} value={lmv.id}>{lmv.registrationNo}{lmv.label ? ` · ${lmv.label}` : ''} ({readableStatus(lmv.status)})</option>)}</select></div>
-                <button type="submit" className="submit-btn button-wide" disabled={eligiblePilots.length < 2 || !eligibleDrones.length || !eligibleLmvs.length}>Add to daily schedule</button>
+                <button type="submit" className="submit-btn button-wide" disabled={!eligiblePilots.length || !eligibleDrones.length || !eligibleLmvs.length}>{isAdmin && scheduleDraft.copilotId ? 'Schedule complete crew' : 'Reserve and request Copilot'}</button>
               </form>}
             </div>
           </aside>
@@ -338,7 +342,7 @@ const [eyebrow, title, description] = pageCopy[activeSection] || pageCopy.schedu
             <label className="input-group"><span>{t('calendar_service_start')}</span><input type="datetime-local" value={editDraft.serviceWindowStart} onChange={(event) => setEditDraft({ ...editDraft, serviceWindowStart: event.target.value })} required /></label>
             <label className="input-group"><span>{t('calendar_service_end')}</span><input type="datetime-local" value={editDraft.serviceWindowEnd} onChange={(event) => setEditDraft({ ...editDraft, serviceWindowEnd: event.target.value })} required /></label>
             <label className="input-group"><span>Primary Pilot</span><select value={editDraft.pilotId} onChange={(event) => setEditDraft({ ...editDraft, pilotId: event.target.value })}>{pilots.filter((pilot) => pilot.active && pilot.pilotAvailabilityState === 'AVAILABLE' && pilot.homeCenterId === selectedAssignment.lead?.matchedCenterId).map((pilot) => <option key={pilot.id} value={pilot.id}>{pilot.name}</option>)}</select></label>
-            <label className="input-group"><span>Copilot</span><select value={editDraft.copilotId} onChange={(event) => setEditDraft({ ...editDraft, copilotId: event.target.value })}>{pilots.filter((pilot) => pilot.active && pilot.pilotAvailabilityState === 'AVAILABLE' && pilot.homeCenterId === selectedAssignment.lead?.matchedCenterId && pilot.id !== editDraft.pilotId).map((pilot) => <option key={pilot.id} value={pilot.id}>{pilot.name}</option>)}</select></label>
+            {isAdmin ? <label className="input-group"><span>Copilot</span><select value={editDraft.copilotId} onChange={(event) => setEditDraft({ ...editDraft, copilotId: event.target.value })}><option value="">Await Primary Pilot selection</option>{pilots.filter((pilot) => pilot.active && pilot.pilotAvailabilityState === 'AVAILABLE' && pilot.homeCenterId === selectedAssignment.lead?.matchedCenterId && pilot.id !== editDraft.pilotId).map((pilot) => <option key={pilot.id} value={pilot.id}>{pilot.name}</option>)}</select></label> : <p className="caption">Copilot: {selectedAssignment.copilot?.name || 'Awaiting the Primary Pilot\'s selection in the Pilot app.'}</p>}
             <label className="input-group"><span>Drone</span><select value={editDraft.droneId} onChange={(event) => setEditDraft({ ...editDraft, droneId: event.target.value })}>{drones.filter((drone) => drone.homeCenterId === selectedAssignment.lead?.matchedCenterId).map((drone) => <option key={drone.id} value={drone.id}>{drone.model} · {drone.serialNumber}</option>)}</select></label>
             <label className="input-group"><span>LMV</span><select value={editDraft.lmvId} onChange={(event) => setEditDraft({ ...editDraft, lmvId: event.target.value })}>{lmvs.filter((lmv) => lmv.homeCenterId === selectedAssignment.lead?.matchedCenterId).map((lmv) => <option key={lmv.id} value={lmv.id}>{lmv.registrationNo}</option>)}</select></label>
             <label className="input-group"><span>{t('calendar_daily_sequence')}</span><input type="number" min="1" value={editDraft.dailySequence} onChange={(event) => setEditDraft({ ...editDraft, dailySequence: event.target.value })} required /></label>

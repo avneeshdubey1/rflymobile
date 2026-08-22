@@ -23,6 +23,7 @@ enum PilotAvailabilityState {
 }
 
 enum ClusterType {
+  CLUSTER
   HUB
   SPOKE
   MINIHUB
@@ -36,6 +37,7 @@ enum RequestType {
 enum MasterDataCategory {
   SPRAY_PURPOSE
   B2B_SUBCATEGORY
+  B2C_CLASSIFICATION
   LEAD_SOURCE
   REPORTING_ADMIN
 }

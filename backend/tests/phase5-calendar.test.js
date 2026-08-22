@@ -52,7 +52,7 @@ test('a fleet manager can turn a manual-scheduling lead into an assignment, then
   const firstDate = new Date('2026-08-10T09:00:00.000Z');
   const firstEnd = new Date('2026-08-10T11:00:00.000Z');
   const createResponse = await fetch(`${baseUrl}/api/assignments/manual`, {
-    method: 'POST', headers: auth(fleetManager), body: JSON.stringify({ leadId: lead.id, pilotId: pilot.id, copilotId: copilot.id, droneId: drone.id, lmvId: lmv.id, serviceWindowStart: firstDate, serviceWindowEnd: firstEnd }),
+    method: 'POST', headers: auth(fleetManager), body: JSON.stringify({ leadId: lead.id, pilotId: pilot.id, droneId: drone.id, lmvId: lmv.id, serviceWindowStart: firstDate, serviceWindowEnd: firstEnd }),
   });
   const created = await createResponse.json();
   assert.equal(createResponse.status, 201);

@@ -72,6 +72,9 @@ frontend/src/assets/vite.svg
 *.key
 *.pdf
 *.docx
+*.xls
+*.xlsx
+.~lock.*
 
 # Local archives and transfer bundles
 *.zip

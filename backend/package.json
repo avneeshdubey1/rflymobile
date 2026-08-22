@@ -26,6 +26,7 @@
     "bootstrap:initial-admin": "node scripts/bootstrapInitialAdmin.js",
     "import:farmer-data": "node importer/cli.js",
     "import:drone-data": "node importer/droneCli.js",
+    "import:client-master-data": "node importer/clientMasterCli.js",
     "security:migrate-passwords": "node scripts/hashDevelopmentPasswords.js",
     "demo:prepare": "node scripts/prepareDevelopmentDemo.js",
     "test": "node scripts/runBackendTests.js",

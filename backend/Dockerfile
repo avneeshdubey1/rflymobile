@@ -65,8 +65,8 @@ COPY --from=production-dependencies --chown=node:node /workspace/node_modules ./
 COPY --chown=node:node package.json package-lock.json ./
 COPY --chown=node:node prisma ./prisma
 COPY --chown=node:node importer ./importer
-COPY --chown=node:node services/farmerDataImportService.js services/droneDataImportService.js ./services/
+COPY --chown=node:node services/farmerDataImportService.js services/droneDataImportService.js services/clientMasterImportService.js services/passwordService.js ./services/
 COPY --chown=node:node src/lib ./src/lib
-COPY --chown=node:node src/repositories/importRepository.js src/repositories/droneImportRepository.js src/repositories/historyActorRepository.js src/repositories/normalizedCompatibilityRepository.js src/repositories/auditLogRepository.js ./src/repositories/
+COPY --chown=node:node src/repositories/importRepository.js src/repositories/droneImportRepository.js src/repositories/clientMasterImportRepository.js src/repositories/historyActorRepository.js src/repositories/normalizedCompatibilityRepository.js src/repositories/auditLogRepository.js ./src/repositories/
 USER node
 ENTRYPOINT ["/bin/sh", "/usr/local/bin/operations-entrypoint", "node", "importer/cli.js"]

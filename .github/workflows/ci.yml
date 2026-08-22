@@ -170,6 +170,8 @@ jobs:
           jq -e '
             .services["importer-preflight"] as $preflight
             | .services.importer as $importer
+            | .services["client-master-importer-preflight"] as $client_preflight
+            | .services["client-master-importer"] as $client_importer
             | $preflight.network_mode == "none"
               and (($preflight.secrets // []) | length == 0)
               and (($preflight.depends_on // {}) | length == 0)
@@ -179,6 +181,15 @@ jobs:
               and ($importer.networks | has("data"))
               and (($importer.networks | has("edge")) | not)
               and (($importer.secrets // []) | length == 2)
+              and $client_preflight.network_mode == "none"
+              and (($client_preflight.secrets // []) | length == 0)
+              and (($client_preflight.depends_on // {}) | length == 0)
+              and $client_preflight.read_only
+              and ($client_preflight.cap_drop | index("ALL") != null)
+              and ($client_preflight.security_opt | index("no-new-privileges:true") != null)
+              and ($client_importer.networks | has("data"))
+              and (($client_importer.networks | has("edge")) | not)
+              and (($client_importer.secrets // []) | length == 1)
           ' <<< "$import_config" >/dev/null
       - name: Build and start isolated stack
         shell: bash
@@ -187,7 +198,7 @@ jobs:
           for attempt in 1 2 3; do
             if docker compose --env-file "$DEPLOY_ENV" -f compose.production.yml pull db \
               && docker compose --env-file "$DEPLOY_ENV" -f compose.production.yml build \
-              && docker compose --env-file "$DEPLOY_ENV" -f compose.production.yml -f compose.import.yml build importer importer-preflight; then
+              && docker compose --env-file "$DEPLOY_ENV" -f compose.production.yml -f compose.import.yml build importer importer-preflight client-master-importer client-master-importer-preflight; then
               break
             fi
             if [ "$attempt" -eq 3 ]; then
@@ -240,6 +251,15 @@ jobs:
           fi
           grep -q '"ok":false' "$RUNNER_TEMP/import-preflight.out"
           grep -q '"error":"INVALID_ZIP"' "$RUNNER_TEMP/import-preflight.out"
+
+          if docker compose --env-file "$DEPLOY_ENV" -f compose.production.yml -f compose.import.yml \
+            run --rm --no-deps client-master-importer-preflight preflight --file /imports/input/invalid.xlsx \
+            > "$RUNNER_TEMP/client-master-import-preflight.out" 2>&1; then
+            echo "Client-master importer preflight unexpectedly accepted an invalid workbook." >&2
+            exit 1
+          fi
+          grep -q '"ok":false' "$RUNNER_TEMP/client-master-import-preflight.out"
+          grep -q '"error":"INVALID_ZIP"' "$RUNNER_TEMP/client-master-import-preflight.out"
       - name: Print container diagnostics after failure
         if: failure()
         run: |

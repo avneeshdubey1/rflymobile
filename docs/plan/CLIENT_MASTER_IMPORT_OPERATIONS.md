@@ -1,0 +1,50 @@
+# Controlled client-master import
+
+This runbook applies only after the reviewed client-master importer is deployed
+to the selected target. It is not a substitute for `docs/MIGRATION_ON_MAIN.md`;
+that document still governs the farmer-history importer and production backup.
+
+## Scope
+
+The importer accepts the approved `RFLY_master_data` workbook layout and:
+
+- imports Spray Purpose, Crop, B2B Sub-Category, B2C Classification, Cluster,
+  Reporting Admin and Lead Source masters;
+- preserves the client Pilot roster as **inactive, offline** accounts;
+- preserves Drone serials and LMV registrations as **out of service** assets;
+- records a source genset reference in the associated LMV note where supplied;
+- leaves `PRICE` unprocessed; pricing needs its own approved contract.
+
+The selected operating centre is required because every Pilot, Drone and LMV
+needs a home centre. Source clusters are created with type `CLUSTER`, not
+silently labelled HUB, SPOKE or MINIHUB.
+
+## Non-negotiable safeguards
+
+1. Keep the workbook outside Git and outside the Actions checkout.
+2. Run preflight first. It has no database network access.
+3. Run `plan` and review every `REVIEW_EXISTING_DIFFERENCE`; do not commit a
+   plan containing any of them.
+4. Take and verify a target-specific database backup before approval.
+5. Use the target's active Admin ID and one active Operating Center ID found
+   from the selected deployment. Never copy IDs between staging and production.
+6. Use `commit` exactly once with the reviewed plan hash, the correct deployment
+   name, backup reference and `IMPORT_CLIENT_MASTER` confirmation.
+7. Re-run `plan` after a successful commit. Exact existing records should be
+   reported as skips. Do not use raw SQL or an ad-hoc Node command to amend it.
+
+## Required commands
+
+Use the established one-shot importer Compose overlays for the selected stack.
+For an office snap-Docker host, append `compose.snap-import.yml` last. The
+operator invokes these commands only through the dedicated services:
+
+```text
+client-master-importer-preflight preflight --file /imports/input/<workbook>.xlsx
+client-master-importer plan --file /imports/input/<workbook>.xlsx --actor <active-admin-id> --center <active-center-id>
+client-master-importer commit --file /imports/input/<workbook>.xlsx --actor <active-admin-id> --center <active-center-id> --plan-hash <reviewed-plan-hash> --deployment <deployment-name> --backup-ref <verified-backup-reference> --confirm IMPORT_CLIENT_MASTER
+```
+
+Do not run the commit command until an operations owner has reviewed the exact
+plan and backup evidence. A code deployment does not run this import
+automatically.

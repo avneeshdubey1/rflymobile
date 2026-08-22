@@ -57,6 +57,10 @@ exports.createManualAssignment = async(req, res) => {
         const pilotId = req.body.pilotId || (req.body.pilot && req.body.pilot.id);
         const droneId = req.body.droneId;
         const lmvId = req.body.lmvId;
+        const requestedCopilotId = String(req.body.copilotId || '').trim() || null;
+        if (req.auth.role !== 'ADMIN' && requestedCopilotId) {
+            return res.status(403).json({ error: 'Fleet schedules the Primary Pilot; the Primary Pilot selects the Copilot in the Pilot app' });
+        }
         if (!pilotId || !droneId || !lmvId) {
             return res.status(400).json({ error: 'A valid primary Pilot, drone, and LMV are required' });
         }
@@ -67,7 +71,9 @@ exports.createManualAssignment = async(req, res) => {
             : new Date(serviceWindowStart.getTime() + policy.defaultJobDurationMinutes * 60_000);
         if (Number.isNaN(serviceWindowStart.valueOf()) || Number.isNaN(serviceWindowEnd.valueOf())) return res.status(400).json({ error: 'Valid service window values are required' });
         const result = await assignmentOperationRepository.manualAssign({
-            leadId, pilotId, droneId, lmvId, serviceWindowStart, serviceWindowEnd, actorId: req.auth.userId,
+            leadId, pilotId, copilotId: req.auth.role === 'ADMIN' ? requestedCopilotId : null,
+            adminCopilotOverride: req.auth.role === 'ADMIN' && Boolean(requestedCopilotId),
+            droneId, lmvId, serviceWindowStart, serviceWindowEnd, actorId: req.auth.userId,
         });
         await deliverAfterCommit(
             () => whatsappService.sendMissionScheduled(result.lead, result.assignment.scheduledDate),
@@ -119,6 +125,10 @@ exports.rescheduleAssignment = async(req, res) => {
         const serviceWindowStart = new Date(req.body.serviceWindowStart || req.body.scheduledDate);
         const serviceWindowEnd = req.body.serviceWindowEnd ? new Date(req.body.serviceWindowEnd) : null;
         const reason = typeof req.body.reason === 'string' ? req.body.reason.trim() : '';
+        const requestedCopilotId = String(req.body.copilotId || '').trim() || null;
+        if (req.auth.role !== 'ADMIN' && requestedCopilotId) {
+            return res.status(403).json({ error: 'Only Admin may assign or override a Copilot. Fleet schedules the Primary Pilot and the Primary Pilot selects the Copilot in the Pilot app.' });
+        }
         if (Number.isNaN(serviceWindowStart.valueOf()) || (serviceWindowEnd && Number.isNaN(serviceWindowEnd.valueOf()))) {
             return res.status(400).json({ error: 'Valid service window values are required' });
         }
@@ -128,7 +138,8 @@ exports.rescheduleAssignment = async(req, res) => {
             serviceWindowStart,
             serviceWindowEnd,
             pilotId: req.body.pilotId,
-            copilotId: req.body.copilotId,
+            copilotId: req.auth.role === 'ADMIN' ? requestedCopilotId : null,
+            adminCopilotOverride: req.auth.role === 'ADMIN' && Boolean(requestedCopilotId),
             droneId: req.body.droneId,
             lmvId: req.body.lmvId,
             actorId: req.auth.userId,

@@ -24,6 +24,8 @@ kept under `docs/unrealted_docs_for_current_version/` and is never authoritative
    Fleet calendar behaviour, or scheduling tests.
 8. Before importing or changing live data, read
    [../MIGRATION_ON_MAIN.md](../MIGRATION_ON_MAIN.md) and follow it exactly.
+   Before importing the client master workbook, also read
+   [CLIENT_MASTER_IMPORT_OPERATIONS.md](CLIENT_MASTER_IMPORT_OPERATIONS.md).
 9. Before adding another repository or application to the shared office server,
    read [SHARED_ONPREM_CICD_SERVER_HANDOFF.md](SHARED_ONPREM_CICD_SERVER_HANDOFF.md)
    and preserve its runner, path, port, volume, network and secret isolation.
@@ -52,6 +54,9 @@ kept under `docs/unrealted_docs_for_current_version/` and is never authoritative
     as the coding-agent execution workbook.
     The old M01-M18 graph is retired as an execution order. Follow the R00
     replacement graph and its small backend packages instead.
+11. Before changing GitHub Actions, the office runner, Docker deployment,
+    release evidence, APK builds, or branch promotion, read
+    [CICD_OPERATIONS_CONTEXT.md](CICD_OPERATIONS_CONTEXT.md).
 
 Do not treat a dated report, a legacy document, a seed value, or current application behaviour as an approved requirement when it conflicts with these documents.
 

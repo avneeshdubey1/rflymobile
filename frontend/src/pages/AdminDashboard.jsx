@@ -415,6 +415,7 @@ function AdminDashboard() {
     // { id: 'payments', label: 'Payment Collection', icon: 'wallet' },
     { id: 'location', label: 'Live Pilot GPS', icon: 'location' },
     { id: 'assignments', label: 'Assignments', icon: 'assignment' },
+    { id: 'schedule', label: 'Schedule assignments', icon: 'calendar' },
     { id: "registeredFarmers", label: "Registered Customers", icon: "customers" },
     { id: 'logbook', label: 'Lead Details', icon: 'book' },
     { id: 'users', label: 'My Team', icon: 'team' },
@@ -438,6 +439,7 @@ function AdminDashboard() {
       'Spraying Assignments',
       'View automatically assigned pilots, co-pilots, drones, date, and schedule details.'
     ],
+    schedule: ['Operations planning', 'Schedule assignments', 'Open the scheduling board to reserve a crew. Admin may assign the Copilot or leave selection to the Primary Pilot.'],
     drone: ['Fleet management', 'Drones', 'Add, update, and monitor drones registered to your fleet.'],
     pilots: ['Fleet management', 'Pilots', 'Manage registered pilots, licenses, and operating centers.'],
     farmerRegistration: ['Customer onboarding', 'Customer Registration', 'Register new Customers and create their accounts.'],
@@ -742,6 +744,7 @@ function AdminDashboard() {
       {activeTab === "assignments" && (
         <AssignmentDetails />
       )}
+      {activeTab === 'schedule' && <section className="panel panel--raised"><div className="panel-header"><div className="panel-header__title"><h2>Manual scheduling board</h2><p>Admin scheduling includes an optional Copilot override. Fleet scheduling remains Primary-Pilot-first.</p></div></div><div className="panel-body"><button type="button" className="submit-btn" onClick={() => { window.location.hash = '/fleet-manager'; }}>Open scheduling board</button></div></section>}
       {activeTab === 'trend' && <AcreageTrend />}
       {activeTab === 'centers' && (
         <section className="user-admin-grid">

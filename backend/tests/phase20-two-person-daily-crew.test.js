@@ -10,6 +10,7 @@ let baseUrl;
 const runId = `${process.pid}-${Date.now()}`;
 const ids = { users: [], leads: [], assignments: [], centers: [], drones: [], lmvs: [] };
 let fleet;
+let admin;
 let primary;
 let copilot;
 let outsider;
@@ -32,13 +33,14 @@ test.before(async () => {
     data: { name: `Phase 20 Centre ${runId}`, latitude: 11, longitude: 76, radiusKm: 50 },
   });
   ids.centers.push(center.id);
-  [fleet, primary, copilot, outsider] = await Promise.all([
+  [fleet, admin, primary, copilot, outsider] = await Promise.all([
     prisma.user.create({ data: { name: 'Phase 20 Fleet', email: `phase20-fleet-${runId}@example.test`, passwordHash: 'test', role: 'FLEET_MANAGER' } }),
+    prisma.user.create({ data: { name: 'Phase 20 Admin', email: `phase20-admin-${runId}@example.test`, passwordHash: 'test', role: 'ADMIN' } }),
     prisma.user.create({ data: { name: 'Phase 20 Primary', email: `phase20-primary-${runId}@example.test`, passwordHash: 'test', role: 'PILOT', homeCenterId: center.id } }),
     prisma.user.create({ data: { name: 'Phase 20 Copilot', email: `phase20-copilot-${runId}@example.test`, passwordHash: 'test', role: 'PILOT', homeCenterId: center.id } }),
     prisma.user.create({ data: { name: 'Phase 20 Outsider', email: `phase20-outsider-${runId}@example.test`, passwordHash: 'test', role: 'PILOT', homeCenterId: center.id } }),
   ]);
-  ids.users.push(fleet.id, primary.id, copilot.id, outsider.id);
+  ids.users.push(fleet.id, admin.id, primary.id, copilot.id, outsider.id);
 });
 
 test('one two-person operational unit performs several ordered non-overlapping jobs', async () => {
@@ -73,7 +75,6 @@ test('one two-person operational unit performs several ordered non-overlapping j
       body: {
         leadId: lead.id,
         pilotId: primary.id,
-        copilotId: copilot.id,
         droneId: drone.id,
         lmvId: lmv.id,
         serviceWindowStart: windows[index][0],
@@ -126,6 +127,27 @@ test('one two-person operational unit performs several ordered non-overlapping j
   assert.equal((await request(`/api/assignments/${ids.assignments[1]}/complete`, primary, { method: 'POST', body: { actualAcreage: 2 } })).response.status, 200);
   assert.equal((await prisma.drone.findUnique({ where: { id: drone.id } })).status, 'AVAILABLE');
   assert.equal((await prisma.lMV.findUnique({ where: { id: lmv.id } })).status, 'AVAILABLE');
+});
+
+test('Fleet cannot choose a Copilot, while Admin may schedule the complete crew', async () => {
+  const centerId = ids.centers[0];
+  const [drone, lmv, lead] = await Promise.all([
+    prisma.drone.create({ data: { model: 'Admin scheduling', serialNumber: `PHASE20-ADMIN-DRONE-${runId}`, uin: `UIN-PHASE20-ADMIN-${runId}`, homeCenterId: centerId } }),
+    prisma.lMV.create({ data: { registrationNo: `PHASE20-ADMIN-LMV-${runId}`, homeCenterId: centerId } }),
+    prisma.lead.create({ data: { farmerName: 'Phase 20 Admin crew', farmerPhone: `955553${runId.slice(-4)}`, acreage: 1, intakeChannel: 'MANUAL_SALES', status: 'NEEDS_MANUAL_SCHEDULING', latitude: 11, longitude: 76, matchedCenterId: centerId } }),
+  ]);
+  ids.drones.push(drone.id);
+  ids.lmvs.push(lmv.id);
+  ids.leads.push(lead.id);
+  const body = { leadId: lead.id, pilotId: primary.id, copilotId: copilot.id, droneId: drone.id, lmvId: lmv.id, serviceWindowStart: '2026-08-16T09:00:00.000Z', serviceWindowEnd: '2026-08-16T11:00:00.000Z' };
+  const denied = await request('/api/assignments/manual', fleet, { method: 'POST', body });
+  assert.equal(denied.response.status, 403, JSON.stringify(denied.data));
+  const created = await request('/api/assignments/manual', admin, { method: 'POST', body });
+  assert.equal(created.response.status, 201, JSON.stringify(created.data));
+  ids.assignments.push(created.data.mission.id);
+  assert.equal(created.data.mission.copilotId, copilot.id);
+  assert.equal(created.data.mission.crewFormationState, 'READY');
+  assert.ok(await prisma.auditLog.findFirst({ where: { entityId: created.data.mission.id, action: 'COPILOT_ASSIGNED_BY_ADMIN', actorId: admin.id } }));
 });
 
 test.after(async () => {

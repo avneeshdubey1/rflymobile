@@ -18,3 +18,9 @@ services:
 
   drone-importer:
     security_opt: !reset []
+
+  client-master-importer-preflight:
+    security_opt: !reset []
+
+  client-master-importer:
+    security_opt: !reset []

@@ -126,21 +126,21 @@ test('manual scheduling requires an eligible same-centre LMV and releases it on 
   const missingLmv = await fetch(`${baseUrl}/api/assignments/manual`, {
     method: 'POST',
     headers: auth(fleetManager),
-    body: JSON.stringify({ leadId: lead.id, pilotId: pilot.id, copilotId: copilot.id, droneId: drone.id, scheduledDate }),
+    body: JSON.stringify({ leadId: lead.id, pilotId: pilot.id, droneId: drone.id, scheduledDate }),
   });
   assert.equal(missingLmv.status, 400);
 
   const wrongCenter = await fetch(`${baseUrl}/api/assignments/manual`, {
     method: 'POST',
     headers: auth(fleetManager),
-    body: JSON.stringify({ leadId: lead.id, pilotId: pilot.id, copilotId: copilot.id, droneId: drone.id, lmvId: otherLmv.id, scheduledDate }),
+    body: JSON.stringify({ leadId: lead.id, pilotId: pilot.id, droneId: drone.id, lmvId: otherLmv.id, scheduledDate }),
   });
   assert.equal(wrongCenter.status, 409);
 
   const blocked = await fetch(`${baseUrl}/api/assignments/manual`, {
     method: 'POST',
     headers: auth(fleetManager),
-    body: JSON.stringify({ leadId: lead.id, pilotId: pilot.id, copilotId: copilot.id, droneId: drone.id, lmvId: maintenanceLmv.id, scheduledDate }),
+    body: JSON.stringify({ leadId: lead.id, pilotId: pilot.id, droneId: drone.id, lmvId: maintenanceLmv.id, scheduledDate }),
   });
   assert.equal(blocked.status, 409);
 
@@ -160,7 +160,7 @@ test('manual scheduling requires an eligible same-centre LMV and releases it on 
   const inactivePilot = await fetch(`${baseUrl}/api/assignments/manual`, {
     method: 'POST',
     headers: auth(fleetManager),
-    body: JSON.stringify({ leadId: lead.id, pilotId: pilot.id, copilotId: copilot.id, droneId: drone.id, lmvId: lmv.id, scheduledDate }),
+    body: JSON.stringify({ leadId: lead.id, pilotId: pilot.id, droneId: drone.id, lmvId: lmv.id, scheduledDate }),
   });
   assert.equal(inactivePilot.status, 409);
   await prisma.user.update({ where: { id: pilot.id }, data: { active: true } });
@@ -168,7 +168,7 @@ test('manual scheduling requires an eligible same-centre LMV and releases it on 
   const createdResponse = await fetch(`${baseUrl}/api/assignments/manual`, {
     method: 'POST',
     headers: auth(fleetManager),
-    body: JSON.stringify({ leadId: lead.id, pilotId: pilot.id, copilotId: copilot.id, droneId: drone.id, lmvId: lmv.id, scheduledDate }),
+    body: JSON.stringify({ leadId: lead.id, pilotId: pilot.id, droneId: drone.id, lmvId: lmv.id, scheduledDate }),
   });
   const created = await createdResponse.json();
   assert.equal(createdResponse.status, 201, JSON.stringify(created));

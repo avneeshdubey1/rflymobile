@@ -341,8 +341,9 @@ async function syncResourceAvailability(transaction, assignment, { droneStatusOv
   }
 }
 
-async function manualAssign({ leadId, pilotId, droneId, lmvId, serviceWindowStart, serviceWindowEnd, scheduledDate, actorId }) {
+async function manualAssign({ leadId, pilotId, copilotId = null, adminCopilotOverride = false, droneId, lmvId, serviceWindowStart, serviceWindowEnd, scheduledDate, actorId }) {
   return serializable(async (transaction) => {
+    const effectiveCopilotId = adminCopilotOverride ? copilotId : null;
     await setHistoryActor(transaction, actorId);
     const resolvedStart = serviceWindowStart || scheduledDate;
     let resolvedEnd = serviceWindowEnd;
@@ -352,20 +353,21 @@ async function manualAssign({ leadId, pilotId, droneId, lmvId, serviceWindowStar
     }
     const window = validateServiceWindow(resolvedStart, resolvedEnd);
     const { start: dayStart } = dayBounds(window.start);
-    await lockKeys(transaction, [`lead:${leadId}`, `schedule:${dayStart.toISOString()}`, pilotId, droneId, lmvId]);
+    await lockKeys(transaction, [`lead:${leadId}`, `schedule:${dayStart.toISOString()}`, pilotId, effectiveCopilotId, droneId, lmvId]);
     let lead = await transaction.lead.findUnique({ where: { id: leadId } });
     if (!lead) throw operationError('A valid lead is required');
     if (!['PROCESSED', 'NEEDS_MANUAL_SCHEDULING'].includes(lead.status)) throw operationError('Only processed or manual-scheduling leads can be assigned', 'CONFLICT');
     lead = await revalidateLead(transaction, lead, actorId);
-    const [pilot, drone, lmv] = await Promise.all([
+    const [pilot, copilot, drone, lmv] = await Promise.all([
       transaction.user.findUnique({ where: { id: pilotId } }),
+      effectiveCopilotId ? transaction.user.findUnique({ where: { id: effectiveCopilotId } }) : null,
       transaction.drone.findUnique({ where: { id: droneId } }),
       transaction.lMV.findUnique({ where: { id: lmvId } }),
     ]);
     validateCrewAndAssets({
-      lead, pilot, copilot: null, drone, lmv, scheduledDate: window.start, allowAssignedAssets: true, requireCopilot: false,
+      lead, pilot, copilot, drone, lmv, scheduledDate: window.start, allowAssignedAssets: true, requireCopilot: Boolean(effectiveCopilotId),
     });
-    const unit = { pilotId, copilotId: null, droneId, lmvId };
+    const unit = { pilotId, copilotId: effectiveCopilotId, droneId, lmvId };
     const dailySequence = await validateWindowConflicts(transaction, unit, window.start, window.end);
     const assignment = await transaction.assignment.create({
       data: {
@@ -377,7 +379,8 @@ async function manualAssign({ leadId, pilotId, droneId, lmvId, serviceWindowStar
         dailySequence,
         expectedAcreage: lead.acreage,
         autoAssigned: false,
-        crewFormationState: 'PENDING_COPILOT_SELECTION',
+        crewFormationState: effectiveCopilotId ? 'READY' : 'PENDING_COPILOT_SELECTION',
+        copilotSelectedAt: effectiveCopilotId ? new Date() : null,
         crewFormationUpdatedAt: new Date(),
       },
       include: assignmentInclude,
@@ -389,7 +392,12 @@ async function manualAssign({ leadId, pilotId, droneId, lmvId, serviceWindowStar
     ]);
     await audit(transaction, { entityType: 'Assignment', entityId: assignment.id, action: 'MANUAL_ASSIGNMENT_CREATED', actorId, afterState: assignment });
     await audit(transaction, { entityType: 'Lead', entityId: lead.id, action: 'STATUS_CHANGE', actorId, beforeState: lead, afterState: scheduledLead });
-    await startPendingCrewNotification(transaction, assignment, actorId);
+    if (effectiveCopilotId) {
+      await audit(transaction, { entityType: 'Assignment', entityId: assignment.id, action: 'COPILOT_ASSIGNED_BY_ADMIN', actorId, afterState: { copilotId: effectiveCopilotId, crewFormationState: 'READY' }, reason: 'ADMIN_MANUAL_SCHEDULING' });
+      await startAssignmentNotifications(transaction, assignment, new Date(), actorId);
+    } else {
+      await startPendingCrewNotification(transaction, assignment, actorId);
+    }
     return {
       assignment: await transaction.assignment.findUnique({ where: { id: assignment.id }, include: assignmentInclude }),
       lead: scheduledLead,
@@ -623,7 +631,7 @@ async function moveToManualScheduling({ leadId, reason, reasonCode = 'NO_CAPACIT
   });
 }
 
-async function reschedule({ assignmentId, serviceWindowStart, serviceWindowEnd, pilotId, copilotId, droneId, lmvId, actorId, reason }) {
+async function reschedule({ assignmentId, serviceWindowStart, serviceWindowEnd, pilotId, copilotId, adminCopilotOverride = false, droneId, lmvId, actorId, reason }) {
   return serializable(async (transaction) => {
     await setHistoryActor(transaction, actorId);
     await lockKeys(transaction, [`assignment:${assignmentId}`]);
@@ -646,6 +654,7 @@ async function reschedule({ assignmentId, serviceWindowStart, serviceWindowEnd, 
       transaction.drone.findUnique({ where: { id: unit.droneId } }),
       transaction.lMV.findUnique({ where: { id: unit.lmvId } }),
     ]);
+    const copilotWasAssignedByAdmin = adminCopilotOverride && Boolean(copilotId) && before.copilotId !== copilotId;
     validateCrewAndAssets({
       lead,
       pilot,
@@ -654,7 +663,7 @@ async function reschedule({ assignmentId, serviceWindowStart, serviceWindowEnd, 
       lmv,
       scheduledDate: window.start,
       allowAssignedAssets: true,
-      requireCopilot: before.crewFormationState === 'READY',
+      requireCopilot: before.crewFormationState === 'READY' || copilotWasAssignedByAdmin,
     });
     const { start: previousStart } = dayBounds(before.scheduledDate);
     const nextSequence = await validateWindowConflicts(transaction, unit, window.start, window.end, before.id);
@@ -672,6 +681,9 @@ async function reschedule({ assignmentId, serviceWindowStart, serviceWindowEnd, 
         lmvId: unit.lmvId,
         dailySequence,
         acceptedAt: null,
+        crewFormationState: copilotWasAssignedByAdmin ? 'READY' : before.crewFormationState,
+        copilotSelectedAt: copilotWasAssignedByAdmin ? new Date() : before.copilotSelectedAt,
+        crewFormationUpdatedAt: copilotWasAssignedByAdmin ? new Date() : before.crewFormationUpdatedAt,
       },
       include: assignmentInclude,
     });
@@ -683,6 +695,9 @@ async function reschedule({ assignmentId, serviceWindowStart, serviceWindowEnd, 
     ]);
     await transaction.scheduleChangeLog.create({ data: { assignmentId: assignment.id, oldDate: before.scheduledDate, newDate: window.start, changedBy: actorId, reason } });
     await audit(transaction, { entityType: 'Assignment', entityId: assignment.id, action: 'ASSIGNMENT_WINDOW_RESCHEDULED', actorId, beforeState: before, afterState: assignment, reason });
+    if (copilotWasAssignedByAdmin) {
+      await audit(transaction, { entityType: 'Assignment', entityId: assignment.id, action: 'COPILOT_ASSIGNED_BY_ADMIN', actorId, beforeState: { copilotId: before.copilotId, crewFormationState: before.crewFormationState }, afterState: { copilotId: unit.copilotId, crewFormationState: 'READY' }, reason });
+    }
     await createRoleNotifications(transaction, 'SALES', 'RESCHEDULE', before.leadId, `Assignment ${assignment.id} was rescheduled to ${window.start.toISOString()}.`);
     for (const previousPilotId of [before.pilotId, before.copilotId]) {
       if (previousPilotId && ![unit.pilotId, unit.copilotId].includes(previousPilotId)) {

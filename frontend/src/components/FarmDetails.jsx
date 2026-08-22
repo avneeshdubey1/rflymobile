@@ -392,43 +392,11 @@ function FarmDetails() {
                         </div>
 
                         <div className="input-group">
-                            <label style={{ marginBottom: '0.2rem' }}>{t('Spray Purpose')}</label>
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '0.65rem' }}>
-                                {masters.sprayPurposes.map(purpose => {
-                                    const isChecked = Array.isArray(form.sprayPurpose) && form.sprayPurpose.includes(purpose.code);
-                                    return (
-                                        <label key={purpose.id} style={{
-                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                            padding: '0.85rem 0.5rem',
-                                            border: `2px solid ${isChecked ? 'var(--primary)' : 'var(--border)'}`,
-                                            borderRadius: 'var(--radius-sm)',
-                                            background: isChecked ? 'var(--primary-soft)' : 'var(--surface)',
-                                            cursor: busy ? 'not-allowed' : 'pointer',
-                                            transition: 'all 0.2s ease',
-                                            textAlign: 'center',
-                                            fontWeight: isChecked ? '700' : '500',
-                                            color: isChecked ? 'var(--primary-hover)' : 'var(--text-primary)',
-                                            userSelect: 'none',
-                                            lineHeight: '1.2'
-                                        }}>
-                                            <input
-                                                type="checkbox"
-                                                style={{ display: 'none' }}
-                                                disabled={busy}
-                                                checked={isChecked}
-                                                onChange={(e) => {
-                                                    const current = Array.isArray(form.sprayPurpose) ? form.sprayPurpose : [];
-                                                    const newPurposes = e.target.checked
-                                                        ? [...current, purpose.code]
-                                                        : current.filter(p => p !== purpose.code);
-                                                    setForm({ ...form, sprayPurpose: newPurposes });
-                                                }}
-                                            />
-                                            {purpose.displayName}
-                                        </label>
-                                    );
-                                })}
-                            </div>
+                            <label htmlFor="spray-purpose">{t('Spray Purpose')}</label>
+                            <select id="spray-purpose" disabled={busy} required value={Array.isArray(form.sprayPurpose) ? (form.sprayPurpose[0] || '') : ''} onChange={(event) => setForm({ ...form, sprayPurpose: event.target.value ? [event.target.value] : [] })}>
+                                <option value="">{t('Select spray purpose')}</option>
+                                {masters.sprayPurposes.map((purpose) => <option key={purpose.id} value={purpose.code}>{purpose.displayName}</option>)}
+                            </select>
                         </div>
 
                         <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem 1.15rem', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', background: 'var(--surface)', cursor: busy ? 'not-allowed' : 'pointer', marginTop: '0.2rem' }}>

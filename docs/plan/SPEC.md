@@ -6,11 +6,11 @@
 
 ## Client intake and crew amendment — August 21, 2026
 
-- Admin maintains active Cluster, Crop, Spray Purpose, B2B Sub-Category and Lead Source masters. Cluster Type is owned by the Cluster (`HUB`, `SPOKE`, or `MINIHUB`) and is derived in intake screens.
+- Admin maintains active Cluster, Crop, Spray Purpose, B2B Sub-Category, B2C Classification and Lead Source masters. Cluster Type is owned by the Cluster (`CLUSTER`, `HUB`, `SPOKE`, or `MINIHUB`) and is derived in intake screens. `CLUSTER` is an honest transitional classification for client locations that have not yet been classified as a hub, spoke, or mini-hub.
 - Staff lead intake records `B2B` or `B2C`; B2B requires an active B2B Sub-Category while B2C forbids it. Intake also records one active Cluster, Reporting Admin, Lead Source, Crop, and at least one active Spray Purpose.
 - Seasonal crop, chemical brand/proof and manually selected drone fields are retired from the active staff lead form. Existing nullable legacy columns remain only for compatibility until a later removal migration is approved.
 - A Pilot may have a preferred Drone and LMV at the Pilot's operating centre. These are preferences only; centre, serviceability, availability, compliance and overlap rules take precedence.
-- Scheduling reserves one Primary Pilot, Drone and LMV. The Primary Pilot selects exactly one eligible Copilot in the Pilot application; lead entry never selects crew.
+- Fleet scheduling reserves one Primary Pilot, Drone and LMV. The Primary Pilot selects exactly one eligible Copilot in the Pilot application; lead entry never selects crew. Admin may make an audited manual Copilot assignment or override when operationally necessary; Fleet cannot bypass the Primary-Pilot flow.
 - Before mission start, the assigned Primary Pilot may reject with a required reason. The rejection is retained, assets are released, and the lead moves to the visible Admin/Fleet manual-scheduling queue.
 
 ## 1. Scope and baseline

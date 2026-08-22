@@ -150,6 +150,77 @@ services:
     mem_limit: ${IMPORTER_MEMORY_LIMIT:-768m}
     cpus: ${IMPORTER_CPU_LIMIT:-1.0}
 
+  # Client master import: dropdowns, cluster records and inactive fleet roster.
+  # PRICE is intentionally excluded by its parser. This service shares the
+  # same reviewed input mount but has no source-row staging key.
+  client-master-importer-preflight:
+    image: ${IMPORTER_IMAGE:-field-operations-importer}:${IMAGE_TAG:-local}
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: importer
+    entrypoint: ["/bin/sh", "/usr/local/bin/operations-entrypoint", "node", "importer/clientMasterCli.js"]
+    user: "${IMPORTER_UID:-1000}:${IMPORTER_GID:-1000}"
+    environment:
+      NODE_ENV: production
+      APP_RUNTIME_MODE: importer-preflight
+    volumes:
+      - type: bind
+        source: ${IMPORT_WORKBOOK_DIRECTORY:?Set IMPORT_WORKBOOK_DIRECTORY to an absolute directory outside the repository}
+        target: /imports/input
+        read_only: true
+    network_mode: none
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=128m
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    restart: "no"
+    mem_limit: ${IMPORTER_MEMORY_LIMIT:-768m}
+    cpus: ${IMPORTER_CPU_LIMIT:-1.0}
+
+  client-master-importer:
+    image: ${IMPORTER_IMAGE:-field-operations-importer}:${IMAGE_TAG:-local}
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: importer
+    entrypoint: ["/bin/sh", "/usr/local/bin/operations-entrypoint", "node", "importer/clientMasterCli.js"]
+    user: "${IMPORTER_UID:-1000}:${IMPORTER_GID:-1000}"
+    environment:
+      NODE_ENV: production
+      APP_RUNTIME_MODE: importer
+      DEPLOYMENT_NAME: ${DEPLOYMENT_NAME:?Set DEPLOYMENT_NAME}
+      DATABASE_HOST: db
+      DATABASE_PORT: 5432
+      DATABASE_USER: ${POSTGRES_USER:?Set POSTGRES_USER}
+      DATABASE_NAME: ${POSTGRES_DB:?Set POSTGRES_DB}
+      DATABASE_PASSWORD_FILE: /run/secrets/db_password
+    secrets:
+      - db_password
+    volumes:
+      - type: bind
+        source: ${IMPORT_WORKBOOK_DIRECTORY:?Set IMPORT_WORKBOOK_DIRECTORY to an absolute directory outside the repository}
+        target: /imports/input
+        read_only: true
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    networks:
+      - data
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=128m
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    restart: "no"
+    mem_limit: ${IMPORTER_MEMORY_LIMIT:-768m}
+    cpus: ${IMPORTER_CPU_LIMIT:-1.0}
+
 secrets:
   import_staging_key:
     file: ${IMPORT_STAGING_KEY_FILE:?Set IMPORT_STAGING_KEY_FILE to an absolute host path outside the repository}

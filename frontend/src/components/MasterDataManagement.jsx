@@ -2,9 +2,9 @@ import { useCallback, useEffect, useState } from 'react';
 import { API_URL as API } from '../config';
 import { csrfHeaders } from '../utils/csrf';
 
-const categories = ['SPRAY_PURPOSE', 'B2B_SUBCATEGORY', 'LEAD_SOURCE', 'REPORTING_ADMIN'];
+const categories = ['SPRAY_PURPOSE', 'B2B_SUBCATEGORY', 'B2C_CLASSIFICATION', 'LEAD_SOURCE', 'REPORTING_ADMIN'];
 const blankValue = { category: 'SPRAY_PURPOSE', code: '', displayName: '', sortOrder: 0 };
-const blankCluster = { code: '', displayName: '', type: 'HUB', sortOrder: 0 };
+const blankCluster = { code: '', displayName: '', type: 'CLUSTER', sortOrder: 0 };
 const blankCrop = { code: '', displayName: '' };
 
 export default function MasterDataManagement() {
@@ -48,7 +48,7 @@ export default function MasterDataManagement() {
         <form className="panel-body form-stack" onSubmit={createCluster}>
           <div className="input-group"><label>Code</label><input value={cluster.code} onChange={e => setCluster({ ...cluster, code: e.target.value })} required /></div>
           <div className="input-group"><label>Name</label><input value={cluster.displayName} onChange={e => setCluster({ ...cluster, displayName: e.target.value })} required /></div>
-          <div className="input-group"><label>Type</label><select value={cluster.type} onChange={e => setCluster({ ...cluster, type: e.target.value })}><option>HUB</option><option>SPOKE</option><option>MINIHUB</option></select></div>
+          <div className="input-group"><label>Type</label><select value={cluster.type} onChange={e => setCluster({ ...cluster, type: e.target.value })}><option>CLUSTER</option><option>HUB</option><option>SPOKE</option><option>MINIHUB</option></select></div>
           <button className="submit-btn">Add Cluster</button>
         </form>
         <div className="data-stack">{data.clusters.map(item => <div className="data-row" key={item.id}><div className="data-row__main"><b>{item.displayName}</b><span className="data-row__meta">{item.code} · {item.type} · {item.active ? 'Active' : 'Inactive'}</span></div><button type="button" onClick={() => send(`/api/master-data/clusters/${item.id}`, 'PATCH', { active: !item.active }).catch(error => setNotice(error.message))}>{item.active ? 'Disable' : 'Enable'}</button></div>)}</div>

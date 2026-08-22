@@ -92,6 +92,18 @@ gap in `AUTO_ASSIGNMENT_POLICY_IMPLEMENTATION_PLAN.md`.
 5. The drone import remains a separate reviewed operation after the farmer
    migration and operating-centre decision.
 
+## Local client-master import candidate
+
+The local candidate includes a separate, guarded importer for the current
+client master workbook. It reads dropdown masters, clusters, the Pilot roster,
+Drone serials, LMVs and source genset references, while deliberately excluding
+the `PRICE` sheet. It has not been committed, deployed, or run against staging
+or production. Its commit path requires an active Admin, an active selected
+operating centre, a reviewed exact plan hash, the target deployment name, a
+verified backup reference and the exact confirmation phrase. It creates roster
+Pilots inactive/offline and Drone/LMV records out of service, so imported source
+data cannot accidentally become schedulable before operations reviews it.
+
 ## Known historical trap
 
 Older Gemini, emergency-UI, schema-resume, dated audit, and manual command files

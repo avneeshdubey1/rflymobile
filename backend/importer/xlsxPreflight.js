@@ -369,7 +369,7 @@ function inspectXmlContent(name, data) {
   }
 }
 
-function unpackAndInspect(bytes, zipMetadata) {
+function unpackAndInspect(bytes, zipMetadata, expectedWorksheetCount) {
   let unpacked;
   try {
     unpacked = unzipSync(new Uint8Array(bytes.buffer, bytes.byteOffset, bytes.byteLength));
@@ -400,11 +400,87 @@ function unpackAndInspect(bytes, zipMetadata) {
   }
 
   const worksheetEntries = unpackedNames.filter((name) => /^xl\/worksheets\/[^/]+\.xml$/iu.test(name));
-  if (worksheetEntries.length !== Object.keys(SHEETS).length) {
+  if (worksheetEntries.length !== expectedWorksheetCount) {
     fail('UNEXPECTED_WORKSHEET_COUNT', 'The workbook must contain exactly the expected worksheets.');
   }
 
   return unpacked;
+}
+
+async function readSafeWorkbook(filePath, { expectedSheetNames }) {
+  if (typeof filePath !== 'string' || filePath.trim() === '') {
+    fail('INVALID_FILE_PATH', 'A workbook file path is required.');
+  }
+  if (path.extname(filePath).toLocaleLowerCase('en-US') !== '.xlsx') {
+    fail('INVALID_FILE_TYPE', 'Only .xlsx workbook files are accepted.');
+  }
+  if (!Array.isArray(expectedSheetNames) || expectedSheetNames.length === 0) {
+    fail('WORKBOOK_EXPECTATION_INVALID', 'Expected worksheet names are required.');
+  }
+
+  let fileStat;
+  try {
+    fileStat = await fs.lstat(filePath);
+  } catch (_error) {
+    fail('FILE_UNREADABLE', 'The workbook file is not readable.');
+  }
+  if (fileStat.isSymbolicLink() || !fileStat.isFile()) {
+    fail('INVALID_FILE_TYPE', 'The workbook must be a regular file.');
+  }
+  if (fileStat.size <= 0 || fileStat.size > MAX_FILE_BYTES) {
+    fail('FILE_SIZE_LIMIT', 'The workbook file size is outside the accepted limit.');
+  }
+
+  let bytes;
+  try {
+    bytes = await fs.readFile(filePath);
+  } catch (_error) {
+    fail('FILE_UNREADABLE', 'The workbook file is not readable.');
+  }
+  if (bytes.length !== fileStat.size || bytes.length > MAX_FILE_BYTES) {
+    fail('FILE_CHANGED_DURING_READ', 'The workbook changed while it was being read.');
+  }
+
+  const zipMetadata = analyzeZip(bytes);
+  unpackAndInspect(bytes, zipMetadata, expectedSheetNames.length);
+
+  let parsedSheets;
+  try {
+    parsedSheets = await readExcelFile(bytes, { trim: true });
+  } catch (_error) {
+    fail('WORKBOOK_PARSE_FAILED', 'The workbook could not be parsed safely.');
+  }
+  if (!Array.isArray(parsedSheets) || parsedSheets.length !== expectedSheetNames.length) {
+    fail('UNEXPECTED_WORKSHEET_COUNT', 'The workbook does not have the expected worksheet count.');
+  }
+  const parsedNames = parsedSheets.map((sheet) => sheet.sheet);
+  if (new Set(parsedNames).size !== parsedNames.length) {
+    fail('DUPLICATE_WORKSHEET', 'The workbook contains duplicate worksheet names.');
+  }
+  if (parsedNames.some((name) => !expectedSheetNames.includes(name))
+    || expectedSheetNames.some((name) => !parsedNames.includes(name))) {
+    fail('WORKSHEET_NAME_MISMATCH', 'The workbook worksheet names do not match the required layout.');
+  }
+  for (const sheet of parsedSheets) {
+    if (!Array.isArray(sheet.data) || sheet.data.length === 0) {
+      fail('MISSING_HEADER_ROW', 'A required workbook sheet has no header row.');
+    }
+    if (sheet.data.length - 1 > MAX_DATA_ROWS_PER_SHEET) {
+      fail('TOO_MANY_SHEET_ROWS', 'A workbook sheet exceeds the row safety limit.');
+    }
+    if (sheet.data.some((row) => logicalCellCount(row) > MAX_WORKSHEET_COLUMN)) {
+      fail('UNEXPECTED_SHEET_COLUMN', 'A workbook sheet contains too many columns.');
+    }
+  }
+  return {
+    filePath: path.resolve(filePath),
+    originalFileName: path.basename(filePath),
+    fileSizeBytes: bytes.length,
+    fileChecksum: crypto.createHash('sha256').update(bytes).digest('hex'),
+    archiveEntryCount: zipMetadata.entryCount,
+    expandedSizeBytes: zipMetadata.totalUncompressedBytes,
+    sheets: parsedSheets,
+  };
 }
 
 function logicalCellCount(row) {
@@ -446,67 +522,15 @@ function validateSheet(sheet, definition) {
 }
 
 async function preflightWorkbook(filePath) {
-  if (typeof filePath !== 'string' || filePath.trim() === '') {
-    fail('INVALID_FILE_PATH', 'A workbook file path is required.');
-  }
-  if (path.extname(filePath).toLocaleLowerCase('en-US') !== '.xlsx') {
-    fail('INVALID_FILE_TYPE', 'Only .xlsx workbook files are accepted.');
-  }
-
-  let fileStat;
-  try {
-    fileStat = await fs.lstat(filePath);
-  } catch (_error) {
-    fail('FILE_UNREADABLE', 'The workbook file is not readable.');
-  }
-  if (fileStat.isSymbolicLink() || !fileStat.isFile()) {
-    fail('INVALID_FILE_TYPE', 'The workbook must be a regular file.');
-  }
-  if (fileStat.size <= 0 || fileStat.size > MAX_FILE_BYTES) {
-    fail('FILE_SIZE_LIMIT', 'The workbook file size is outside the accepted limit.');
-  }
-
-  let bytes;
-  try {
-    bytes = await fs.readFile(filePath);
-  } catch (_error) {
-    fail('FILE_UNREADABLE', 'The workbook file is not readable.');
-  }
-  if (bytes.length !== fileStat.size || bytes.length > MAX_FILE_BYTES) {
-    fail('FILE_CHANGED_DURING_READ', 'The workbook changed while it was being read.');
-  }
-
-  const zipMetadata = analyzeZip(bytes);
-  unpackAndInspect(bytes, zipMetadata);
-
-  let parsedSheets;
-  try {
-    parsedSheets = await readExcelFile(bytes, { trim: true });
-  } catch (_error) {
-    fail('WORKBOOK_PARSE_FAILED', 'The workbook could not be parsed safely.');
-  }
-  if (!Array.isArray(parsedSheets) || parsedSheets.length !== Object.keys(SHEETS).length) {
-    fail('UNEXPECTED_WORKSHEET_COUNT', 'The workbook must contain exactly the expected worksheets.');
-  }
-
-  const parsedNames = parsedSheets.map((sheet) => sheet.sheet);
-  if (new Set(parsedNames).size !== parsedNames.length) {
-    fail('DUPLICATE_WORKSHEET', 'The workbook contains duplicate worksheet names.');
-  }
   const expectedNames = Object.values(SHEETS).map((definition) => definition.name);
-  if (
-    parsedNames.some((name) => !expectedNames.includes(name))
-    || expectedNames.some((name) => !parsedNames.includes(name))
-  ) {
-    fail('WORKSHEET_NAME_MISMATCH', 'The workbook worksheet names do not match the required layout.');
-  }
+  const safeWorkbook = await readSafeWorkbook(filePath, { expectedSheetNames: expectedNames });
+  const parsedSheets = safeWorkbook.sheets;
 
   const sheets = Object.values(SHEETS).map((definition) => {
     const parsed = parsedSheets.find((sheet) => sheet.sheet === definition.name);
     return validateSheet(parsed, definition);
   });
 
-  const fileChecksum = crypto.createHash('sha256').update(bytes).digest('hex');
   const sheetSummaries = sheets.map((sheet) => ({
     name: sheet.name,
     sourceSystem: sheet.sourceSystem,
@@ -515,21 +539,21 @@ async function preflightWorkbook(filePath) {
   }));
 
   return {
-    filePath: path.resolve(filePath),
-    originalFileName: path.basename(filePath),
+    filePath: safeWorkbook.filePath,
+    originalFileName: safeWorkbook.originalFileName,
     workbookType: WORKBOOK_TYPE,
     mappingVersion: MAPPING_VERSION,
-    fileSizeBytes: bytes.length,
-    fileChecksum,
+    fileSizeBytes: safeWorkbook.fileSizeBytes,
+    fileChecksum: safeWorkbook.fileChecksum,
     sheets,
     safeSummary: {
       accepted: true,
       workbookType: WORKBOOK_TYPE,
       mappingVersion: MAPPING_VERSION,
-      fileSizeBytes: bytes.length,
-      fileChecksum,
-      archiveEntryCount: zipMetadata.entryCount,
-      expandedSizeBytes: zipMetadata.totalUncompressedBytes,
+      fileSizeBytes: safeWorkbook.fileSizeBytes,
+      fileChecksum: safeWorkbook.fileChecksum,
+      archiveEntryCount: safeWorkbook.archiveEntryCount,
+      expandedSizeBytes: safeWorkbook.expandedSizeBytes,
       sheets: sheetSummaries,
     },
   };
@@ -544,5 +568,6 @@ module.exports = {
   PREFLIGHT_LIMITS,
   WORKBOOK_TYPE,
   WorkbookPreflightError,
+  readSafeWorkbook,
   preflightWorkbook,
 };

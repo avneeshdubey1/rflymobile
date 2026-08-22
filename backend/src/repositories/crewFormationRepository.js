@@ -3,7 +3,7 @@ const { sanitizeAuditReason, sanitizeAuditState } = require('./auditLogRepositor
 const { setHistoryActor } = require('./historyActorRepository');
 
 const activeLeadStatuses = ['SCHEDULED', 'PILOT_ACCEPTED', 'IN_PROGRESS'];
-const overrideRoles = new Set(['ADMIN', 'FLEET_MANAGER']);
+const overrideRoles = new Set(['ADMIN']);
 
 function crewError(message, code, details) {
   const error = new Error(message);
@@ -205,7 +205,7 @@ async function formCrew({
         select: { role: true, active: true, archivedAt: true },
       });
       if (!actor || !actor.active || actor.archivedAt || !overrideRoles.has(actor.role)) {
-        throw crewError('Only active Fleet or Admin staff may override a Copilot', 'CREW_OVERRIDE_FORBIDDEN');
+        throw crewError('Only an active Admin may override a Copilot', 'CREW_OVERRIDE_FORBIDDEN');
       }
       auditReason = String(reason || '').trim();
       if (!auditReason) throw crewError('A reason is required for Copilot override', 'CREW_OVERRIDE_REASON_REQUIRED');
