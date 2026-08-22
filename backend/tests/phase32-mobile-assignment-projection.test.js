@@ -17,6 +17,7 @@ let primary;
 let copilot;
 let outsider;
 let fleet;
+let admin;
 let drone;
 let lmv;
 let assignment;
@@ -24,6 +25,7 @@ let primaryToken;
 let copilotToken;
 let outsiderToken;
 let fleetToken;
+let adminToken;
 let syncCursor;
 
 function loginBody(user) {
@@ -65,13 +67,14 @@ test.before(async () => {
   });
   ids.centers.push(center.id);
   const passwordHash = await hashPassword(password);
-  [primary, copilot, outsider, fleet] = await Promise.all([
+  [primary, copilot, outsider, fleet, admin] = await Promise.all([
     prisma.user.create({ data: { name: 'P32 Primary', email: `p32-primary-${runId}@example.test`, passwordHash, role: 'PILOT', homeCenterId: center.id, pilotLicenseExpiry: new Date('2100-01-01') } }),
     prisma.user.create({ data: { name: 'P32 Copilot', email: `p32-copilot-${runId}@example.test`, passwordHash, role: 'PILOT', homeCenterId: center.id, pilotLicenseExpiry: new Date('2100-01-01') } }),
     prisma.user.create({ data: { name: 'P32 Outsider', email: `p32-outsider-${runId}@example.test`, passwordHash, role: 'PILOT', homeCenterId: center.id, pilotLicenseExpiry: new Date('2100-01-01') } }),
     prisma.user.create({ data: { name: 'P32 Fleet', email: `p32-fleet-${runId}@example.test`, passwordHash, role: 'FLEET_MANAGER' } }),
+    prisma.user.create({ data: { name: 'P32 Admin', email: `p32-admin-${runId}@example.test`, passwordHash, role: 'ADMIN' } }),
   ]);
-  ids.users.push(primary.id, copilot.id, outsider.id, fleet.id);
+  ids.users.push(primary.id, copilot.id, outsider.id, fleet.id, admin.id);
   [drone, lmv] = await Promise.all([
     prisma.drone.create({ data: { name: 'P32 Drone', model: 'P32', serialNumber: `P32-D-${runId}`, homeCenterId: center.id } }),
     prisma.lMV.create({ data: { registrationNo: `P32-L-${runId}`, label: 'P32 Vehicle', homeCenterId: center.id } }),
@@ -97,8 +100,8 @@ test.before(async () => {
   });
   assignment = scheduled.assignment;
   ids.assignments.push(assignment.id);
-  [primaryToken, copilotToken, outsiderToken, fleetToken] = await Promise.all([
-    login(primary, 'pilot'), login(copilot, 'pilot'), login(outsider, 'pilot'), login(fleet, 'operations'),
+  [primaryToken, copilotToken, outsiderToken, fleetToken, adminToken] = await Promise.all([
+    login(primary, 'pilot'), login(copilot, 'pilot'), login(outsider, 'pilot'), login(fleet, 'operations'), login(admin, 'operations'),
   ]);
 });
 
@@ -172,11 +175,19 @@ test('Primary selects an eligible Copilot once and both crew members can then re
   assert.equal(stale.data.error.code, 'ASSIGNMENT_REVISION_CONFLICT');
 });
 
-test('Operations override requires Fleet or Admin and records a reasoned audit', async () => {
+test('Operations override is Admin-only and records a reasoned audit', async () => {
   const current = await prisma.assignment.findUnique({ where: { id: assignment.id } });
-  const overridden = await request(`/api/mobile/v1/operations/assignments/${assignment.id}/copilot-override`, {
+  const denied = await request(`/api/mobile/v1/operations/assignments/${assignment.id}/copilot-override`, {
     method: 'POST',
     token: fleetToken,
+    body: { candidateId: outsider.id, expectedRevision: current.revision, reason: 'Copilot availability changed.' },
+  });
+  assert.equal(denied.response.status, 403, JSON.stringify(denied.data));
+  assert.equal(denied.data.error.code, 'ROLE_NOT_ALLOWED');
+
+  const overridden = await request(`/api/mobile/v1/operations/assignments/${assignment.id}/copilot-override`, {
+    method: 'POST',
+    token: adminToken,
     body: { candidateId: outsider.id, expectedRevision: current.revision, reason: 'Copilot availability changed.' },
   });
   assert.equal(overridden.response.status, 200, JSON.stringify(overridden.data));

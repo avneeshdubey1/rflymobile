@@ -206,7 +206,7 @@ test('concurrent selection with one revision applies exactly once', async () => 
   assert.ok([concurrentA.id, concurrentB.id].includes(stored.copilotId));
 });
 
-test('Fleet/Admin override requires a reason, resets pre-start acceptance, and post-start replacement is rejected', async () => {
+test('Admin override requires a reason; Fleet is denied; pre-start acceptance resets; post-start replacement is closed', async () => {
   const assignment = await createPendingAssignment('override');
   const [overrideInitial, overrideReplacement] = await Promise.all([
     createPilot('Override Initial'),
@@ -224,7 +224,17 @@ test('Fleet/Admin override requires a reason, resets pre-start acceptance, and p
   ]);
 
   await assert.rejects(
-    crewFormation.overrideCopilot({ assignmentId: assignment.id, candidateId: overrideReplacement.id, actorId: fleet.id, expectedRevision: 2 }),
+    crewFormation.overrideCopilot({
+      assignmentId: assignment.id,
+      candidateId: overrideReplacement.id,
+      actorId: fleet.id,
+      expectedRevision: 2,
+      reason: 'Fleet cannot override the Copilot',
+    }),
+    (error) => error.code === 'CREW_OVERRIDE_FORBIDDEN',
+  );
+  await assert.rejects(
+    crewFormation.overrideCopilot({ assignmentId: assignment.id, candidateId: overrideReplacement.id, actorId: admin.id, expectedRevision: 2 }),
     (error) => error.code === 'CREW_OVERRIDE_REASON_REQUIRED',
   );
   const overridden = await crewFormation.overrideCopilot({
@@ -247,7 +257,7 @@ test('Fleet/Admin override requires a reason, resets pre-start acceptance, and p
     crewFormation.overrideCopilot({
       assignmentId: assignment.id,
       candidateId: overrideInitial.id,
-      actorId: fleet.id,
+      actorId: admin.id,
       expectedRevision: 3,
       reason: 'Should be closed',
     }),
