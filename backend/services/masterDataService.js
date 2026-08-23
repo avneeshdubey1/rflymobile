@@ -21,7 +21,15 @@ function sortOrder(value) {
 }
 
 async function choices() {
-  const [clusters, crops, sprayPurposes, b2bSubcategories, leadSources, reportingAdmins] = await Promise.all([
+  const [
+    clusters,
+    crops,
+    sprayPurposes,
+    b2bSubcategories,
+    b2cClassifications,
+    leadSources,
+    reportingAdmins,
+  ] = await Promise.all([
     masterDataRepository.listClusters(true), masterDataRepository.listCrops(),
     masterDataRepository.listValues('SPRAY_PURPOSE', true),
     masterDataRepository.listValues('B2B_SUBCATEGORY', true),
