@@ -28,7 +28,10 @@ async function context(client, { actorId, centerId, canonical }) {
       { category: 'LEAD_SOURCE', code: { in: canonical.leadSources.map((item) => item.code) } },
       { category: 'REPORTING_ADMIN', code: { in: canonical.reportingAdmins.map((item) => item.code) } },
     ] } }),
-    client.crop.findMany({ where: { code: { in: canonical.crops.map((item) => item.code) } } }),
+    client.crop.findMany({ where: { OR: [
+      { code: { in: canonical.crops.map((item) => item.code) } },
+      { normalizedName: { in: canonical.crops.map((item) => item.normalizedName) } },
+    ] } }),
     client.cluster.findMany({ where: { code: { in: canonical.clusters.map((item) => item.code) } } }),
     client.user.findMany({ where: { employeeCode: { in: canonical.pilots.map((item) => item.employeeCode) } } }),
     client.drone.findMany({ where: { serialNumber: { in: canonical.drones.map((item) => item.serialNumber) } } }),
@@ -42,6 +45,7 @@ async function context(client, { actorId, centerId, canonical }) {
 function classifiedRows(canonical, existing) {
   const values = new Map(existing.values.map((item) => [`${item.category}:${item.code}`, item]));
   const crops = new Map(existing.crops.map((item) => [item.code, item]));
+  const cropsByNormalizedName = new Map(existing.crops.map((item) => [item.normalizedName, item]));
   const clusters = new Map(existing.clusters.map((item) => [item.code, item]));
   const pilots = new Map(existing.pilots.map((item) => [item.employeeCode, item]));
   const drones = new Map(existing.drones.map((item) => [item.serialNumber, item]));
@@ -57,8 +61,8 @@ function classifiedRows(canonical, existing) {
   addMasters('LEAD_SOURCE', canonical.leadSources);
   addMasters('REPORTING_ADMIN', canonical.reportingAdmins);
   canonical.crops.forEach((item) => {
-    const current = crops.get(item.code);
-    rows.push({ kind: 'CROP', key: item.code, action: !current ? 'CREATE' : current.displayName === item.displayName ? 'SKIP_EXACT' : 'REVIEW_EXISTING_DIFFERENCE' });
+    const current = crops.get(item.code) || cropsByNormalizedName.get(item.normalizedName);
+    rows.push({ kind: 'CROP', key: item.code, action: !current ? 'CREATE' : current.normalizedName === item.normalizedName ? 'SKIP_EXACT' : 'REVIEW_EXISTING_DIFFERENCE' });
   });
   canonical.clusters.forEach((item) => {
     const current = clusters.get(item.code);
@@ -105,8 +109,8 @@ async function commit(input) {
       const found = resolved.values.find((value) => value.category === category && value.code === item.code);
       if (!found) { await transaction.masterDataValue.create({ data: { category, ...item, active: true } }); created.values += 1; }
     }
-    for (const item of input.canonical.crops) if (!resolved.crops.some((crop) => crop.code === item.code)) {
-      await transaction.crop.create({ data: { ...item, normalizedName: item.displayName.normalize('NFKC').toLowerCase() } }); created.crops += 1;
+    for (const item of input.canonical.crops) if (!resolved.crops.some((crop) => crop.code === item.code || crop.normalizedName === item.normalizedName)) {
+      await transaction.crop.create({ data: item }); created.crops += 1;
     }
     for (const item of input.canonical.clusters) if (!resolved.clusters.some((cluster) => cluster.code === item.code)) {
       await transaction.cluster.create({ data: { ...item, active: true } }); created.clusters += 1;

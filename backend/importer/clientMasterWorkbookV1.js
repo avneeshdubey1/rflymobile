@@ -1,7 +1,8 @@
 const crypto = require('node:crypto');
 const { readSafeWorkbook, WorkbookPreflightError } = require('./xlsxPreflight');
+const { normalizedCropCode, normalizedCropName } = require('../src/lib/masterDataNormalization');
 
-const MAPPING_VERSION = 'RFLY_CLIENT_MASTER_WORKBOOK_V1';
+const MAPPING_VERSION = 'RFLY_CLIENT_MASTER_WORKBOOK_V4';
 const EXPECTED_SHEETS = Object.freeze([
   'spray purpose', 'crop type', 'PRICE', 'type of operations', 'B2B LIST', 'B2C LIST ',
   'cluster locations', 'pilots master ', 'ADMIN', 'LEAD SOURCE', 'DRONE NUMBER ',
@@ -56,6 +57,17 @@ function listValues(rows, prefix = '') {
     values.push({ code: itemCode, displayName });
   }
   return values;
+}
+
+function cropValues(rows) {
+  return listValues(rows).map((item) => ({
+    ...item,
+    // Crop.code is a normalized master key. The database contract requires
+    // lowercase trimmed codes, unlike the uppercase operational enum-style
+    // codes used by the other client-master categories.
+    code: normalizedCropCode(item.code),
+    normalizedName: normalizedCropName(item.displayName),
+  }));
 }
 
 function pilotRows(rows) {
@@ -117,7 +129,7 @@ async function preflight(filePath) {
   }
 
   const purposes = listValues(sheetByName(workbook, 'spray purpose'));
-  const crops = listValues(sheetByName(workbook, 'crop type'));
+  const crops = cropValues(sheetByName(workbook, 'crop type'));
   const b2bSubcategories = listValues(sheetByName(workbook, 'B2B LIST'));
   const b2cClassifications = listValues(sheetByName(workbook, 'B2C LIST '));
   const clusters = listValues(sheetByName(workbook, 'cluster locations'), 'CLUSTER_')
@@ -192,4 +204,4 @@ async function preflight(filePath) {
   };
 }
 
-module.exports = { MAPPING_VERSION, preflight, stable, digest };
+module.exports = { MAPPING_VERSION, preflight, stable, digest, cropValues };

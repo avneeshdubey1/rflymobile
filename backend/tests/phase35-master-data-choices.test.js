@@ -2,6 +2,19 @@ const assert = require('node:assert/strict');
 const test = require('node:test');
 
 const repository = require('../src/repositories/masterDataRepository');
+const { cropValues, MAPPING_VERSION } = require('../importer/clientMasterWorkbookV1');
+
+test('client-master crop codes follow the lowercase database contract', () => {
+  assert.equal(MAPPING_VERSION, 'RFLY_CLIENT_MASTER_WORKBOOK_V4');
+  assert.deepEqual(cropValues([
+    ['Crop Type'],
+    ['Paddy'],
+    ['Black Gram'],
+  ]), [
+    { code: 'paddy', displayName: 'Paddy', normalizedName: 'paddy' },
+    { code: 'black_gram', displayName: 'Black Gram', normalizedName: 'blackgram' },
+  ]);
+});
 
 test('master-data choices preserve every independently loaded category', async () => {
   const original = {

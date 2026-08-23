@@ -1,5 +1,6 @@
 const masterDataRepository = require('../src/repositories/masterDataRepository');
 const auditLogService = require('./auditLogService');
+const { normalizedCropCode, normalizedCropName } = require('../src/lib/masterDataNormalization');
 
 const CATEGORIES = new Set(['SPRAY_PURPOSE', 'B2B_SUBCATEGORY', 'B2C_CLASSIFICATION', 'LEAD_SOURCE', 'REPORTING_ADMIN']);
 const CLUSTER_TYPES = new Set(['CLUSTER', 'HUB', 'SPOKE', 'MINIHUB']);
@@ -94,15 +95,15 @@ async function updateValue(id, input, actorId) {
 
 async function createCrop(input, actorId) {
   const displayName = text(input.displayName, 'Crop name', 160);
-  const normalizedName = displayName.normalize('NFKC').trim().toLowerCase();
-  const crop = await masterDataRepository.createCrop({ code: code(input.code), displayName, normalizedName, active: input.active !== false });
+  const normalizedName = normalizedCropName(displayName);
+  const crop = await masterDataRepository.createCrop({ code: normalizedCropCode(code(input.code)), displayName, normalizedName, active: input.active !== false });
   await auditLogService.record({ entityType: 'Crop', entityId: crop.id, action: 'CREATED', actorId, afterState: { code: crop.code, active: crop.active } });
   return crop;
 }
 
 async function updateCrop(id, input, actorId) {
   const data = {};
-  if (input.displayName !== undefined) { data.displayName = text(input.displayName, 'Crop name', 160); data.normalizedName = data.displayName.normalize('NFKC').trim().toLowerCase(); }
+  if (input.displayName !== undefined) { data.displayName = text(input.displayName, 'Crop name', 160); data.normalizedName = normalizedCropName(data.displayName); }
   if (input.active !== undefined) data.active = Boolean(input.active);
   const crop = await masterDataRepository.updateCrop(id, data);
   await auditLogService.record({ entityType: 'Crop', entityId: crop.id, action: 'UPDATED', actorId, afterState: { code: crop.code, active: crop.active } });
