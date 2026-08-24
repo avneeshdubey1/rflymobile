@@ -462,13 +462,13 @@ jobs:
           chmod +x gradlew
           sed -i 's/^org.gradle.jvmargs=.*/org.gradle.jvmargs=-Xmx6g -XX:MaxMetaspaceSize=1g -Dfile.encoding=UTF-8/' gradle.properties
           sed -i 's/^org.gradle.parallel=.*/org.gradle.parallel=false/' gradle.properties
-          ./gradlew :app:assembleRelease --no-daemon --max-workers=2
+          ./gradlew :app:assembleDebug --no-daemon --max-workers=2
 
       - name: Verify and package APK evidence
         shell: bash
         run: |
           set -euo pipefail
-          source_apk='frontend/android/app/build/outputs/apk/release/app-release.apk'
+          source_apk='frontend/android/app/build/outputs/apk/debug/app-debug.apk'
           test -s "$source_apk"
           artifact_dir="$RUNNER_TEMP/rfly-operations-staging-${GITHUB_SHA}"
           mkdir -p "$artifact_dir"
@@ -498,6 +498,7 @@ jobs:
             echo 'variant=staging'
             echo 'api_url=http://172.20.96.10:8089'
             echo 'package_id=com.rfly.operations.staging'
+            echo 'build_type=debug'
             echo 'signing=debug-signed'
             echo 'distribution=internal-only'
           } > "$artifact_dir/build-metadata.txt"
