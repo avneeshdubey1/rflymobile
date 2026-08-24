@@ -5,7 +5,9 @@ const logger = require('../services/loggerService');
 
 function isAllowedOrigin(origin, config) {
   if (!origin) return true;
-  return config.allowedOrigins.includes(origin);
+  if (config.allowedOrigins.includes(origin)) return true;
+  if (config.capacitorOriginsEnabled && origin === 'capacitor://localhost') return true;
+  return false;
 }
 
 function requestContext(req, res, next) {
