@@ -1,0 +1,341 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport">
+<title>RFLY Ops - Today's Work</title>
+<!-- Fonts: IBM Plex Sans & JetBrains Mono -->
+<link href="https://fonts.googleapis.com" rel="preconnect">
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet">
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<!-- Tailwind -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-primary-container": "#7c839b",
+                      "surface-tint": "#565e74",
+                      "primary-fixed-dim": "#bec6e0",
+                      "secondary-fixed": "#ffdbca",
+                      "tertiary": "#000000",
+                      "secondary": "#9d4300",
+                      "on-secondary": "#ffffff",
+                      "on-tertiary": "#ffffff",
+                      "surface-variant": "#e0e3e5",
+                      "surface-container-lowest": "#ffffff",
+                      "primary-container": "#131b2e",
+                      "surface-container-high": "#e6e8ea",
+                      "surface": "#f7f9fb",
+                      "rfly-blue": "#0F172A",
+                      "on-secondary-fixed-variant": "#783200",
+                      "surface-dim": "#d8dadc",
+                      "on-secondary-container": "#5c2400",
+                      "secondary-container": "#fd761a",
+                      "on-surface": "#191c1e",
+                      "tertiary-fixed-dim": "#b9c7e0",
+                      "background": "#f7f9fb",
+                      "primary-fixed": "#dae2fd",
+                      "on-primary-fixed": "#131b2e",
+                      "status-offline": "#475569",
+                      "status-warning": "#9A3412",
+                      "on-error-container": "#93000a",
+                      "inverse-on-surface": "#eff1f3",
+                      "on-tertiary-fixed": "#0d1c2f",
+                      "error": "#ba1a1a",
+                      "inverse-primary": "#bec6e0",
+                      "safety-orange": "#F97316",
+                      "primary": "#000000",
+                      "surface-container": "#eceef0",
+                      "surface-container-low": "#f2f4f6",
+                      "on-secondary-fixed": "#341100",
+                      "surface-slate": "#E2E8F0",
+                      "outline-variant": "#c6c6cd",
+                      "outline": "#76777d",
+                      "on-tertiary-container": "#76859b",
+                      "inverse-surface": "#2d3133",
+                      "surface-container-highest": "#e0e3e5",
+                      "on-error": "#ffffff",
+                      "on-primary-fixed-variant": "#3f465c",
+                      "surface-bright": "#f7f9fb",
+                      "on-background": "#191c1e",
+                      "error-container": "#ffdad6",
+                      "tertiary-container": "#0d1c2f",
+                      "on-primary": "#ffffff",
+                      "on-tertiary-fixed-variant": "#3a485c",
+                      "secondary-fixed-dim": "#ffb690",
+                      "tertiary-fixed": "#d5e3fd",
+                      "on-surface-variant": "#45464d",
+                      "status-success": "#166534"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "spacing": {
+                      "gutter": "16px",
+                      "stack-md": "16px",
+                      "stack-lg": "24px",
+                      "margin-mobile": "20px",
+                      "touch-target-min": "48px",
+                      "stack-sm": "8px"
+              },
+              "fontFamily": {
+                      "label-caps": ["IBM Plex Sans"],
+                      "data-mono": ["JetBrains Mono"],
+                      "headline-lg-mobile": ["IBM Plex Sans"],
+                      "headline-lg": ["IBM Plex Sans"],
+                      "body-lg": ["IBM Plex Sans"],
+                      "body-md": ["IBM Plex Sans"],
+                      "headline-md": ["IBM Plex Sans"]
+              },
+              "fontSize": {
+                      "label-caps": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700" }],
+                      "data-mono": ["14px", { "lineHeight": "20px", "fontWeight": "500" }],
+                      "headline-lg-mobile": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                      "headline-lg": ["28px", { "lineHeight": "36px", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                      "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                      "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                      "headline-md": ["20px", { "lineHeight": "28px", "fontWeight": "600" }]
+              }
+            }
+          }
+        }
+    </script>
+<style>
+        /* Hide scrollbar for clean industrial look */
+        ::-webkit-scrollbar { display: none; }
+        * { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        /* Subtle custom active states for interactive cards */
+        .mission-card:active { transform: scale(0.98); transition: transform 0.15s ease; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background min-h-screen flex flex-col md:flex-row antialiased selection:bg-safety-orange selection:text-white">
+<!-- DESKTOP NAV (NavigationDrawer) -->
+<aside class="hidden md:flex bg-surface h-full w-[280px] rounded-r-xl shadow-xl flex-col py-stack-lg gap-stack-sm fixed top-0 left-0 z-40 border-r border-surface-slate">
+<div class="px-6 mb-stack-lg flex items-center gap-4">
+<div class="w-12 h-12 rounded-full bg-surface-container-highest overflow-hidden border border-outline-variant flex-shrink-0">
+<img alt="Pilot Avatar" class="w-full h-full object-cover" data-alt="A professional headshot of a rugged male drone pilot wearing a minimalist tactical cap and high-tech mirrored sunglasses, standing against a brightly lit outdoor industrial backdrop. The lighting is crisp daylight, with a high-key, modern aesthetic. The mood is confident and ready for field operations." src="https://lh3.googleusercontent.com/aida-public/AB6AXuARDVlPjHlzq-i5Zi2oYuySCxbycqt-TAHrF6AedgOyogqMOz2E0SMxkF-jGZzPzCu5moE_XexYZtuotV6ceVuxZnLEi2-mN2sB0VJ8brCCxvzrnsKaKCG1i1w1Er-L6Och12zEXcBqjxnst4qXz3J_5S_CdD-UXK2WDyJko9bK-NX5mxCpAffrRpnx_ApGHRy1SSkY50zrIN91y4L2jykAnUG1M83pZdphEhKlHoBm9kW1HG0EmDoZ">
+</div>
+<div>
+<h2 class="font-headline-md text-headline-md text-primary">Lead Pilot</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">Region: Midwest</p>
+<div class="flex items-center gap-2 mt-1">
+<span class="w-2 h-2 rounded-full bg-status-success"></span>
+<span class="font-label-caps text-label-caps text-status-success">Status: Online</span>
+</div>
+</div>
+</div>
+<nav class="flex-1 flex flex-col gap-1">
+<!-- Active Tab: Mission Control (maps to Missions) -->
+<a class="bg-secondary-container text-on-secondary-container font-bold rounded-full mx-2 px-4 py-3 flex items-center gap-3" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">flight_takeoff</span>
+<span class="font-body-lg text-body-lg">Mission Control</span>
+</a>
+<a class="text-on-surface-variant mx-2 px-4 py-3 hover:bg-surface-container-high active:scale-[0.98] transition-all flex items-center gap-3 rounded-full" href="#">
+<span class="material-symbols-outlined">inventory_2</span>
+<span class="font-body-lg text-body-lg">Asset Registry</span>
+</a>
+<a class="text-on-surface-variant mx-2 px-4 py-3 hover:bg-surface-container-high active:scale-[0.98] transition-all flex items-center gap-3 rounded-full" href="#">
+<span class="material-symbols-outlined">history_edu</span>
+<span class="font-body-lg text-body-lg">Flight Logs</span>
+</a>
+<a class="text-on-surface-variant mx-2 px-4 py-3 hover:bg-surface-container-high active:scale-[0.98] transition-all flex items-center gap-3 rounded-full" href="#">
+<span class="material-symbols-outlined">security</span>
+<span class="font-body-lg text-body-lg">Safety Protocols</span>
+</a>
+<a class="text-on-surface-variant mx-2 px-4 py-3 hover:bg-surface-container-high active:scale-[0.98] transition-all flex items-center gap-3 rounded-full mt-auto" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-body-lg text-body-lg">Settings</span>
+</a>
+</nav>
+</aside>
+<!-- MOBILE TOP APP BAR -->
+<header class="md:hidden bg-surface w-full top-0 sticky border-b border-surface-slate z-30 shadow-sm flex items-center justify-between px-margin-mobile h-touch-target-min">
+<button class="w-[48px] h-[48px] flex items-center justify-start text-on-surface-variant hover:bg-surface-container-high transition-colors active:opacity-80 rounded-full">
+<span class="material-symbols-outlined">menu</span>
+</button>
+<h1 class="font-headline-md text-headline-md font-bold text-primary tracking-tight">RFLY Ops</h1>
+<button class="w-[48px] h-[48px] flex items-center justify-end">
+<div class="w-8 h-8 rounded-full bg-surface-container-high border border-outline-variant overflow-hidden">
+<span class="material-symbols-outlined text-on-surface-variant flex items-center justify-center h-full w-full">account_circle</span>
+</div>
+</button>
+</header>
+<!-- MAIN CONTENT CANVAS -->
+<main class="flex-1 md:ml-[280px] pb-[100px] md:pb-stack-lg pt-stack-md px-margin-mobile max-w-4xl w-full mx-auto">
+<!-- Header -->
+<div class="mb-stack-lg flex flex-col sm:flex-row sm:items-end justify-between gap-stack-sm border-b border-surface-slate pb-4">
+<div>
+<h1 class="font-headline-lg-mobile md:font-headline-lg text-primary">Today's Work</h1>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">Oct 24 • 3 Missions Assigned</p>
+</div>
+<!-- Progress indicator -->
+<div class="flex flex-col gap-2 w-full sm:w-48">
+<div class="flex justify-between items-center">
+<span class="font-label-caps text-label-caps text-on-surface-variant">Completion</span>
+<span class="font-data-mono text-data-mono text-primary">33%</span>
+</div>
+<div class="h-2 w-full bg-surface-slate rounded-full overflow-hidden">
+<div class="h-full bg-rfly-blue rounded-full w-1/3"></div>
+</div>
+</div>
+</div>
+<!-- Mission List (Bento/Card Layout) -->
+<div class="flex flex-col gap-stack-md">
+<!-- CARD 1: ACTIVE / READY TO START -->
+<!-- Note: Active mission card uses a thicker 2px left-border of Safety Orange -->
+<article class="bg-surface-container-lowest rounded-xl border border-surface-slate border-l-[3px] border-l-safety-orange p-gutter shadow-sm flex flex-col gap-stack-md relative overflow-hidden group mission-card transition-all cursor-pointer">
+<!-- Subtle background ambient gradient to indicate readiness -->
+<div class="absolute inset-0 bg-gradient-to-br from-safety-orange/5 to-transparent pointer-events-none"></div>
+<div class="flex justify-between items-start z-10">
+<div class="flex flex-col gap-1">
+<span class="font-data-mono text-data-mono text-surface-tint">MSN-8492</span>
+<h3 class="font-headline-md text-headline-md text-primary">Green Valley Farm</h3>
+<p class="font-body-md text-body-md text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">location_on</span>
+                            South Sector, Acreage: 120
+                        </p>
+</div>
+<!-- Status Chip: Success (Ready) -->
+<div class="bg-status-success/10 px-3 py-1 rounded-full flex items-center gap-2 border border-status-success/20">
+<span class="w-2 h-2 rounded-full bg-status-success animate-pulse"></span>
+<span class="font-label-caps text-label-caps text-status-success uppercase tracking-wider">Ready</span>
+</div>
+</div>
+<!-- Secondary Data (Progressive Disclosure - visible initially for high priority) -->
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4 py-3 border-y border-surface-slate/50 z-10">
+<div class="flex flex-col">
+<span class="font-label-caps text-label-caps text-on-surface-variant">Asset</span>
+<span class="font-data-mono text-data-mono text-primary">R-7X Drone</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-caps text-label-caps text-on-surface-variant">Payload</span>
+<span class="font-body-md text-body-md text-primary">Multispectral</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-caps text-label-caps text-on-surface-variant">Est. Time</span>
+<span class="font-data-mono text-data-mono text-primary">45 Min</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-caps text-label-caps text-on-surface-variant">Weather</span>
+<span class="font-body-md text-body-md text-primary flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">sunny</span> Clear, 5mph
+                        </span>
+</div>
+</div>
+<div class="flex items-center justify-end z-10 mt-2">
+<!-- Critical action button -> Safety Orange -->
+<button class="bg-safety-orange hover:bg-orange-600 text-white font-label-caps text-label-caps h-touch-target-min px-8 rounded-lg flex items-center justify-center gap-2 shadow-lg shadow-safety-orange/20 transition-all active:scale-95" onclick="window.location.href='{{DATA:SCREEN:SCREEN_9}}'">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">power_settings_new</span>
+                        START MISSION
+                    </button>
+</div>
+</article>
+<!-- CARD 2: PENDING -->
+<article class="bg-surface-container-lowest rounded-xl border border-surface-slate p-gutter shadow-sm flex flex-col gap-stack-md relative overflow-hidden group mission-card transition-all cursor-pointer hover:border-outline-variant">
+<div class="flex justify-between items-start z-10">
+<div class="flex flex-col gap-1">
+<span class="font-data-mono text-data-mono text-surface-tint">MSN-8493</span>
+<h3 class="font-headline-md text-headline-md text-primary">River Bend Orchards</h3>
+<p class="font-body-md text-body-md text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">location_on</span>
+                            East Block, Acreage: 85
+                        </p>
+</div>
+<!-- Status Chip: Warning (Pending) -->
+<div class="bg-status-warning/10 px-3 py-1 rounded-full flex items-center gap-2 border border-status-warning/20">
+<span class="material-symbols-outlined text-status-warning text-[14px]">hourglass_empty</span>
+<span class="font-label-caps text-label-caps text-status-warning uppercase tracking-wider">Pending Copilot</span>
+</div>
+</div>
+<!-- Secondary Data -->
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4 py-3 border-t border-surface-slate/50 z-10">
+<div class="flex flex-col">
+<span class="font-label-caps text-label-caps text-on-surface-variant">Asset</span>
+<span class="font-data-mono text-data-mono text-primary">R-5 Pro</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-caps text-label-caps text-on-surface-variant">Est. Time</span>
+<span class="font-data-mono text-data-mono text-primary">1h 20m</span>
+</div>
+</div>
+<div class="flex items-center justify-end z-10 mt-2 gap-3">
+<button class="bg-surface-container-highest hover:bg-surface-dim text-primary font-label-caps text-label-caps h-touch-target-min px-6 rounded-lg flex items-center justify-center gap-2 transition-colors active:scale-95 border border-outline-variant">
+                        REVIEW PLAN
+                    </button>
+<!-- Primary Button (RFLY Blue) for secondary action -->
+<button class="bg-rfly-blue hover:bg-primary text-white font-label-caps text-label-caps h-touch-target-min px-6 rounded-lg flex items-center justify-center gap-2 transition-colors active:scale-95 shadow-md" onclick="window.location.href='{{DATA:SCREEN:SCREEN_19}}'">
+<span class="material-symbols-outlined">person_add</span>
+                        ASSIGN
+                    </button>
+</div>
+</article>
+<!-- CARD 3: OFFLINE / COMPLETED -->
+<article class="bg-surface-container-lowest rounded-xl border border-surface-slate p-gutter shadow-sm flex flex-col gap-stack-md relative overflow-hidden opacity-75 group hover:opacity-100 transition-opacity">
+<div class="flex justify-between items-start z-10">
+<div class="flex flex-col gap-1">
+<span class="font-data-mono text-data-mono text-surface-tint line-through decoration-surface-slate">MSN-8490</span>
+<h3 class="font-headline-md text-headline-md text-on-surface-variant">North Ridge Survey</h3>
+<p class="font-body-md text-body-md text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">location_on</span>
+                            Perimeter Check
+                        </p>
+</div>
+<!-- Status Chip: Offline/Done -->
+<div class="bg-status-offline px-3 py-1 rounded-full flex items-center gap-2">
+<span class="material-symbols-outlined text-white text-[14px]">check_circle</span>
+<span class="font-label-caps text-label-caps text-white uppercase tracking-wider">Completed</span>
+</div>
+</div>
+<div class="flex items-center justify-end z-10 mt-2">
+<button class="text-rfly-blue hover:text-primary font-label-caps text-label-caps h-[36px] px-4 rounded-lg flex items-center justify-center gap-2 transition-colors">
+                        VIEW LOGS
+                        <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</button>
+</div>
+</article>
+</div>
+</main>
+<!-- MOBILE BOTTOM NAV BAR (Hidden on Web) -->
+<!-- Active Navigation Tab: "Missions" -->
+<nav class="md:hidden fixed bottom-0 w-full z-50 h-[80px] bg-primary-container border-t border-surface-slate shadow-lg flex justify-around items-center pb-safe px-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
+<!-- Active Tab: Missions -->
+<a class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-full px-6 py-1 active:scale-95 transition-transform duration-150" href="{{DATA:SCREEN:SCREEN_6}}">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">precision_manufacturing</span>
+<span class="font-label-caps text-label-caps mt-1">Missions</span>
+</a>
+<!-- Inactive Tabs -->
+<a class="flex flex-col items-center justify-center text-on-primary-container opacity-70 hover:bg-primary-fixed-variant hover:opacity-100 rounded-full px-4 py-2 transition-all active:scale-95" href="{{DATA:SCREEN:SCREEN_4}}">
+<span class="material-symbols-outlined">hub</span>
+<span class="font-label-caps text-label-caps mt-1">Fleet</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-primary-container opacity-70 hover:bg-primary-fixed-variant hover:opacity-100 rounded-full px-4 py-2 transition-all active:scale-95" href="{{DATA:SCREEN:SCREEN_9}}">
+<span class="material-symbols-outlined">explore</span>
+<span class="font-label-caps text-label-caps mt-1">Map</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-primary-container opacity-70 hover:bg-primary-fixed-variant hover:opacity-100 rounded-full px-4 py-2 transition-all active:scale-95" href="{{DATA:SCREEN:SCREEN_7}}">
+<span class="material-symbols-outlined">person</span>
+<span class="font-label-caps text-label-caps mt-1">Profile</span>
+</a>
+</nav>
+<!-- Safe area padding for newer mobile devices -->
+<style>
+        @supports (padding-bottom: env(safe-area-inset-bottom)) {
+            .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+        }
+    </style>
+
+
+</body></html>

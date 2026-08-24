@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Pilot Field - Eligible Copilot Selection</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "warning": "#ca8a04",
+                        "surface-container-highest": "#dce1e6",
+                        "surface-container-lowest": "#ffffff",
+                        "surface": "#fcf8fa",
+                        "inverse-surface": "#303032",
+                        "on-tertiary-fixed": "#271901",
+                        "on-tertiary": "#ffffff",
+                        "on-secondary-fixed": "#341100",
+                        "primary-fixed": "#dae2fd",
+                        "tertiary-fixed-dim": "#dec29a",
+                        "secondary-container": "#fd761a",
+                        "error-container": "#ffdad6",
+                        "surface-container-high": "#eae7e9",
+                        "surface-variant": "#e4e2e4",
+                        "on-tertiary-fixed-variant": "#574425",
+                        "on-secondary-fixed-variant": "#783200",
+                        "on-secondary": "#ffffff",
+                        "surface-container": "#f0edef",
+                        "primary-container": "#131b2e",
+                        "outline": "#76777d",
+                        "error": "#dc2626",
+                        "inverse-primary": "#bec6e0",
+                        "success": "#16a34a",
+                        "on-secondary-container": "#5c2400",
+                        "outline-variant": "#c6c6cd",
+                        "tertiary-fixed": "#fcdeb5",
+                        "surface-tint": "#565e74",
+                        "on-primary-fixed-variant": "#3f465c",
+                        "on-surface-variant": "#45464d",
+                        "background": "#fcf8fa",
+                        "primary-fixed-dim": "#bec6e0",
+                        "on-background": "#1b1b1d",
+                        "on-primary-fixed": "#131b2e",
+                        "on-error-container": "#93000a",
+                        "surface-container-low": "#f2f4f6",
+                        "surface-bright": "#fcf8fa",
+                        "tertiary": "#000000",
+                        "surface-dim": "#d8dadc",
+                        "on-primary": "#ffffff",
+                        "secondary-fixed": "#ffdbca",
+                        "on-error": "#ffffff",
+                        "on-tertiary-container": "#98805d",
+                        "on-primary-container": "#7c839b",
+                        "secondary": "#9d4300",
+                        "primary": "#000000",
+                        "inverse-on-surface": "#f3f0f2",
+                        "surface-container-medium": "#eef1f4",
+                        "secondary-fixed-dim": "#ffb690",
+                        "tertiary-container": "#271901",
+                        "on-surface": "#1b1b1d"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "margin-mobile": "16px",
+                        "stack-sm": "8px",
+                        "gutter-mobile": "12px",
+                        "touch-target-min": "48px",
+                        "stack-md": "16px",
+                        "stack-lg": "24px"
+                    },
+                    "fontFamily": {
+                        "headline-sm": ["IBM Plex Sans"],
+                        "body-sm": ["IBM Plex Sans"],
+                        "body-md": ["IBM Plex Sans"],
+                        "label-sm": ["IBM Plex Sans"],
+                        "label-lg": ["IBM Plex Sans"],
+                        "label-md": ["IBM Plex Sans"],
+                        "headline-md": ["IBM Plex Sans"],
+                        "body-lg": ["IBM Plex Sans"],
+                        "headline-lg": ["IBM Plex Sans"]
+                    },
+                    "fontSize": {
+                        "headline-sm": ["16px", { "lineHeight": "24px", "fontWeight": "700" }],
+                        "body-sm": ["12px", { "lineHeight": "16px", "fontWeight": "400" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "label-sm": ["11px", { "lineHeight": "16px", "fontWeight": "500" }],
+                        "label-lg": ["14px", { "lineHeight": "20px", "fontWeight": "500" }],
+                        "label-md": ["12px", { "lineHeight": "16px", "fontWeight": "500" }],
+                        "headline-md": ["20px", { "lineHeight": "28px", "fontWeight": "700" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "headline-lg": ["24px", { "lineHeight": "32px", "fontWeight": "700" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { font-family: 'IBM Plex Sans', sans-serif; }
+    </style>
+</head>
+<body class="bg-background text-on-background min-h-screen flex flex-col pt-[48px] pb-20 md:pb-0">
+<!-- TopAppBar (Transactional - Hidden Nav Shell Context, but maintaining header as instructed) -->
+<header class="fixed top-0 w-full z-50 bg-primary text-on-primary flex items-center justify-between px-margin-mobile h-touch-target-min transition-colors duration-200">
+<button aria-label="Back" class="flex items-center justify-center w-12 h-12 text-on-primary hover:bg-primary-container/20 transition-colors duration-200">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">arrow_back</span>
+</button>
+<h1 class="font-headline-md text-headline-md font-bold text-on-primary">Pilot Field</h1>
+<div class="w-12 h-12 flex items-center justify-center">
+<!-- Trailing icon placeholder for alignment -->
+</div>
+</header>
+<!-- Main Canvas -->
+<main class="flex-1 w-full max-w-3xl mx-auto px-margin-mobile py-stack-lg">
+<div class="mb-stack-md">
+<h2 class="font-headline-lg text-headline-lg text-on-background mb-stack-sm">Select Copilot</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">Search or select an eligible copilot for the current assignment.</p>
+</div>
+<!-- Search Field -->
+<div class="relative mb-stack-lg">
+<div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+<span class="material-symbols-outlined text-outline">search</span>
+</div>
+<input class="block w-full pl-10 pr-3 py-3 border border-outline rounded bg-surface-container-lowest text-on-surface focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary font-body-lg text-body-lg h-touch-target-min" placeholder="Search by name or ID (e.g., OP-1242)" type="text"/>
+</div>
+<!-- Candidate List -->
+<div class="flex flex-col gap-stack-sm">
+<!-- Candidate Item 1 -->
+<button class="w-full flex items-center justify-between p-4 bg-surface-container-low border border-outline-variant rounded hover:bg-surface-container-high transition-colors text-left h-[72px] focus:outline-none focus:ring-2 focus:ring-primary">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-headline-sm text-headline-sm shrink-0">
+                        VS
+                    </div>
+<div>
+<div class="font-headline-sm text-headline-sm text-on-surface">Vikram S.</div>
+<div class="font-label-md text-label-md text-on-surface-variant mt-1">OP-1242</div>
+</div>
+</div>
+<div class="text-secondary">
+<span class="material-symbols-outlined">chevron_right</span>
+</div>
+</button>
+<!-- Candidate Item 2 -->
+<button class="w-full flex items-center justify-between p-4 bg-surface-container-low border border-outline-variant rounded hover:bg-surface-container-high transition-colors text-left h-[72px] focus:outline-none focus:ring-2 focus:ring-primary">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-headline-sm text-headline-sm shrink-0">
+                        SK
+                    </div>
+<div>
+<div class="font-headline-sm text-headline-sm text-on-surface">Sarah K.</div>
+<div class="font-label-md text-label-md text-on-surface-variant mt-1">OP-8834</div>
+</div>
+</div>
+<div class="text-secondary">
+<span class="material-symbols-outlined">chevron_right</span>
+</div>
+</button>
+</div>
+</main>
+<!-- BottomNavBar Suppressed as this is a transactional flow -->
+</body></html>

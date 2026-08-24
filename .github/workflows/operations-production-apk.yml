@@ -1,0 +1,207 @@
+name: operations-production-apk
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Full main commit SHA already deployed to office production
+        required: true
+        type: string
+      confirmation:
+        description: Type BUILD_INTERNAL_PRODUCTION_APK
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: operations-production-apk
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: build approved Operations production-pointed APK
+    runs-on: [self-hosted, linux, rfly-onprem]
+    timeout-minutes: 60
+    environment: onprem-production
+    env:
+      CI: '1'
+      VITE_API_URL: http://103.238.230.152:8088
+    steps:
+      - name: Validate explicit approval
+        shell: bash
+        env:
+          REQUESTED_SHA: ${{ inputs.source_sha }}
+          CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = 'refs/heads/main' || {
+            echo 'Run this workflow from the main branch only.' >&2
+            exit 1
+          }
+          test "$CONFIRMATION" = 'BUILD_INTERNAL_PRODUCTION_APK' || {
+            echo 'The production APK confirmation phrase is incorrect.' >&2
+            exit 1
+          }
+          [[ "$REQUESTED_SHA" =~ ^[0-9a-f]{40}$ ]] || {
+            echo 'source_sha must be a full 40-character Git commit SHA.' >&2
+            exit 1
+          }
+
+      - name: Checkout requested source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.source_sha }}
+
+      - name: Refuse non-main or stale source
+        shell: bash
+        env:
+          REQUESTED_SHA: ${{ inputs.source_sha }}
+        run: |
+          set -euo pipefail
+          git fetch --force --no-tags origin \
+            refs/heads/main:refs/remotes/origin/main
+          test "$(git rev-parse HEAD)" = "$REQUESTED_SHA"
+          test "$(git rev-parse origin/main)" = "$REQUESTED_SHA" || {
+            echo 'The requested revision is not the current main branch tip.' >&2
+            exit 1
+          }
+
+      - name: Verify matching production deployment is healthy
+        shell: bash
+        env:
+          REQUESTED_SHA: ${{ inputs.source_sha }}
+        run: |
+          set -euo pipefail
+          actual_image="$(docker inspect rfly-onprem-demo-frontend-1 \
+            --format '{{.Config.Image}}')"
+          expected_image="field-operations-frontend:${REQUESTED_SHA}"
+          test "$actual_image" = "$expected_image" || {
+            echo "Production runs ${actual_image}; expected ${expected_image}." >&2
+            exit 1
+          }
+          curl --fail --silent --show-error http://127.0.0.1:8088/healthz >/dev/null
+          curl --fail --silent --show-error http://127.0.0.1:8088/api/health >/dev/null
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Install Android command-line tools
+        uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699 # v4
+
+      - name: Install pinned Android SDK components
+        shell: bash
+        run: |
+          set -euo pipefail
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager \
+            'platform-tools' \
+            'platforms;android-36' \
+            'build-tools;36.0.0' \
+            'cmake;3.22.1' \
+            'ndk;27.1.12297006'
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Recheck production dependency gate
+        working-directory: frontend
+        run: npm audit --omit=dev --audit-level=critical
+
+      - name: Activate production Capacitor configuration
+        working-directory: frontend
+        shell: bash
+        run: cp capacitor.config.prod.ts capacitor.config.ts
+
+      - name: Build Vite bundle for production endpoint
+        working-directory: frontend
+        run: npm run build
+
+      - name: Sync production Capacitor Android project
+        working-directory: frontend
+        run: npx cap sync android
+
+      - name: Generate branded Operations Android assets
+        working-directory: frontend
+        run: npm run assets:android
+
+      - name: Apply production Android identity
+        working-directory: frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          sed -i 's/com\.rfly\.operations\.staging/com.rfly.operations/g' \
+            android/app/src/main/res/values/strings.xml
+
+      - name: Build internal production-pointed APK
+        working-directory: frontend/android
+        shell: bash
+        run: |
+          set -euo pipefail
+          chmod +x gradlew
+          sed -i 's/^org.gradle.jvmargs=.*/org.gradle.jvmargs=-Xmx6g -XX:MaxMetaspaceSize=1g -Dfile.encoding=UTF-8/' gradle.properties
+          sed -i 's/^org.gradle.parallel=.*/org.gradle.parallel=false/' gradle.properties
+          ./gradlew :app:assembleDebug \
+            -PrflyApplicationId=com.rfly.operations \
+            --no-daemon \
+            --max-workers=2
+
+      - name: Verify and package production APK evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          source_apk='frontend/android/app/build/outputs/apk/debug/app-debug.apk'
+          test -s "$source_apk"
+          artifact_dir="$RUNNER_TEMP/rfly-operations-production-${GITHUB_SHA}"
+          mkdir -p "$artifact_dir"
+          cp "$source_apk" "$artifact_dir/rfly-operations-production.apk"
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose \
+            "$artifact_dir/rfly-operations-production.apk"
+          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging \
+            "$artifact_dir/rfly-operations-production.apk" \
+            | grep -q "package: name='com.rfly.operations'"
+          apk_permissions="$("$ANDROID_HOME/build-tools/36.0.0/aapt" dump permissions \
+            "$artifact_dir/rfly-operations-production.apk")"
+          for forbidden_permission in \
+            android.permission.ACCESS_BACKGROUND_LOCATION \
+            android.permission.FOREGROUND_SERVICE_LOCATION \
+            android.permission.READ_EXTERNAL_STORAGE \
+            android.permission.WRITE_EXTERNAL_STORAGE \
+            android.permission.SYSTEM_ALERT_WINDOW; do
+            if grep -q "$forbidden_permission" <<< "$apk_permissions"; then
+              echo "Forbidden Android permission present: $forbidden_permission" >&2
+              exit 1
+            fi
+          done
+          sha256sum "$artifact_dir/rfly-operations-production.apk" \
+            > "$artifact_dir/rfly-operations-production.apk.sha256"
+          {
+            echo "source_sha=$GITHUB_SHA"
+            echo 'variant=production-internal'
+            echo 'api_url=http://103.238.230.152:8088'
+            echo 'package_id=com.rfly.operations'
+            echo 'build_type=debug'
+            echo 'signing=debug-signed'
+            echo 'distribution=internal-only'
+            echo 'tls=not-configured'
+            date -u '+built_at=%Y-%m-%dT%H:%M:%SZ'
+          } > "$artifact_dir/build-metadata.txt"
+          echo "APK_ARTIFACT_DIR=$artifact_dir" >> "$GITHUB_ENV"
+
+      - name: Upload internal production APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: rfly-operations-production-${{ github.sha }}
+          path: ${{ env.APK_ARTIFACT_DIR }}
+          if-no-files-found: error
+          retention-days: 7

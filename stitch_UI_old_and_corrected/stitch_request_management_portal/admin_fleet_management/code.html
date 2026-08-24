@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>RFLY Operations - Fleet Management</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-error-container": "#93000a",
+                        "inverse-on-surface": "#eff1f3",
+                        "tertiary-fixed-dim": "#b9c7e0",
+                        "status-warning": "#9A3412",
+                        "on-secondary-fixed-variant": "#783200",
+                        "surface-container-low": "#f2f4f6",
+                        "outline-variant": "#c6c6cd",
+                        "on-tertiary-fixed": "#0d1c2f",
+                        "primary-container": "#131b2e",
+                        "surface-tint": "#565e74",
+                        "secondary-fixed": "#ffdbca",
+                        "surface-container": "#eceef0",
+                        "inverse-primary": "#bec6e0",
+                        "error-container": "#ffdad6",
+                        "rfly-blue": "#0F172A",
+                        "on-background": "#191c1e",
+                        "surface-variant": "#e0e3e5",
+                        "on-surface": "#191c1e",
+                        "surface-dim": "#d8dadc",
+                        "on-secondary-fixed": "#341100",
+                        "surface-slate": "#E2E8F0",
+                        "tertiary-fixed": "#d5e3fd",
+                        "primary": "#000000",
+                        "error": "#ba1a1a",
+                        "on-primary": "#ffffff",
+                        "on-tertiary-container": "#76859b",
+                        "on-tertiary": "#ffffff",
+                        "on-surface-variant": "#45464d",
+                        "status-success": "#166534",
+                        "secondary-fixed-dim": "#ffb690",
+                        "on-error": "#ffffff",
+                        "secondary-container": "#fd761a",
+                        "surface-container-highest": "#e0e3e5",
+                        "surface-bright": "#f7f9fb",
+                        "surface-container-lowest": "#ffffff",
+                        "outline": "#76777d",
+                        "on-secondary": "#ffffff",
+                        "tertiary-container": "#0d1c2f",
+                        "surface": "#f7f9fb",
+                        "tertiary": "#000000",
+                        "on-primary-fixed": "#131b2e",
+                        "on-primary-container": "#7c839b",
+                        "background": "#f7f9fb",
+                        "inverse-surface": "#2d3133",
+                        "on-primary-fixed-variant": "#3f465c",
+                        "on-secondary-container": "#5c2400",
+                        "status-offline": "#475569",
+                        "safety-orange": "#F97316",
+                        "primary-fixed-dim": "#bec6e0",
+                        "surface-container-high": "#e6e8ea",
+                        "on-tertiary-fixed-variant": "#3a485c",
+                        "primary-fixed": "#dae2fd",
+                        "secondary": "#9d4300"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "stack-lg": "24px",
+                        "stack-md": "16px",
+                        "gutter": "16px",
+                        "margin-mobile": "20px",
+                        "touch-target-min": "48px",
+                        "stack-sm": "8px"
+                    },
+                    "fontFamily": {
+                        "body-lg": ["IBM Plex Sans"],
+                        "headline-md": ["IBM Plex Sans"],
+                        "body-md": ["IBM Plex Sans"],
+                        "headline-lg": ["IBM Plex Sans"],
+                        "headline-lg-mobile": ["IBM Plex Sans"],
+                        "data-mono": ["JetBrains Mono"],
+                        "label-caps": ["IBM Plex Sans"]
+                    },
+                    "fontSize": {
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "headline-md": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "headline-lg": ["28px", { "lineHeight": "36px", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                        "headline-lg-mobile": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "data-mono": ["14px", { "lineHeight": "20px", "fontWeight": "500" }],
+                        "label-caps": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background font-body-lg antialiased h-screen flex flex-col md:flex-row overflow-hidden">
+<!-- Mobile Top App Bar -->
+<header class="md:hidden sticky top-0 w-full z-40 bg-surface-container-lowest dark:bg-surface-container-highest bg-surface-container-high flex items-end justify-between px-gutter py-stack-md w-full flat no shadows">
+<div class="flex items-center gap-2">
+<div class="h-8 w-8 rounded-full bg-surface-slate flex items-center justify-center overflow-hidden">
+<img alt="User Profile" class="object-cover w-full h-full" data-alt="A professional headshot of a female operations coordinator in a brightly lit industrial office, wearing a headset. The lighting is soft but functional, creating a clean, high-contrast look suitable for a tech or aviation interface. The color palette emphasizes clean whites, slate greys, and deep blues." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB5Ru1bgf-_u5N1ti7A_wmzsov9tZNp-28E-EX4ZBXRznGPDOTLod63FoaMdULexTwDKGOH9Xjqma2_RU4PILh5VkV00iiu0tAyGjB-2kXJHLktD9ys1F2obg8Weqh5OV8EExbdE4L5nkuV55SNmPDSFwR1O2KmofUby8go62L4trEZyiN8WUXDQkOEx-bgLr-rr3W-xQ-yjAQWNh7fjOljBJIPcY9lcXyhQe0idMl1JopHCpVxjpAj"/>
+</div>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-rfly-blue">RFLY Operations</h1>
+</div>
+<button class="h-touch-target-min w-touch-target-min flex items-center justify-center text-outline hover:bg-surface-container transition-colors active:opacity-80 rounded-full">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+</header>
+<!-- Navigation Drawer (Desktop) -->
+<nav class="hidden md:flex flex-col h-full py-stack-lg bg-surface-bright dark:bg-surface-dim border-r border-outline-variant shadow-sm h-full w-72 rounded-r-xl z-30 flex-shrink-0">
+<div class="px-6 mb-stack-lg flex items-center gap-4 left_align">
+<div class="h-12 w-12 rounded-full bg-surface-slate flex items-center justify-center overflow-hidden flex-shrink-0">
+<img alt="Ops Coordinator" class="object-cover w-full h-full" data-alt="A professional headshot of a female operations coordinator in a brightly lit industrial office, wearing a headset. The lighting is soft but functional, creating a clean, high-contrast look suitable for a tech or aviation interface. The color palette emphasizes clean whites, slate greys, and deep blues." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCnUubuiTSmZUwdS6xrTBCpUUHhmlADTEmMdq4DvCVAeFMOnrQpsTqetiKKiCo9kfIh-SrqToYbIWx1tpuJc9g4hYRsAKAifcyP7t5rBBKDh6NFDSA3ZLsCAhXRabYAAngHDLdR_BgzFdihYj6vyqxx2mYowsbVZmmQGJTv057IhNybJeEYazgd8orQiZHSiuX1SJhMj2Oir_PadOLHwnrmUhOSPDBLduKvdD2D_hf9CZ6dkpNhC1-6"/>
+</div>
+<div>
+<h2 class="font-headline-md text-headline-md text-primary">RFLY Operations</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">Fleet Manager</p>
+</div>
+</div>
+<ul class="flex flex-col gap-2 mt-4 px-2">
+<li>
+<a class="flex items-center gap-3 text-on-surface-variant hover:bg-surface-container-high rounded-full mx-2 px-4 py-3 hover:bg-surface-slate transition-all active:translate-x-1 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="point_of_sale">point_of_sale</span>
+<span class="font-body-lg text-body-lg">Sales Intake</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 bg-secondary-container text-on-secondary-container font-bold rounded-full mx-2 px-4 py-3 hover:bg-surface-slate transition-all active:translate-x-1 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="hub">hub</span>
+<span class="font-body-lg text-body-lg">Fleet Mgmt</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 text-on-surface-variant hover:bg-surface-container-high rounded-full mx-2 px-4 py-3 hover:bg-surface-slate transition-all active:translate-x-1 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="list_alt">list_alt</span>
+<span class="font-body-lg text-body-lg">Queues</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 text-on-surface-variant hover:bg-surface-container-high rounded-full mx-2 px-4 py-3 hover:bg-surface-slate transition-all active:translate-x-1 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+<span class="font-body-lg text-body-lg">Analytics</span>
+</a>
+</li>
+</ul>
+<div class="mt-auto px-6">
+<button class="flex items-center gap-3 w-full text-left text-on-surface-variant hover:bg-surface-container-high rounded-full px-4 py-3 hover:bg-surface-slate transition-all active:translate-x-1 duration-200">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="font-body-lg text-body-lg">Admin Settings</span>
+</button>
+</div>
+</nav>
+<!-- Main Content Canvas -->
+<main class="flex-1 overflow-y-auto pb-32 md:pb-8 pt-6 px-margin-mobile md:px-8 bg-surface">
+<!-- Header -->
+<div class="mb-stack-lg flex flex-col md:flex-row md:items-end justify-between gap-4">
+<div>
+<h2 class="font-headline-lg text-headline-lg-mobile md:text-headline-lg text-primary tracking-tight">Asset Registry &amp; Management</h2>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">Global view of active drones, LMVs, and personnel.</p>
+</div>
+<div class="flex gap-2">
+<button class="h-touch-target-min px-4 bg-surface-container text-on-surface font-label-caps text-label-caps rounded-DEFAULT hover:bg-surface-container-high flex items-center gap-2 border border-outline-variant">
+<span class="material-symbols-outlined" data-icon="filter_list">filter_list</span>
+                    FILTERS
+                </button>
+<button class="h-touch-target-min px-4 bg-rfly-blue text-on-primary font-label-caps text-label-caps rounded-DEFAULT hover:opacity-90 flex items-center gap-2 shadow-md">
+<span class="material-symbols-outlined text-[18px]" data-icon="add">add</span>
+                    REGISTER ASSET
+                </button>
+</div>
+</div>
+<!-- Bento Grid Layout -->
+<div class="grid grid-cols-1 md:grid-cols-12 gap-stack-md">
+<!-- Quick Stats -->
+<div class="col-span-1 md:col-span-12 grid grid-cols-2 md:grid-cols-4 gap-stack-md">
+<div class="bg-surface-container-lowest p-4 rounded-xl border border-surface-slate shadow-sm">
+<div class="flex items-center gap-2 text-on-surface-variant mb-2">
+<span class="material-symbols-outlined text-[20px]" data-icon="flight">flight</span>
+<span class="font-label-caps text-label-caps">ACTIVE DRONES</span>
+</div>
+<div class="font-headline-lg text-headline-lg text-primary">142</div>
+</div>
+<div class="bg-surface-container-lowest p-4 rounded-xl border border-surface-slate shadow-sm">
+<div class="flex items-center gap-2 text-on-surface-variant mb-2">
+<span class="material-symbols-outlined text-[20px]" data-icon="directions_car">directions_car</span>
+<span class="font-label-caps text-label-caps">DEPLOYED LMVS</span>
+</div>
+<div class="font-headline-lg text-headline-lg text-primary">38</div>
+</div>
+<div class="bg-surface-container-lowest p-4 rounded-xl border border-surface-slate shadow-sm">
+<div class="flex items-center gap-2 text-on-surface-variant mb-2">
+<span class="material-symbols-outlined text-[20px]" data-icon="badge">badge</span>
+<span class="font-label-caps text-label-caps">ACTIVE PILOTS</span>
+</div>
+<div class="font-headline-lg text-headline-lg text-primary">87</div>
+</div>
+<div class="bg-error-container p-4 rounded-xl border border-error/20 shadow-sm">
+<div class="flex items-center gap-2 text-on-error-container mb-2">
+<span class="material-symbols-outlined text-[20px]" data-icon="warning">warning</span>
+<span class="font-label-caps text-label-caps">MAINTENANCE REQ</span>
+</div>
+<div class="font-headline-lg text-headline-lg text-on-error-container">12</div>
+</div>
+</div>
+<!-- Asset Registry List (Drones/LMVs) -->
+<div class="col-span-1 md:col-span-8 bg-surface-container-lowest rounded-xl border border-surface-slate shadow-sm flex flex-col h-[500px]">
+<div class="p-4 border-b border-surface-slate flex justify-between items-center bg-surface-bright rounded-t-xl">
+<h3 class="font-headline-md text-headline-md text-primary flex items-center gap-2">
+<span class="material-symbols-outlined" data-icon="precision_manufacturing">precision_manufacturing</span>
+                        Asset Registry
+                    </h3>
+<div class="flex gap-2">
+<span class="px-2 py-1 bg-surface-container text-on-surface-variant font-label-caps text-[10px] rounded">DRONES</span>
+<span class="px-2 py-1 bg-transparent text-outline font-label-caps text-[10px] rounded border border-outline-variant">LMVS</span>
+</div>
+</div>
+<div class="p-0 overflow-y-auto flex-1">
+<table class="w-full text-left border-collapse">
+<thead class="sticky top-0 bg-surface-container-lowest border-b border-surface-slate">
+<tr>
+<th class="p-4 font-label-caps text-label-caps text-on-surface-variant">ASSET ID</th>
+<th class="p-4 font-label-caps text-label-caps text-on-surface-variant">MODEL</th>
+<th class="p-4 font-label-caps text-label-caps text-on-surface-variant">STATUS</th>
+<th class="p-4 font-label-caps text-label-caps text-on-surface-variant hidden md:table-cell">LOCATION</th>
+<th class="p-4 font-label-caps text-label-caps text-on-surface-variant">ACTIONS</th>
+</tr>
+</thead>
+<tbody class="font-body-md text-body-md text-on-surface">
+<tr class="border-b border-surface-slate hover:bg-surface-container-low transition-colors group">
+<td class="p-4 font-data-mono text-data-mono font-bold">DRN-X9-042</td>
+<td class="p-4">Agras T40</td>
+<td class="p-4">
+<span class="inline-flex items-center gap-1 px-2 py-1 bg-[#dcfce7] text-status-success rounded text-[12px] font-bold">
+<span class="w-2 h-2 rounded-full bg-status-success"></span> ACTIVE
+                                    </span>
+</td>
+<td class="p-4 hidden md:table-cell text-on-surface-variant">Op-Center Alpha</td>
+<td class="p-4">
+<button class="text-rfly-blue opacity-50 group-hover:opacity-100 transition-opacity">
+<span class="material-symbols-outlined" data-icon="edit">edit</span>
+</button>
+</td>
+</tr>
+<tr class="border-b border-surface-slate hover:bg-surface-container-low transition-colors group border-l-2 border-l-safety-orange bg-surface-container-low/50">
+<td class="p-4 font-data-mono text-data-mono font-bold">DRN-X9-118</td>
+<td class="p-4">Agras T40</td>
+<td class="p-4">
+<span class="inline-flex items-center gap-1 px-2 py-1 bg-secondary-fixed text-status-warning rounded text-[12px] font-bold">
+<span class="w-2 h-2 rounded-full bg-status-warning"></span> IN FLIGHT
+                                    </span>
+</td>
+<td class="p-4 hidden md:table-cell text-on-surface-variant">Sector 7G (Field)</td>
+<td class="p-4">
+<button class="text-rfly-blue opacity-50 group-hover:opacity-100 transition-opacity">
+<span class="material-symbols-outlined" data-icon="visibility">visibility</span>
+</button>
+</td>
+</tr>
+<tr class="border-b border-surface-slate hover:bg-surface-container-low transition-colors group">
+<td class="p-4 font-data-mono text-data-mono font-bold">DRN-M3-005</td>
+<td class="p-4">Mavic 3E</td>
+<td class="p-4">
+<span class="inline-flex items-center gap-1 px-2 py-1 bg-surface-variant text-status-offline rounded text-[12px] font-bold">
+<span class="w-2 h-2 rounded-full bg-status-offline"></span> OFFLINE
+                                    </span>
+</td>
+<td class="p-4 hidden md:table-cell text-on-surface-variant">Op-Center Beta</td>
+<td class="p-4">
+<button class="text-rfly-blue opacity-50 group-hover:opacity-100 transition-opacity">
+<span class="material-symbols-outlined" data-icon="edit">edit</span>
+</button>
+</td>
+</tr>
+<tr class="border-b border-surface-slate hover:bg-surface-container-low transition-colors group">
+<td class="p-4 font-data-mono text-data-mono font-bold">DRN-X9-088</td>
+<td class="p-4">Agras T30</td>
+<td class="p-4">
+<span class="inline-flex items-center gap-1 px-2 py-1 bg-error-container text-on-error-container rounded text-[12px] font-bold">
+<span class="w-2 h-2 rounded-full bg-error"></span> MAINTENANCE
+                                    </span>
+</td>
+<td class="p-4 hidden md:table-cell text-on-surface-variant">Workshop A</td>
+<td class="p-4">
+<button class="text-rfly-blue opacity-50 group-hover:opacity-100 transition-opacity">
+<span class="material-symbols-outlined" data-icon="build">build</span>
+</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- Role Access & Certifications -->
+<div class="col-span-1 md:col-span-4 flex flex-col gap-stack-md">
+<!-- Access Controls -->
+<div class="bg-rfly-blue rounded-xl p-4 shadow-sm text-on-primary relative overflow-hidden">
+<div class="absolute -right-10 -top-10 opacity-10">
+<span class="material-symbols-outlined text-[120px]" data-icon="admin_panel_settings">admin_panel_settings</span>
+</div>
+<h3 class="font-headline-md text-headline-md mb-4 flex items-center gap-2 relative z-10">
+<span class="material-symbols-outlined" data-icon="shield_person">shield_person</span>
+                        Access Controls
+                    </h3>
+<div class="space-y-3 relative z-10">
+<div class="bg-surface-tint/30 p-3 rounded-lg flex justify-between items-center border border-white/10">
+<div>
+<div class="font-body-md text-body-md font-bold">Fleet Manager</div>
+<div class="text-[12px] text-on-primary-container">Full Asset Write Access</div>
+</div>
+<span class="material-symbols-outlined text-status-success" data-icon="check_circle">check_circle</span>
+</div>
+<div class="bg-surface-tint/30 p-3 rounded-lg flex justify-between items-center border border-white/10 opacity-60">
+<div>
+<div class="font-body-md text-body-md font-bold">Field Pilot</div>
+<div class="text-[12px] text-on-primary-container">Asset Read / Mission Exec</div>
+</div>
+<span class="material-symbols-outlined" data-icon="radio_button_unchecked">radio_button_unchecked</span>
+</div>
+</div>
+</div>
+<!-- Pilot Certs -->
+<div class="bg-surface-container-lowest rounded-xl border border-surface-slate shadow-sm flex-1 flex flex-col">
+<div class="p-4 border-b border-surface-slate bg-surface-bright rounded-t-xl flex justify-between items-center">
+<h3 class="font-headline-md text-headline-md text-primary flex items-center gap-2">
+<span class="material-symbols-outlined" data-icon="workspace_premium">workspace_premium</span>
+                            Certifications
+                        </h3>
+<button class="text-rfly-blue hover:text-safety-orange transition-colors">
+<span class="material-symbols-outlined text-[20px]" data-icon="open_in_new">open_in_new</span>
+</button>
+</div>
+<div class="p-4 space-y-4 overflow-y-auto">
+<div class="flex items-start gap-3">
+<div class="w-8 h-8 rounded bg-surface-container flex items-center justify-center flex-shrink-0 text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]" data-icon="warning">warning</span>
+</div>
+<div>
+<div class="font-body-md text-body-md font-bold text-primary">Part 107 Expiring</div>
+<div class="font-body-md text-[12px] text-on-surface-variant">3 Pilots expiring within 30 days.</div>
+<button class="mt-1 text-safety-orange font-label-caps text-label-caps hover:underline">VIEW PILOTS</button>
+</div>
+</div>
+<hr class="border-surface-slate"/>
+<div class="flex items-start gap-3">
+<div class="w-8 h-8 rounded bg-surface-container flex items-center justify-center flex-shrink-0 text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]" data-icon="done_all">done_all</span>
+</div>
+<div>
+<div class="font-body-md text-body-md font-bold text-primary">Heavy Lift Certs</div>
+<div class="font-body-md text-[12px] text-on-surface-variant">12 new T40 certifications approved this week.</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Mobile Bottom Navigation -->
+<nav class="md:hidden fixed bottom-0 left-0 w-full flex justify-around items-center h-[64px] px-4 pb-safe bg-rfly-blue dark:bg-primary-container z-50 shadow-md">
+<a class="flex flex-col items-center justify-center text-on-primary-container opacity-70 hover:opacity-100 transition-opacity active:scale-90 duration-150 w-16 h-full" href="#">
+<span class="material-symbols-outlined text-[24px]" data-icon="precision_manufacturing">precision_manufacturing</span>
+<span class="font-label-caps text-[10px] mt-1">Mission</span>
+</a>
+<a class="flex flex-col items-center justify-center text-safety-orange font-bold scale-110 active:scale-90 duration-150 w-16 h-full" href="#">
+<span class="material-symbols-outlined text-[24px]" data-icon="hub" data-weight="fill">hub</span>
+<span class="font-label-caps text-[10px] mt-1">Fleet</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-primary-container opacity-70 hover:opacity-100 transition-opacity active:scale-90 duration-150 w-16 h-full relative" href="#">
+<div class="absolute top-2 right-4 w-2 h-2 bg-safety-orange rounded-full"></div>
+<span class="material-symbols-outlined text-[24px]" data-icon="warning">warning</span>
+<span class="font-label-caps text-[10px] mt-1">Alerts</span>
+</a>
+</nav>
+</body></html>

@@ -1,0 +1,133 @@
+.assignment-container {
+    width: 100%;
+    margin: 20px auto;
+    background: #ffffff;
+    padding: 25px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.assignment-container h2 {
+    text-align: center;
+    margin-bottom: 20px;
+    color: #1e3a8a;
+    font-size: 20px;
+}
+
+.assignment-container table {
+    width: 100%;
+    border-collapse: collapse;
+    overflow: hidden;
+    border-radius: 10px;
+}
+
+.assignment-container thead {
+    background: #2563eb;
+    color: white;
+}
+
+.assignment-container th {
+    padding: 14px;
+    text-align: center;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.assignment-container td {
+    padding: 14px;
+    text-align: center;
+    border-bottom: 1px solid #e5e7eb;
+    font-size: 14px;
+    color: #374151;
+}
+
+.assignment-container tbody tr:nth-child(even) {
+    background: #f8fafc;
+}
+
+.assignment-container tbody tr:hover {
+    background: #eef6ff;
+    transition: 0.3s;
+}
+
+.success {
+    display: inline-block;
+    background: #22c55e;
+    color: white;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.pending {
+    display: inline-block;
+    background: #f59e0b;
+    color: white;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.assignment-container td br {
+    margin-bottom: 4px;
+}
+
+.assignment-container tbody tr td:first-child {
+    font-weight: 600;
+    color: #111827;
+}
+
+.assignment-container tbody tr td:last-child {
+    font-weight: 600;
+}
+
+.assignment-container td[colspan="8"] {
+    padding: 30px;
+    text-align: center;
+    color: #6b7280;
+    font-size: 16px;
+}
+
+.pagination {
+    margin-top: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 18px;
+}
+
+.pagination button {
+    padding: 8px 18px;
+    border: none;
+    border-radius: 6px;
+    background: #2563eb;
+    color: #fff;
+    cursor: pointer;
+    font-size: 14px;
+    transition: 0.3s;
+}
+
+.pagination button:hover:not(:disabled) {
+    background: #1d4ed8;
+}
+
+.pagination button:disabled {
+    background: #cbd5e1;
+    cursor: not-allowed;
+}
+
+.pagination span {
+    font-weight: 600;
+    color: #374151;
+}
+
+@media (max-width: 1000px) {
+    .assignment-container {
+        overflow-x: auto;
+    }
+    .assignment-container table {
+        min-width: 950px;
+    }
+}

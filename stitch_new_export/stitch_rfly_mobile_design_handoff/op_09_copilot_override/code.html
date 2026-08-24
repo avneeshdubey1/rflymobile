@@ -1,0 +1,469 @@
+<!DOCTYPE html><html class="light" lang="en" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>OP-09 Copilot Override</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com" rel="preconnect">
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;700;800&amp;family=JetBrains+Mono:wght@500;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "inverse-surface": "#2e3132",
+                        "on-surface": "#191c1d",
+                        "background": "#f8f9fa",
+                        "surface-container-low": "#f3f4f5",
+                        "surface": "#f8f9fa",
+                        "secondary": "#a04100",
+                        "primary": "#04162e",
+                        "surface-tint": "#4f5f7b",
+                        "status-success": "#2E7D32",
+                        "on-error": "#ffffff",
+                        "on-primary-container": "#8292b0",
+                        "tertiary-container": "#272b2f",
+                        "tertiary-fixed": "#dfe3e8",
+                        "on-secondary": "#ffffff",
+                        "inverse-primary": "#b6c7e7",
+                        "on-primary": "#ffffff",
+                        "surface-container": "#EDEEEF",
+                        "surface-variant": "#e1e3e4",
+                        "error-container": "#ffdad6",
+                        "on-secondary-container": "#572000",
+                        "on-tertiary-container": "#8e9297",
+                        "surface-container-high": "#e7e8e9",
+                        "tertiary": "#12171b",
+                        "primary-fixed-dim": "#b6c7e7",
+                        "status-error": "#D32F2F",
+                        "primary-fixed": "#d5e3ff",
+                        "status-offline": "#757575",
+                        "status-warning": "#ED6C02",
+                        "error": "#ba1a1a",
+                        "inverse-on-surface": "#f0f1f2",
+                        "surface-dim": "#d9dadb",
+                        "on-primary-fixed": "#091c34",
+                        "on-surface-variant": "#44474d",
+                        "tertiary-fixed-dim": "#c3c7cc",
+                        "on-secondary-fixed-variant": "#7a3000",
+                        "on-primary-fixed-variant": "#374762",
+                        "on-error-container": "#93000a",
+                        "secondary-fixed-dim": "#ffb693",
+                        "outline": "#75777e",
+                        "on-tertiary-fixed-variant": "#43474c",
+                        "on-tertiary": "#ffffff",
+                        "surface-bright": "#f8f9fa",
+                        "on-secondary-fixed": "#351000",
+                        "outline-variant": "#c5c6ce",
+                        "primary-container": "#1a2b44",
+                        "on-background": "#191c1d",
+                        "secondary-fixed": "#ffdbcc",
+                        "secondary-container": "#fe6b00",
+                        "on-tertiary-fixed": "#181c20",
+                        "surface-container-highest": "#e1e3e4",
+                        "surface-container-lowest": "#ffffff"
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    spacing: {
+                        "gutter": "12px",
+                        "margin-mobile": "16px",
+                        "base": "8px",
+                        "stack-lg": "24px",
+                        "stack-sm": "8px",
+                        "touch-target-min": "48px",
+                        "stack-md": "16px"
+                    },
+                    fontFamily: {
+                        "data-lg": ["JetBrains Mono"],
+                        "headline-sm": ["Hanken Grotesk"],
+                        "label-caps": ["Hanken Grotesk"],
+                        "display-lg": ["Hanken Grotesk"],
+                        "body-md": ["Hanken Grotesk"],
+                        "headline-md": ["Hanken Grotesk"],
+                        "body-lg": ["Hanken Grotesk"],
+                        "data-sm": ["JetBrains Mono"]
+                    },
+                    fontSize: {
+                        "data-lg": ["20px", { lineHeight: "24px", fontWeight: "700" }],
+                        "headline-sm": ["20px", { lineHeight: "28px", fontWeight: "700" }],
+                        "label-caps": ["12px", { lineHeight: "16px", letterSpacing: "0.08em", fontWeight: "800" }],
+                        "display-lg": ["32px", { lineHeight: "40px", letterSpacing: "-0.02em", fontWeight: "800" }],
+                        "body-md": ["16px", { lineHeight: "24px", fontWeight: "400" }],
+                        "headline-md": ["24px", { lineHeight: "32px", fontWeight: "700" }],
+                        "body-lg": ["18px", { lineHeight: "26px", fontWeight: "500" }],
+                        "data-sm": ["14px", { lineHeight: "20px", fontWeight: "500" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined.fill {
+            font-variation-settings: 'FILL' 1;
+        }
+        
+        /* Custom scrollbar for high-density tables */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f8f9fa; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #c5c6ce; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #75777e; 
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body-md antialiased min-h-screen flex flex-col">
+<!-- Task-Focused TopAppBar (Suppressed global nav for linear task flow) -->
+<header class="sticky top-0 w-full z-40 flex items-center justify-between px-stack-lg h-[64px] bg-surface-container-lowest border-b border-surface-container shadow-[0px_4px_0px_rgba(0,0,0,0.02)]">
+<div class="flex items-center gap-stack-md">
+<button class="flex items-center justify-center w-[40px] h-[40px] rounded-full text-primary hover:bg-surface-container transition-colors">
+<span class="material-symbols-outlined" data-icon="arrow_back">arrow_back</span>
+</button>
+<div class="flex flex-col">
+<span class="font-label-caps text-label-caps text-on-surface-variant uppercase">Action Required</span>
+<h1 class="font-headline-sm text-headline-sm text-primary tracking-tight">Copilot Override</h1>
+</div>
+</div>
+<div class="flex items-center gap-stack-md">
+<div class="flex items-center gap-2 bg-surface-container px-3 py-1.5 rounded text-primary">
+<img src="https://lh3.googleusercontent.com/aida-public/AB6AXuBM6ZaEEoi73L3Z7RT4sIRJBJeTmRqLNnkIljj_zFI0SvHlLFqO-fQaQlstlb0G_C2ZMyCEnCBpTUHEaGjwWJqveuGaxM-Zm2Nc-9pnzpXT0lWiXiWLNczUWrEnFOjWVQvK5GZn62HlXpUhflDrV-rpLaVcPR4Gl92DLL5j46bygl_vyW-1EHqEn5unOhiPDYTR9CFM0D8W9tyaZOdgSUMpVm4VAZIKN83wDNn5mPBxCAlF99blST_o" alt="RFLY Drone Logo" class="w-6 h-6 object-contain">
+<span class="font-data-sm text-data-sm">MSN-RFL-492</span>
+</div>
+</div>
+</header>
+<!-- Main Canvas -->
+<main class="flex-1 w-full max-w-[1440px] mx-auto p-stack-lg grid grid-cols-1 lg:grid-cols-12 gap-stack-lg items-start">
+<!-- Left Column: Context & Reason (col-span-4) -->
+<div class="lg:col-span-4 flex flex-col gap-stack-lg">
+<!-- Current Assignment Card -->
+<section class="bg-surface-container-lowest rounded-DEFAULT border border-surface-container p-stack-md relative overflow-hidden">
+<!-- Decorative Work-item left border -->
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-primary"></div>
+<h2 class="font-label-caps text-label-caps text-on-surface-variant uppercase mb-stack-md">Current Assignment</h2>
+<div class="flex items-start gap-stack-md">
+<img alt="Current Copilot" class="w-[48px] h-[48px] rounded-full object-cover border border-surface-variant" data-alt="A professional headshot of a male commercial pilot in his late 30s, wearing a crisp white uniform shirt with epaulets. He has short dark hair and a neutral, focused expression. The background is a clean, bright, high-key white, matching a modern corporate ID photo style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB_SzI3uGtYqkRU7mEW1AkDf_LKFV_vbN0Tx4TlHsDdHdmZPyJtla5TE_Mmabd3aBIF9PPORBniKBfI9pPbBwRMsyZJgos_nKoyttKQV_qcZqGOu93yz7r972gNkVb9Be1Vb9QWeEKcQP-S9MeBMzml5Z7xlmKiXU4lnx7nahlBqV4g3ZrvCw_YQQXsjeF_jTP0CCQ88flCT-Z1uTwopfJ9-7fDv3K0fkwkQLEusDfsSMDnlDn8swy_">
+<div class="flex flex-col">
+<span class="font-headline-sm text-headline-sm text-primary">Marcus Vance</span>
+<span class="font-body-md text-body-md text-on-surface-variant">Senior First Officer</span>
+<div class="flex items-center gap-2 mt-2">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-error-container text-on-error-container font-label-caps text-[10px]">
+<span class="material-symbols-outlined text-[12px] mr-1" data-icon="warning">warning</span>
+                                Action Required
+                            </span>
+</div>
+</div>
+</div>
+</section>
+<!-- Reason Selection Card -->
+<section class="bg-surface-container-lowest rounded-DEFAULT border border-surface-container p-stack-md">
+<h2 class="font-label-caps text-label-caps text-on-surface-variant uppercase mb-stack-md">Override Reason <span class="text-status-error">*</span></h2>
+<div class="flex flex-col gap-base" id="reason-group">
+<!-- Reason Option 1 -->
+<label class="relative flex items-center justify-between p-3 rounded-DEFAULT border border-surface-variant cursor-pointer hover:bg-surface transition-colors has-[:checked]:border-secondary-container has-[:checked]:border-2 has-[:checked]:bg-secondary-container/5">
+<div class="flex items-center gap-3">
+<input class="w-4 h-4 text-secondary-container border-outline focus:ring-secondary-container focus:ring-offset-0" name="override_reason" type="radio" value="illness">
+<span class="font-body-md text-body-md text-primary font-medium">Illness / Medical</span>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="medical_services">medical_services</span>
+</label>
+<!-- Reason Option 2 -->
+<label class="relative flex items-center justify-between p-3 rounded-DEFAULT border border-surface-variant cursor-pointer hover:bg-surface transition-colors has-[:checked]:border-secondary-container has-[:checked]:border-2 has-[:checked]:bg-secondary-container/5">
+<div class="flex items-center gap-3">
+<input class="w-4 h-4 text-secondary-container border-outline focus:ring-secondary-container focus:ring-offset-0" name="override_reason" type="radio" value="schedule">
+<span class="font-body-md text-body-md text-primary font-medium">Schedule Conflict</span>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="event_busy">event_busy</span>
+</label>
+<!-- Reason Option 3 -->
+<label class="relative flex items-center justify-between p-3 rounded-DEFAULT border border-surface-variant cursor-pointer hover:bg-surface transition-colors has-[:checked]:border-secondary-container has-[:checked]:border-2 has-[:checked]:bg-secondary-container/5">
+<div class="flex items-center gap-3">
+<input class="w-4 h-4 text-secondary-container border-outline focus:ring-secondary-container focus:ring-offset-0" name="override_reason" type="radio" value="noshow">
+<span class="font-body-md text-body-md text-primary font-medium">No-Show / Unreachable</span>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="person_off">person_off</span>
+</label>
+<!-- Reason Option 4 -->
+<label class="relative flex items-center justify-between p-3 rounded-DEFAULT border border-surface-variant cursor-pointer hover:bg-surface transition-colors has-[:checked]:border-secondary-container has-[:checked]:border-2 has-[:checked]:bg-secondary-container/5">
+<div class="flex items-center gap-3">
+<input class="w-4 h-4 text-secondary-container border-outline focus:ring-secondary-container focus:ring-offset-0" name="override_reason" type="radio" value="other">
+<span class="font-body-md text-body-md text-primary font-medium">Operational Directive</span>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="policy">policy</span>
+</label>
+</div>
+<div class="mt-stack-md">
+<label class="block font-label-caps text-label-caps text-on-surface-variant uppercase mb-2">Additional Notes (Optional)</label>
+<textarea class="w-full rounded border-surface-variant focus:border-primary focus:ring-0 text-body-md bg-surface p-3 placeholder:text-outline-variant" placeholder="Enter specific details regarding the override..." rows="3"></textarea>
+</div>
+</section>
+</div>
+<!-- Right Column: Candidate Selection (col-span-8) -->
+<div class="lg:col-span-8 flex flex-col h-full">
+<section class="bg-surface-container-lowest rounded-DEFAULT border border-surface-container flex flex-col flex-1 overflow-hidden shadow-[0px_4px_0px_rgba(0,0,0,0.02)]">
+<!-- Search & Filter Header -->
+<div class="p-stack-md border-b border-surface-container bg-surface-bright flex flex-col sm:flex-row gap-stack-md items-center justify-between">
+<div class="w-full sm:w-2/3 relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline" data-icon="search">search</span>
+<input class="w-full pl-10 pr-4 py-2 bg-surface-container-lowest border-2 border-surface-container rounded focus:border-primary focus:ring-0 font-body-md transition-colors" placeholder="Search by name, ID, or base..." type="text">
+</div>
+<div class="flex gap-2 w-full sm:w-auto">
+<button class="px-4 py-2 rounded-full bg-primary text-white font-body-md text-[14px] font-medium tracking-wide flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]" data-icon="check_circle">check_circle</span>
+                            Available
+                        </button>
+<button class="px-4 py-2 rounded-full border border-surface-variant text-on-surface-variant hover:bg-surface font-body-md text-[14px] font-medium tracking-wide flex items-center gap-2 transition-colors">
+                            Standby
+                        </button>
+</div>
+</div>
+<!-- High-Density Data Table / List -->
+<div class="overflow-y-auto flex-1 bg-surface-container-lowest min-h-[400px]">
+<!-- Table Header -->
+<div class="grid grid-cols-12 gap-4 px-stack-md py-3 bg-primary text-white font-label-caps text-label-caps uppercase sticky top-0 z-10 shadow-sm">
+<div class="col-span-5 sm:col-span-4">Candidate</div>
+<div class="hidden sm:block col-span-3">Status / Base</div>
+<div class="col-span-4 sm:col-span-3 text-right">Flight Hrs</div>
+<div class="col-span-3 sm:col-span-2 text-right">Action</div>
+</div>
+<!-- Candidate Rows -->
+<div class="flex flex-col" id="candidate-list">
+<!-- Row 1 -->
+<div class="candidate-row group grid grid-cols-12 gap-4 px-stack-md py-4 border-b border-surface-container items-center hover:bg-surface transition-colors cursor-pointer relative" data-candidate-id="c1">
+<div class="col-span-5 sm:col-span-4 flex items-center gap-3">
+<img alt="Candidate" class="w-[40px] h-[40px] rounded-full object-cover border border-surface-variant" data-alt="A professional headshot of a female pilot in her early 30s, wearing a standard navy uniform. Her hair is pulled back neatly. The lighting is soft and professional against a neutral gray background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAVYHg2pDKPH_0Y7MVHvvv7JGFhPmI8hWR5qcQyS70PoAw7_MFIoW4tUyMe9O9MAhjuWmQ0DgUGyqHPqrODnoAyz01Zsj53HNGbqAQzAPwJjEHwD3V9DVW-klcwmcvs7aNuufRN8-K-H8DkrCSYiX8SgnHrEJU4pC-FqGus6M6KZGWMDZFNSNnBjntomzvXnFA130fLZqR_AwE0jLMxEavCw2mEJz4VgbcoBcyQX29mAWSnNn4wWs0Y">
+<div class="flex flex-col">
+<span class="font-body-md text-body-md text-primary font-bold">Sarah Jenkins</span>
+<span class="font-data-sm text-[12px] text-on-surface-variant">ID: RFL-9921</span>
+</div>
+</div>
+<div class="hidden sm:flex col-span-3 flex-col justify-center">
+<span class="inline-flex items-center gap-1 text-status-success font-body-md text-[14px] font-medium">
+<span class="w-2 h-2 rounded-full bg-status-success"></span> Available
+                                </span>
+<span class="font-body-md text-[12px] text-outline">JFK Base (0.5mi)</span>
+</div>
+<div class="col-span-4 sm:col-span-3 flex justify-end items-center">
+<span class="font-data-sm text-data-sm text-on-surface">1,240</span>
+</div>
+<div class="col-span-3 sm:col-span-2 flex justify-end items-center">
+<div class="w-6 h-6 rounded-full border-2 border-outline-variant flex items-center justify-center group-[.selected]:border-secondary-container group-[.selected]:bg-secondary-container transition-all">
+<span class="material-symbols-outlined text-[16px] text-white opacity-0 group-[.selected]:opacity-100" data-icon="check">check</span>
+</div>
+</div>
+<!-- Selection highlight border -->
+<div class="absolute inset-0 border-2 border-secondary-container rounded-DEFAULT pointer-events-none hidden group-[.selected]:block"></div>
+</div>
+<!-- Row 2 -->
+<div class="candidate-row group grid grid-cols-12 gap-4 px-stack-md py-4 border-b border-surface-container items-center hover:bg-surface transition-colors cursor-pointer relative" data-candidate-id="c2">
+<div class="col-span-5 sm:col-span-4 flex items-center gap-3">
+<img alt="Candidate" class="w-[40px] h-[40px] rounded-full object-cover border border-surface-variant" data-alt="A professional headshot of a male pilot of Asian descent, wearing pilot wings on a dark uniform. He looks confident and experienced. The image uses high-key corporate lighting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBBDef03ax-YqAL6wFzsj-IwOM1DMdKjKDV95f1Y_KIv4iaEWSP-KtJYSAdqy9L28ThzDywNR-R5dAhAWALAEfkQJgiCIhxUsGiOVPLhSAskT05XJF7TJc45Yl03gaAqpGn4Uak4a-4k9_Gi7BmpNgqL_5uxSNqp_j98KeiKm1HsZneq-lKH_ZpTeP3rwVUjOpJQqgJQoGblgrIZgZ1DD5hmX6lmyPoSfsysJSy--0NL3gU0quh6-aU">
+<div class="flex flex-col">
+<span class="font-body-md text-body-md text-primary font-bold">David Cho</span>
+<span class="font-data-sm text-[12px] text-on-surface-variant">ID: RFL-8834</span>
+</div>
+</div>
+<div class="hidden sm:flex col-span-3 flex-col justify-center">
+<span class="inline-flex items-center gap-1 text-status-warning font-body-md text-[14px] font-medium">
+<span class="w-2 h-2 rounded-full bg-status-warning"></span> Standby
+                                </span>
+<span class="font-body-md text-[12px] text-outline">EWR Base (12mi)</span>
+</div>
+<div class="col-span-4 sm:col-span-3 flex justify-end items-center">
+<span class="font-data-sm text-data-sm text-on-surface">950</span>
+</div>
+<div class="col-span-3 sm:col-span-2 flex justify-end items-center">
+<div class="w-6 h-6 rounded-full border-2 border-outline-variant flex items-center justify-center group-[.selected]:border-secondary-container group-[.selected]:bg-secondary-container transition-all">
+<span class="material-symbols-outlined text-[16px] text-white opacity-0 group-[.selected]:opacity-100" data-icon="check">check</span>
+</div>
+</div>
+<!-- Selection highlight border -->
+<div class="absolute inset-0 border-2 border-secondary-container rounded-DEFAULT pointer-events-none hidden group-[.selected]:block"></div>
+</div>
+<!-- Row 3 -->
+<div class="candidate-row group grid grid-cols-12 gap-4 px-stack-md py-4 border-b border-surface-container items-center hover:bg-surface transition-colors cursor-pointer relative" data-candidate-id="c3">
+<div class="col-span-5 sm:col-span-4 flex items-center gap-3">
+<img alt="Candidate" class="w-[40px] h-[40px] rounded-full object-cover border border-surface-variant" data-alt="A professional headshot of an older female pilot with short gray hair, wearing a dark pilot uniform. She has a stern, highly experienced expression. Clean, modern studio background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCZTR3R6J01_17BNYaTlipX6layNOnzk-AwIqOFphsnOEKhLtGjSFAW_mt_o8rrr5x8o33WWmC5q2_JsRWaiaRpHbMPAQz4S9qBhODdmlY44PzwD1WTjdcCj_b8kD_5c6093fXCXPIf-1gi7X_uCs8KKyBN8EgSFsffdInxWx7LW6u0l7JITPXCKyxReUdh-gSKziDO4_9LVj_4BNuLgtzvudSDRSmXV4lBHhA82PLpzdTYJGOqGfQU">
+<div class="flex flex-col">
+<span class="font-body-md text-body-md text-primary font-bold">Elena Rostova</span>
+<span class="font-data-sm text-[12px] text-on-surface-variant">ID: RFL-4102</span>
+</div>
+</div>
+<div class="hidden sm:flex col-span-3 flex-col justify-center">
+<span class="inline-flex items-center gap-1 text-status-success font-body-md text-[14px] font-medium">
+<span class="w-2 h-2 rounded-full bg-status-success"></span> Available
+                                </span>
+<span class="font-body-md text-[12px] text-outline">JFK Base (1.2mi)</span>
+</div>
+<div class="col-span-4 sm:col-span-3 flex justify-end items-center">
+<span class="font-data-sm text-data-sm text-on-surface">3,100</span>
+</div>
+<div class="col-span-3 sm:col-span-2 flex justify-end items-center">
+<div class="w-6 h-6 rounded-full border-2 border-outline-variant flex items-center justify-center group-[.selected]:border-secondary-container group-[.selected]:bg-secondary-container transition-all">
+<span class="material-symbols-outlined text-[16px] text-white opacity-0 group-[.selected]:opacity-100" data-icon="check">check</span>
+</div>
+</div>
+<!-- Selection highlight border -->
+<div class="absolute inset-0 border-2 border-secondary-container rounded-DEFAULT pointer-events-none hidden group-[.selected]:block"></div>
+</div>
+</div>
+</div>
+</section>
+</div>
+</main>
+<!-- Fixed Bottom Action Bar -->
+<div class="sticky bottom-0 w-full bg-surface-container-lowest border-t border-surface-container p-stack-md flex justify-between items-center shadow-[0px_-4px_16px_rgba(0,0,0,0.05)] z-40">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-outline" data-icon="info">info</span>
+<span class="font-body-md text-on-surface-variant hidden sm:inline">Select a reason and a new candidate to proceed.</span>
+</div>
+<div class="flex items-center gap-stack-md">
+<button class="px-6 py-3 rounded text-primary font-body-md font-bold hover:bg-surface-container transition-colors tracking-wide">
+                Cancel
+            </button>
+<!-- Primary Action Button (Safety Orange) -->
+<button class="px-6 py-3 rounded-full bg-secondary-container text-white font-body-md font-bold hover:bg-secondary transition-colors tracking-wide shadow-[0px_4px_0px_rgba(0,0,0,0.1)] flex items-center gap-2 opacity-50 cursor-not-allowed" disabled="" id="btn-pre-confirm">
+<span class="material-symbols-outlined" data-icon="published_with_changes">published_with_changes</span>
+                Review Override
+            </button>
+</div>
+</div>
+<!-- Confirmation Modal Overlay -->
+<div class="fixed inset-0 bg-primary/60 backdrop-blur-sm z-50 flex items-center justify-center opacity-0 pointer-events-none transition-opacity duration-200" id="modal-overlay">
+<!-- Modal Card -->
+<div class="bg-surface-container-lowest w-[90%] max-w-[500px] rounded-lg shadow-2xl transform scale-95 transition-transform duration-200" id="modal-card">
+<!-- Warning Header -->
+<div class="p-stack-lg border-b border-surface-container flex flex-col items-center text-center">
+<div class="w-16 h-16 rounded-full bg-error-container text-status-error flex items-center justify-center mb-4">
+<span class="material-symbols-outlined text-[32px] fill" data-icon="warning">warning</span>
+</div>
+<h2 class="font-display-lg text-display-lg text-primary mb-2">Confirm Override</h2>
+<p class="font-body-lg text-body-lg text-on-surface-variant">This action will immediately update the active flight manifest and notify crew scheduling.</p>
+</div>
+<!-- Summary Details -->
+<div class="p-stack-lg bg-surface flex flex-col gap-stack-sm">
+<div class="flex justify-between items-center py-2 border-b border-surface-variant border-dashed">
+<span class="font-label-caps text-label-caps text-outline uppercase">Mission</span>
+<span class="font-data-sm text-data-sm text-primary font-bold">MSN-RFL-492</span>
+</div>
+<div class="flex justify-between items-center py-2 border-b border-surface-variant border-dashed">
+<span class="font-label-caps text-label-caps text-outline uppercase">Removed</span>
+<span class="font-body-md text-status-error font-medium line-through">Marcus Vance</span>
+</div>
+<div class="flex justify-between items-center py-2 border-b border-surface-variant border-dashed">
+<span class="font-label-caps text-label-caps text-outline uppercase">Assigned</span>
+<span class="font-body-md text-status-success font-bold" id="modal-assigned-name">Sarah Jenkins</span>
+</div>
+<div class="flex justify-between items-center py-2">
+<span class="font-label-caps text-label-caps text-outline uppercase">Reason</span>
+<span class="font-body-md text-primary font-medium" id="modal-reason-text">Illness / Medical</span>
+</div>
+</div>
+<!-- Modal Actions -->
+<div class="p-stack-md border-t border-surface-container flex justify-end gap-stack-md bg-surface-container-lowest rounded-b-lg">
+<button class="px-6 py-2 rounded text-primary font-body-md font-bold hover:bg-surface-container transition-colors" id="btn-modal-cancel">
+                    Go Back
+                </button>
+<button class="px-6 py-2 rounded-full bg-status-error text-white font-body-md font-bold hover:bg-error transition-colors flex items-center gap-2 shadow-[0px_4px_0px_rgba(0,0,0,0.1)]">
+<span class="material-symbols-outlined" data-icon="verified">verified</span>
+                    Execute Override
+                </button>
+</div>
+</div>
+</div>
+<!-- Interaction Script -->
+<script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const rows = document.querySelectorAll('.candidate-row');
+            const radios = document.querySelectorAll('input[name="override_reason"]');
+            const preConfirmBtn = document.getElementById('btn-pre-confirm');
+            
+            const modalOverlay = document.getElementById('modal-overlay');
+            const modalCard = document.getElementById('modal-card');
+            const btnModalCancel = document.getElementById('btn-modal-cancel');
+            
+            const modalAssignedName = document.getElementById('modal-assigned-name');
+            const modalReasonText = document.getElementById('modal-reason-text');
+
+            let selectedCandidateName = null;
+            let selectedReasonText = null;
+
+            // Form Validation Logic
+            function checkFormValidity() {
+                const isCandidateSelected = document.querySelector('.candidate-row.selected') !== null;
+                const isReasonSelected = document.querySelector('input[name="override_reason"]:checked') !== null;
+
+                if (isCandidateSelected && isReasonSelected) {
+                    preConfirmBtn.disabled = false;
+                    preConfirmBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                } else {
+                    preConfirmBtn.disabled = true;
+                    preConfirmBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                }
+            }
+
+            // Candidate Selection Logic
+            rows.forEach(row => {
+                row.addEventListener('click', () => {
+                    // Deselect all
+                    rows.forEach(r => r.classList.remove('selected', 'bg-secondary-container/5'));
+                    // Select clicked
+                    row.classList.add('selected', 'bg-secondary-container/5');
+                    
+                    // Store name for modal
+                    selectedCandidateName = row.querySelector('.font-bold').textContent;
+                    
+                    checkFormValidity();
+                });
+            });
+
+            // Reason Selection Logic
+            radios.forEach(radio => {
+                radio.addEventListener('change', () => {
+                    selectedReasonText = radio.nextElementSibling.textContent;
+                    checkFormValidity();
+                });
+            });
+
+            // Modal Logic
+            preConfirmBtn.addEventListener('click', () => {
+                if(!preConfirmBtn.disabled) {
+                    // Update modal content
+                    if(selectedCandidateName) modalAssignedName.textContent = selectedCandidateName;
+                    if(selectedReasonText) modalReasonText.textContent = selectedReasonText;
+
+                    // Show modal
+                    modalOverlay.classList.remove('opacity-0', 'pointer-events-none');
+                    modalCard.classList.remove('scale-95');
+                    modalCard.classList.add('scale-100');
+                }
+            });
+
+            btnModalCancel.addEventListener('click', () => {
+                // Hide modal
+                modalOverlay.classList.add('opacity-0', 'pointer-events-none');
+                modalCard.classList.remove('scale-100');
+                modalCard.classList.add('scale-95');
+            });
+        });
+    </script>
+
+
+</body></html>

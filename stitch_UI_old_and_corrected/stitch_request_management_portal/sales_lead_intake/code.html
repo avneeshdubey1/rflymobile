@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>RFLY Operations - Sales Intake</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-error-container": "#93000a",
+                        "inverse-on-surface": "#eff1f3",
+                        "tertiary-fixed-dim": "#b9c7e0",
+                        "status-warning": "#9A3412",
+                        "on-secondary-fixed-variant": "#783200",
+                        "surface-container-low": "#f2f4f6",
+                        "outline-variant": "#c6c6cd",
+                        "on-tertiary-fixed": "#0d1c2f",
+                        "primary-container": "#131b2e",
+                        "surface-tint": "#565e74",
+                        "secondary-fixed": "#ffdbca",
+                        "surface-container": "#eceef0",
+                        "inverse-primary": "#bec6e0",
+                        "error-container": "#ffdad6",
+                        "rfly-blue": "#0F172A",
+                        "on-background": "#191c1e",
+                        "surface-variant": "#e0e3e5",
+                        "on-surface": "#191c1e",
+                        "surface-dim": "#d8dadc",
+                        "on-secondary-fixed": "#341100",
+                        "surface-slate": "#E2E8F0",
+                        "tertiary-fixed": "#d5e3fd",
+                        "primary": "#000000",
+                        "error": "#ba1a1a",
+                        "on-primary": "#ffffff",
+                        "on-tertiary-container": "#76859b",
+                        "on-tertiary": "#ffffff",
+                        "on-surface-variant": "#45464d",
+                        "status-success": "#166534",
+                        "secondary-fixed-dim": "#ffb690",
+                        "on-error": "#ffffff",
+                        "secondary-container": "#fd761a",
+                        "surface-container-highest": "#e0e3e5",
+                        "surface-bright": "#f7f9fb",
+                        "surface-container-lowest": "#ffffff",
+                        "outline": "#76777d",
+                        "on-secondary": "#ffffff",
+                        "tertiary-container": "#0d1c2f",
+                        "surface": "#f7f9fb",
+                        "tertiary": "#000000",
+                        "on-primary-fixed": "#131b2e",
+                        "on-primary-container": "#7c839b",
+                        "background": "#f7f9fb",
+                        "inverse-surface": "#2d3133",
+                        "on-primary-fixed-variant": "#3f465c",
+                        "on-secondary-container": "#5c2400",
+                        "status-offline": "#475569",
+                        "safety-orange": "#F97316",
+                        "primary-fixed-dim": "#bec6e0",
+                        "surface-container-high": "#e6e8ea",
+                        "on-tertiary-fixed-variant": "#3a485c",
+                        "primary-fixed": "#dae2fd",
+                        "secondary": "#9d4300"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "stack-lg": "24px",
+                        "stack-md": "16px",
+                        "gutter": "16px",
+                        "margin-mobile": "20px",
+                        "touch-target-min": "48px",
+                        "stack-sm": "8px"
+                    },
+                    "fontFamily": {
+                        "body-lg": ["IBM Plex Sans"],
+                        "headline-md": ["IBM Plex Sans"],
+                        "body-md": ["IBM Plex Sans"],
+                        "headline-lg": ["IBM Plex Sans"],
+                        "headline-lg-mobile": ["IBM Plex Sans"],
+                        "data-mono": ["JetBrains Mono"],
+                        "label-caps": ["IBM Plex Sans"]
+                    },
+                    "fontSize": {
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "headline-md": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "headline-lg": ["28px", { "lineHeight": "36px", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                        "headline-lg-mobile": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "data-mono": ["14px", { "lineHeight": "20px", "fontWeight": "500" }],
+                        "label-caps": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style type="text/tailwindcss">
+        @layer utilities {
+            .material-symbols-outlined {
+                font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            }
+            .material-symbols-outlined.fill {
+                font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            }
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-surface font-body-md min-h-screen flex">
+<!-- Navigation Drawer (Desktop) -->
+<nav class="hidden md:flex flex-col h-full w-72 rounded-r-xl border-r border-outline-variant shadow-sm py-stack-lg bg-surface-bright sticky top-0 shrink-0 z-50">
+<!-- Header -->
+<div class="px-gutter mb-stack-lg flex items-center space-x-3">
+<div class="w-12 h-12 rounded-full bg-surface-slate flex items-center justify-center overflow-hidden border border-outline-variant">
+<img alt="Ops Coordinator" class="w-full h-full object-cover" data-alt="A professional headshot of an operations coordinator wearing a high-visibility vest in a brightly lit industrial setting. The image is crisp and corporate, embodying dependability and technical expertise in an outdoor drone operations environment. The color palette features neutral grays and safety orange accents." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD-XTQa7TupQiPGnBQHjvg2Tp9K6lp8bWsss90G2Zbb20PZt9ta_P_ekyKrKNhmVM6HMOPfeQSohs2ZA4bv0uwQFo2MGnx_q82CoE0aVBIhzM4iD5z3i8gPkDY4v6nKd6n3SsChMBh8zVt68oZokeGxNdCHTHfnuRNpDuhT1DXzWGEc_LrcIvrK76VLhCkWXt_p5fDQaj_WraM3VsXog6_OuArMO-FxMhTAJHSvgCS_sexNUGHDqm9V"/>
+</div>
+<div>
+<h2 class="font-headline-lg text-headline-lg text-primary">RFLY Operations</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">Fleet Manager</p>
+</div>
+</div>
+<!-- Links -->
+<div class="flex-1 overflow-y-auto space-y-2">
+<a class="flex items-center px-4 py-3 mx-2 rounded-full bg-secondary-container text-on-secondary-container font-bold group transition-all" href="#">
+<span class="material-symbols-outlined mr-3 fill">point_of_sale</span>
+<span class="font-body-lg text-body-lg">Sales Intake</span>
+</a>
+<a class="flex items-center px-4 py-3 mx-2 rounded-full text-on-surface-variant hover:bg-surface-container-high transition-all" href="#">
+<span class="material-symbols-outlined mr-3">hub</span>
+<span class="font-body-lg text-body-lg">Fleet Mgmt</span>
+</a>
+<a class="flex items-center px-4 py-3 mx-2 rounded-full text-on-surface-variant hover:bg-surface-container-high transition-all" href="#">
+<span class="material-symbols-outlined mr-3">list_alt</span>
+<span class="font-body-lg text-body-lg">Queues</span>
+</a>
+<a class="flex items-center px-4 py-3 mx-2 rounded-full text-on-surface-variant hover:bg-surface-container-high transition-all" href="#">
+<span class="material-symbols-outlined mr-3">analytics</span>
+<span class="font-body-lg text-body-lg">Analytics</span>
+</a>
+</div>
+</nav>
+<!-- Main Content Area -->
+<main class="flex-1 flex flex-col min-w-0 pb-safe md:pb-0">
+<!-- TopAppBar (Mobile & Web Contexts) -->
+<header class="sticky top-0 w-full z-40 bg-surface-container-lowest flex items-end justify-between px-margin-mobile md:px-gutter py-stack-md w-full border-b md:border-none border-surface-slate shadow-sm md:shadow-none">
+<div class="flex items-center md:hidden">
+<button class="h-touch-target-min w-touch-target-min flex items-center justify-center text-primary active:opacity-80">
+<span class="material-symbols-outlined">menu</span>
+</button>
+</div>
+<div class="flex items-center flex-1 justify-center md:justify-start">
+<h1 class="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg text-rfly-blue">Sales Intake</h1>
+</div>
+<div class="flex items-center">
+<button class="h-touch-target-min w-touch-target-min flex items-center justify-center text-primary active:opacity-80 rounded-full hover:bg-surface-container transition-colors">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+</div>
+</header>
+<!-- Canvas -->
+<div class="flex-1 p-margin-mobile md:p-stack-lg max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-stack-lg">
+<!-- Left Column: Search & Intake Form -->
+<div class="lg:col-span-7 space-y-stack-lg">
+<!-- Search Module -->
+<section class="bg-surface-container-lowest rounded-xl border border-surface-slate shadow-sm overflow-hidden">
+<div class="p-stack-md border-b border-surface-slate bg-surface-container-low">
+<h2 class="font-headline-md text-headline-md text-primary flex items-center">
+<span class="material-symbols-outlined mr-2">search</span>
+                            Customer Search
+                        </h2>
+</div>
+<div class="p-stack-md">
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 transform -translate-y-1/2 text-outline">search</span>
+<input class="w-full pl-10 pr-4 py-3 h-touch-target-min rounded-lg border-2 border-outline-variant focus:border-rfly-blue focus:ring-0 bg-surface text-on-surface font-body-lg transition-colors" placeholder="Search by name, phone, or ID..." type="text"/>
+<button class="absolute right-2 top-1/2 transform -translate-y-1/2 bg-surface-slate text-on-surface-variant px-3 py-1 rounded text-sm font-semibold hover:bg-surface-variant">
+                                Find
+                            </button>
+</div>
+<p class="mt-2 text-on-surface-variant text-sm flex items-center">
+<span class="material-symbols-outlined text-[16px] mr-1">info</span>
+                            Scan QR code or ID badge for quick lookup.
+                        </p>
+</div>
+</section>
+<!-- New Lead Registration Form -->
+<section class="bg-surface-container-lowest rounded-xl border border-surface-slate shadow-sm overflow-hidden">
+<div class="p-stack-md border-b border-surface-slate bg-surface-container-low flex justify-between items-center">
+<h2 class="font-headline-md text-headline-md text-primary flex items-center">
+<span class="material-symbols-outlined mr-2">person_add</span>
+                            New Lead Registration
+                        </h2>
+<span class="bg-surface-slate text-on-surface-variant font-label-caps text-label-caps px-2 py-1 rounded">Draft</span>
+</div>
+<form class="p-stack-md space-y-stack-md">
+<!-- Client Info Group -->
+<div class="space-y-stack-sm">
+<h3 class="font-headline-sm font-bold text-on-surface-variant border-b border-surface-slate pb-1 mb-2">Client Information</h3>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-stack-md">
+<div>
+<label class="block font-body-md text-on-surface-variant mb-1">Farmer / Business Name</label>
+<input class="w-full h-touch-target-min rounded-lg border-2 border-outline-variant focus:border-rfly-blue focus:ring-0 bg-surface font-body-lg px-3" type="text"/>
+</div>
+<div>
+<label class="block font-body-md text-on-surface-variant mb-1">Contact Phone</label>
+<input class="w-full h-touch-target-min rounded-lg border-2 border-outline-variant focus:border-rfly-blue focus:ring-0 bg-surface font-body-lg px-3" inputmode="tel" type="tel"/>
+</div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-stack-md">
+<div>
+<label class="block font-body-md text-on-surface-variant mb-1">Email Address</label>
+<input class="w-full h-touch-target-min rounded-lg border-2 border-outline-variant focus:border-rfly-blue focus:ring-0 bg-surface font-body-lg px-3" type="email"/>
+</div>
+<div>
+<label class="block font-body-md text-on-surface-variant mb-1">Primary Crop Type</label>
+<select class="w-full h-touch-target-min rounded-lg border-2 border-outline-variant focus:border-rfly-blue focus:ring-0 bg-surface font-body-lg px-3">
+<option value="">Select Crop...</option>
+<option value="corn">Corn</option>
+<option value="soybeans">Soybeans</option>
+<option value="wheat">Wheat</option>
+<option value="cotton">Cotton</option>
+<option value="other">Other</option>
+</select>
+</div>
+</div>
+</div>
+<!-- Location Group -->
+<div class="space-y-stack-sm pt-stack-sm">
+<h3 class="font-headline-sm font-bold text-on-surface-variant border-b border-surface-slate pb-1 mb-2">Farm Location</h3>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-stack-md">
+<div>
+<label class="block font-body-md text-on-surface-variant mb-1">Latitude</label>
+<input class="w-full h-touch-target-min rounded-lg border-2 border-outline-variant focus:border-rfly-blue focus:ring-0 bg-surface font-data-mono text-data-mono px-3" inputmode="decimal" placeholder="e.g. 41.8781" type="text"/>
+</div>
+<div>
+<label class="block font-body-md text-on-surface-variant mb-1">Longitude</label>
+<input class="w-full h-touch-target-min rounded-lg border-2 border-outline-variant focus:border-rfly-blue focus:ring-0 bg-surface font-data-mono text-data-mono px-3" inputmode="decimal" placeholder="e.g. -87.6298" type="text"/>
+</div>
+</div>
+<div class="mt-4 h-48 w-full bg-surface-slate rounded-lg border border-outline-variant overflow-hidden relative flex items-center justify-center">
+<!-- Simulated Map Area -->
+<div class="absolute inset-0 opacity-50 flex items-center justify-center">
+<span class="material-symbols-outlined text-[48px] text-outline">map</span>
+</div>
+<button class="relative z-10 bg-surface-container-lowest px-4 py-2 rounded shadow-sm text-rfly-blue font-bold flex items-center border border-outline-variant hover:bg-surface-container transition-colors" type="button">
+<span class="material-symbols-outlined mr-2">my_location</span>
+                                    Get Current Location
+                                </button>
+</div>
+<p class="text-sm text-on-surface-variant mt-1">Estimated Acreage will be calculated upon mission plan creation.</p>
+</div>
+<!-- Actions -->
+<div class="pt-stack-md flex justify-end space-x-4 border-t border-surface-slate mt-stack-md">
+<button class="px-6 py-2 h-touch-target-min rounded-lg font-bold text-rfly-blue bg-surface-slate hover:bg-surface-variant transition-colors" type="button">
+                                Clear
+                            </button>
+<button class="px-6 py-2 h-touch-target-min rounded-lg font-bold text-on-primary bg-rfly-blue hover:bg-primary transition-colors flex items-center shadow-sm" type="button">
+<span class="material-symbols-outlined mr-2">save</span>
+                                Register Lead
+                            </button>
+</div>
+</form>
+</section>
+</div>
+<!-- Right Column: Quick Stats & Context -->
+<div class="lg:col-span-5 space-y-stack-lg">
+<!-- Recent Registrations Card -->
+<section class="bg-surface-container-lowest rounded-xl border border-surface-slate shadow-sm p-stack-md">
+<h3 class="font-headline-md text-headline-md text-primary mb-stack-sm flex items-center">
+<span class="material-symbols-outlined mr-2">history</span>
+                        Recent Leads
+                    </h3>
+<ul class="divide-y divide-surface-slate">
+<li class="py-3 flex justify-between items-center group cursor-pointer hover:bg-surface-container-low transition-colors rounded px-2 -mx-2">
+<div>
+<p class="font-bold text-on-surface">Smith Farms</p>
+<p class="text-sm text-on-surface-variant font-data-mono">ID: LD-8492</p>
+</div>
+<div class="text-right">
+<span class="inline-block bg-surface-slate text-on-surface-variant px-2 py-1 rounded text-xs font-bold mb-1">Contacted</span>
+<p class="text-xs text-on-surface-variant">2 hrs ago</p>
+</div>
+</li>
+<li class="py-3 flex justify-between items-center group cursor-pointer hover:bg-surface-container-low transition-colors rounded px-2 -mx-2">
+<div>
+<p class="font-bold text-on-surface">Oakhaven Ag</p>
+<p class="text-sm text-on-surface-variant font-data-mono">ID: LD-8491</p>
+</div>
+<div class="text-right">
+<span class="inline-block bg-tertiary-fixed text-on-tertiary-fixed px-2 py-1 rounded text-xs font-bold mb-1">Evaluating</span>
+<p class="text-xs text-on-surface-variant">Yesterday</p>
+</div>
+</li>
+</ul>
+<button class="w-full mt-4 py-2 border-2 border-outline-variant text-rfly-blue font-bold rounded hover:bg-surface-slate transition-colors">
+                        View All Leads
+                    </button>
+</section>
+<!-- System Status / Context -->
+<section class="bg-surface-container-lowest rounded-xl border border-surface-slate shadow-sm p-stack-md">
+<h3 class="font-headline-md text-headline-md text-primary mb-stack-sm flex items-center">
+<span class="material-symbols-outlined mr-2">cloud_sync</span>
+                        System Status
+                    </h3>
+<div class="flex items-center space-x-3 mb-2">
+<div class="w-3 h-3 rounded-full bg-status-success shadow-[0_0_8px_rgba(22,101,52,0.8)]"></div>
+<p class="font-bold text-on-surface">CRM Connected</p>
+</div>
+<p class="text-sm text-on-surface-variant">Data is syncing in real-time. Offline mode is available if connection drops.</p>
+</section>
+</div>
+</div>
+</main>
+<!-- Bottom Navigation Bar (Mobile) -->
+<nav class="md:hidden fixed bottom-0 w-full z-50 bg-rfly-blue shadow-md flex justify-around items-center h-[64px] px-4 pb-safe">
+<a class="flex flex-col items-center justify-center text-on-primary-container opacity-70 hover:opacity-100 transition-opacity w-16 h-full active:scale-90 duration-150" href="#">
+<span class="material-symbols-outlined mb-1">precision_manufacturing</span>
+<span class="font-label-caps text-label-caps">Mission</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-primary-container opacity-70 hover:opacity-100 transition-opacity w-16 h-full active:scale-90 duration-150" href="#">
+<span class="material-symbols-outlined mb-1">sensors</span>
+<span class="font-label-caps text-label-caps">Status</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-primary-container opacity-70 hover:opacity-100 transition-opacity w-16 h-full active:scale-90 duration-150" href="#">
+<span class="material-symbols-outlined mb-1">warning</span>
+<span class="font-label-caps text-label-caps">Alerts</span>
+</a>
+</nav>
+</body></html>

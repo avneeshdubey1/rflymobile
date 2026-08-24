@@ -1,0 +1,281 @@
+<!DOCTYPE html><html class="light" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Assignment Details - RFLY Pilot</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;700;800&amp;family=JetBrains+Mono:wght@500;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "surface-bright": "#f8f9fa",
+                      "surface-container-low": "#f3f4f5",
+                      "on-secondary-fixed": "#091c34",
+                      "on-secondary-fixed-variant": "#374762",
+                      "tertiary-fixed-dim": "#c3c7cc",
+                      "on-tertiary-fixed": "#181c20",
+                      "surface-container": "#edeeef",
+                      "on-tertiary": "#ffffff",
+                      "on-tertiary-container": "#2d3136",
+                      "on-primary-container": "#572000",
+                      "inverse-on-surface": "#f0f1f2",
+                      "on-surface-variant": "#5a4136",
+                      "on-secondary-container": "#51617d",
+                      "primary-container": "#ff6b00",
+                      "on-surface": "#191c1d",
+                      "outline": "#8e7164",
+                      "secondary-fixed": "#d5e3ff",
+                      "tertiary-container": "#95999f",
+                      "on-primary-fixed-variant": "#7a3000",
+                      "primary": "#a04100",
+                      "secondary-fixed-dim": "#b6c7e7",
+                      "surface-dim": "#d9dadb",
+                      "on-secondary": "#ffffff",
+                      "on-tertiary-fixed-variant": "#43474c",
+                      "surface-container-lowest": "#ffffff",
+                      "error-container": "#ffdad6",
+                      "inverse-primary": "#ffb693",
+                      "secondary": "#4f5f7b",
+                      "secondary-container": "#ccdefe",
+                      "surface-variant": "#e1e3e4",
+                      "surface": "#f8f9fa",
+                      "primary-fixed-dim": "#ffb693",
+                      "on-primary-fixed": "#351000",
+                      "background": "#f8f9fa",
+                      "outline-variant": "#e2bfb0",
+                      "on-primary": "#ffffff",
+                      "tertiary-fixed": "#dfe3e8",
+                      "on-error-container": "#93000a",
+                      "surface-container-high": "#e7e8e9",
+                      "primary-fixed": "#ffdbcc",
+                      "surface-tint": "#a04100",
+                      "on-background": "#191c1d",
+                      "tertiary": "#5b5f64",
+                      "error": "#ba1a1a",
+                      "surface-container-highest": "#e1e3e4",
+                      "inverse-surface": "#2e3132",
+                      "on-error": "#ffffff"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "margin-mobile": "16px",
+                      "stack-sm": "8px",
+                      "stack-lg": "24px",
+                      "stack-md": "16px",
+                      "touch-target-min": "48px",
+                      "gutter": "12px",
+                      "base": "8px"
+              },
+              "fontFamily": {
+                      "label-caps": [
+                              "Hanken Grotesk"
+                      ],
+                      "display-lg": [
+                              "Hanken Grotesk"
+                      ],
+                      "body-md": [
+                              "Hanken Grotesk"
+                      ],
+                      "headline-md": [
+                              "Hanken Grotesk"
+                      ],
+                      "data-sm": [
+                              "JetBrains Mono"
+                      ],
+                      "data-lg": [
+                              "JetBrains Mono"
+                      ],
+                      "body-lg": [
+                              "Hanken Grotesk"
+                      ],
+                      "headline-sm": [
+                              "Hanken Grotesk"
+                      ]
+              },
+              "fontSize": {
+                      "label-caps": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "letterSpacing": "0.08em",
+                                      "fontWeight": "800"
+                              }
+                      ],
+                      "display-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "40px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "800"
+                              }
+                      ],
+                      "body-md": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-md": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "data-sm": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "data-lg": [
+                              "20px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "body-lg": [
+                              "18px",
+                              {
+                                      "lineHeight": "26px",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "headline-sm": [
+                              "20px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "700"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+      </script>
+</head>
+<body class="bg-surface text-on-surface font-body-md antialiased pb-24">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full bg-surface z-50 border-b-2 border-outline-variant flat no shadows flex items-center justify-between px-margin-mobile h-touch-target-min">
+<button aria-label="Back" class="text-primary hover:bg-surface-container-high transition-colors active:scale-95 duration-100 p-2 -ml-2 rounded-full">
+<span class="material-symbols-outlined" data-icon="arrow_back">arrow_back</span>
+</button>
+<h1 class="font-headline-sm text-headline-sm text-primary font-bold">Assignment Details</h1>
+<div class="w-10"></div> <!-- Spacer for centering -->
+</header>
+<!-- Main Content Canvas -->
+<main class="pt-[calc(48px+24px)] px-margin-mobile max-w-md mx-auto space-y-stack-lg" role="main">
+<!-- Status Banner -->
+<section aria-label="Assignment Status" class="bg-primary-fixed border-2 border-primary-container rounded-lg p-4 flex items-center gap-3">
+<span class="material-symbols-outlined text-primary-container" data-icon="check_circle" data-weight="fill">check_circle</span>
+<div class="flex-1">
+<p class="font-label-caps text-label-caps text-on-primary-fixed uppercase tracking-wider">Status</p>
+<p class="font-data-lg text-data-lg text-on-primary-fixed">READY FOR ACCEPTANCE</p>
+</div>
+</section>
+<!-- Section 1: Farm Information -->
+<section aria-labelledby="farm-info-heading" class="bg-surface-container-lowest border-2 border-surface-variant rounded-lg p-4 shadow-sm">
+<h2 class="font-headline-sm text-headline-sm text-on-surface mb-4" id="farm-info-heading">Farm Information</h2>
+<div class="space-y-4">
+<div class="flex justify-between items-start border-b border-surface-variant pb-3">
+<div>
+<p class="font-label-caps text-label-caps text-on-surface-variant">Farmer Name</p>
+<p class="font-body-lg text-body-lg text-on-surface mt-1">Johnathan Miller Farms LLC</p>
+</div>
+</div>
+<div class="flex justify-between items-center pt-1">
+<div class="flex-1">
+<p class="font-label-caps text-label-caps text-on-surface-variant">Farm Address</p>
+<p class="font-body-md text-body-md text-on-surface mt-1 leading-snug">
+                            4820 County Rd 12<br>
+                            Oakville, IA 52646
+                        </p>
+</div>
+<button aria-label="Open in Maps" class="bg-secondary-container text-on-secondary-container h-12 w-12 rounded-full flex items-center justify-center hover:bg-secondary-fixed transition-colors">
+<span class="material-symbols-outlined" data-icon="map">map</span>
+</button>
+</div>
+</div>
+</section>
+<!-- Section 2: Operational Details -->
+<section aria-labelledby="ops-details-heading" class="bg-surface-container-lowest border-2 border-surface-variant rounded-lg p-4 shadow-sm">
+<h2 class="font-headline-sm text-headline-sm text-on-surface mb-4" id="ops-details-heading">Operational Details</h2>
+<div class="grid grid-cols-2 gap-4 mb-4">
+<div class="border-b border-surface-variant pb-3">
+<p class="font-label-caps text-label-caps text-on-surface-variant">Target Crop</p>
+<p class="font-data-lg text-data-lg text-on-surface mt-1">Corn</p>
+</div>
+<div class="border-b border-surface-variant pb-3">
+<p class="font-label-caps text-label-caps text-on-surface-variant">Acreage</p>
+<p class="font-data-lg text-data-lg text-on-surface mt-1">120.00</p>
+</div>
+</div>
+<div>
+<p class="font-label-caps text-label-caps text-on-surface-variant">Service Window</p>
+<div class="flex items-center gap-2 mt-2">
+<span class="material-symbols-outlined text-tertiary text-sm" data-icon="schedule">schedule</span>
+<p class="font-data-sm text-data-sm text-on-surface">Aug 14, 06:00 - 18:00</p>
+</div>
+</div>
+</section>
+<!-- Section 3: Crew & Equipment -->
+<section aria-labelledby="crew-equip-heading" class="bg-surface-container-lowest border-2 border-surface-variant rounded-lg p-4 shadow-sm">
+<h2 class="font-headline-sm text-headline-sm text-on-surface mb-4" id="crew-equip-heading">Crew &amp; Equipment</h2>
+<ul class="space-y-0" role="list">
+<li class="min-h-[64px] flex items-center justify-between border-b border-surface-variant py-2">
+<div>
+<p class="font-label-caps text-label-caps text-on-surface-variant">Primary Pilot</p>
+<p class="font-body-lg text-body-lg text-on-surface">Alex Mercer</p>
+</div>
+<span class="material-symbols-outlined text-primary" data-icon="person_check">person_check</span>
+</li>
+<li class="min-h-[64px] flex items-center justify-between border-b border-surface-variant py-2">
+<div>
+<p class="font-label-caps text-label-caps text-on-surface-variant">Drone ID</p>
+<p class="font-data-sm text-data-sm text-on-surface">AG-DRN-094</p>
+</div>
+<img src="https://lh3.googleusercontent.com/aida-public/AB6AXuD5nhwSERL2OEtNBMvAXrEq4tagVdQPL6UkvakTZjpfSPVgKvugsJf0sVaqFNtM529iaz9f9De-2npjI_kYWaFn2WqLAXTHkGSzqHuW54bI8k_H5n4XPTVdL98WT5E-wq3LvCD59ZJaffRS-N01OXMjR5Sj4b-8MMHu96mPr1Rnb9siNFq7LiJC6rSgPG9Ff4zs9hX0UCFfedNqPVd5epvnfAHkm2kxwK2dDFiM0oj7E3t3lsuwOCyQ" alt="RFLY Drone Logo" class="w-10 h-10 object-contain">
+</li>
+<li class="min-h-[64px] flex items-center justify-between border-b border-surface-variant py-2">
+<div>
+<p class="font-label-caps text-label-caps text-on-surface-variant">LMV ID</p>
+<p class="font-data-sm text-data-sm text-on-surface">LMV-TRK-22</p>
+</div>
+<span class="material-symbols-outlined text-secondary" data-icon="local_shipping">local_shipping</span>
+</li>
+<li class="min-h-[64px] flex items-center justify-between py-2">
+<div>
+<p class="font-label-caps text-label-caps text-on-surface-variant">Copilot Status</p>
+<p class="font-body-md text-body-md text-on-surface">Not Required</p>
+</div>
+<span class="bg-surface-container-high text-on-surface font-label-caps text-label-caps px-2 py-1 rounded">N/A</span>
+</li>
+</ul>
+</section>
+<!-- Actions -->
+<section aria-label="Actions" class="space-y-stack-sm pt-4 pb-8">
+<button class="w-full h-touch-target-min bg-primary-container text-on-primary-container font-headline-sm text-headline-sm rounded-full active:scale-95 transition-transform shadow-md flex items-center justify-center gap-2">
+<span class="material-symbols-outlined" data-icon="task_alt">task_alt</span>
+                Accept Assignment
+            </button>
+<button class="w-full h-touch-target-min border-2 border-error text-error font-body-lg text-body-lg rounded-full active:bg-error-container transition-colors flex items-center justify-center gap-2">
+<span class="material-symbols-outlined" data-icon="report_problem">report_problem</span>
+                Report Issue
+            </button>
+</section>
+</main>
+
+
+</body></html>

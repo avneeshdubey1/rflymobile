@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>RFLY Operations - Fleet Exception</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-error-container": "#93000a",
+                      "inverse-on-surface": "#eff1f3",
+                      "tertiary-fixed-dim": "#b9c7e0",
+                      "status-warning": "#9A3412",
+                      "on-secondary-fixed-variant": "#783200",
+                      "surface-container-low": "#f2f4f6",
+                      "outline-variant": "#c6c6cd",
+                      "on-tertiary-fixed": "#0d1c2f",
+                      "primary-container": "#131b2e",
+                      "surface-tint": "#565e74",
+                      "secondary-fixed": "#ffdbca",
+                      "surface-container": "#eceef0",
+                      "inverse-primary": "#bec6e0",
+                      "error-container": "#ffdad6",
+                      "rfly-blue": "#0F172A",
+                      "on-background": "#191c1e",
+                      "surface-variant": "#e0e3e5",
+                      "on-surface": "#191c1e",
+                      "surface-dim": "#d8dadc",
+                      "on-secondary-fixed": "#341100",
+                      "surface-slate": "#E2E8F0",
+                      "tertiary-fixed": "#d5e3fd",
+                      "primary": "#000000",
+                      "error": "#ba1a1a",
+                      "on-primary": "#ffffff",
+                      "on-tertiary-container": "#76859b",
+                      "on-tertiary": "#ffffff",
+                      "on-surface-variant": "#45464d",
+                      "status-success": "#166534",
+                      "secondary-fixed-dim": "#ffb690",
+                      "on-error": "#ffffff",
+                      "secondary-container": "#fd761a",
+                      "surface-container-highest": "#e0e3e5",
+                      "surface-bright": "#f7f9fb",
+                      "surface-container-lowest": "#ffffff",
+                      "outline": "#76777d",
+                      "on-secondary": "#ffffff",
+                      "tertiary-container": "#0d1c2f",
+                      "surface": "#f7f9fb",
+                      "tertiary": "#000000",
+                      "on-primary-fixed": "#131b2e",
+                      "on-primary-container": "#7c839b",
+                      "background": "#f7f9fb",
+                      "inverse-surface": "#2d3133",
+                      "on-primary-fixed-variant": "#3f465c",
+                      "on-secondary-container": "#5c2400",
+                      "status-offline": "#475569",
+                      "safety-orange": "#F97316",
+                      "primary-fixed-dim": "#bec6e0",
+                      "surface-container-high": "#e6e8ea",
+                      "on-tertiary-fixed-variant": "#3a485c",
+                      "primary-fixed": "#dae2fd",
+                      "secondary": "#9d4300"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "spacing": {
+                      "stack-lg": "24px",
+                      "stack-md": "16px",
+                      "gutter": "16px",
+                      "margin-mobile": "20px",
+                      "touch-target-min": "48px",
+                      "stack-sm": "8px"
+              },
+              "fontFamily": {
+                      "body-lg": [
+                              "IBM Plex Sans"
+                      ],
+                      "headline-md": [
+                              "IBM Plex Sans"
+                      ],
+                      "body-md": [
+                              "IBM Plex Sans"
+                      ],
+                      "headline-lg": [
+                              "IBM Plex Sans"
+                      ],
+                      "headline-lg-mobile": [
+                              "IBM Plex Sans"
+                      ],
+                      "data-mono": [
+                              "JetBrains Mono"
+                      ],
+                      "label-caps": [
+                              "IBM Plex Sans"
+                      ]
+              },
+              "fontSize": {
+                      "body-lg": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-md": [
+                              "20px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-lg": [
+                              "28px",
+                              {
+                                      "lineHeight": "36px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-lg-mobile": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "data-mono": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "label-caps": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "700"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined.fill {
+            font-variation-settings: 'FILL' 1;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface text-on-surface min-h-screen flex flex-col md:flex-row font-body-lg text-body-lg">
+<!-- Navigation Drawer (Desktop) -->
+<nav class="hidden md:flex h-full w-72 rounded-r-xl border-r border-outline-variant shadow-sm bg-surface-bright dark:bg-surface-dim flex-col py-stack-lg fixed left-0 top-0 z-40">
+<div class="px-gutter mb-stack-lg flex items-center gap-4 left_align">
+<div class="w-12 h-12 rounded-full bg-surface-slate overflow-hidden flex-shrink-0">
+<img class="w-full h-full object-cover" data-alt="A professional headshot of an operations coordinator in a corporate setting. The individual is wearing modern, practical attire suitable for fleet management. The background is a clean, well-lit office environment with subtle technological elements. The lighting is soft and even, highlighting a serious yet approachable demeanor." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCRjPjcLZwshhw6liO_A8jUGSxoPeXvFs-9fTn3k-Y4plWGZgfp4CycUiduQtSRDV4EIQsxtlx-DM4lxMfbYXYwiJdrY9w-0JBjLp5ly3WddkS4eiN3Qkb2QZslB_e7m0FxMtMpWBINECYbRG2aM0nqbYzMAEznXWQ8Gnjs-qKTuLOS14HPjA5-fSbTUnZ_OjmTgVDSvrOgs6QlOeGVNX-41Va_PTpfDEYJj2SW4PtxElBZ9cNHJD9C"/>
+</div>
+<div>
+<h2 class="font-headline-md text-headline-md text-rfly-blue dark:text-on-tertiary-fixed">RFLY Operations</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">Fleet Manager</p>
+</div>
+</div>
+<ul class="flex flex-col gap-2">
+<li>
+<a class="text-on-surface-variant hover:bg-surface-container-high rounded-full mx-2 px-4 py-3 flex items-center gap-3 hover:bg-surface-slate dark:hover:bg-surface-variant transition-all active:translate-x-1 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="point_of_sale">point_of_sale</span>
+<span class="font-body-md text-body-md">Sales Intake</span>
+</a>
+</li>
+<li>
+<a class="bg-secondary-container text-on-secondary-container font-bold rounded-full mx-2 px-4 py-3 flex items-center gap-3 hover:bg-surface-slate dark:hover:bg-surface-variant transition-all active:translate-x-1 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="hub">hub</span>
+<span class="font-body-md text-body-md">Fleet Mgmt</span>
+</a>
+</li>
+<li>
+<a class="text-on-surface-variant hover:bg-surface-container-high rounded-full mx-2 px-4 py-3 flex items-center gap-3 hover:bg-surface-slate dark:hover:bg-surface-variant transition-all active:translate-x-1 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="list_alt">list_alt</span>
+<span class="font-body-md text-body-md">Queues</span>
+</a>
+</li>
+<li>
+<a class="text-on-surface-variant hover:bg-surface-container-high rounded-full mx-2 px-4 py-3 flex items-center gap-3 hover:bg-surface-slate dark:hover:bg-surface-variant transition-all active:translate-x-1 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+<span class="font-body-md text-body-md">Analytics</span>
+</a>
+</li>
+</ul>
+</nav>
+<!-- Main Content Canvas -->
+<div class="flex-1 md:ml-72 flex flex-col pb-[64px] md:pb-0">
+<!-- TopAppBar (Mobile) -->
+<header class="md:hidden sticky top-0 w-full z-40 bg-surface-container-lowest dark:bg-surface-container-highest bg-surface-container-high flex items-end justify-between px-gutter py-stack-md w-full">
+<div class="flex items-center gap-4">
+<button class="w-10 h-10 rounded-full bg-surface-slate overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="A small, circular avatar image of an operations coordinator. The person is looking directly at the camera with a neutral, professional expression. The background is a plain, light grey, ensuring the focus remains on the individual. The image is clear and high-resolution, suitable for a small UI element." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBqG5jvPNNvhSgbLMv1joz4dcpxBFgZG5r8kOcLbupJOEmd4JkZP10-u7mLRKVWLeMooFRVTd53eEpgaOcre9naSVcGTSR7CItZ5bjF_zVIVZEIH7ZWLue6xKAj1YlY4jRBTqEfRbO6Ftz4n08gDzsdH7EDYq8agy4TCbqCdSqm5ZYGcTENUYUIuPKM2N2d3JAyXvMLYj7uwTW6EHRjs1RLZeMt2UCKRaMtaB3ZzoIIV63v5J2PiA2l"/>
+</button>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-rfly-blue">RFLY Operations</h1>
+</div>
+<button class="text-outline hover:bg-surface-container transition-colors active:opacity-80 p-2 rounded-full">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+</header>
+<!-- TopAppBar (Desktop - Medium) -->
+<header class="hidden md:flex sticky top-0 w-full z-40 bg-surface-container-lowest dark:bg-surface-container-highest bg-surface-container-high flex items-end justify-between px-gutter py-stack-md w-full">
+<div class="flex items-center gap-4">
+<button class="w-12 h-12 rounded-full bg-surface-slate overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="A medium-sized circular avatar image of an operations coordinator. The person is looking directly at the camera with a neutral, professional expression. The background is a plain, light grey, ensuring the focus remains on the individual. The image is clear and high-resolution." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA3cj_j34Uo3bXPsZClXFicZDwAIoB6c1kTVmC6nOycLyeFt7B_fD6V8M86bkg8EVe-vpvxGhr6q47gjtndDKcv_V2s-wcPmY9QBLzgj2810jrrI5R0WSowBzUV4hkrB_NefTLTLC2CWje9RYuqt8TVrwzr_7oS0T-TXE00nO4As_TswJYADvlW64CQwNqXl7Gp5-kXPJJJHWBiHHfSaA2XeehNGZIC-t7qF7slhMpOMQF7ghojAPoU"/>
+</button>
+<h1 class="font-headline-lg text-headline-lg text-rfly-blue">Fleet Mgmt</h1>
+</div>
+<button class="text-outline hover:bg-surface-container transition-colors active:opacity-80 p-2 rounded-full">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+</header>
+<!-- Main Workspace -->
+<main class="flex-1 p-margin-mobile md:p-stack-lg max-w-5xl mx-auto w-full">
+<!-- Exception Header / Grounded Status -->
+<div class="bg-surface-container-lowest rounded-xl p-stack-md mb-stack-lg border border-outline-variant flex flex-col md:flex-row items-start md:items-center justify-between gap-stack-md relative overflow-hidden">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-error"></div>
+<div class="pl-4">
+<div class="flex items-center gap-2 mb-1">
+<span class="bg-error-container text-on-error-container px-2 py-1 rounded font-label-caps text-label-caps flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]" data-icon="block">block</span>
+                            GROUNDED
+                        </span>
+<span class="font-data-mono text-data-mono text-on-surface-variant">UAV-8472-X</span>
+</div>
+<h2 class="font-headline-md text-headline-md text-on-surface">Critical Hardware Exception</h2>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">Pre-flight diagnostics report telemetry module failure (Code: ERR-TEL-09).</p>
+</div>
+<div class="flex flex-col items-end gap-1 text-right w-full md:w-auto">
+<span class="font-label-caps text-label-caps text-on-surface-variant">Last Update</span>
+<span class="font-data-mono text-data-mono text-on-surface">14:32:05 UTC</span>
+<span class="font-body-md text-body-md text-error font-semibold mt-1 flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]" data-icon="warning">warning</span>
+                        Action Required
+                    </span>
+</div>
+</div>
+<!-- Audit Form Section -->
+<section class="bg-surface-container-lowest rounded-xl border border-outline-variant p-stack-lg shadow-sm">
+<h3 class="font-headline-md text-headline-md text-on-surface border-b border-surface-slate pb-2 mb-stack-md flex items-center gap-2">
+<span class="material-symbols-outlined" data-icon="gavel">gavel</span>
+                    Reasoned Override
+                </h3>
+<form class="space-y-stack-md">
+<!-- Override Type -->
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-2">Override Classification</label>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-stack-sm">
+<label class="flex items-center p-3 border border-outline-variant rounded-lg cursor-pointer hover:bg-surface-container-low transition-colors">
+<input class="text-rfly-blue focus:ring-rfly-blue rounded-full border-outline-variant" name="override_type" type="radio"/>
+<span class="ml-3 font-body-md text-body-md text-on-surface">Field Diagnostic Verified False Positive</span>
+</label>
+<label class="flex items-center p-3 border border-outline-variant rounded-lg cursor-pointer hover:bg-surface-container-low transition-colors">
+<input class="text-rfly-blue focus:ring-rfly-blue rounded-full border-outline-variant" name="override_type" type="radio"/>
+<span class="ml-3 font-body-md text-body-md text-on-surface">Emergency Operations Mandate</span>
+</label>
+<label class="flex items-center p-3 border border-outline-variant rounded-lg cursor-pointer hover:bg-surface-container-low transition-colors">
+<input class="text-rfly-blue focus:ring-rfly-blue rounded-full border-outline-variant" name="override_type" type="radio"/>
+<span class="ml-3 font-body-md text-body-md text-on-surface">Component Redundancy Active</span>
+</label>
+<label class="flex items-center p-3 border border-outline-variant rounded-lg cursor-pointer hover:bg-surface-container-low transition-colors">
+<input class="text-rfly-blue focus:ring-rfly-blue rounded-full border-outline-variant" name="override_type" type="radio"/>
+<span class="ml-3 font-body-md text-body-md text-on-surface">Other (Specify in Audit Note)</span>
+</label>
+</div>
+</div>
+<!-- Mandatory Audit Note -->
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-2" for="audit_note">Mandatory Audit Justification <span class="text-error">*</span></label>
+<textarea class="w-full border-[1.5px] border-outline-variant rounded-lg p-3 font-body-md text-body-md bg-surface-bright focus:ring-0 focus:border-rfly-blue" id="audit_note" placeholder="Provide detailed technical justification for overriding the grounded status. This note will be permanently attached to the flight record..." rows="4"></textarea>
+</div>
+<!-- Supervisor Approval -->
+<div class="bg-surface-container-low p-stack-md rounded-lg border border-surface-slate">
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-2">Supervisor Authorization Required</label>
+<div class="flex flex-col md:flex-row gap-4 items-start md:items-center">
+<input class="border-[1.5px] border-outline-variant rounded-lg p-3 font-data-mono text-data-mono bg-surface-bright focus:ring-0 focus:border-rfly-blue w-full md:w-64 h-touch-target-min" placeholder="Supervisor ID (e.g. SUP-992)" type="text"/>
+<input class="border-[1.5px] border-outline-variant rounded-lg p-3 font-data-mono text-data-mono bg-surface-bright focus:ring-0 focus:border-rfly-blue w-full md:w-48 h-touch-target-min" placeholder="Auth PIN" type="password"/>
+</div>
+</div>
+<!-- Action Buttons -->
+<div class="flex flex-col sm:flex-row gap-4 justify-end pt-4 border-t border-surface-slate">
+<button class="h-touch-target-min px-6 font-body-md text-body-md font-semibold text-on-surface-variant hover:bg-surface-container transition-colors rounded-lg" type="button">Cancel Override</button>
+<button class="h-touch-target-min px-6 font-body-md text-body-md font-semibold text-on-primary bg-safety-orange hover:opacity-90 transition-opacity rounded-lg shadow-md flex items-center justify-center gap-2" type="button">
+<span class="material-symbols-outlined" data-icon="gavel">gavel</span>
+                            Force Override &amp; Log
+                        </button>
+</div>
+</form>
+</section>
+</main>
+</div>
+<!-- BottomNavBar (Mobile Only) -->
+<nav class="md:hidden bg-rfly-blue dark:bg-primary-container shadow-md fixed bottom-0 w-full z-50 fixed bottom-0 left-0 w-full flex justify-around items-center h-[64px] px-4 pb-safe bg-rfly-blue">
+<button class="flex flex-col items-center justify-center text-on-primary-container opacity-70 hover:opacity-100 transition-opacity active:scale-90 duration-150">
+<span class="material-symbols-outlined" data-icon="precision_manufacturing">precision_manufacturing</span>
+<span class="font-label-caps text-label-caps mt-1">Mission</span>
+</button>
+<button class="flex flex-col items-center justify-center text-safety-orange font-bold scale-110 hover:opacity-100 transition-opacity active:scale-90 duration-150">
+<span class="material-symbols-outlined fill" data-icon="sensors">sensors</span>
+<span class="font-label-caps text-label-caps mt-1">Status</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-primary-container opacity-70 hover:opacity-100 transition-opacity active:scale-90 duration-150">
+<span class="material-symbols-outlined" data-icon="warning">warning</span>
+<span class="font-label-caps text-label-caps mt-1">Alerts</span>
+</button>
+</nav>
+</body></html>

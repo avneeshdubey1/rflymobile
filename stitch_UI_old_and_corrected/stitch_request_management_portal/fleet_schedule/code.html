@@ -1,0 +1,442 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>RFLY Ops - Fleet Schedule</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-primary-container": "#7c839b",
+                      "surface-tint": "#565e74",
+                      "primary-fixed-dim": "#bec6e0",
+                      "secondary-fixed": "#ffdbca",
+                      "tertiary": "#000000",
+                      "secondary": "#9d4300",
+                      "on-secondary": "#ffffff",
+                      "on-tertiary": "#ffffff",
+                      "surface-variant": "#e0e3e5",
+                      "surface-container-lowest": "#ffffff",
+                      "primary-container": "#131b2e",
+                      "surface-container-high": "#e6e8ea",
+                      "surface": "#f7f9fb",
+                      "rfly-blue": "#0F172A",
+                      "on-secondary-fixed-variant": "#783200",
+                      "surface-dim": "#d8dadc",
+                      "on-secondary-container": "#5c2400",
+                      "secondary-container": "#fd761a",
+                      "on-surface": "#191c1e",
+                      "tertiary-fixed-dim": "#b9c7e0",
+                      "background": "#f7f9fb",
+                      "primary-fixed": "#dae2fd",
+                      "on-primary-fixed": "#131b2e",
+                      "status-offline": "#475569",
+                      "status-warning": "#9A3412",
+                      "on-error-container": "#93000a",
+                      "inverse-on-surface": "#eff1f3",
+                      "on-tertiary-fixed": "#0d1c2f",
+                      "error": "#ba1a1a",
+                      "inverse-primary": "#bec6e0",
+                      "safety-orange": "#F97316",
+                      "primary": "#000000",
+                      "surface-container": "#eceef0",
+                      "surface-container-low": "#f2f4f6",
+                      "on-secondary-fixed": "#341100",
+                      "surface-slate": "#E2E8F0",
+                      "outline-variant": "#c6c6cd",
+                      "outline": "#76777d",
+                      "on-tertiary-container": "#76859b",
+                      "inverse-surface": "#2d3133",
+                      "surface-container-highest": "#e0e3e5",
+                      "on-error": "#ffffff",
+                      "on-primary-fixed-variant": "#3f465c",
+                      "surface-bright": "#f7f9fb",
+                      "on-background": "#191c1e",
+                      "error-container": "#ffdad6",
+                      "tertiary-container": "#0d1c2f",
+                      "on-primary": "#ffffff",
+                      "on-tertiary-fixed-variant": "#3a485c",
+                      "secondary-fixed-dim": "#ffb690",
+                      "tertiary-fixed": "#d5e3fd",
+                      "on-surface-variant": "#45464d",
+                      "status-success": "#166534"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "spacing": {
+                      "gutter": "16px",
+                      "stack-md": "16px",
+                      "stack-lg": "24px",
+                      "margin-mobile": "20px",
+                      "touch-target-min": "48px",
+                      "stack-sm": "8px"
+              },
+              "fontFamily": {
+                      "label-caps": [
+                              "IBM Plex Sans"
+                      ],
+                      "data-mono": [
+                              "JetBrains Mono"
+                      ],
+                      "headline-lg-mobile": [
+                              "IBM Plex Sans"
+                      ],
+                      "headline-lg": [
+                              "IBM Plex Sans"
+                      ],
+                      "body-lg": [
+                              "IBM Plex Sans"
+                      ],
+                      "body-md": [
+                              "IBM Plex Sans"
+                      ],
+                      "headline-md": [
+                              "IBM Plex Sans"
+                      ]
+              },
+              "fontSize": {
+                      "label-caps": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "data-mono": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "headline-lg-mobile": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-lg": [
+                              "28px",
+                              {
+                                      "lineHeight": "36px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-lg": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "body-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-md": [
+                              "20px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "600"
+                              }
+                      ]
+              }
+            }
+          }
+        }
+      </script>
+<style>
+        body {
+            background-color: #f7f9fb;
+            color: #191c1e;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="flex flex-col h-screen overflow-hidden">
+<!-- TopAppBar -->
+<header class="bg-surface dark:bg-on-background w-full top-0 sticky border-b border-outline-variant dark:border-on-surface-variant z-40">
+<div class="flex items-center justify-between px-margin-mobile h-touch-target-min w-full">
+<div class="flex items-center gap-4">
+<button aria-label="Menu" class="active:opacity-80 p-2 rounded hover:bg-surface-container-high transition-colors text-primary dark:text-inverse-primary">
+<span class="material-symbols-outlined" data-icon="menu">menu</span>
+</button>
+<h1 class="font-headline-md text-headline-md font-bold text-primary dark:text-inverse-primary">RFLY Ops</h1>
+</div>
+<!-- Hide desktop nav on mobile -->
+<nav aria-label="Main Navigation" class="hidden md:flex items-center gap-6">
+<!-- Active: Fleet Schedule maps to Fleet -->
+<a class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-full px-6 py-1 active:scale-95 transition-transform duration-150 shadow-lg border-t border-outline-variant" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="hub">hub</span>
+<span class="font-label-caps text-label-caps">Fleet</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-colors active:scale-95 duration-150 p-2 rounded" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="precision_manufacturing">precision_manufacturing</span>
+<span class="font-label-caps text-label-caps opacity-70">Missions</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-colors active:scale-95 duration-150 p-2 rounded" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="explore">explore</span>
+<span class="font-label-caps text-label-caps opacity-70">Map</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-colors active:scale-95 duration-150 p-2 rounded" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="person">person</span>
+<span class="font-label-caps text-label-caps opacity-70">Profile</span>
+</a>
+</nav>
+<button class="active:opacity-80 p-1 rounded-full border border-outline-variant hover:bg-surface-container-high transition-colors">
+<img class="w-8 h-8 rounded-full object-cover" data-alt="A professional headshot of a drone pilot in a modern corporate setting, wearing neutral tones, softly lit with industrial elements in the background, light mode aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBBL8JcpsNPYv_os8yqjbAQgDhzJ5K6tLZeVIAMeW34GX_BXJvGIH_IZxHE4Edtum5ZJdtleWlhQD4G-SZ1BPCVPAhuWoQCL3SprYqwGwFzdFVAZyPdpxCL60gAjHFuP_fTiFAFKMk9Zcand0KizLK551uNKt6pFdck9ikF4QLQTHNq1OWkYF9NvzcXUYKi7G0-_cwIH8jQzHmXU65Pp-GkqIi60H3LpOAk9lJrEw3U2OUNCAhRN7Yt">
+</button>
+</div>
+</header>
+<div class="flex flex-1 overflow-hidden">
+<!-- NavigationDrawer (Desktop Only) -->
+<aside class="hidden md:flex h-full w-[280px] rounded-r-xl bg-surface dark:bg-surface-dim shadow-xl bg-surface dark:bg-surface-container flex-col py-stack-lg gap-stack-sm flex-shrink-0 z-30">
+<div class="px-6 pb-6 border-b border-outline-variant flex items-center gap-4">
+<img class="w-12 h-12 rounded-full object-cover" data-alt="A professional headshot of a lead drone pilot in a modern corporate setting, wearing neutral tones, softly lit with industrial elements in the background, light mode aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCTLw6tI3URnLci1HUpS_3PZ_4WEK1wu1xP5gaLVszq0YarqDznhKS3bk1xZjB664iEPn9axq0lqszNT-Fwg4_GVc0QXLOg2X4yJ3OgAz3KLOxhSOnHbLsPLeG0iLefybxFmZqTRD8AzbmSkiwG7y-hhkWcKt6ppRo8NTDjLuOvCi1aelchkwFOhlBKREDS6zepr63be-YMNlyjPVntuWCywautxXOYmemEmbr95MF2XvqDGDtSpsgQ">
+<div>
+<h2 class="font-headline-lg text-headline-lg text-primary font-bold">Lead Pilot</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">Region: Midwest</p>
+<p class="font-label-caps text-label-caps text-safety-orange mt-1">Status: Online</p>
+</div>
+</div>
+<nav aria-label="Sidebar Navigation" class="flex-1 overflow-y-auto pt-4">
+<a class="flex items-center gap-4 text-on-surface-variant mx-2 px-4 py-3 hover:bg-surface-container-high active:scale-[0.98] transition-all rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="flight_takeoff">flight_takeoff</span>
+<span class="font-body-lg text-body-lg">Mission Control</span>
+</a>
+<!-- Active mapping: Fleet -> Asset Registry -->
+<a class="flex items-center gap-4 bg-secondary-container text-on-secondary-container font-bold rounded-full mx-2 px-4 py-3 active:scale-[0.98] transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="inventory_2">inventory_2</span>
+<span class="font-body-lg text-body-lg">Asset Registry</span>
+</a>
+<a class="flex items-center gap-4 text-on-surface-variant mx-2 px-4 py-3 hover:bg-surface-container-high active:scale-[0.98] transition-all rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="history_edu">history_edu</span>
+<span class="font-body-lg text-body-lg">Flight Logs</span>
+</a>
+<a class="flex items-center gap-4 text-on-surface-variant mx-2 px-4 py-3 hover:bg-surface-container-high active:scale-[0.98] transition-all rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="security">security</span>
+<span class="font-body-lg text-body-lg">Safety Protocols</span>
+</a>
+<a class="flex items-center gap-4 text-on-surface-variant mx-2 px-4 py-3 hover:bg-surface-container-high active:scale-[0.98] transition-all rounded-lg mt-auto" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="font-body-lg text-body-lg">Settings</span>
+</a>
+</nav>
+</aside>
+<!-- Main Content -->
+<main class="flex-1 overflow-y-auto p-margin-mobile md:p-8 pb-[100px] md:pb-8">
+<!-- Page Header -->
+<div class="mb-stack-lg flex flex-col md:flex-row md:items-end justify-between gap-4">
+<div>
+<h2 class="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg font-bold text-primary mb-2">Fleet Schedule</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">Master view of drone availability and pilot assignments.</p>
+</div>
+<div class="flex gap-2">
+<button class="h-touch-target-min px-4 rounded border border-outline-variant text-primary font-body-md text-body-md flex items-center justify-center gap-2 hover:bg-surface-container-low transition-colors">
+<span class="material-symbols-outlined" data-icon="filter_list">filter_list</span>
+                        Filter
+                    </button>
+<button class="h-touch-target-min px-6 rounded bg-rfly-blue text-on-primary font-body-md text-body-md font-bold flex items-center justify-center gap-2 hover:opacity-90 transition-opacity shadow-sm">
+<span class="material-symbols-outlined" data-icon="add">add</span>
+                        New Assignment
+                    </button>
+</div>
+</div>
+<!-- Alerts / Exceptions -->
+<div class="mb-stack-lg border-l-4 border-safety-orange bg-error-container p-4 rounded-r-lg flex items-start gap-3">
+<span class="material-symbols-outlined text-status-warning mt-1" data-icon="warning">warning</span>
+<div>
+<h3 class="font-body-lg text-body-lg font-bold text-on-error-container">Maintenance Alert</h3>
+<p class="font-body-md text-body-md text-on-error-container opacity-90 mt-1">Drone R-7X requires immediate prop inspection. Scheduled mission delayed.</p>
+</div>
+<button aria-label="Dismiss alert" class="ml-auto text-on-error-container p-1 hover:bg-surface-container-high rounded">
+<span class="material-symbols-outlined" data-icon="close">close</span>
+</button>
+</div>
+<!-- Dashboard Bento Grid -->
+<div class="grid grid-cols-1 md:grid-cols-12 gap-stack-md mb-stack-lg">
+<!-- Status Overview Card -->
+<div class="md:col-span-4 bg-surface-container-lowest border border-outline-variant rounded-xl p-6 flex flex-col justify-between shadow-sm">
+<div class="flex justify-between items-center mb-4">
+<h3 class="font-body-lg text-body-lg font-bold text-primary">Fleet Status</h3>
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="pie_chart">pie_chart</span>
+</div>
+<div class="space-y-4">
+<div>
+<div class="flex justify-between font-body-md text-body-md mb-1">
+<span class="text-on-surface-variant">In Flight (3)</span>
+<span class="font-data-mono text-data-mono text-primary">25%</span>
+</div>
+<div class="w-full bg-surface-slate h-2 rounded-full overflow-hidden">
+<div class="bg-safety-orange h-full" style="width: 25%"></div>
+</div>
+</div>
+<div>
+<div class="flex justify-between font-body-md text-body-md mb-1">
+<span class="text-on-surface-variant">Available (7)</span>
+<span class="font-data-mono text-data-mono text-primary">58%</span>
+</div>
+<div class="w-full bg-surface-slate h-2 rounded-full overflow-hidden">
+<div class="bg-status-success h-full" style="width: 58%"></div>
+</div>
+</div>
+<div>
+<div class="flex justify-between font-body-md text-body-md mb-1">
+<span class="text-on-surface-variant">Maintenance (2)</span>
+<span class="font-data-mono text-data-mono text-primary">17%</span>
+</div>
+<div class="w-full bg-surface-slate h-2 rounded-full overflow-hidden">
+<div class="bg-status-warning h-full" style="width: 17%"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Quick Map View -->
+<div class="md:col-span-8 bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden relative shadow-sm h-64 md:h-auto">
+<div class="bg-cover bg-center w-full h-full absolute inset-0 opacity-60" data-alt="A stylized, high-contrast satellite map view showing agricultural fields with overlay markers indicating drone positions, light mode industrial aesthetic." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBTSacBhRY4aQeFnm9sjOciMshwZkV409FADVEIkNC2lIOF3GTOVO5_xHRazC06y5v1cyb-ssAiURR7xj5n2a-CMQXYQU_WnZeBqrrvc0jTITkEaIpRSH5DvGbtwOt58b6K39nuzxiV-_ZCQqG2g15C2iCt6RSUnTObkH0sn_SG8f-mjU-hCP-2qmjoHFRo69Hbaq-5o3oQrp-xQto3CAb02UcQ3rTPQ2s-wpCgIoKV2jXR3I1uzQCl')"></div>
+<div class="absolute inset-0 bg-gradient-to-t from-surface-container-lowest to-transparent"></div>
+<div class="absolute bottom-0 left-0 p-6">
+<h3 class="font-body-lg text-body-lg font-bold text-primary mb-1">Active Sectors</h3>
+<p class="font-body-md text-body-md text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-sm" data-icon="location_on">location_on</span>
+                             Midwest Region - Sector 4
+                         </p>
+</div>
+</div>
+</div>
+<!-- Schedule List View -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden shadow-sm">
+<div class="p-4 border-b border-outline-variant bg-surface-container-low flex justify-between items-center">
+<h3 class="font-body-lg text-body-lg font-bold text-primary">Asset Schedule</h3>
+<div class="flex gap-2">
+<button aria-label="List View" class="p-1 rounded hover:bg-surface-container-high text-on-surface-variant active:scale-95">
+<span class="material-symbols-outlined" data-icon="format_list_bulleted">format_list_bulleted</span>
+</button>
+<button aria-label="Calendar View" class="p-1 rounded hover:bg-surface-container-high text-primary bg-surface-container-highest active:scale-95">
+<span class="material-symbols-outlined" data-icon="calendar_view_week">calendar_view_week</span>
+</button>
+</div>
+</div>
+<div class="divide-y divide-outline-variant">
+<!-- Item 1: In Flight -->
+<div class="p-4 md:p-6 hover:bg-surface-bright transition-colors flex flex-col md:flex-row md:items-center justify-between gap-4 border-l-2 border-safety-orange">
+<div class="flex items-start gap-4">
+<div class="w-12 h-12 bg-surface-container rounded flex items-center justify-center flex-shrink-0 text-rfly-blue">
+<span class="material-symbols-outlined text-2xl" data-icon="flight">flight</span>
+</div>
+<div>
+<div class="flex items-center gap-2 mb-1">
+<h4 class="font-body-lg text-body-lg font-bold text-primary">X-9 Quad</h4>
+<span class="font-data-mono text-data-mono text-xs px-2 py-0.5 rounded bg-safety-orange bg-opacity-20 text-secondary-container border border-secondary-container">IN FLIGHT</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant flex items-center gap-2">
+<span class="material-symbols-outlined text-sm" data-icon="person">person</span> Pilot: J. Doe
+                                    <span class="material-symbols-outlined text-sm ml-2" data-icon="schedule">schedule</span> ETA: 45m
+                                </p>
+</div>
+</div>
+<div class="flex items-center gap-4 md:ml-auto">
+<div class="hidden md:block text-right">
+<p class="font-data-mono text-data-mono text-primary">Sector 7G</p>
+<p class="font-label-caps text-label-caps text-on-surface-variant">Crop Survey</p>
+</div>
+<button class="h-touch-target-min px-4 rounded border border-outline-variant text-primary font-body-md text-body-md hover:bg-surface-container-low transition-colors w-full md:w-auto">
+                                Details
+                            </button>
+</div>
+</div>
+<!-- Item 2: Available -->
+<div class="p-4 md:p-6 hover:bg-surface-bright transition-colors flex flex-col md:flex-row md:items-center justify-between gap-4 border-l-2 border-status-success">
+<div class="flex items-start gap-4">
+<div class="w-12 h-12 bg-surface-container rounded flex items-center justify-center flex-shrink-0 text-rfly-blue">
+<span class="material-symbols-outlined text-2xl" data-icon="flight">flight</span>
+</div>
+<div>
+<div class="flex items-center gap-2 mb-1">
+<h4 class="font-body-lg text-body-lg font-bold text-primary">M-4 Scout</h4>
+<span class="font-data-mono text-data-mono text-xs px-2 py-0.5 rounded bg-status-success bg-opacity-20 text-status-success border border-status-success">AVAILABLE</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant flex items-center gap-2">
+<span class="material-symbols-outlined text-sm" data-icon="battery_full">battery_full</span> 100% Charged
+                                    <span class="material-symbols-outlined text-sm ml-2" data-icon="place">place</span> Base Alpha
+                                </p>
+</div>
+</div>
+<div class="flex items-center gap-4 md:ml-auto">
+<div class="hidden md:block text-right">
+<p class="font-data-mono text-data-mono text-on-surface-variant">Unassigned</p>
+</div>
+<button class="h-touch-target-min px-4 rounded bg-rfly-blue text-on-primary font-body-md text-body-md hover:opacity-90 transition-opacity w-full md:w-auto shadow-sm">
+                                Assign
+                            </button>
+</div>
+</div>
+<!-- Item 3: Maintenance -->
+<div class="p-4 md:p-6 hover:bg-surface-bright transition-colors flex flex-col md:flex-row md:items-center justify-between gap-4 border-l-2 border-status-warning opacity-70">
+<div class="flex items-start gap-4">
+<div class="w-12 h-12 bg-surface-container rounded flex items-center justify-center flex-shrink-0 text-status-warning">
+<span class="material-symbols-outlined text-2xl" data-icon="build">build</span>
+</div>
+<div>
+<div class="flex items-center gap-2 mb-1">
+<h4 class="font-body-lg text-body-lg font-bold text-primary">R-7X Heavy</h4>
+<span class="font-data-mono text-data-mono text-xs px-2 py-0.5 rounded bg-status-warning bg-opacity-20 text-status-warning border border-status-warning">MAINTENANCE</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant flex items-center gap-2">
+<span class="material-symbols-outlined text-sm" data-icon="report">report</span> Prop Inspection
+                                    <span class="material-symbols-outlined text-sm ml-2" data-icon="update">update</span> Est. Clear: 14:00
+                                </p>
+</div>
+</div>
+<div class="flex items-center gap-4 md:ml-auto">
+<button class="h-touch-target-min px-4 rounded border border-outline-variant text-primary font-body-md text-body-md hover:bg-surface-container-low transition-colors w-full md:w-auto">
+                                View Ticket
+                            </button>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+<!-- BottomNavBar (Mobile Only) -->
+<nav aria-label="Mobile Navigation" class="md:hidden bg-primary-container dark:bg-on-background fixed bottom-0 w-full z-50 h-[80px] border-t border-outline-variant shadow-lg flex justify-around items-center w-full pb-safe px-4">
+<a class="flex flex-col items-center justify-center text-on-primary-container opacity-70 hover:bg-primary-fixed-variant active:scale-95 transition-transform duration-150 p-2 rounded w-16" href="{{DATA:SCREEN:SCREEN_5}}">
+<span class="material-symbols-outlined mb-1" data-icon="precision_manufacturing">precision_manufacturing</span>
+<span class="font-label-caps text-label-caps truncate w-full text-center">Missions</span>
+</a>
+<!-- Active Tab: Fleet Schedule maps to Fleet -->
+<a class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-full px-6 py-1 hover:bg-primary-fixed-variant active:scale-95 transition-transform duration-150 w-24" href="{{DATA:SCREEN:SCREEN_4}}">
+<span class="material-symbols-outlined mb-1" data-icon="hub">hub</span>
+<span class="font-label-caps text-label-caps truncate w-full text-center">Fleet</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-primary-container opacity-70 hover:bg-primary-fixed-variant active:scale-95 transition-transform duration-150 p-2 rounded w-16" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="explore">explore</span>
+<span class="font-label-caps text-label-caps truncate w-full text-center">Map</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-primary-container opacity-70 hover:bg-primary-fixed-variant active:scale-95 transition-transform duration-150 p-2 rounded w-16" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="person">person</span>
+<span class="font-label-caps text-label-caps truncate w-full text-center">Profile</span>
+</a>
+</nav>
+
+
+</body></html>

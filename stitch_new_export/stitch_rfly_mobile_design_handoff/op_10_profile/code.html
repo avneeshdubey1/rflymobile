@@ -1,0 +1,302 @@
+<!DOCTYPE html><html class="light" lang="en" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Profile - RFLY Operations</title>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined.filled {
+            font-variation-settings: 'FILL' 1;
+        }
+    </style>
+<!-- Google Fonts: Hanken Grotesk & JetBrains Mono -->
+<link href="https://fonts.googleapis.com" rel="preconnect">
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;700;800&amp;family=JetBrains+Mono:wght@500;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Theme Configuration -->
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "inverse-surface": "#2e3132",
+                        "on-surface": "#191c1d",
+                        "background": "#f8f9fa",
+                        "surface-container-low": "#f3f4f5",
+                        "surface": "#f8f9fa",
+                        "secondary": "#a04100",
+                        "primary": "#04162e",
+                        "surface-tint": "#4f5f7b",
+                        "status-success": "#2E7D32",
+                        "on-error": "#ffffff",
+                        "on-primary-container": "#8292b0",
+                        "tertiary-container": "#272b2f",
+                        "tertiary-fixed": "#dfe3e8",
+                        "on-secondary": "#ffffff",
+                        "inverse-primary": "#b6c7e7",
+                        "on-primary": "#ffffff",
+                        "surface-container": "#EDEEEF",
+                        "surface-variant": "#e1e3e4",
+                        "error-container": "#ffdad6",
+                        "on-secondary-container": "#572000",
+                        "on-tertiary-container": "#8e9297",
+                        "surface-container-high": "#e7e8e9",
+                        "tertiary": "#12171b",
+                        "primary-fixed-dim": "#b6c7e7",
+                        "status-error": "#D32F2F",
+                        "primary-fixed": "#d5e3ff",
+                        "status-offline": "#757575",
+                        "status-warning": "#ED6C02",
+                        "error": "#ba1a1a",
+                        "inverse-on-surface": "#f0f1f2",
+                        "surface-dim": "#d9dadb",
+                        "on-primary-fixed": "#091c34",
+                        "on-surface-variant": "#44474d",
+                        "tertiary-fixed-dim": "#c3c7cc",
+                        "on-secondary-fixed-variant": "#7a3000",
+                        "on-primary-fixed-variant": "#374762",
+                        "on-error-container": "#93000a",
+                        "secondary-fixed-dim": "#ffb693",
+                        "outline": "#75777e",
+                        "on-tertiary-fixed-variant": "#43474c",
+                        "on-tertiary": "#ffffff",
+                        "surface-bright": "#f8f9fa",
+                        "on-secondary-fixed": "#351000",
+                        "outline-variant": "#c5c6ce",
+                        "primary-container": "#1a2b44",
+                        "on-background": "#191c1d",
+                        "secondary-fixed": "#ffdbcc",
+                        "secondary-container": "#fe6b00",
+                        "on-tertiary-fixed": "#181c20",
+                        "surface-container-highest": "#e1e3e4",
+                        "surface-container-lowest": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "gutter": "12px",
+                        "margin-mobile": "16px",
+                        "base": "8px",
+                        "stack-lg": "24px",
+                        "stack-sm": "8px",
+                        "touch-target-min": "48px",
+                        "stack-md": "16px"
+                    },
+                    "fontFamily": {
+                        "data-lg": ["JetBrains Mono"],
+                        "headline-sm": ["Hanken Grotesk"],
+                        "label-caps": ["Hanken Grotesk"],
+                        "display-lg": ["Hanken Grotesk"],
+                        "body-md": ["Hanken Grotesk"],
+                        "headline-md": ["Hanken Grotesk"],
+                        "body-lg": ["Hanken Grotesk"],
+                        "data-sm": ["JetBrains Mono"]
+                    },
+                    "fontSize": {
+                        "data-lg": ["20px", { "lineHeight": "24px", "fontWeight": "700" }],
+                        "headline-sm": ["20px", { "lineHeight": "28px", "fontWeight": "700" }],
+                        "label-caps": ["12px", { "lineHeight": "16px", "letterSpacing": "0.08em", "fontWeight": "800" }],
+                        "display-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "800" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "700" }],
+                        "body-lg": ["18px", { "lineHeight": "26px", "fontWeight": "500" }],
+                        "data-sm": ["14px", { "lineHeight": "20px", "fontWeight": "500" }]
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-background text-on-surface min-h-screen font-body-md antialiased selection:bg-secondary-container selection:text-on-secondary-container">
+<!-- Navigation Drawer (Desktop) -->
+<nav class="hidden md:flex fixed inset-y-0 left-0 z-[60] flex-col py-stack-lg h-full w-[280px] rounded-r-xl bg-surface-container-lowest border-r border-surface-container shadow-lg transition-all duration-200 ease-in-out">
+<!-- Header Profile -->
+<div class="px-6 pb-6 border-b border-surface-container flex items-center gap-4">
+<img class="w-12 h-12 rounded-full object-cover border border-surface-container" data-alt="A professional headshot of a corporate fleet manager in a modern, brightly lit office environment. The person is wearing a crisp dark navy collared shirt. The background is a clean, minimalist white wall with subtle architectural details, conveying a highly structured, corporate, and reliable operational aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCkhl9oeXJrKYtWveXLsq2uhRKwAZ6_MbXZur51fdpQokE28Ly4AluSxqR98FaQ1PgrsJyn2689c0I5J2LsLO5Jx--KLCYMEdkp-ufatWds_wxw3gn1O6vGa7UKvn8OrDEN-CW_JulJQZjZoXXYeN_qKIUZGvS6r5xo0hbfjCAj4yl1TVRY437sNyGXr0vTzLbNmdfYfPAlbgOUb4xs7hiMfVWvkomnz9JCDZB_1HU-oJXLyvnAe4zu">
+<div class="flex flex-col">
+<span class="font-headline-sm text-headline-sm text-primary">Alex Morgan</span>
+<span class="font-body-md text-body-md text-on-surface-variant">Fleet Manager</span>
+<span class="font-data-sm text-data-sm text-outline mt-1">North Sector</span>
+</div>
+</div>
+<!-- Navigation Items -->
+<div class="flex-1 flex flex-col pt-6 gap-2 px-4">
+<a class="flex items-center gap-4 py-3 px-4 rounded-lg text-on-surface-variant hover:bg-surface-container transition-all duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined">directions_run</span>
+<span class="font-body-md text-body-md">Fleet Status</span>
+</a>
+<a class="flex items-center gap-4 py-3 px-4 rounded-lg text-on-surface-variant hover:bg-surface-container transition-all duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined">inventory_2</span>
+<span class="font-body-md text-body-md">Inventory</span>
+</a>
+<a class="flex items-center gap-4 py-3 px-4 rounded-lg text-on-surface-variant hover:bg-surface-container transition-all duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined">manage_accounts</span>
+<span class="font-body-md text-body-md">User Management</span>
+</a>
+<a class="flex items-center gap-4 py-3 px-4 rounded-lg border-l-4 border-secondary bg-surface-container-high text-primary font-bold transition-all duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined filled">settings</span>
+<span class="font-body-md text-body-md">Settings</span>
+</a>
+</div>
+</nav>
+<!-- Main Content Area -->
+<div class="md:pl-[280px] flex flex-col min-h-screen">
+<!-- Top App Bar -->
+<header class="sticky top-0 w-full z-50 flex items-center justify-between px-margin-mobile h-[64px] bg-surface border-b border-surface-container transition-colors">
+<div class="flex items-center gap-4">
+<button class="md:hidden text-on-surface-variant hover:bg-surface-container-high active:opacity-80 transition-all duration-150 p-2 rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined">menu</span>
+</button>
+<img src="https://lh3.googleusercontent.com/aida-public/AB6AXuBM6ZaEEoi73L3Z7RT4sIRJBJeTmRqLNnkIljj_zFI0SvHlLFqO-fQaQlstlb0G_C2ZMyCEnCBpTUHEaGjwWJqveuGaxM-Zm2Nc-9pnzpXT0lWiXiWLNczUWrEnFOjWVQvK5GZn62HlXpUhflDrV-rpLaVcPR4Gl92DLL5j46bygl_vyW-1EHqEn5unOhiPDYTR9CFM0D8W9tyaZOdgSUMpVm4VAZIKN83wDNn5mPBxCAlF99blST_o" alt="RFLY Drone Logo" class="h-8 w-auto object-contain">
+</div>
+<button class="text-on-surface-variant hover:bg-surface-container-high active:opacity-80 transition-all duration-150 p-2 rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined">filter_list</span>
+</button>
+</header>
+<!-- Profile Canvas -->
+<main class="flex-1 p-margin-mobile md:p-stack-lg pb-[100px] md:pb-stack-lg max-w-5xl mx-auto w-full flex flex-col gap-stack-lg">
+<!-- Hero Profile Card -->
+<section class="bg-surface-container-lowest border border-surface-container rounded-xl p-stack-lg flex flex-col md:flex-row items-start md:items-center gap-stack-lg relative overflow-hidden group">
+<div class="absolute inset-y-0 left-0 w-1 bg-secondary"></div>
+<div class="w-24 h-24 rounded-full border-2 border-surface-variant overflow-hidden shrink-0">
+<img class="w-full h-full object-cover" data-alt="A close-up professional corporate headshot of a logistics manager against a pure white background. The lighting is high-key and studio quality, emphasizing clarity and operational precision. The subject wears a dark navy uniform shirt, aligning with a modern industrial aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAUUNC1whha0lDYQ8Z36RQhvf6fzPWr83vBX2pttywMeXCEPB1d7D8Qm54BA-kb1sr_AisZyTHK4MHlCBBraOvSTEu6Jqns2dFv5uSggcVqpDcKqJA6Nn71h44ktCppVOnKyJOmW-fS3P6rM2LQyzjhgLvh7nrwaiKxufMxQwjUKxrNg6XD4ADiQzz7sb4MqiV8rDPZJ-sX3MwV53LZ6mmmdoZ2lCTX-_W0e3z6RZShdOc6NSPDkox0">
+</div>
+<div class="flex-1 flex flex-col gap-2">
+<div class="flex items-center gap-3 flex-wrap">
+<h2 class="font-display-lg text-display-lg text-primary">Alex Morgan</h2>
+<span class="bg-status-success/10 text-status-success font-label-caps text-label-caps px-3 py-1 rounded-full uppercase">Active</span>
+</div>
+<div class="flex flex-col sm:flex-row sm:items-center gap-y-2 gap-x-6 mt-2 text-on-surface-variant">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-outline">badge</span>
+<span class="font-data-lg text-data-lg text-primary">EMP-84920</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-outline">work</span>
+<span class="font-body-lg text-body-lg">Fleet Operations Manager</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-outline">location_on</span>
+<span class="font-body-lg text-body-lg">North Sector Logistics Hub</span>
+</div>
+</div>
+</div>
+</section>
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-stack-lg">
+<!-- Role-Based Capabilities -->
+<section class="bg-surface-container-lowest border border-surface-container rounded-xl overflow-hidden flex flex-col">
+<div class="bg-primary px-stack-md py-4">
+<h3 class="font-label-caps text-label-caps text-on-primary uppercase">Role-Based Capabilities</h3>
+</div>
+<div class="flex flex-col divide-y divide-surface-container">
+<div class="px-stack-md py-4 flex items-center justify-between hover:bg-background transition-colors">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded bg-surface-container flex items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined text-[20px]">local_shipping</span>
+</div>
+<span class="font-body-md text-body-md font-medium text-primary">Fleet Dispatch &amp; Routing</span>
+</div>
+<span class="material-symbols-outlined text-status-success">check_circle</span>
+</div>
+<div class="px-stack-md py-4 flex items-center justify-between hover:bg-background transition-colors">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded bg-surface-container flex items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined text-[20px]">inventory</span>
+</div>
+<span class="font-body-md text-body-md font-medium text-primary">Inventory Write-off (Tier 2)</span>
+</div>
+<span class="material-symbols-outlined text-status-success">check_circle</span>
+</div>
+<div class="px-stack-md py-4 flex items-center justify-between hover:bg-background transition-colors">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded bg-surface-container flex items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined text-[20px]">group_add</span>
+</div>
+<span class="font-body-md text-body-md font-medium text-primary">Field User Provisioning</span>
+</div>
+<span class="material-symbols-outlined text-status-success">check_circle</span>
+</div>
+<div class="px-stack-md py-4 flex items-center justify-between hover:bg-background transition-colors opacity-60">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded bg-surface-container flex items-center justify-center text-outline">
+<span class="material-symbols-outlined text-[20px]">account_balance</span>
+</div>
+<span class="font-body-md text-body-md font-medium text-on-surface-variant">Financial Approvals</span>
+</div>
+<span class="material-symbols-outlined text-outline">block</span>
+</div>
+</div>
+</section>
+<!-- System Information -->
+<div class="flex flex-col gap-stack-lg">
+<section class="bg-surface-container-lowest border border-surface-container rounded-xl overflow-hidden flex flex-col">
+<div class="bg-surface-container px-stack-md py-4 border-b border-surface-variant">
+<h3 class="font-label-caps text-label-caps text-on-surface-variant uppercase">Installation Management</h3>
+</div>
+<div class="p-stack-md flex flex-col gap-4">
+<div class="flex justify-between items-center pb-4 border-b border-surface-container last:border-0 last:pb-0">
+<span class="font-body-md text-body-md text-on-surface-variant">Client Version</span>
+<span class="font-data-sm text-data-sm text-primary bg-surface py-1 px-2 rounded border border-surface-variant">v2.14.0-rc.3</span>
+</div>
+<div class="flex justify-between items-center pb-4 border-b border-surface-container last:border-0 last:pb-0">
+<span class="font-body-md text-body-md text-on-surface-variant">Core Framework</span>
+<span class="font-data-sm text-data-sm text-primary">RFLY-OS Build 9482</span>
+</div>
+<div class="flex justify-between items-center pb-4 border-b border-surface-container last:border-0 last:pb-0">
+<span class="font-body-md text-body-md text-on-surface-variant">Last Synchronized</span>
+<span class="font-data-sm text-data-sm text-primary">Today, 08:42 AM</span>
+</div>
+</div>
+</section>
+<!-- Actions -->
+<section class="bg-surface-container-lowest border border-surface-container rounded-xl p-stack-md flex flex-col sm:flex-row gap-4 items-center justify-end mt-auto">
+<button class="w-full sm:w-auto font-label-caps text-label-caps text-primary border border-primary hover:bg-surface-container-low px-6 py-3 rounded-full transition-colors flex items-center justify-center gap-2 uppercase">
+<span class="material-symbols-outlined text-[18px]">logout</span>
+                            Logout
+                        </button>
+<button class="w-full sm:w-auto font-label-caps text-label-caps bg-primary text-on-primary hover:bg-primary/90 px-6 py-3 rounded-full transition-colors flex items-center justify-center gap-2 uppercase">
+<span class="material-symbols-outlined text-[18px]">phonelink_erase</span>
+                            Logout from All Devices
+                        </button>
+</section>
+</div>
+</div>
+</main>
+</div>
+<!-- Bottom Navigation Bar (Mobile) -->
+<nav class="md:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center h-touch-target-min bg-surface border-t border-surface-container shadow-[0_-1px_0_0_rgba(0,0,0,0.05)] px-gutter">
+<a class="flex flex-col items-center justify-center text-on-surface-variant px-base py-1 hover:bg-surface-container-low transition-all active:scale-95 duration-100" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-caps text-label-caps text-[10px]">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant px-base py-1 hover:bg-surface-container-low transition-all active:scale-95 duration-100" href="#">
+<span class="material-symbols-outlined">group</span>
+<span class="font-label-caps text-label-caps text-[10px]">Customers</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant px-base py-1 hover:bg-surface-container-low transition-all active:scale-95 duration-100" href="#">
+<span class="material-symbols-outlined">calendar_today</span>
+<span class="font-label-caps text-label-caps text-[10px]">Schedule</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant px-base py-1 hover:bg-surface-container-low transition-all active:scale-95 duration-100" href="#">
+<span class="material-symbols-outlined">warning</span>
+<span class="font-label-caps text-label-caps text-[10px]">Exceptions</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-full px-base py-1 active:scale-95 transition-transform duration-100" href="#">
+<span class="material-symbols-outlined filled">person</span>
+<span class="font-label-caps text-label-caps text-[10px]">Profile</span>
+</a>
+</nav>
+
+
+</body></html>

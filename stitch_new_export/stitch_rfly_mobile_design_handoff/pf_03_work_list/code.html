@@ -1,0 +1,257 @@
+<!DOCTYPE html><html class="light" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport">
+<title>RFLY Pilot - Work List</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;700;800&amp;family=JetBrains+Mono:wght@500;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-bright": "#f8f9fa",
+                        "surface-container-low": "#f3f4f5",
+                        "on-secondary-fixed": "#091c34",
+                        "on-secondary-fixed-variant": "#374762",
+                        "tertiary-fixed-dim": "#c3c7cc",
+                        "on-tertiary-fixed": "#181c20",
+                        "surface-container": "#edeeef",
+                        "on-tertiary": "#ffffff",
+                        "on-tertiary-container": "#2d3136",
+                        "on-primary-container": "#572000",
+                        "inverse-on-surface": "#f0f1f2",
+                        "on-surface-variant": "#5a4136",
+                        "on-secondary-container": "#51617d",
+                        "primary-container": "#ff6b00",
+                        "on-surface": "#191c1d",
+                        "outline": "#8e7164",
+                        "secondary-fixed": "#d5e3ff",
+                        "tertiary-container": "#95999f",
+                        "on-primary-fixed-variant": "#7a3000",
+                        "primary": "#a04100",
+                        "secondary-fixed-dim": "#b6c7e7",
+                        "surface-dim": "#d9dadb",
+                        "on-secondary": "#ffffff",
+                        "on-tertiary-fixed-variant": "#43474c",
+                        "surface-container-lowest": "#ffffff",
+                        "error-container": "#ffdad6",
+                        "inverse-primary": "#ffb693",
+                        "secondary": "#4f5f7b",
+                        "secondary-container": "#ccdefe",
+                        "surface-variant": "#e1e3e4",
+                        "surface": "#f8f9fa",
+                        "primary-fixed-dim": "#ffb693",
+                        "on-primary-fixed": "#351000",
+                        "background": "#f8f9fa",
+                        "outline-variant": "#e2bfb0",
+                        "on-primary": "#ffffff",
+                        "tertiary-fixed": "#dfe3e8",
+                        "on-error-container": "#93000a",
+                        "surface-container-high": "#e7e8e9",
+                        "primary-fixed": "#ffdbcc",
+                        "surface-tint": "#a04100",
+                        "on-background": "#191c1d",
+                        "tertiary": "#5b5f64",
+                        "error": "#ba1a1a",
+                        "surface-container-highest": "#e1e3e4",
+                        "inverse-surface": "#2e3132",
+                        "on-error": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "margin-mobile": "16px",
+                        "stack-sm": "8px",
+                        "stack-lg": "24px",
+                        "stack-md": "16px",
+                        "touch-target-min": "48px",
+                        "gutter": "12px",
+                        "base": "8px"
+                    },
+                    "fontFamily": {
+                        "label-caps": ["Hanken Grotesk"],
+                        "display-lg": ["Hanken Grotesk"],
+                        "body-md": ["Hanken Grotesk"],
+                        "headline-md": ["Hanken Grotesk"],
+                        "data-sm": ["JetBrains Mono"],
+                        "data-lg": ["JetBrains Mono"],
+                        "body-lg": ["Hanken Grotesk"],
+                        "headline-sm": ["Hanken Grotesk"]
+                    },
+                    "fontSize": {
+                        "label-caps": ["12px", { "lineHeight": "16px", "letterSpacing": "0.08em", "fontWeight": "800" }],
+                        "display-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "800" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "700" }],
+                        "data-sm": ["14px", { "lineHeight": "20px", "fontWeight": "500" }],
+                        "data-lg": ["20px", { "lineHeight": "24px", "fontWeight": "700" }],
+                        "body-lg": ["18px", { "lineHeight": "26px", "fontWeight": "500" }],
+                        "headline-sm": ["20px", { "lineHeight": "28px", "fontWeight": "700" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined.fill {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface font-body-md antialiased pb-24">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full flex items-center justify-between px-margin-mobile h-touch-target-min z-50 bg-surface dark:bg-surface-container-highest border-b-2 border-outline-variant dark:border-outline">
+<button aria-label="Menu" class="h-touch-target-min w-touch-target-min flex items-center justify-center text-primary dark:text-primary-fixed-dim hover:bg-surface-container-high transition-colors active:scale-95 duration-100 rounded-full">
+<span class="material-symbols-outlined" data-icon="menu">menu</span>
+</button>
+<div class="h-8 w-auto mx-4 flex items-center"><img src="https://lh3.googleusercontent.com/aida-public/AB6AXuD5nhwSERL2OEtNBMvAXrEq4tagVdQPL6UkvakTZjpfSPVgKvugsJf0sVaqFNtM529iaz9f9De-2npjI_kYWaFn2WqLAXTHkGSzqHuW54bI8k_H5n4XPTVdL98WT5E-wq3LvCD59ZJaffRS-N01OXMjR5Sj4b-8MMHu96mPr1Rnb9siNFq7LiJC6rSgPG9Ff4zs9hX0UCFfedNqPVd5epvnfAHkm2kxwK2dDFiM0oj7E3t3lsuwOCyQ" alt="RFLY Drone Logo" class="h-full w-auto object-contain"></div>
+<button aria-label="Offline Status" class="h-touch-target-min w-touch-target-min flex items-center justify-center text-error hover:bg-surface-container-high transition-colors active:scale-95 duration-100 rounded-full">
+<span class="material-symbols-outlined" data-icon="cloud_off">cloud_off</span>
+</button>
+</header>
+<!-- Main Content Area -->
+<main class="pt-[calc(48px+16px)] px-margin-mobile flex flex-col gap-stack-lg max-w-4xl mx-auto">
+<!-- Offline Banner -->
+<div class="bg-surface-container-high border-2 border-error text-on-surface rounded-lg p-stack-sm flex items-center gap-stack-sm">
+<span class="material-symbols-outlined text-error" data-icon="cloud_off">cloud_off</span>
+<div class="flex-1">
+<p class="font-body-md text-body-md font-bold text-error">Offline Mode</p>
+<p class="font-data-sm text-data-sm text-on-surface-variant">Showing cached assignment data.</p>
+</div>
+</div>
+<!-- Segmented Control -->
+<div class="flex p-1 bg-surface-container-low rounded-lg border-2 border-outline-variant">
+<button class="flex-1 py-2 px-4 rounded font-label-caps text-label-caps text-on-primary bg-primary shadow-sm text-center transition-colors">
+                Today
+            </button>
+<button class="flex-1 py-2 px-4 rounded font-label-caps text-label-caps text-on-surface-variant hover:bg-surface-container-high transition-colors text-center">
+                Upcoming
+            </button>
+</div>
+<!-- Assignment List -->
+<div class="flex flex-col gap-stack-md">
+<!-- Card 1 -->
+<article class="bg-surface-container-lowest border-2 border-surface-variant rounded-lg p-stack-md flex flex-col gap-stack-sm active:scale-[0.99] transition-transform cursor-pointer hover:border-secondary">
+<div class="flex justify-between items-start gap-stack-sm">
+<div>
+<h2 class="font-headline-sm text-headline-sm text-on-surface">Silver Creek Farm</h2>
+<p class="font-data-sm text-data-sm text-on-surface-variant flex items-center gap-1 mt-1">
+<span class="material-symbols-outlined text-[16px]" data-icon="grass">grass</span>
+                            Corn | 120.00 Acres
+                        </p>
+</div>
+<span class="bg-secondary text-on-secondary px-3 py-1 rounded-full font-label-caps text-label-caps shrink-0">
+                        SCHEDULED
+                    </span>
+</div>
+<hr class="border-t border-surface-variant my-1">
+<div class="flex justify-between items-center gap-stack-sm">
+<div class="flex items-center gap-stack-sm text-on-surface">
+<span class="material-symbols-outlined text-tertiary" data-icon="schedule">schedule</span>
+<span class="font-data-sm text-data-sm">08:00 - 12:00</span>
+</div>
+</div>
+<div class="bg-surface-container-low p-stack-sm rounded border border-surface-variant mt-2">
+<p class="font-body-md text-body-md text-on-surface-variant">
+<strong>Crew:</strong> Primary: J. Smith | Copilot: A. Davis
+                    </p>
+</div>
+</article>
+<!-- Card 2 -->
+<article class="bg-surface-container-lowest border-2 border-primary rounded-lg p-stack-md flex flex-col gap-stack-sm active:scale-[0.99] transition-transform cursor-pointer relative overflow-hidden">
+<div class="absolute top-0 left-0 w-1 h-full bg-primary"></div>
+<div class="flex justify-between items-start gap-stack-sm pl-2">
+<div>
+<h2 class="font-headline-sm text-headline-sm text-on-surface">Oakridge Tract 4</h2>
+<p class="font-data-sm text-data-sm text-on-surface-variant flex items-center gap-1 mt-1">
+<span class="material-symbols-outlined text-[16px]" data-icon="grass">grass</span>
+                            Soybeans | 85.50 Acres
+                        </p>
+</div>
+<span class="bg-primary text-on-primary px-3 py-1 rounded-full font-label-caps text-label-caps shrink-0">
+                        READY
+                    </span>
+</div>
+<hr class="border-t border-surface-variant my-1">
+<div class="flex justify-between items-center gap-stack-sm pl-2">
+<div class="flex items-center gap-stack-sm text-on-surface">
+<span class="material-symbols-outlined text-primary" data-icon="schedule">schedule</span>
+<span class="font-data-sm text-data-sm font-bold">13:00 - 16:30</span>
+</div>
+</div>
+<div class="bg-surface-container-low p-stack-sm rounded border border-surface-variant mt-2 ml-2">
+<p class="font-body-md text-body-md text-on-surface-variant">
+<strong>Crew:</strong> Primary: J. Smith | Copilot: M. Chen
+                    </p>
+</div>
+</article>
+<!-- Card 3 -->
+<article class="bg-surface-container-lowest border-2 border-surface-variant rounded-lg p-stack-md flex flex-col gap-stack-sm active:scale-[0.99] transition-transform cursor-pointer hover:border-secondary opacity-75">
+<div class="flex justify-between items-start gap-stack-sm">
+<div>
+<h2 class="font-headline-sm text-headline-sm text-on-surface">Pine Valley East</h2>
+<p class="font-data-sm text-data-sm text-on-surface-variant flex items-center gap-1 mt-1">
+<span class="material-symbols-outlined text-[16px]" data-icon="grass">grass</span>
+                            Wheat | 210.00 Acres
+                        </p>
+</div>
+<span class="bg-surface-variant text-on-surface-variant px-3 py-1 rounded-full font-label-caps text-label-caps shrink-0 border border-outline-variant">
+                        COMPLETED
+                    </span>
+</div>
+<hr class="border-t border-surface-variant my-1">
+<div class="flex justify-between items-center gap-stack-sm">
+<div class="flex items-center gap-stack-sm text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="schedule">schedule</span>
+<span class="font-data-sm text-data-sm line-through">05:30 - 07:45</span>
+</div>
+</div>
+</article>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 w-full h-16 flex justify-around items-center px-4 z-50 bg-surface dark:bg-surface-container-lowest border-t-2 border-outline-variant dark:border-outline md:hidden">
+<!-- Active: Work -->
+<a aria-current="page" class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-full px-4 py-1 active:opacity-80 transition-all min-w-[64px] min-h-[48px]" href="#">
+<span class="material-symbols-outlined fill" data-icon="agriculture" data-weight="fill">agriculture</span>
+<span class="font-label-caps text-label-caps mt-1">Work</span>
+</a>
+<!-- Inactive: Sync -->
+<a class="flex flex-col items-center justify-center text-on-secondary-fixed-variant dark:text-secondary-fixed-dim hover:bg-surface-container-low active:opacity-80 transition-all rounded-lg min-w-[64px] min-h-[48px]" href="#">
+<span class="material-symbols-outlined" data-icon="sync">sync</span>
+<span class="font-label-caps text-label-caps mt-1">Sync</span>
+</a>
+<!-- Inactive: Profile -->
+<a class="flex flex-col items-center justify-center text-on-secondary-fixed-variant dark:text-secondary-fixed-dim hover:bg-surface-container-low active:opacity-80 transition-all rounded-lg min-w-[64px] min-h-[48px]" href="#">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="font-label-caps text-label-caps mt-1">Profile</span>
+</a>
+</nav>
+<!-- Desktop Navigation Stand-in (hidden on mobile, required by design system logic if bottom nav is hidden) -->
+<nav class="hidden md:flex fixed top-0 left-0 h-full w-64 bg-surface-container-lowest border-r-2 border-outline-variant flex-col pt-24 px-4 gap-4">
+<a class="flex items-center gap-3 p-3 bg-primary-container text-on-primary-container rounded-lg font-body-lg text-body-lg font-bold" href="#">
+<span class="material-symbols-outlined fill" data-icon="agriculture" data-weight="fill">agriculture</span>
+            Work
+        </a>
+<a class="flex items-center gap-3 p-3 text-on-surface-variant hover:bg-surface-container-low rounded-lg font-body-lg text-body-lg" href="#">
+<span class="material-symbols-outlined" data-icon="sync">sync</span>
+            Sync
+        </a>
+<a class="flex items-center gap-3 p-3 text-on-surface-variant hover:bg-surface-container-low rounded-lg font-body-lg text-body-lg" href="#">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+            Profile
+        </a>
+</nav>
+
+
+</body></html>

@@ -48,7 +48,10 @@ kept under `docs/unrealted_docs_for_current_version/` and is never authoritative
     [STITCH_MOBILE_REDESIGN_HANDOFF.md](STITCH_MOBILE_REDESIGN_HANDOFF.md).
     For the separate non-Pilot application spanning Admin, Sales, Fleet,
     Farmer/customer, and Business/B2B roles, use
-    [STITCH_NON_PILOT_MOBILE_APP_HANDOFF.md](STITCH_NON_PILOT_MOBILE_APP_HANDOFF.md).
+    [NON_PILOT_MOBILE_APP_IMPLEMENTATION_HANDOFF.md](NON_PILOT_MOBILE_APP_IMPLEMENTATION_HANDOFF.md)
+    as the canonical execution plan and
+    [STITCH_NON_PILOT_MOBILE_APP_HANDOFF.md](STITCH_NON_PILOT_MOBILE_APP_HANDOFF.md)
+    as its supporting UI/design brief.
     When repairing or rebuilding the current Expo Pilot client, use
     [GEMINI_PILOT_MOBILE_REBUILD_HANDOFF.md](GEMINI_PILOT_MOBILE_REBUILD_HANDOFF.md)
     as the coding-agent execution workbook.

@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Pilot Field - Sync Status</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-secondary": "#ffffff",
+                        "on-background": "#1b1b1d",
+                        "surface-container-lowest": "#ffffff",
+                        "surface": "#fcf8fa",
+                        "on-tertiary": "#ffffff",
+                        "on-secondary-fixed-variant": "#783200",
+                        "on-primary-fixed": "#131b2e",
+                        "tertiary": "#000000",
+                        "on-primary-container": "#7c839b",
+                        "error-container": "#ffdad6",
+                        "background": "#fcf8fa",
+                        "primary-fixed": "#dae2fd",
+                        "surface-bright": "#f7f9fb",
+                        "on-tertiary-fixed-variant": "#574425",
+                        "surface-container-high": "#eae7e9",
+                        "secondary-fixed-dim": "#ffb690",
+                        "outline-variant": "#c6c6cd",
+                        "inverse-surface": "#303032",
+                        "error": "#dc2626",
+                        "surface-tint": "#565e74",
+                        "on-secondary-fixed": "#341100",
+                        "tertiary-fixed": "#fcdeb5",
+                        "on-secondary-container": "#5c2400",
+                        "surface-container-highest": "#e4e2e4",
+                        "secondary": "#9d4300",
+                        "on-tertiary-fixed": "#271901",
+                        "primary": "#000000",
+                        "warning": "#ca8a04",
+                        "on-primary": "#ffffff",
+                        "primary-fixed-dim": "#bec6e0",
+                        "tertiary-container": "#271901",
+                        "on-error-container": "#93000a",
+                        "surface-variant": "#e4e2e4",
+                        "on-surface": "#1b1b1d",
+                        "surface-container-low": "#f6f3f5",
+                        "on-surface-variant": "#45464d",
+                        "primary-container": "#131b2e",
+                        "inverse-on-surface": "#f3f0f2",
+                        "on-tertiary-container": "#98805d",
+                        "secondary-container": "#fd761a",
+                        "success": "#16a34a",
+                        "surface-container": "#f0edef",
+                        "secondary-fixed": "#ffdbca",
+                        "on-error": "#ffffff",
+                        "surface-dim": "#dcd9db",
+                        "tertiary-fixed-dim": "#dec29a",
+                        "outline": "#76777d",
+                        "inverse-primary": "#bec6e0",
+                        "surface-container-medium": "#eef1f4",
+                        "on-primary-fixed-variant": "#3f465c"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "touch-target-min": "48px",
+                        "gutter-mobile": "12px",
+                        "stack-lg": "24px",
+                        "stack-md": "16px",
+                        "margin-mobile": "16px",
+                        "stack-sm": "8px"
+                    },
+                    "fontFamily": {
+                        "label-sm": ["IBM Plex Sans"],
+                        "body-sm": ["IBM Plex Sans"],
+                        "headline-sm": ["IBM Plex Sans"],
+                        "headline-lg": ["IBM Plex Sans"],
+                        "headline-md": ["IBM Plex Sans"],
+                        "label-md": ["IBM Plex Sans"],
+                        "body-md": ["IBM Plex Sans"],
+                        "body-lg": ["IBM Plex Sans"],
+                        "label-lg": ["IBM Plex Sans"]
+                    },
+                    "fontSize": {
+                        "label-sm": ["11px", { "lineHeight": "16px", "fontWeight": "500" }],
+                        "body-sm": ["12px", { "lineHeight": "16px", "fontWeight": "400" }],
+                        "headline-sm": ["16px", { "lineHeight": "24px", "fontWeight": "700" }],
+                        "headline-lg": ["24px", { "lineHeight": "32px", "fontWeight": "700" }],
+                        "headline-md": ["20px", { "lineHeight": "28px", "fontWeight": "700" }],
+                        "label-md": ["12px", { "lineHeight": "16px", "fontWeight": "500" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "label-lg": ["14px", { "lineHeight": "20px", "fontWeight": "500" }]
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-background text-on-background min-h-screen flex flex-col font-body-md antialiased pb-[80px]">
+<!-- TopAppBar -->
+<header class="bg-surface dark:bg-on-background w-full top-0 sticky border-b border-outline-variant dark:border-on-surface-variant z-40">
+<div class="flex items-center justify-between px-margin-mobile h-touch-target-min w-full">
+<div class="flex items-center gap-4">
+<button aria-label="Menu" class="flex items-center justify-center w-touch-target-min h-touch-target-min text-primary dark:text-inverse-primary hover:bg-surface-container-high transition-colors active:opacity-80 rounded-full">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">menu</span>
+</button>
+<h1 class="font-headline-md text-headline-md font-bold text-primary dark:text-inverse-primary">RFLY Ops</h1>
+</div>
+<button class="flex items-center justify-center w-touch-target-min h-touch-target-min rounded-full overflow-hidden border border-outline-variant hover:bg-surface-container-high transition-colors active:opacity-80">
+<span class="material-symbols-outlined text-primary dark:text-inverse-primary">apps_outage</span>
+</button>
+</div>
+<!-- Offline/Sync Banner -->
+<div class="bg-surface-container-highest px-margin-mobile py-2 flex items-center justify-between border-b border-outline-variant">
+<div class="flex items-center gap-2 text-warning">
+<span class="material-symbols-outlined text-[18px]">cloud_sync</span>
+<span class="font-label-md text-label-md text-on-surface">Syncing in progress...</span>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Last synced 2m ago</span>
+</div>
+</header>
+<!-- Main Content -->
+<main class="flex-1 w-full max-w-4xl mx-auto px-margin-mobile py-stack-lg flex flex-col gap-stack-lg">
+<!-- Header -->
+<div class="flex flex-col gap-stack-sm">
+<h2 class="font-headline-lg text-headline-lg text-primary">Sync Status</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">Review and manage pending field actions. The server is authoritative; unresolved conflicts require action.</p>
+</div>
+<!-- Action Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-stack-md">
+<!-- Pending Item -->
+<div class="bg-surface-container-low border border-outline-variant p-stack-md flex flex-col gap-stack-md relative overflow-hidden group">
+<div class="absolute top-0 right-0 w-2 h-full bg-warning opacity-50 group-hover:opacity-100 transition-opacity"></div>
+<div class="flex justify-between items-start">
+<div class="flex flex-col gap-1">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Mission Update</span>
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Complete Mission PF-11</h3>
+</div>
+<div class="bg-surface-container flex items-center gap-1 px-2 py-1 rounded">
+<span class="material-symbols-outlined text-[16px] text-warning animate-spin">sync</span>
+<span class="font-label-md text-label-md text-on-surface">Pending</span>
+</div>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-2">Flight log and telemetry data ready for upload.</p>
+</div>
+<!-- Conflict Item -->
+<div class="bg-error-container border border-error p-stack-md flex flex-col gap-stack-md relative overflow-hidden group">
+<div class="absolute top-0 right-0 w-2 h-full bg-error opacity-80"></div>
+<div class="flex justify-between items-start">
+<div class="flex flex-col gap-1">
+<span class="font-label-sm text-label-sm text-on-error-container uppercase tracking-wider">Assignment</span>
+<h3 class="font-headline-sm text-headline-sm text-on-error-container">Accept Assignment AX-992B</h3>
+</div>
+<div class="bg-surface-container-lowest flex items-center gap-1 px-2 py-1 rounded border border-error">
+<span class="material-symbols-outlined text-[16px] text-error">error</span>
+<span class="font-label-md text-label-md text-error">Conflict</span>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-2 rounded border border-error/30 mt-2">
+<p class="font-body-sm text-body-sm text-error font-medium">Version Mismatch - Refresh Required</p>
+</div>
+</div>
+<!-- Synchronized Item -->
+<div class="bg-surface-container-low border border-outline-variant p-stack-md flex flex-col gap-stack-md opacity-70">
+<div class="flex justify-between items-start">
+<div class="flex flex-col gap-1">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Maintenance</span>
+<h3 class="font-headline-sm text-headline-sm text-on-surface line-through">Log Maintenance Note</h3>
+</div>
+<div class="bg-surface-container flex items-center gap-1 px-2 py-1 rounded">
+<span class="material-symbols-outlined text-[16px] text-success">check_circle</span>
+<span class="font-label-md text-label-md text-on-surface">Synced</span>
+</div>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-2">10:42 AM PST</p>
+</div>
+</div>
+<!-- Refresh Button -->
+<div class="mt-stack-lg pt-stack-lg border-t border-outline-variant">
+<button class="w-full bg-primary text-on-primary font-headline-md text-headline-md h-touch-target-min rounded-DEFAULT flex items-center justify-center gap-2 hover:bg-surface-tint active:scale-[0.98] transition-all">
+<span class="material-symbols-outlined">refresh</span>
+                Refresh All Data
+            </button>
+<p class="text-center font-body-sm text-body-sm text-on-surface-variant mt-stack-sm">Resolves conflicts by fetching latest authoritative state.</p>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="bg-primary-container dark:bg-on-background fixed bottom-0 w-full z-50 h-[80px] border-t border-outline-variant shadow-lg md:hidden">
+<div class="flex justify-around items-center w-full pb-safe px-4 h-full">
+<a class="flex flex-col items-center justify-center text-on-primary-container opacity-70 hover:bg-primary-fixed-variant active:scale-95 transition-transform duration-150 h-full w-full" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">precision_manufacturing</span>
+<span class="font-label-caps text-label-caps mt-1">Missions</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-primary-container opacity-70 hover:bg-primary-fixed-variant active:scale-95 transition-transform duration-150 h-full w-full" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">hub</span>
+<span class="font-label-caps text-label-caps mt-1">Fleet</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-primary-container opacity-70 hover:bg-primary-fixed-variant active:scale-95 transition-transform duration-150 h-full w-full" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">explore</span>
+<span class="font-label-caps text-label-caps mt-1">Map</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-primary-container opacity-70 hover:bg-primary-fixed-variant active:scale-95 transition-transform duration-150 h-full w-full" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">person</span>
+<span class="font-label-caps text-label-caps mt-1">Profile</span>
+</a>
+</div>
+</nav>
+</body></html>

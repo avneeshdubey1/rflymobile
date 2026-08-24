@@ -1,0 +1,204 @@
+<!DOCTYPE html><html class="light" lang="en" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Lead Outcome - RFLY Operations</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;700;800&amp;family=JetBrains+Mono:wght@500;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "inverse-surface": "#2e3132",
+                        "on-surface": "#191c1d",
+                        "background": "#f8f9fa",
+                        "surface-container-low": "#f3f4f5",
+                        "surface": "#f8f9fa",
+                        "secondary": "#a04100",
+                        "primary": "#04162e",
+                        "surface-tint": "#4f5f7b",
+                        "status-success": "#2E7D32",
+                        "on-error": "#ffffff",
+                        "on-primary-container": "#8292b0",
+                        "tertiary-container": "#272b2f",
+                        "tertiary-fixed": "#dfe3e8",
+                        "on-secondary": "#ffffff",
+                        "inverse-primary": "#b6c7e7",
+                        "on-primary": "#ffffff",
+                        "surface-container": "#EDEEEF",
+                        "surface-variant": "#e1e3e4",
+                        "error-container": "#ffdad6",
+                        "on-secondary-container": "#572000",
+                        "on-tertiary-container": "#8e9297",
+                        "surface-container-high": "#e7e8e9",
+                        "tertiary": "#12171b",
+                        "primary-fixed-dim": "#b6c7e7",
+                        "status-error": "#D32F2F",
+                        "primary-fixed": "#d5e3ff",
+                        "status-offline": "#757575",
+                        "status-warning": "#ED6C02",
+                        "error": "#ba1a1a",
+                        "inverse-on-surface": "#f0f1f2",
+                        "surface-dim": "#d9dadb",
+                        "on-primary-fixed": "#091c34",
+                        "on-surface-variant": "#44474d",
+                        "tertiary-fixed-dim": "#c3c7cc",
+                        "on-secondary-fixed-variant": "#7a3000",
+                        "on-primary-fixed-variant": "#374762",
+                        "on-error-container": "#93000a",
+                        "secondary-fixed-dim": "#ffb693",
+                        "outline": "#75777e",
+                        "on-tertiary-fixed-variant": "#43474c",
+                        "on-tertiary": "#ffffff",
+                        "surface-bright": "#f8f9fa",
+                        "on-secondary-fixed": "#351000",
+                        "outline-variant": "#c5c6ce",
+                        "primary-container": "#1a2b44",
+                        "on-background": "#191c1d",
+                        "secondary-fixed": "#ffdbcc",
+                        "secondary-container": "#fe6b00",
+                        "on-tertiary-fixed": "#181c20",
+                        "surface-container-highest": "#e1e3e4",
+                        "surface-container-lowest": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "gutter": "12px",
+                        "margin-mobile": "16px",
+                        "base": "8px",
+                        "stack-lg": "24px",
+                        "stack-sm": "8px",
+                        "touch-target-min": "48px",
+                        "stack-md": "16px"
+                    },
+                    "fontFamily": {
+                        "data-lg": ["JetBrains Mono"],
+                        "headline-sm": ["Hanken Grotesk"],
+                        "label-caps": ["Hanken Grotesk"],
+                        "display-lg": ["Hanken Grotesk"],
+                        "body-md": ["Hanken Grotesk"],
+                        "headline-md": ["Hanken Grotesk"],
+                        "body-lg": ["Hanken Grotesk"],
+                        "data-sm": ["JetBrains Mono"]
+                    },
+                    "fontSize": {
+                        "data-lg": ["20px", { "lineHeight": "24px", "fontWeight": "700" }],
+                        "headline-sm": ["20px", { "lineHeight": "28px", "fontWeight": "700" }],
+                        "label-caps": ["12px", { "lineHeight": "16px", "letterSpacing": "0.08em", "fontWeight": "800" }],
+                        "display-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "800" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "700" }],
+                        "body-lg": ["18px", { "lineHeight": "26px", "fontWeight": "500" }],
+                        "data-sm": ["14px", { "lineHeight": "20px", "fontWeight": "500" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-surface min-h-screen flex items-center justify-center p-margin-mobile md:p-stack-lg antialiased">
+<!-- Transactional Canvas - Navigation Shell Suppressed per Guidelines -->
+<main class="w-full max-w-[800px] mx-auto">
+<!-- Main Content Card -->
+<div class="bg-surface-container-lowest border border-surface-container rounded-xl shadow-[0_4px_0_0_rgba(0,0,0,0.05)] overflow-hidden flex flex-col">
+<!-- Top Status Accent Bar -->
+<div class="h-2 w-full bg-secondary"></div>
+<div class="p-stack-lg md:p-[32px] flex flex-col gap-stack-lg">
+<!-- Header Section -->
+<div class="flex flex-col items-center text-center gap-stack-sm pb-stack-md border-b border-surface-container">
+<div class="w-16 h-16 mb-2 overflow-hidden rounded-lg"><img src="https://lh3.googleusercontent.com/aida-public/AB6AXuBM6ZaEEoi73L3Z7RT4sIRJBJeTmRqLNnkIljj_zFI0SvHlLFqO-fQaQlstlb0G_C2ZMyCEnCBpTUHEaGjwWJqveuGaxM-Zm2Nc-9pnzpXT0lWiXiWLNczUWrEnFOjWVQvK5GZn62HlXpUhflDrV-rpLaVcPR4Gl92DLL5j46bygl_vyW-1EHqEn5unOhiPDYTR9CFM0D8W9tyaZOdgSUMpVm4VAZIKN83wDNn5mPBxCAlF99blST_o" alt="RFLY Drone Mark" class="w-full h-full object-contain"></div>
+<h1 class="font-display-lg text-display-lg text-primary tracking-tight">Lead Captured</h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant max-w-md">
+                        The intake process is complete. Review the system outcome below to proceed.
+                    </p>
+</div>
+<!-- Bento Grid for Details & Outcome -->
+<div class="grid grid-cols-1 md:grid-cols-12 gap-stack-md">
+<!-- Outcome Action Box (Spans full width top in grid context, or left side) -->
+<div class="md:col-span-12 bg-surface border-l-4 border-secondary rounded-r-lg p-stack-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-stack-md">
+<div class="flex items-start gap-stack-sm">
+<span class="material-symbols-outlined text-secondary mt-1">pending_actions</span>
+<div class="flex flex-col">
+<span class="font-label-caps text-label-caps text-secondary uppercase tracking-widest">System Outcome</span>
+<span class="font-headline-sm text-headline-sm text-primary">Needs Manual Scheduling</span>
+<span class="font-body-md text-body-md text-on-surface-variant mt-1">
+                                    Lead address falls within overlapping service territories (North Sector &amp; East Sector). Dispatcher override required to assign a fleet.
+                                </span>
+</div>
+</div>
+</div>
+<!-- Lead Details Card -->
+<div class="md:col-span-7 bg-surface-container-low border border-surface-container rounded-lg p-stack-md flex flex-col gap-stack-md">
+<div class="flex items-center gap-2 border-b border-surface-variant pb-2">
+<span class="material-symbols-outlined text-primary text-xl">person</span>
+<h2 class="font-headline-sm text-headline-sm text-primary">Intake Record</h2>
+</div>
+<div class="grid grid-cols-2 gap-y-stack-md gap-x-stack-sm">
+<div class="flex flex-col">
+<span class="font-label-caps text-label-caps text-on-surface-variant mb-1">Customer Name</span>
+<span class="font-body-md text-body-md text-on-surface font-medium">Sarah Jenkins</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-caps text-label-caps text-on-surface-variant mb-1">Lead ID</span>
+<span class="font-data-sm text-data-sm text-primary">L-9082-XR</span>
+</div>
+<div class="flex flex-col col-span-2">
+<span class="font-label-caps text-label-caps text-on-surface-variant mb-1">Service Address</span>
+<span class="font-body-md text-body-md text-on-surface font-medium">1400 Metro Parkway, Suite 4B<br>Industrial District</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-caps text-label-caps text-on-surface-variant mb-1">Requested Service</span>
+<span class="inline-flex items-center gap-1 font-data-sm text-data-sm bg-surface-container-high px-2 py-1 rounded text-primary w-fit">
+<span class="material-symbols-outlined text-[16px]">local_shipping</span>
+                                    Heavy Haul
+                                </span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-caps text-label-caps text-on-surface-variant mb-1">Est. Value</span>
+<span class="font-data-sm text-data-sm text-status-success font-bold">$4,250.00</span>
+</div>
+</div>
+</div>
+<!-- Contextual Visual (Map Placeholder) -->
+<div class="md:col-span-5 bg-surface-container-low border border-surface-container rounded-lg overflow-hidden relative min-h-[200px]">
+<div class="absolute inset-0 bg-cover bg-center w-full h-full opacity-80 mix-blend-multiply" data-alt="A clean, high-contrast digital map interface centered on an industrial district. The map uses a minimalist light mode aesthetic with stark white roads and light gray building footprints. A bold safety-orange pin marks a specific industrial complex, surrounded by two overlapping translucent boundary zones indicating contested service territories. The lighting implies a sterile, precise corporate software environment." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDfWW_72pY6rpIYDe7BOyRY1nckJQ42xXLR4OYpOGQKEQSyQu1n-xlOePRJm4Z9TI9QoJ_E2YqfnjhDT3QDrklU4bskUfBDESJ005ga26PeARow6CfJmnPj18AeOn16QPqg1KSCwj2v5HZBiQYhEF2YxvO0zgXybRoTSZIeDMPtLi9Pk1JijtNKey_I8trpCc96qExznfRkc87WMOvYU_xJnFMuTqwLiegt0Lja_kvymSvczyHUgKx4')"></div>
+<div class="absolute bottom-2 left-2 right-2 bg-surface-container-lowest/90 backdrop-blur-sm p-2 rounded border border-surface-container shadow-sm flex items-center gap-2">
+<span class="material-symbols-outlined text-status-warning text-sm">warning</span>
+<span class="font-label-caps text-label-caps text-primary">Zone Conflict Detected</span>
+</div>
+</div>
+</div>
+<!-- Footer Actions -->
+<div class="flex flex-col-reverse sm:flex-row items-center justify-end gap-stack-sm pt-stack-md mt-stack-sm border-t border-surface-container">
+<button class="w-full sm:w-auto px-6 py-3 rounded-lg font-body-md text-body-md font-bold text-primary hover:bg-surface-container transition-colors focus:ring-2 focus:ring-primary focus:outline-none flex items-center justify-center gap-2">
+                        Return to Queue
+                    </button>
+<button class="w-full sm:w-auto px-6 py-3 rounded-full bg-secondary text-on-secondary font-body-md text-body-md font-bold hover:bg-secondary-container transition-colors shadow-[0_4px_0_0_rgba(0,0,0,0.1)] active:translate-y-[2px] active:shadow-none focus:ring-2 focus:ring-offset-2 focus:ring-secondary focus:outline-none flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-[20px]">calendar_month</span>
+                        Open Scheduler
+                    </button>
+</div>
+</div>
+</div>
+</main>
+
+
+</body></html>

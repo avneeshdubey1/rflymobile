@@ -1,9 +1,9 @@
 # RFLY CI/CD Operations Context
 
 **Status:** current implementation handoff
-**Reviewed:** August 22, 2026
-**Scope:** the RFLY web stack, guarded importer images, Pilot Android staging
-APK, and the office on-premises delivery path.
+**Reviewed:** August 24, 2026
+**Scope:** the RFLY web stack, guarded importer images, Pilot and Operations
+Android artifacts, and the office on-premises delivery path.
 
 This is a description of the workflows that are committed in this repository.
 It is not authority to modify server secrets, import data, change VPN rules, or
@@ -40,6 +40,7 @@ Compose project name must not be interpreted as permission to seed or reset it.
 | `.github/workflows/onprem-staging-deploy.yml` | Successful `application-and-container-gates` run for `staging` | Dedicated RFLY self-hosted office runner | Deploys the exact current staging commit internally. |
 | `.github/workflows/onprem-deploy.yml` | Successful `application-and-container-gates` run for `main` | Dedicated RFLY self-hosted office runner | Deploys the exact current `main` commit to the office production stack. |
 | `.github/workflows/release-images.yml` | Successful `application-and-container-gates` run for `main` | GitHub-hosted Ubuntu runners | Builds, scans, publishes commit-addressed GHCR images and keeps SBOM/image-digest evidence. It runs alongside production CD; production CD currently builds the exact source locally and does not pull these GHCR images. |
+| `.github/workflows/operations-production-apk.yml` | Maintainer dispatch from `main` with the exact deployed SHA and confirmation phrase | Dedicated RFLY self-hosted office runner | Verifies that the matching production web revision is healthy, then builds a separate internal Operations APK pointed at the production endpoint. |
 
 The authoritative reusable server isolation guidance is
 [SHARED_ONPREM_CICD_SERVER_HANDOFF.md](SHARED_ONPREM_CICD_SERVER_HANDOFF.md).
@@ -87,7 +88,7 @@ The job uses intentionally invalid workbooks to prove both preflight commands
 reject invalid input safely. It removes the disposable stack and volumes even
 when a check fails.
 
-## 4. Staging Android APK evidence
+## 4. Android APK evidence
 
 The `pilot-staging-apk` job is part of `ci.yml`. It runs only for a successful
 push to `staging`, after the backend, frontend, Pilot mobile and isolated stack
@@ -107,6 +108,20 @@ The artifact contains its checksum and build metadata, including its source SHA
 and staging API address. GitHub retains it for seven days. It is an internally
 debug-signed staging APK: it is not automatically installed, not served by the
 web stack, and not a Play Store release. Metro is not required to run it.
+
+The `operations-capacitor-apk` staging job follows the same exact-SHA and
+seven-day evidence boundary for the Operations Capacitor shell. It generates
+the committed RFLY launcher and splash resources from
+`frontend/src/assets/logo.png` and produces `com.rfly.operations.staging`,
+pointed at the VPN/LAN staging URL.
+
+The separate `operations-production-apk` workflow is deliberately manual. It
+must be dispatched from `main` with the full current `main` SHA and the explicit
+confirmation phrase. It refuses to build unless the office production frontend
+container uses that exact SHA and both production health endpoints respond. It
+then produces `com.rfly.operations`, pointed at the temporary production HTTP
+endpoint. This remains an internal, debug-signed artifact, not a Play release,
+until company signing custody, Play ownership, a domain and HTTPS are approved.
 
 ## 5. CD: exact-commit office deployment
 

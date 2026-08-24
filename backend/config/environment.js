@@ -126,6 +126,7 @@ function loadEnvironment(env = process.env) {
     port: integer(env.PORT, 5000, 'PORT', { min: 1, max: 65535 }),
     operatingTimeZone,
     allowedOrigins,
+    capacitorOriginsEnabled: boolean(env.CAPACITOR_ORIGINS_ENABLED, false, 'CAPACITOR_ORIGINS_ENABLED'),
     mapFrameOrigins,
     trustProxyHops,
     enforceHttps,

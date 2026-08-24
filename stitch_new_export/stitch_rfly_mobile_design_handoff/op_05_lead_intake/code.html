@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Lead Intake - RFLY Operations</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;700;800&amp;family=JetBrains+Mono:wght@500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "inverse-surface": "#2e3132",
+                        "on-surface": "#191c1d",
+                        "background": "#f8f9fa",
+                        "surface-container-low": "#f3f4f5",
+                        "surface": "#f8f9fa",
+                        "secondary": "#a04100",
+                        "primary": "#04162e",
+                        "surface-tint": "#4f5f7b",
+                        "status-success": "#2E7D32",
+                        "on-error": "#ffffff",
+                        "on-primary-container": "#8292b0",
+                        "tertiary-container": "#272b2f",
+                        "tertiary-fixed": "#dfe3e8",
+                        "on-secondary": "#ffffff",
+                        "inverse-primary": "#b6c7e7",
+                        "on-primary": "#ffffff",
+                        "surface-container": "#EDEEEF",
+                        "surface-variant": "#e1e3e4",
+                        "error-container": "#ffdad6",
+                        "on-secondary-container": "#572000",
+                        "on-tertiary-container": "#8e9297",
+                        "surface-container-high": "#e7e8e9",
+                        "tertiary": "#12171b",
+                        "primary-fixed-dim": "#b6c7e7",
+                        "status-error": "#D32F2F",
+                        "primary-fixed": "#d5e3ff",
+                        "status-offline": "#757575",
+                        "status-warning": "#ED6C02",
+                        "error": "#ba1a1a",
+                        "inverse-on-surface": "#f0f1f2",
+                        "surface-dim": "#d9dadb",
+                        "on-primary-fixed": "#091c34",
+                        "on-surface-variant": "#44474d",
+                        "tertiary-fixed-dim": "#c3c7cc",
+                        "on-secondary-fixed-variant": "#7a3000",
+                        "on-primary-fixed-variant": "#374762",
+                        "on-error-container": "#93000a",
+                        "secondary-fixed-dim": "#ffb693",
+                        "outline": "#75777e",
+                        "on-tertiary-fixed-variant": "#43474c",
+                        "on-tertiary": "#ffffff",
+                        "surface-bright": "#f8f9fa",
+                        "on-secondary-fixed": "#351000",
+                        "outline-variant": "#c5c6ce",
+                        "primary-container": "#1a2b44",
+                        "on-background": "#191c1d",
+                        "secondary-fixed": "#ffdbcc",
+                        "secondary-container": "#fe6b00",
+                        "on-tertiary-fixed": "#181c20",
+                        "surface-container-highest": "#e1e3e4",
+                        "surface-container-lowest": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "gutter": "12px",
+                        "margin-mobile": "16px",
+                        "base": "8px",
+                        "stack-lg": "24px",
+                        "stack-sm": "8px",
+                        "touch-target-min": "48px",
+                        "stack-md": "16px"
+                    },
+                    "fontFamily": {
+                        "data-lg": ["JetBrains Mono"],
+                        "headline-sm": ["Hanken Grotesk"],
+                        "label-caps": ["Hanken Grotesk"],
+                        "display-lg": ["Hanken Grotesk"],
+                        "body-md": ["Hanken Grotesk"],
+                        "headline-md": ["Hanken Grotesk"],
+                        "body-lg": ["Hanken Grotesk"],
+                        "data-sm": ["JetBrains Mono"]
+                    },
+                    "fontSize": {
+                        "data-lg": ["20px", { "lineHeight": "24px", "fontWeight": "700" }],
+                        "headline-sm": ["20px", { "lineHeight": "28px", "fontWeight": "700" }],
+                        "label-caps": ["12px", { "lineHeight": "16px", "letterSpacing": "0.08em", "fontWeight": "800" }],
+                        "display-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "800" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "700" }],
+                        "body-lg": ["18px", { "lineHeight": "26px", "fontWeight": "500" }],
+                        "data-sm": ["14px", { "lineHeight": "20px", "fontWeight": "500" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .icon-fill {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md min-h-screen flex flex-col md:flex-row antialiased">
+<!-- TopAppBar (Mobile Only - Linear intent means we might suppress this on web, but keeping it for mobile layout standard) -->
+<header class="md:hidden sticky top-0 w-full z-50 flex items-center justify-between px-margin-mobile h-[64px] bg-surface dark:bg-inverse-surface border-b border-surface-container dark:border-on-surface-variant">
+<button class="text-on-surface-variant dark:text-outline-variant p-2 active:opacity-80 transition-all duration-150">
+<span class="material-symbols-outlined" data-icon="close">close</span>
+</button>
+<h1 class="font-headline-md text-headline-md-mobile text-primary dark:text-primary-fixed tracking-tight">Lead Intake</h1>
+<div class="w-10"></div> <!-- Spacer for center alignment -->
+</header>
+<!-- Side Navigation (Web) - Hidden for linear flow as per logic, keeping shell for context but simplified -->
+<aside class="hidden md:flex flex-col h-full w-[280px] rounded-r-xl bg-surface-container-lowest border-r border-surface-container shadow-lg py-stack-lg fixed inset-y-0 left-0 z-[60]">
+<div class="px-4 mb-8">
+<h2 class="font-headline-sm text-headline-sm text-secondary mb-2">RFLY Operations</h2>
+<div class="flex items-center gap-3">
+<img alt="Manager Avatar" class="w-10 h-10 rounded-full object-cover" data-alt="A professional headshot of a fleet manager in an industrial setting, soft lighting, modern corporate style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDo2tLN3EdALLOYlypaHrDR0nSQO1pqyZN9G_kUhxrDyeSTulu7mXpfBK_hMe88FIlYDZSvgSNXIESI3yuYY0b-gCURZk-sMcGJv4yhhVQQEbzP0PcPMrUec7T4A485DiZ-0TpvFseSO883MfXIzuGzbpi9TnjmKvXAtSSaFNahAG555Jzl6QnTSA7_xIjXunRcvRC_T-lkOTdlM1UkMP2Ao2SjVeAAFcrf8ef5kErIYlyPqAoYzyfs"/>
+<div>
+<p class="font-body-md text-body-md text-primary font-bold">Alex Morgan</p>
+<p class="font-label-caps text-label-caps text-on-surface-variant">Fleet Manager</p>
+</div>
+</div>
+</div>
+<nav class="flex-1 space-y-2 px-2">
+<!-- Simplified nav for intake context -->
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="arrow_back">arrow_back</span>
+<span class="font-body-md text-body-md">Cancel Intake</span>
+</a>
+</nav>
+</aside>
+<!-- Main Content Canvas -->
+<main class="flex-1 md:ml-[280px] p-margin-mobile md:p-stack-lg flex justify-center">
+<div class="w-full max-w-3xl flex flex-col gap-stack-lg pb-24">
+<div class="hidden md:block mb-4">
+<h1 class="font-display-lg text-display-lg text-primary mb-2">New Lead Intake</h1>
+<p class="text-on-surface-variant">Capture new lead details and initial site assessment information.</p>
+</div>
+<!-- Customer Linking Card -->
+<section class="bg-surface-container-lowest border border-surface-container rounded-lg p-stack-md flex flex-col gap-stack-md shadow-[0_4px_0_0_rgba(0,0,0,0.02)]">
+<div class="flex items-center justify-between border-b border-surface-container pb-2">
+<h2 class="font-headline-sm text-headline-sm text-primary flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary" data-icon="person_add">person_add</span>
+                        Customer Information
+                    </h2>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-stack-md">
+<div class="flex flex-col gap-1">
+<label class="font-label-caps text-label-caps text-on-surface-variant uppercase">Customer Search / Name *</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline">search</span>
+<input class="w-full pl-10 pr-3 py-2 border-2 border-outline rounded-lg focus:border-secondary focus:ring-0 focus:outline-none font-body-md text-on-surface bg-transparent transition-colors" placeholder="Search existing or enter new..." type="text"/>
+</div>
+</div>
+<div class="flex flex-col gap-1">
+<label class="font-label-caps text-label-caps text-on-surface-variant uppercase">Contact Phone</label>
+<input class="w-full px-3 py-2 border-2 border-outline rounded-lg focus:border-secondary focus:ring-0 focus:outline-none font-data-sm text-on-surface bg-transparent transition-colors" placeholder="(555) 000-0000" type="tel"/>
+</div>
+</div>
+</section>
+<!-- Location Resolution Card (Integration Dependent) -->
+<section class="bg-surface-container-lowest border border-surface-container rounded-lg p-stack-md flex flex-col gap-stack-md shadow-[0_4px_0_0_rgba(0,0,0,0.02)]">
+<div class="flex items-center justify-between border-b border-surface-container pb-2">
+<h2 class="font-headline-sm text-headline-sm text-primary flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary" data-icon="location_on">location_on</span>
+                        Site Location
+                    </h2>
+<span class="bg-surface-container px-2 py-1 rounded font-label-caps text-label-caps text-on-surface-variant">GPS Required</span>
+</div>
+<div class="flex flex-col gap-4">
+<div class="flex flex-col gap-1">
+<label class="font-label-caps text-label-caps text-on-surface-variant uppercase">Search Address</label>
+<div class="relative flex gap-2">
+<input class="flex-1 px-3 py-2 border-2 border-outline rounded-lg focus:border-secondary focus:ring-0 focus:outline-none font-body-md text-on-surface bg-transparent transition-colors" placeholder="Enter site address to resolve..." type="text"/>
+<button class="bg-surface-container-high text-primary px-4 rounded-lg font-body-md font-bold hover:bg-surface-variant transition-colors flex items-center justify-center">
+                                Locate
+                            </button>
+</div>
+</div>
+<!-- Map Preview / Resolution Concept -->
+<div class="relative w-full h-48 bg-surface-container rounded-lg border border-surface-variant overflow-hidden flex flex-col items-center justify-center group cursor-pointer">
+<img class="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:opacity-80 transition-opacity" data-alt="A modern, high-contrast satellite map view centered on an industrial complex, with a prominent digital pin marker, clear UI overlay aesthetic." data-location="Industrial Park" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD7Qj6v8i_kZ67fuk43VtcSLW_3yf9DA-GY7f4wmB5CwacgsKlzfw5esXNmS4HTpuCXebYzNsrywny3w_DrEts9FZJQUFVTnKyb8XZpM9s44tYQiM-Yp5i0G4UEeha8pX4I8zM0dJiqxtg2HL7lbkfFlyGGRYqQ6IGBJHEMqA4ntqNkiQ_akBIhWpEiIdXVABjh9lK8WH7zXV7xTA0Mt17CP7dE3NBLZ6mP0XMdk7QD2v3cduCTn3XL"/>
+<div class="absolute inset-0 bg-gradient-to-t from-surface-container-highest/80 to-transparent"></div>
+<div class="relative z-10 flex flex-col items-center bg-surface-container-lowest/90 p-3 rounded-lg shadow-sm border border-surface-variant">
+<span class="material-symbols-outlined text-secondary text-3xl mb-1 icon-fill" data-icon="my_location">my_location</span>
+<p class="font-body-md font-bold text-primary">Pinpoint on Map</p>
+<p class="font-data-sm text-on-surface-variant">Lat/Long auto-resolves</p>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<div class="flex flex-col gap-1">
+<label class="font-label-caps text-label-caps text-on-surface-variant uppercase">Latitude</label>
+<input class="w-full px-3 py-2 border border-surface-variant rounded-lg bg-surface-container-low font-data-sm text-on-surface-variant cursor-not-allowed" readonly="" type="text" value="--"/>
+</div>
+<div class="flex flex-col gap-1">
+<label class="font-label-caps text-label-caps text-on-surface-variant uppercase">Longitude</label>
+<input class="w-full px-3 py-2 border border-surface-variant rounded-lg bg-surface-container-low font-data-sm text-on-surface-variant cursor-not-allowed" readonly="" type="text" value="--"/>
+</div>
+</div>
+</div>
+</section>
+<!-- Service & Details Card -->
+<section class="bg-surface-container-lowest border border-surface-container rounded-lg p-stack-md flex flex-col gap-stack-md shadow-[0_4px_0_0_rgba(0,0,0,0.02)]">
+<div class="flex items-center justify-between border-b border-surface-container pb-2">
+<h2 class="font-headline-sm text-headline-sm text-primary flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary" data-icon="assignment">assignment</span>
+                        Service Details
+                    </h2>
+</div>
+<div class="flex flex-col gap-1">
+<label class="font-label-caps text-label-caps text-on-surface-variant uppercase">Service Type *</label>
+<div class="relative">
+<select class="w-full px-3 py-2 border-2 border-outline rounded-lg focus:border-secondary focus:ring-0 focus:outline-none font-body-md text-on-surface bg-transparent appearance-none transition-colors">
+<option disabled="" selected="" value="">Select service type...</option>
+<option value="inspection">Aerial Inspection</option>
+<option value="mapping">Site Mapping</option>
+<option value="surveillance">Security Surveillance</option>
+<option value="other">Other / Custom</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-outline pointer-events-none">expand_more</span>
+</div>
+</div>
+<div class="flex flex-col gap-1">
+<label class="font-label-caps text-label-caps text-on-surface-variant uppercase">Initial Notes / Requirements</label>
+<textarea class="w-full px-3 py-2 border-2 border-outline rounded-lg focus:border-secondary focus:ring-0 focus:outline-none font-body-md text-on-surface bg-transparent transition-colors resize-y" placeholder="Enter specific client requests, potential hazards, or operational notes..." rows="4"></textarea>
+</div>
+</section>
+<!-- Action Bar -->
+<div class="mt-4 flex gap-4 justify-end">
+<button class="px-6 py-3 rounded-full font-body-md font-bold text-primary bg-transparent hover:bg-surface-container transition-colors focus:ring-2 focus:ring-outline outline-none">
+                    Cancel
+                </button>
+<button class="px-6 py-3 rounded-full font-body-md font-bold text-on-secondary bg-secondary hover:bg-secondary-container hover:text-on-secondary-container transition-colors focus:ring-2 focus:ring-secondary outline-none shadow-[0_4px_0_0_rgba(0,0,0,0.1)] active:translate-y-[2px] active:shadow-none">
+                    Submit Lead
+                </button>
+</div>
+</div>
+</main>
+</body></html>

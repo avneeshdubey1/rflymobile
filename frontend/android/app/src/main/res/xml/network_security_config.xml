@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Network Security Config for RFLY Operations (internal APK).
+  Allows cleartext HTTP to the staging and production servers only.
+  REMOVE the production domain entry when HTTPS is provisioned (DEC-12).
+-->
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <!-- Staging server (VPN required) -->
+        <domain includeSubdomains="false">172.20.96.10</domain>
+        <!-- Production server (temporary — replace with domain when TLS is ready) -->
+        <domain includeSubdomains="false">103.238.230.152</domain>
+    </domain-config>
+    <!-- All other traffic uses system defaults (cleartext blocked) -->
+    <base-config cleartextTrafficPermitted="false" />
+</network-security-config>

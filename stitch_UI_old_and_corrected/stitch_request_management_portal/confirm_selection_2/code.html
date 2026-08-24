@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Pilot Field - Confirm Selection</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "warning": "#ca8a04",
+                    "surface-container-highest": "#dce1e6",
+                    "surface-container-lowest": "#ffffff",
+                    "surface": "#fcf8fa",
+                    "inverse-surface": "#303032",
+                    "on-tertiary-fixed": "#271901",
+                    "on-tertiary": "#ffffff",
+                    "on-secondary-fixed": "#341100",
+                    "primary-fixed": "#dae2fd",
+                    "tertiary-fixed-dim": "#dec29a",
+                    "secondary-container": "#fd761a",
+                    "error-container": "#ffdad6",
+                    "surface-container-high": "#eae7e9",
+                    "surface-variant": "#e4e2e4",
+                    "on-tertiary-fixed-variant": "#574425",
+                    "on-secondary-fixed-variant": "#783200",
+                    "on-secondary": "#ffffff",
+                    "surface-container": "#f0edef",
+                    "primary-container": "#131b2e",
+                    "outline": "#76777d",
+                    "error": "#dc2626",
+                    "inverse-primary": "#bec6e0",
+                    "success": "#16a34a",
+                    "on-secondary-container": "#5c2400",
+                    "outline-variant": "#c6c6cd",
+                    "tertiary-fixed": "#fcdeb5",
+                    "surface-tint": "#565e74",
+                    "on-primary-fixed-variant": "#3f465c",
+                    "on-surface-variant": "#45464d",
+                    "background": "#fcf8fa",
+                    "primary-fixed-dim": "#bec6e0",
+                    "on-background": "#1b1b1d",
+                    "on-primary-fixed": "#131b2e",
+                    "on-error-container": "#93000a",
+                    "surface-container-low": "#f2f4f6",
+                    "surface-bright": "#fcf8fa",
+                    "tertiary": "#000000",
+                    "surface-dim": "#d8dadc",
+                    "on-primary": "#ffffff",
+                    "secondary-fixed": "#ffdbca",
+                    "on-error": "#ffffff",
+                    "on-tertiary-container": "#98805d",
+                    "on-primary-container": "#7c839b",
+                    "secondary": "#9d4300",
+                    "primary": "#000000",
+                    "inverse-on-surface": "#f3f0f2",
+                    "surface-container-medium": "#eef1f4",
+                    "secondary-fixed-dim": "#ffb690",
+                    "tertiary-container": "#271901",
+                    "on-surface": "#1b1b1d"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "spacing": {
+                    "margin-mobile": "16px",
+                    "stack-sm": "8px",
+                    "gutter-mobile": "12px",
+                    "touch-target-min": "48px",
+                    "stack-md": "16px",
+                    "stack-lg": "24px"
+            },
+            "fontFamily": {
+                    "headline-sm": ["IBM Plex Sans"],
+                    "body-sm": ["IBM Plex Sans"],
+                    "body-md": ["IBM Plex Sans"],
+                    "label-sm": ["IBM Plex Sans"],
+                    "label-lg": ["IBM Plex Sans"],
+                    "label-md": ["IBM Plex Sans"],
+                    "headline-md": ["IBM Plex Sans"],
+                    "body-lg": ["IBM Plex Sans"],
+                    "headline-lg": ["IBM Plex Sans"]
+            },
+            "fontSize": {
+                    "headline-sm": ["16px", {"lineHeight": "24px", "fontWeight": "700"}],
+                    "body-sm": ["12px", {"lineHeight": "16px", "fontWeight": "400"}],
+                    "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "label-sm": ["11px", {"lineHeight": "16px", "fontWeight": "500"}],
+                    "label-lg": ["14px", {"lineHeight": "20px", "fontWeight": "500"}],
+                    "label-md": ["12px", {"lineHeight": "16px", "fontWeight": "500"}],
+                    "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "700"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "headline-lg": ["24px", {"lineHeight": "32px", "fontWeight": "700"}]
+            }
+          }
+        }
+      }
+    </script>
+<style>
+        body { font-family: 'IBM Plex Sans', sans-serif; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+    </style>
+</head>
+<body class="bg-background text-on-background h-screen flex flex-col antialiased pt-touch-target-min">
+<!-- TopAppBar -->
+<header class="bg-primary dark:bg-primary-container text-on-primary dark:text-on-primary-container font-headline-md text-headline-md fixed top-0 w-full z-50 flat no shadows transition-colors duration-200 flex items-center justify-between px-margin-mobile h-touch-target-min">
+<button aria-label="Menu" class="flex items-center justify-center w-touch-target-min h-touch-target-min hover:bg-primary-container/20 transition-colors duration-200 rounded-full">
+<span class="material-symbols-outlined" data-icon="menu">menu</span>
+</button>
+<div class="font-headline-md text-headline-md font-bold text-on-primary dark:text-on-primary-container">
+            Pilot Field
+        </div>
+<button aria-label="Sync" class="flex items-center justify-center w-touch-target-min h-touch-target-min hover:bg-primary-container/20 transition-colors duration-200 rounded-full">
+<span class="material-symbols-outlined" data-icon="sync">sync</span>
+</button>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-grow overflow-y-auto px-margin-mobile py-stack-lg max-w-3xl mx-auto w-full flex flex-col gap-stack-lg">
+<!-- Header Section -->
+<div class="flex flex-col gap-stack-sm">
+<h1 class="font-headline-lg text-headline-lg text-on-background">Confirm Selection</h1>
+<p class="font-body-md text-body-md text-on-surface-variant">Review assignment details before proceeding.</p>
+</div>
+<!-- Candidate Card (Bento Style) -->
+<div class="bg-surface-container-low border border-outline-variant rounded-xl p-stack-md flex flex-col gap-stack-md">
+<div class="flex items-center gap-stack-md">
+<div class="w-16 h-16 rounded-full bg-surface-container-high border border-outline-variant flex items-center justify-center overflow-hidden shrink-0">
+<img class="w-full h-full object-cover" data-alt="A professional headshot of a middle-aged male technical worker named Vikram S. He is wearing a dark navy functional uniform with subtle safety orange piping. The lighting is clean and industrial, suggesting a high-tech facility environment. The background is a soft, out-of-focus grey concrete wall. The mood is serious and competent." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAmdfM2unQTrmUOnWt1F5vzszd1mHyQmy7D5AnmWMjtE5I-KUBSVb8_-WpGyj7QjLaf4VLtvMVdVfip3mbDNZRiIeNIVG9Il5R0ObH6T_Nf6pjSs_G47qwuiMKaZBIT8HhxBCdY2GF1dheaX3SC55J96RIRAzutvNIJ_kshkPBJgpYyRhGINfl8w9q0xljHtp0pfz8tYxc8NrhBk7Z8fuU3I1Ig_Q-XrC9vm4ZHxX0kvAkizEh3eZxN"/>
+</div>
+<div class="flex flex-col">
+<h2 class="font-headline-sm text-headline-sm text-on-background">Vikram S.</h2>
+<span class="font-label-md text-label-md text-on-surface-variant">ID: OP-1242</span>
+</div>
+<div class="ml-auto">
+<span class="inline-flex items-center px-2 py-1 rounded-full bg-surface-container-highest text-on-surface text-label-sm font-label-sm border border-outline-variant">
+<span class="material-symbols-outlined text-[14px] mr-1" data-icon="verified">verified</span>
+                        Cleared
+                    </span>
+</div>
+</div>
+<div class="h-px bg-outline-variant w-full"></div>
+<!-- Assignment Details Grid -->
+<div class="grid grid-cols-2 gap-stack-md">
+<div class="flex flex-col gap-stack-sm bg-surface rounded-lg p-stack-sm border border-outline-variant/50">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Sector</span>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-outline" data-icon="location_on">location_on</span>
+<span class="font-body-md text-body-md font-medium">7G</span>
+</div>
+</div>
+<div class="flex flex-col gap-stack-sm bg-surface rounded-lg p-stack-sm border border-outline-variant/50">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Equipment</span>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-outline" data-icon="precision_manufacturing">precision_manufacturing</span>
+<span class="font-body-md text-body-md font-medium">RFLY-X4</span>
+</div>
+</div>
+<div class="flex flex-col gap-stack-sm bg-surface rounded-lg p-stack-sm border border-outline-variant/50 col-span-2">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Current Status</span>
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-success"></div>
+<span class="font-body-md text-body-md font-medium">Available for deployment</span>
+</div>
+</div>
+</div>
+</div>
+<!-- System Checks -->
+<div class="flex flex-col gap-stack-sm">
+<h3 class="font-label-lg text-label-lg text-on-background">Pre-Deployment Checks</h3>
+<ul class="flex flex-col border border-outline-variant rounded-xl overflow-hidden bg-surface-container-low">
+<li class="flex items-center justify-between p-stack-sm px-stack-md border-b border-outline-variant last:border-b-0">
+<span class="font-body-sm text-body-sm">Certification Valid</span>
+<span class="material-symbols-outlined text-success" data-icon="check_circle">check_circle</span>
+</li>
+<li class="flex items-center justify-between p-stack-sm px-stack-md border-b border-outline-variant last:border-b-0">
+<span class="font-body-sm text-body-sm">Equipment Calibration (RFLY-X4)</span>
+<span class="material-symbols-outlined text-success" data-icon="check_circle">check_circle</span>
+</li>
+<li class="flex items-center justify-between p-stack-sm px-stack-md border-b border-outline-variant last:border-b-0">
+<span class="font-body-sm text-body-sm">Sector Environmental Clearance</span>
+<span class="material-symbols-outlined text-success" data-icon="check_circle">check_circle</span>
+</li>
+</ul>
+</div>
+<!-- Spacer to push action to bottom on smaller screens if needed -->
+<div class="flex-grow"></div>
+<!-- Primary Action Area -->
+<div class="mt-stack-lg flex flex-col gap-stack-sm">
+<div class="flex items-start gap-2 bg-surface-container-highest p-stack-sm rounded-lg border border-outline-variant/50 mb-stack-sm">
+<span class="material-symbols-outlined text-on-surface-variant text-[20px] mt-0.5" data-icon="info">info</span>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Confirming selection will lock the assignment and transition status to READY. You cannot start the assignment until full synchronization is complete.</p>
+</div>
+<button class="w-full h-touch-target-min bg-primary-container text-on-primary-container rounded-lg font-label-lg text-label-lg font-bold flex items-center justify-center gap-2 hover:bg-primary transition-colors active:scale-95">
+<span class="material-symbols-outlined" data-icon="how_to_reg">how_to_reg</span>
+                Confirm Selection
+            </button>
+<button class="w-full h-touch-target-min bg-transparent border border-outline-variant text-on-surface rounded-lg font-label-lg text-label-lg font-medium hover:bg-surface-container-low transition-colors active:scale-95">
+                Cancel
+            </button>
+</div>
+</main>
+</body></html>

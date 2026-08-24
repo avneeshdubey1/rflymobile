@@ -1,0 +1,218 @@
+<!DOCTYPE html><html class="h-full" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Pilot Field App - No Copilot</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "on-secondary-container": "#5c2400",
+                        "inverse-surface": "#2d3133",
+                        "secondary-fixed-dim": "#ffb690",
+                        "primary-fixed": "#dae2fd",
+                        "tertiary-fixed-dim": "#b9c7e0",
+                        "background": "#f7f9fb",
+                        "primary-fixed-dim": "#bec6e0",
+                        "on-secondary-fixed": "#341100",
+                        "status-warning": "#9A3412",
+                        "on-tertiary-fixed-variant": "#3a485c",
+                        "on-tertiary-container": "#76859b",
+                        "primary": "#000000",
+                        "on-error-container": "#93000a",
+                        "surface-container-low": "#f2f4f6",
+                        "surface-container": "#eceef0",
+                        "surface-container-lowest": "#ffffff",
+                        "error-container": "#ffdad6",
+                        "inverse-on-surface": "#eff1f3",
+                        "surface-container-high": "#e6e8ea",
+                        "on-secondary": "#ffffff",
+                        "error": "#ba1a1a",
+                        "status-success": "#166534",
+                        "on-background": "#191c1e",
+                        "outline-variant": "#c6c6cd",
+                        "surface-slate": "#E2E8F0",
+                        "on-error": "#ffffff",
+                        "on-primary-fixed-variant": "#3f465c",
+                        "surface-bright": "#f7f9fb",
+                        "tertiary-container": "#0d1c2f",
+                        "surface": "#f7f9fb",
+                        "outline": "#76777d",
+                        "surface-tint": "#565e74",
+                        "on-primary-container": "#7c839b",
+                        "on-tertiary": "#ffffff",
+                        "on-surface": "#191c1e",
+                        "inverse-primary": "#bec6e0",
+                        "on-primary-fixed": "#131b2e",
+                        "status-offline": "#475569",
+                        "secondary-container": "#fd761a",
+                        "safety-orange": "#F97316",
+                        "surface-dim": "#d8dadc",
+                        "surface-container-highest": "#e0e3e5",
+                        "on-secondary-fixed-variant": "#783200",
+                        "secondary-fixed": "#ffdbca",
+                        "secondary": "#9d4300",
+                        "on-primary": "#ffffff",
+                        "tertiary-fixed": "#d5e3fd",
+                        "tertiary": "#000000",
+                        "primary-container": "#131b2e",
+                        "surface-variant": "#e0e3e5",
+                        "on-tertiary-fixed": "#0d1c2f",
+                        "rfly-blue": "#0F172A",
+                        "on-surface-variant": "#45464d"
+                    },
+                    borderRadius: {
+                        DEFAULT: "0.125rem",
+                        lg: "0.25rem",
+                        xl: "0.5rem",
+                        full: "0.75rem"
+                    },
+                    spacing: {
+                        "touch-target-min": "48px",
+                        "stack-md": "16px",
+                        "margin-mobile": "20px",
+                        "stack-lg": "24px",
+                        "stack-sm": "8px",
+                        "gutter": "16px"
+                    },
+                    fontFamily: {
+                        "headline-lg": ["IBM Plex Sans"],
+                        "data-mono": ["JetBrains Mono"],
+                        "label-caps": ["IBM Plex Sans"],
+                        "body-md": ["IBM Plex Sans"],
+                        "headline-md": ["IBM Plex Sans"],
+                        "body-lg": ["IBM Plex Sans"],
+                        "headline-lg-mobile": ["IBM Plex Sans"]
+                    },
+                    fontSize: {
+                        "headline-lg": ["28px", { lineHeight: "36px", letterSpacing: "-0.02em", fontWeight: "600" }],
+                        "data-mono": ["14px", { lineHeight: "20px", fontWeight: "500" }],
+                        "label-caps": ["12px", { lineHeight: "16px", letterSpacing: "0.05em", fontWeight: "700" }],
+                        "body-md": ["14px", { lineHeight: "20px", fontWeight: "400" }],
+                        "headline-md": ["20px", { lineHeight: "28px", fontWeight: "600" }],
+                        "body-lg": ["16px", { lineHeight: "24px", fontWeight: "400" }],
+                        "headline-lg-mobile": ["24px", { lineHeight: "32px", fontWeight: "600" }]
+                    }
+                }
+            }
+        };
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="h-full bg-background text-on-background flex flex-col font-body-md antialiased md:flex-row">
+<!-- TopAppBar (Mobile) -->
+<header class="md:hidden w-full top-0 sticky bg-surface border-b border-outline-variant flex items-center justify-between px-margin-mobile h-touch-target-min z-40">
+<div class="flex items-center gap-4">
+<button class="h-touch-target-min w-touch-target-min flex items-center justify-center text-primary active:opacity-80 rounded-full hover:bg-surface-container-high transition-colors -ml-3">
+<span class="material-symbols-outlined" data-icon="menu">menu</span>
+</button>
+<span class="font-headline-md text-headline-md font-bold text-primary">RFLY Ops</span>
+</div>
+<button class="h-touch-target-min w-touch-target-min flex items-center justify-center -mr-3 active:opacity-80 rounded-full hover:bg-surface-container-high transition-colors">
+<img class="w-8 h-8 rounded-full object-cover" data-alt="A small, circular avatar portrait of a professional drone pilot in a field environment. Bright natural lighting. The pilot is wearing a generic uniform. The image is cropped tightly on the face and shoulders, conveying a sense of readiness and professional competence within an industrial or outdoor setting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC_ODLct22N2CYbPup0qLzmmPbj0qnsiONeQ3-FwWgV4559t_B32sOYif14zre8AHI5Gvj3TauH5AVBVCI_Yyx4sl65rhdDSrkhbyjfA-ds7vpAjPomLaQUJoCvB2q_Zub9kqz9IbA4WoRwgRp8oICXx_PGe8Pu60uE0-T6TmTOfQOztJPvCg4X14l543UVdh68pFfM-LjIMizkjazjFaaStyDfpjCQmTbgkBWQVIAkc7V-QzZ5I4wN">
+</button>
+</header>
+<!-- NavigationDrawer (Web) -->
+<nav class="hidden md:flex flex-col h-full w-[280px] rounded-r-xl bg-surface border-r border-outline-variant shadow-xl z-40 py-stack-lg gap-stack-sm flex-shrink-0">
+<div class="px-6 mb-8 flex items-center gap-4 left_align">
+<img class="w-12 h-12 rounded-full object-cover border-2 border-surface-container-high" data-alt="A small, circular avatar portrait of a professional drone pilot in a field environment. Bright natural lighting. The pilot is wearing a generic uniform. The image is cropped tightly on the face and shoulders, conveying a sense of readiness and professional competence within an industrial or outdoor setting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDdoLF-Dng1q4K_aZcvUx3OdsWQ5IBghsKL24-Mhb22S7yZNu-9h-N30cthqMMzEAcpsTNUNnKvBqMZf8mHO8L4F_VhpwS-59wo5CGFN2Sps82FVTBR4G5_dKeN9TPSWYG7vSAa01I1rgDT3Lz1kXfUaH6-huSNO3Z6Q-u5TXnhK4oDZr3EjPSbPkBkYmLPKcODE2nbzmfnvqXiiKUkZfIzfclu_UPwJ204dqmftU5NWGL65ResnXef">
+<div>
+<div class="font-headline-lg text-headline-lg text-primary">Lead Pilot</div>
+<div class="font-body-md text-body-md text-on-surface-variant">Region: Midwest</div>
+<div class="font-data-mono text-data-mono text-status-offline mt-1 text-xs">Status: Online</div>
+</div>
+</div>
+<a class="flex items-center gap-4 mx-2 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high active:scale-[0.98] transition-all rounded-full font-body-lg text-body-lg" href="#">
+<span class="material-symbols-outlined" data-icon="flight_takeoff">flight_takeoff</span>
+<span class="">Mission Control</span>
+</a>
+<a class="flex items-center gap-4 bg-secondary-container text-on-secondary-container font-bold rounded-full mx-2 px-4 py-3 active:scale-[0.98] transition-all font-body-lg text-body-lg" href="#">
+<span class="material-symbols-outlined" data-icon="inventory_2" style="font-variation-settings: 'FILL' 1;">inventory_2</span>
+<span class="">Asset Registry</span>
+</a>
+<a class="flex items-center gap-4 mx-2 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high active:scale-[0.98] transition-all rounded-full font-body-lg text-body-lg" href="#">
+<span class="material-symbols-outlined" data-icon="history_edu">history_edu</span>
+<span class="">Flight Logs</span>
+</a>
+<a class="flex items-center gap-4 mx-2 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high active:scale-[0.98] transition-all rounded-full font-body-lg text-body-lg" href="#">
+<span class="material-symbols-outlined" data-icon="security">security</span>
+<span class="">Safety Protocols</span>
+</a>
+<a class="flex items-center gap-4 mx-2 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high active:scale-[0.98] transition-all rounded-full font-body-lg text-body-lg mt-auto mb-4" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="">Settings</span>
+</a>
+</nav>
+<!-- Main Content Canvas -->
+<main class="flex-1 flex flex-col relative min-h-0 md:bg-surface-container-low pb-[80px] md:pb-0">
+<!-- Contextual Header (Transactional/Task focused screen so we might normally hide global nav, but we keep the canvas clear) -->
+<div class="px-margin-mobile md:px-8 py-6 md:py-8 flex items-center gap-4 bg-surface md:bg-transparent">
+<button class="h-touch-target-min w-touch-target-min flex items-center justify-center rounded-full bg-surface-container border border-outline-variant hover:bg-surface-container-high transition-colors active:scale-95 text-on-surface">
+<span class="material-symbols-outlined" data-icon="arrow_back">arrow_back</span>
+</button>
+<div>
+<h1 class="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg text-primary">Assign Copilot</h1>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">Mission ID: M-8429-XT</p>
+</div>
+</div>
+<!-- Empty State Container -->
+<div class="flex-1 flex flex-col items-center justify-center px-margin-mobile md:px-12 py-12 text-center">
+<div class="w-24 h-24 rounded-full bg-surface-container border-2 border-dashed border-outline-variant flex items-center justify-center mb-6">
+<span class="material-symbols-outlined text-[40px] text-outline" data-icon="person_off">person_off</span>
+</div>
+<h2 class="font-headline-md text-headline-md text-primary mb-2">No Candidates Found</h2>
+<p class="font-body-lg text-body-lg text-on-surface-variant max-w-md mb-8">
+                There are currently no eligible copilots available in your operational sector for this mission profile.
+            </p>
+<div class="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
+<a href="{{DATA:SCREEN:SCREEN_4}}" class="h-touch-target-min px-8 bg-rfly-blue text-on-primary font-label-caps text-label-caps rounded-DEFAULT shadow-sm active:scale-95 transition-transform flex items-center justify-center gap-2 w-full sm:w-auto"><span class="material-symbols-outlined text-[18px]" data-icon="headset_mic">headset_mic</span>Follow up with Fleet</a>
+<button class="h-touch-target-min px-8 bg-surface text-primary border border-outline-variant font-label-caps text-label-caps rounded-DEFAULT hover:bg-surface-container-low active:scale-95 transition-transform flex items-center justify-center w-full sm:w-auto">
+                    Review Mission Reqs
+                </button>
+</div>
+<!-- Contextual Data point -->
+<div class="mt-12 p-4 bg-surface-container-lowest border border-surface-slate rounded-lg flex items-center gap-4 max-w-sm w-full text-left">
+<span class="material-symbols-outlined text-safety-orange" data-icon="warning">warning</span>
+<div>
+<div class="font-data-mono text-data-mono text-status-warning text-xs mb-1">REQ-LEVEL-3</div>
+<div class="font-body-md text-body-md text-on-surface text-sm">Mission requires advanced certification.</div>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar (Mobile) -->
+<nav class="md:hidden fixed bottom-0 w-full z-50 h-[80px] bg-primary-container border-t border-outline-variant shadow-lg flex justify-around items-center pb-safe px-4">
+<a class="flex flex-col items-center justify-center text-on-primary-container opacity-70 hover:bg-primary-fixed-variant active:scale-95 transition-transform duration-150 h-full w-full py-2" href="{{DATA:SCREEN:SCREEN_6}}">
+<span class="material-symbols-outlined mb-1" data-icon="precision_manufacturing">precision_manufacturing</span>
+<span class="font-label-caps text-label-caps">Missions</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-full px-6 py-1 hover:bg-primary-fixed-variant active:scale-95 transition-transform duration-150" href="{{DATA:SCREEN:SCREEN_4}}">
+<span class="material-symbols-outlined mb-1" data-icon="hub" style="font-variation-settings: 'FILL' 1;">hub</span>
+<span class="font-label-caps text-label-caps">Fleet</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-primary-container opacity-70 hover:bg-primary-fixed-variant active:scale-95 transition-transform duration-150 h-full w-full py-2" href="{{DATA:SCREEN:SCREEN_9}}">
+<span class="material-symbols-outlined mb-1" data-icon="explore">explore</span>
+<span class="font-label-caps text-label-caps">Map</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-primary-container opacity-70 hover:bg-primary-fixed-variant active:scale-95 transition-transform duration-150 h-full w-full py-2" href="{{DATA:SCREEN:SCREEN_7}}">
+<span class="material-symbols-outlined mb-1" data-icon="person">person</span>
+<span class="font-label-caps text-label-caps">Profile</span>
+</a>
+</nav>
+
+
+</body></html>

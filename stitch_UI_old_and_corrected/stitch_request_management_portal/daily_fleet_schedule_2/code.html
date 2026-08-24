@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>OP-07 Daily Fleet Schedule</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "surface-container-medium": "#eef1f4",
+                      "on-surface": "#1b1b1d",
+                      "inverse-surface": "#303032",
+                      "primary-fixed-dim": "#bec6e0",
+                      "surface-container-low": "#f2f4f6",
+                      "on-secondary-container": "#5c2400",
+                      "surface-dim": "#d8dadc",
+                      "on-background": "#1b1b1d",
+                      "on-error-container": "#93000a",
+                      "success": "#16a34a",
+                      "tertiary-container": "#271901",
+                      "on-tertiary-fixed-variant": "#574425",
+                      "tertiary-fixed-dim": "#dec29a",
+                      "primary": "#000000",
+                      "background": "#fcf8fa",
+                      "on-error": "#ffffff",
+                      "on-surface-variant": "#45464d",
+                      "secondary-fixed": "#ffdbca",
+                      "surface-variant": "#e4e2e4",
+                      "surface-container-high": "#e5e9ed",
+                      "on-tertiary-fixed": "#271901",
+                      "surface-container-highest": "#dce1e6",
+                      "on-tertiary-container": "#98805d",
+                      "error-container": "#ffdad6",
+                      "surface-tint": "#565e74",
+                      "surface-bright": "#f7f9fb",
+                      "secondary-fixed-dim": "#ffb690",
+                      "warning": "#ca8a04",
+                      "outline": "#76777d",
+                      "on-primary-container": "#7c839b",
+                      "tertiary": "#000000",
+                      "outline-variant": "#c6c6cd",
+                      "surface-container-lowest": "#ffffff",
+                      "primary-fixed": "#dae2fd",
+                      "surface": "#fcf8fa",
+                      "on-primary-fixed": "#131b2e",
+                      "surface-container": "#f0edef",
+                      "on-secondary": "#ffffff",
+                      "inverse-on-surface": "#f3f0f2",
+                      "error": "#dc2626",
+                      "secondary-container": "#fd761a",
+                      "on-tertiary": "#ffffff",
+                      "secondary": "#9d4300",
+                      "on-secondary-fixed-variant": "#783200",
+                      "tertiary-fixed": "#fcdeb5",
+                      "inverse-primary": "#bec6e0",
+                      "on-primary": "#ffffff",
+                      "on-primary-fixed-variant": "#3f465c",
+                      "on-secondary-fixed": "#341100",
+                      "primary-container": "#131b2e"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "spacing": {
+                      "stack-md": "16px",
+                      "stack-sm": "8px",
+                      "margin-mobile": "16px",
+                      "stack-lg": "24px",
+                      "gutter-mobile": "12px",
+                      "touch-target-min": "48px"
+              },
+              "fontFamily": {
+                      "label-lg": ["IBM Plex Sans"],
+                      "headline-lg": ["IBM Plex Sans"],
+                      "headline-md": ["IBM Plex Sans"],
+                      "body-sm": ["IBM Plex Sans"],
+                      "label-sm": ["IBM Plex Sans"],
+                      "label-md": ["IBM Plex Sans"],
+                      "body-lg": ["IBM Plex Sans"],
+                      "headline-sm": ["IBM Plex Sans"],
+                      "body-md": ["IBM Plex Sans"]
+              },
+              "fontSize": {
+                      "label-lg": ["14px", { "lineHeight": "20px", "fontWeight": "500" }],
+                      "headline-lg": ["24px", { "lineHeight": "32px", "fontWeight": "700" }],
+                      "headline-md": ["20px", { "lineHeight": "28px", "fontWeight": "700" }],
+                      "body-sm": ["12px", { "lineHeight": "16px", "fontWeight": "400" }],
+                      "label-sm": ["11px", { "lineHeight": "16px", "fontWeight": "500" }],
+                      "label-md": ["12px", { "lineHeight": "16px", "fontWeight": "500" }],
+                      "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                      "headline-sm": ["16px", { "lineHeight": "24px", "fontWeight": "700" }],
+                      "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }]
+              }
+            }
+          }
+        }
+    </script>
+<style>
+        body { font-family: 'IBM Plex Sans', sans-serif; }
+    </style>
+</head>
+<body class="bg-surface text-on-surface antialiased min-h-screen flex flex-col pt-[48px] md:pt-[64px] pb-[64px] md:pb-0">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-primary dark:bg-primary-container text-on-primary dark:text-on-primary-container border-b border-outline dark:border-outline-variant transition-colors duration-200">
+<div class="flex justify-between items-center px-margin-mobile h-touch-target-min md:h-16 w-full">
+<div aria-label="Menu" class="flex items-center gap-stack-sm cursor-pointer hover:bg-primary-fixed-dim/20 px-2 py-1 rounded transition-colors duration-200 active:scale-95" role="button">
+<span class="material-symbols-outlined text-[24px]">precision_manufacturing</span>
+<span class="font-headline-md text-headline-md font-bold tracking-tight">RFLY OPERATIONS</span>
+</div>
+<!-- Desktop Nav Top -->
+<nav class="hidden md:flex gap-stack-md">
+<a class="font-label-lg text-label-lg text-on-primary-container opacity-80 hover:bg-primary-fixed-dim/20 px-3 py-2 rounded transition-colors duration-200 active:scale-95" href="#">Queues</a>
+<a class="font-label-lg text-label-lg text-on-primary-container opacity-80 hover:bg-primary-fixed-dim/20 px-3 py-2 rounded transition-colors duration-200 active:scale-95" href="#">Customers</a>
+<a class="font-label-lg text-label-lg text-on-primary font-bold hover:bg-primary-fixed-dim/20 px-3 py-2 rounded transition-colors duration-200 active:scale-95 border-b-2 border-on-primary" href="#">Schedule</a>
+<a class="font-label-lg text-label-lg text-on-primary-container opacity-80 hover:bg-primary-fixed-dim/20 px-3 py-2 rounded transition-colors duration-200 active:scale-95" href="#">Exceptions</a>
+</nav>
+<button aria-label="Refresh Schedule" class="hover:bg-primary-fixed-dim/20 p-2 rounded-full transition-colors duration-200 active:scale-95">
+<span class="material-symbols-outlined">refresh</span>
+</button>
+</div>
+</header>
+<!-- Main Content -->
+<main class="flex-1 w-full max-w-[1200px] mx-auto p-margin-mobile md:p-stack-lg flex flex-col gap-stack-md md:gap-stack-lg">
+<!-- Header Section -->
+<div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-stack-sm pb-stack-sm border-b border-outline-variant">
+<div>
+<h1 class="font-headline-lg text-headline-lg mb-1">Daily Fleet Schedule</h1>
+<p class="font-body-md text-body-md text-on-surface-variant">Live view of operations for October 24, 2024</p>
+</div>
+<div class="flex items-center gap-stack-sm">
+<span class="flex items-center gap-1 font-label-md text-label-md bg-surface-container-high px-2 py-1 rounded border border-outline-variant text-on-surface-variant">
+<span class="material-symbols-outlined text-[16px]">schedule</span> Last updated: 08:42 AM
+                </span>
+<span class="flex items-center gap-1 font-label-md text-label-md bg-success/10 text-success px-2 py-1 rounded border border-success/30">
+<span class="material-symbols-outlined text-[16px]">wifi</span> Synced
+                </span>
+</div>
+</div>
+<!-- Schedule List -->
+<div class="flex flex-col gap-stack-sm">
+<!-- Item 1 (In Progress) -->
+<div class="bg-surface-container-low border border-outline-variant rounded-lg p-stack-md flex flex-col md:flex-row gap-stack-md hover:bg-surface-container-high transition-colors">
+<div class="flex flex-col md:w-32 shrink-0 border-l-4 border-warning pl-3">
+<span class="font-headline-md text-headline-md">08:00</span>
+<span class="font-label-md text-label-md text-on-surface-variant">ETA 09:15</span>
+</div>
+<div class="flex-1 flex flex-col gap-stack-sm">
+<div class="flex items-start justify-between">
+<div>
+<div class="flex items-center gap-2 mb-1">
+<span class="material-symbols-outlined text-secondary">flight_takeoff</span>
+<h3 class="font-headline-sm text-headline-sm">Aerial Survey - Sector 4G</h3>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant">Asset: <span class="font-label-md text-label-md text-on-surface border border-outline-variant px-1 rounded bg-surface">DRN-882-Alpha</span></p>
+</div>
+<span class="bg-warning text-on-tertiary-fixed font-label-md text-label-md px-2 py-1 rounded uppercase tracking-wide">In Progress</span>
+</div>
+<div class="flex flex-wrap gap-stack-md mt-2 pt-2 border-t border-outline-variant/50">
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[18px] text-on-surface-variant">person</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Pilot:</span>
+<span class="font-label-md text-label-md">Sarah Jenkins</span>
+</div>
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[18px] text-on-surface-variant">group</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Copilot:</span>
+<span class="font-label-md text-label-md">Marcus Reed</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Item 2 (Scheduled) -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-lg p-stack-md flex flex-col md:flex-row gap-stack-md hover:bg-surface-container-low transition-colors">
+<div class="flex flex-col md:w-32 shrink-0 border-l-4 border-outline pl-3">
+<span class="font-headline-md text-headline-md">09:30</span>
+<span class="font-label-md text-label-md text-on-surface-variant">Est. 2h 00m</span>
+</div>
+<div class="flex-1 flex flex-col gap-stack-sm">
+<div class="flex items-start justify-between">
+<div>
+<div class="flex items-center gap-2 mb-1">
+<span class="material-symbols-outlined text-on-surface-variant">rv_hookup</span>
+<h3 class="font-headline-sm text-headline-sm">Perimeter Patrol - North Ridge</h3>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant">Asset: <span class="font-label-md text-label-md text-on-surface border border-outline-variant px-1 rounded bg-surface">LMV-042-Tango</span></p>
+</div>
+<span class="bg-surface-container-high text-on-surface font-label-md text-label-md px-2 py-1 rounded uppercase tracking-wide border border-outline-variant">Scheduled</span>
+</div>
+<div class="flex flex-wrap gap-stack-md mt-2 pt-2 border-t border-outline-variant/50">
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[18px] text-on-surface-variant">person</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Pilot:</span>
+<span class="font-label-md text-label-md">David Chen</span>
+</div>
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[18px] text-on-surface-variant">group</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Copilot:</span>
+<span class="font-label-md text-label-md text-warning">Unassigned</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Item 3 (Scheduled) -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-lg p-stack-md flex flex-col md:flex-row gap-stack-md hover:bg-surface-container-low transition-colors">
+<div class="flex flex-col md:w-32 shrink-0 border-l-4 border-outline pl-3">
+<span class="font-headline-md text-headline-md">11:00</span>
+<span class="font-label-md text-label-md text-on-surface-variant">Est. 1h 30m</span>
+</div>
+<div class="flex-1 flex flex-col gap-stack-sm">
+<div class="flex items-start justify-between">
+<div>
+<div class="flex items-center gap-2 mb-1">
+<span class="material-symbols-outlined text-on-surface-variant">flight</span>
+<h3 class="font-headline-sm text-headline-sm">Cargo Transfer - Depot A to B</h3>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant">Asset: <span class="font-label-md text-label-md text-on-surface border border-outline-variant px-1 rounded bg-surface">DRN-901-Bravo</span></p>
+</div>
+<span class="bg-surface-container-high text-on-surface font-label-md text-label-md px-2 py-1 rounded uppercase tracking-wide border border-outline-variant">Scheduled</span>
+</div>
+<div class="flex flex-wrap gap-stack-md mt-2 pt-2 border-t border-outline-variant/50">
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[18px] text-on-surface-variant">person</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Pilot:</span>
+<span class="font-label-md text-label-md">Elena Rostova</span>
+</div>
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[18px] text-on-surface-variant">group</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Copilot:</span>
+<span class="font-label-md text-label-md">James Thorne</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Item 4 (Completed) -->
+<div class="bg-surface border border-outline-variant/50 rounded-lg p-stack-md flex flex-col md:flex-row gap-stack-md opacity-80">
+<div class="flex flex-col md:w-32 shrink-0 border-l-4 border-success pl-3">
+<span class="font-headline-md text-headline-md text-on-surface-variant">06:00</span>
+<span class="font-label-md text-label-md text-on-surface-variant">Finished 07:45</span>
+</div>
+<div class="flex-1 flex flex-col gap-stack-sm">
+<div class="flex items-start justify-between">
+<div>
+<div class="flex items-center gap-2 mb-1">
+<span class="material-symbols-outlined text-success">done_all</span>
+<h3 class="font-headline-sm text-headline-sm text-on-surface-variant">Initial Site Scan</h3>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant">Asset: <span class="font-label-md text-label-md text-on-surface-variant border border-outline-variant px-1 rounded bg-surface">DRN-882-Alpha</span></p>
+</div>
+<span class="bg-success/10 text-success font-label-md text-label-md px-2 py-1 rounded uppercase tracking-wide">Completed</span>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar (Mobile Only) -->
+<nav class="md:hidden fixed bottom-0 left-0 w-full flex justify-around items-center h-16 px-gutter-mobile bg-surface-container-lowest border-t border-outline-variant z-50">
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline p-2 hover:bg-surface-container-high dark:hover:bg-surface-container-highest scale-100 active:scale-90 transition-transform duration-150 ease-in-out" href="#">
+<span class="material-symbols-outlined">list_alt</span>
+<span class="font-label-sm text-label-sm mt-1">Queues</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline p-2 hover:bg-surface-container-high dark:hover:bg-surface-container-highest scale-100 active:scale-90 transition-transform duration-150 ease-in-out" href="#">
+<span class="material-symbols-outlined">groups</span>
+<span class="font-label-sm text-label-sm mt-1">Customers</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-secondary-container dark:bg-secondary text-on-secondary-container dark:text-on-secondary rounded-full px-spacing-stack-md py-1 px-4 scale-100 active:scale-90 transition-transform duration-150 ease-in-out" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">calendar_today</span>
+<span class="font-label-sm text-label-sm mt-1 font-bold">Schedule</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline p-2 hover:bg-surface-container-high dark:hover:bg-surface-container-highest scale-100 active:scale-90 transition-transform duration-150 ease-in-out" href="#">
+<span class="material-symbols-outlined">report_problem</span>
+<span class="font-label-sm text-label-sm mt-1">Exceptions</span>
+</a>
+</nav>
+</body></html>

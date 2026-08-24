@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>RFLY Operations - Customer Search</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-container-low": "#f2f4f6",
+                        "on-secondary-fixed": "#341100",
+                        "secondary-container": "#fd761a",
+                        "secondary-fixed-dim": "#ffb690",
+                        "success": "#16a34a",
+                        "surface-bright": "#f7f9fb",
+                        "surface-tint": "#565e74",
+                        "on-tertiary-container": "#98805d",
+                        "on-secondary": "#ffffff",
+                        "primary": "#000000",
+                        "warning": "#ca8a04",
+                        "surface-variant": "#e4e2e4",
+                        "tertiary-container": "#271901",
+                        "secondary-fixed": "#ffdbca",
+                        "on-secondary-container": "#5c2400",
+                        "inverse-surface": "#303032",
+                        "outline": "#76777d",
+                        "on-secondary-fixed-variant": "#783200",
+                        "surface-container": "#f0edef",
+                        "outline-variant": "#c6c6cd",
+                        "primary-container": "#131b2e",
+                        "on-primary-container": "#7c839b",
+                        "surface-dim": "#d8dadc",
+                        "inverse-on-surface": "#f3f0f2",
+                        "primary-fixed-dim": "#bec6e0",
+                        "tertiary-fixed": "#fcdeb5",
+                        "on-tertiary": "#ffffff",
+                        "tertiary": "#000000",
+                        "surface-container-high": "#eae7e9",
+                        "error-container": "#ffdad6",
+                        "surface-container-highest": "#dce1e6",
+                        "surface-container-lowest": "#ffffff",
+                        "on-surface": "#1b1b1d",
+                        "on-primary-fixed-variant": "#3f465c",
+                        "on-tertiary-fixed-variant": "#574425",
+                        "surface": "#fcf8fa",
+                        "on-primary": "#ffffff",
+                        "inverse-primary": "#bec6e0",
+                        "tertiary-fixed-dim": "#dec29a",
+                        "on-tertiary-fixed": "#271901",
+                        "on-surface-variant": "#45464d",
+                        "on-error": "#ffffff",
+                        "on-background": "#1b1b1d",
+                        "error": "#dc2626",
+                        "background": "#fcf8fa",
+                        "surface-container-medium": "#eef1f4",
+                        "secondary": "#9d4300",
+                        "on-primary-fixed": "#131b2e",
+                        "primary-fixed": "#dae2fd",
+                        "on-error-container": "#93000a"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "stack-md": "16px",
+                        "touch-target-min": "48px",
+                        "gutter-mobile": "12px",
+                        "margin-mobile": "16px",
+                        "stack-lg": "24px",
+                        "stack-sm": "8px"
+                    },
+                    "fontFamily": {
+                        "body-sm": ["IBM Plex Sans"],
+                        "body-md": ["IBM Plex Sans"],
+                        "body-lg": ["IBM Plex Sans"],
+                        "headline-sm": ["IBM Plex Sans"],
+                        "label-md": ["IBM Plex Sans"],
+                        "headline-lg": ["IBM Plex Sans"],
+                        "headline-md": ["IBM Plex Sans"],
+                        "label-lg": ["IBM Plex Sans"],
+                        "label-sm": ["IBM Plex Sans"]
+                    },
+                    "fontSize": {
+                        "body-sm": ["12px", { "lineHeight": "16px", "fontWeight": "400" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "headline-sm": ["16px", { "lineHeight": "24px", "fontWeight": "700" }],
+                        "label-md": ["12px", { "lineHeight": "16px", "fontWeight": "500" }],
+                        "headline-lg": ["24px", { "lineHeight": "32px", "fontWeight": "700" }],
+                        "headline-md": ["20px", { "lineHeight": "28px", "fontWeight": "700" }],
+                        "label-lg": ["14px", { "lineHeight": "20px", "fontWeight": "500" }],
+                        "label-sm": ["11px", { "lineHeight": "16px", "fontWeight": "500" }]
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-background text-on-background font-body-md min-h-screen flex flex-col pt-[48px] pb-[64px] md:pb-0 md:pt-[48px]">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 flex justify-between items-center px-margin-mobile h-touch-target-min bg-primary dark:bg-primary-container text-on-primary dark:text-on-primary-container border-b border-outline dark:border-outline-variant flat no shadows transition-colors duration-200 active:scale-95">
+<div class="flex items-center gap-stack-sm">
+<span class="material-symbols-outlined" data-icon="precision_manufacturing">precision_manufacturing</span>
+<span class="font-headline-md text-headline-md font-bold tracking-tight text-on-primary dark:text-on-primary-container">RFLY OPERATIONS</span>
+</div>
+<div class="flex items-center gap-stack-sm md:hidden">
+<!-- Mobile actions if needed -->
+</div>
+<!-- Web Nav items could go here, but for this linear/task page intent, we suppress full shell navigation logic for canvas priority -->
+</header>
+<!-- Main Canvas -->
+<main class="flex-1 w-full max-w-4xl mx-auto px-margin-mobile py-stack-lg flex flex-col gap-stack-lg">
+<!-- Search Section -->
+<section class="flex flex-col gap-stack-md bg-surface-container-low p-stack-md rounded-lg border border-outline-variant">
+<h1 class="font-headline-lg text-headline-lg text-on-surface">Customer Search</h1>
+<p class="font-body-md text-body-md text-on-surface-variant">Look up customer profiles by exact name or registered phone number.</p>
+<div class="relative w-full">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline">search</span>
+<input class="w-full h-touch-target-min pl-12 pr-4 bg-surface-container-lowest border border-outline rounded text-on-surface font-body-lg text-body-lg focus:border-secondary focus:ring-1 focus:ring-secondary outline-none transition-colors" placeholder="Enter Name or Phone Number..." type="text"/>
+</div>
+<div class="flex justify-end gap-stack-sm mt-stack-sm">
+<button class="h-touch-target-min px-stack-lg bg-secondary-container text-on-secondary-container font-label-lg text-label-lg rounded font-bold hover:bg-secondary-fixed-dim transition-colors flex items-center justify-center gap-2 w-full md:w-auto">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">person_add</span>
+                    Register New Customer
+                </button>
+</div>
+</section>
+<!-- Recent Searches / Results Section -->
+<section class="flex flex-col gap-stack-md">
+<h2 class="font-headline-sm text-headline-sm text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined text-outline">history</span>
+                Recent Lookups
+            </h2>
+<div class="flex flex-col gap-stack-sm">
+<!-- Result Item 1 -->
+<div class="flex items-center justify-between p-stack-md bg-surface-container-lowest border border-outline-variant rounded hover:bg-surface-container transition-colors cursor-pointer group">
+<div class="flex items-center gap-stack-md">
+<div class="w-10 h-10 rounded-full bg-primary-fixed-dim flex items-center justify-center text-on-primary-fixed font-headline-sm text-headline-sm">
+                            JS
+                        </div>
+<div class="flex flex-col">
+<span class="font-label-lg text-label-lg text-on-surface">Johnathan Smith</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">ID: RFLY-9021 • Phone: ***-***-4512</span>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline group-hover:text-secondary transition-colors">chevron_right</span>
+</div>
+<!-- Result Item 2 -->
+<div class="flex items-center justify-between p-stack-md bg-surface-container-lowest border border-outline-variant rounded hover:bg-surface-container transition-colors cursor-pointer group">
+<div class="flex items-center gap-stack-md">
+<div class="w-10 h-10 rounded-full bg-tertiary-fixed flex items-center justify-center text-on-tertiary-fixed font-headline-sm text-headline-sm">
+                            ML
+                        </div>
+<div class="flex flex-col">
+<span class="font-label-lg text-label-lg text-on-surface">Maria Lopez</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">ID: RFLY-7734 • Phone: ***-***-8901</span>
+</div>
+</div>
+<div class="flex items-center gap-stack-sm">
+<span class="px-2 py-1 bg-surface-tint text-on-primary font-label-sm text-label-sm rounded uppercase tracking-wider">Business</span>
+<span class="material-symbols-outlined text-outline group-hover:text-secondary transition-colors">chevron_right</span>
+</div>
+</div>
+<!-- Result Item 3 -->
+<div class="flex items-center justify-between p-stack-md bg-surface-container-lowest border border-outline-variant rounded hover:bg-surface-container transition-colors cursor-pointer group">
+<div class="flex items-center gap-stack-md">
+<div class="w-10 h-10 rounded-full bg-error-container flex items-center justify-center text-on-error-container font-headline-sm text-headline-sm">
+                            AW
+                        </div>
+<div class="flex flex-col">
+<span class="font-label-lg text-label-lg text-on-surface">Albert Wong</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">ID: RFLY-1192 • Phone: ***-***-2234</span>
+</div>
+</div>
+<div class="flex items-center gap-stack-sm">
+<span class="px-2 py-1 bg-warning text-on-primary font-label-sm text-label-sm rounded uppercase tracking-wider">Flagged</span>
+<span class="material-symbols-outlined text-outline group-hover:text-secondary transition-colors">chevron_right</span>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- BottomNavBar (Mobile Only) -->
+<nav class="md:hidden fixed bottom-0 left-0 w-full flex justify-around items-center h-16 px-gutter-mobile bg-surface-container-lowest dark:bg-surface-container-low border-t border-outline-variant dark:border-outline z-50">
+<!-- Inactive -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline p-2 hover:bg-surface-container-high dark:hover:bg-surface-container-highest scale-100 active:scale-90 transition-transform duration-150 ease-in-out" href="#">
+<span class="material-symbols-outlined" data-icon="list_alt">list_alt</span>
+<span class="font-label-sm text-label-sm">Queues</span>
+</a>
+<!-- Active Tab: Customers aligns perfectly with Customer Search -->
+<a class="flex flex-col items-center justify-center bg-secondary-container dark:bg-secondary text-on-secondary-container dark:text-on-secondary rounded-full px-spacing-stack-md py-1 hover:bg-surface-container-high dark:hover:bg-surface-container-highest scale-100 active:scale-90 transition-transform duration-150 ease-in-out" href="#">
+<span class="material-symbols-outlined" data-icon="groups" data-weight="fill" style="font-variation-settings: 'FILL' 1;">groups</span>
+<span class="font-label-sm text-label-sm">Customers</span>
+</a>
+<!-- Inactive -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline p-2 hover:bg-surface-container-high dark:hover:bg-surface-container-highest scale-100 active:scale-90 transition-transform duration-150 ease-in-out" href="#">
+<span class="material-symbols-outlined" data-icon="calendar_today">calendar_today</span>
+<span class="font-label-sm text-label-sm">Schedule</span>
+</a>
+<!-- Inactive -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline p-2 hover:bg-surface-container-high dark:hover:bg-surface-container-highest scale-100 active:scale-90 transition-transform duration-150 ease-in-out" href="#">
+<span class="material-symbols-outlined" data-icon="report_problem">report_problem</span>
+<span class="font-label-sm text-label-sm">Exceptions</span>
+</a>
+</nav>
+</body></html>
