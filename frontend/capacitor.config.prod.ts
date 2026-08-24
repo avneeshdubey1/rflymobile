@@ -1,7 +1,7 @@
 import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.rfly.operations.staging',
+  appId: 'com.rfly.operations',
   appName: 'RFLY Operations',
   webDir: 'dist',
   server: {

@@ -6,6 +6,7 @@
     "scripts": {
         "dev": "vite",
         "build": "vite build",
+        "assets:android": "capacitor-assets generate --android --assetPath src/assets --iconBackgroundColor=#F7F6F1 --iconBackgroundColorDark=#F7F6F1 --splashBackgroundColor=#F7F6F1 --splashBackgroundColorDark=#F7F6F1",
         "lint": "eslint .",
         "test:browser": "node e2e/browser-audit.mjs",
         "preview": "vite preview"
@@ -34,6 +35,7 @@
         "tailwindcss": "^4.3.2"
     },
     "devDependencies": {
+        "@capacitor/assets": "^3.0.5",
         "@capacitor/cli": "^6.2.1",
         "@eslint/js": "^10.0.1",
         "@types/react": "^19.2.17",

@@ -454,6 +454,10 @@ jobs:
         working-directory: frontend
         run: npx cap sync android
 
+      - name: Generate branded Operations Android assets
+        working-directory: frontend
+        run: npm run assets:android
+
       - name: Build Operations Capacitor staging APK
         working-directory: frontend/android
         shell: bash

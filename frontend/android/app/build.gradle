@@ -1,10 +1,12 @@
 apply plugin: 'com.android.application'
 
+def rflyApplicationId = project.findProperty('rflyApplicationId') ?: 'com.rfly.operations.staging'
+
 android {
     namespace "com.rfly.operations.staging"
     compileSdk rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "com.rfly.operations.staging"
+        applicationId rflyApplicationId
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
