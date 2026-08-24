@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Eligible Copilot Selection</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;700;800&amp;family=JetBrains+Mono:wght@500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary-container": "#572000",
+                        "surface-container": "#edeeef",
+                        "surface": "#f8f9fa",
+                        "surface-container-low": "#f3f4f5",
+                        "surface-container-lowest": "#ffffff",
+                        "on-tertiary": "#ffffff",
+                        "on-secondary": "#ffffff",
+                        "tertiary-fixed-dim": "#c3c7cc",
+                        "on-error": "#ffffff",
+                        "outline": "#8e7164",
+                        "on-primary-fixed-variant": "#7a3000",
+                        "background": "#f8f9fa",
+                        "surface-container-high": "#e7e8e9",
+                        "surface-variant": "#e1e3e4",
+                        "secondary-fixed": "#d5e3ff",
+                        "on-surface": "#191c1d",
+                        "on-secondary-container": "#51617d",
+                        "tertiary": "#5b5f64",
+                        "error-container": "#ffdad6",
+                        "primary-fixed": "#ffdbcc",
+                        "surface-tint": "#a04100",
+                        "inverse-on-surface": "#f0f1f2",
+                        "outline-variant": "#e2bfb0",
+                        "secondary-container": "#ccdefe",
+                        "inverse-primary": "#ffb693",
+                        "on-primary": "#ffffff",
+                        "tertiary-fixed": "#dfe3e8",
+                        "on-surface-variant": "#5a4136",
+                        "on-error-container": "#93000a",
+                        "on-secondary-fixed": "#091c34",
+                        "on-tertiary-container": "#2d3136",
+                        "primary-fixed-dim": "#ffb693",
+                        "on-secondary-fixed-variant": "#374762",
+                        "on-background": "#191c1d",
+                        "error": "#ba1a1a",
+                        "primary-container": "#ff6b00",
+                        "on-primary-fixed": "#351000",
+                        "primary": "#a04100",
+                        "inverse-surface": "#2e3132",
+                        "on-tertiary-fixed": "#181c20",
+                        "surface-dim": "#d9dadb",
+                        "surface-container-highest": "#e1e3e4",
+                        "tertiary-container": "#95999f",
+                        "surface-bright": "#f8f9fa",
+                        "on-tertiary-fixed-variant": "#43474c",
+                        "secondary-fixed-dim": "#b6c7e7",
+                        "secondary": "#4f5f7b"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "base": "8px",
+                        "stack-sm": "8px",
+                        "touch-target-min": "48px",
+                        "gutter": "12px",
+                        "stack-lg": "24px",
+                        "stack-md": "16px",
+                        "margin-mobile": "16px"
+                    },
+                    "fontFamily": {
+                        "headline-md": ["Hanken Grotesk"],
+                        "headline-sm": ["Hanken Grotesk"],
+                        "display-lg": ["Hanken Grotesk"],
+                        "body-md": ["Hanken Grotesk"],
+                        "data-lg": ["JetBrains Mono"],
+                        "label-caps": ["Hanken Grotesk"],
+                        "body-lg": ["Hanken Grotesk"],
+                        "data-sm": ["JetBrains Mono"]
+                    },
+                    "fontSize": {
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "700" }],
+                        "headline-sm": ["20px", { "lineHeight": "28px", "fontWeight": "700" }],
+                        "display-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "800" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "data-lg": ["20px", { "lineHeight": "24px", "fontWeight": "700" }],
+                        "label-caps": ["12px", { "lineHeight": "16px", "letterSpacing": "0.08em", "fontWeight": "800" }],
+                        "body-lg": ["18px", { "lineHeight": "26px", "fontWeight": "500" }],
+                        "data-sm": ["14px", { "lineHeight": "20px", "fontWeight": "500" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { background-color: #f8f9fa; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 1; }
+    </style>
+</head>
+<body class="bg-surface text-on-surface h-screen flex flex-col font-body-md overflow-hidden">
+<!-- TopAppBar (Transactional - Hidden Navigation Shell for Desktop, keep structural header) -->
+<header class="flex items-center justify-between px-margin-mobile h-touch-target-min w-full z-50 bg-surface border-b-2 border-outline-variant">
+<div class="flex items-center gap-4">
+<button class="h-touch-target-min w-touch-target-min flex items-center justify-center text-primary active:scale-95 duration-100">
+<span class="material-symbols-outlined">arrow_back</span>
+</button>
+<h1 class="font-headline-sm text-headline-sm text-primary">Select Copilot</h1>
+</div>
+<div class="flex items-center">
+<span class="material-symbols-outlined text-secondary" style="font-variation-settings: 'FILL' 0;">signal_cellular_4_bar</span>
+</div>
+</header>
+<main class="flex-1 overflow-y-auto p-margin-mobile flex flex-col gap-stack-lg">
+<!-- Search Section -->
+<section class="w-full max-w-2xl mx-auto">
+<div class="relative">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-secondary">search</span>
+<input class="w-full h-touch-target-min pl-12 pr-4 bg-surface-container-lowest border-2 border-outline-variant rounded focus:border-secondary focus:ring-0 font-body-md text-on-surface placeholder:text-tertiary outline-none" placeholder="Search by name or ID..." type="text"/>
+</div>
+</section>
+<!-- Loading State (Hidden by default) -->
+<div class="hidden flex-col items-center justify-center py-12 gap-stack-md w-full max-w-2xl mx-auto" id="state-loading">
+<span class="material-symbols-outlined text-primary animate-spin text-4xl">autorenew</span>
+<p class="font-body-lg text-body-lg text-secondary">Searching database...</p>
+</div>
+<!-- Copilot List -->
+<section class="w-full max-w-2xl mx-auto flex flex-col gap-base" id="state-list">
+<div class="bg-surface-container-lowest border-2 border-surface-container-high rounded p-4 flex items-center justify-between active:border-secondary active:bg-surface-container-low transition-colors cursor-pointer min-h-[64px]">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-full bg-secondary-container flex items-center justify-center text-on-secondary-container font-headline-sm text-headline-sm">
+                        JD
+                    </div>
+<div class="flex flex-col">
+<span class="font-body-lg text-body-lg font-bold text-on-surface">John Doe</span>
+<span class="font-data-sm text-data-sm text-secondary">EMP-8472</span>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<span class="bg-surface-container text-on-surface px-2 py-1 rounded-sm font-label-caps text-label-caps border border-surface-dim">AVAILABLE</span>
+<span class="material-symbols-outlined text-secondary">chevron_right</span>
+</div>
+</div>
+<div class="bg-surface-container-lowest border-2 border-surface-container-high rounded p-4 flex items-center justify-between active:border-secondary active:bg-surface-container-low transition-colors cursor-pointer min-h-[64px]">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-full bg-secondary-container flex items-center justify-center text-on-secondary-container font-headline-sm text-headline-sm">
+                        AS
+                    </div>
+<div class="flex flex-col">
+<span class="font-body-lg text-body-lg font-bold text-on-surface">Alice Smith</span>
+<span class="font-data-sm text-data-sm text-secondary">EMP-9921</span>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<span class="bg-surface-container text-on-surface px-2 py-1 rounded-sm font-label-caps text-label-caps border border-surface-dim">AVAILABLE</span>
+<span class="material-symbols-outlined text-secondary">chevron_right</span>
+</div>
+</div>
+<div class="bg-surface-container-lowest border-2 border-surface-container-high rounded p-4 flex items-center justify-between active:border-secondary active:bg-surface-container-low transition-colors cursor-pointer min-h-[64px]">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-full bg-secondary-container flex items-center justify-center text-on-secondary-container font-headline-sm text-headline-sm">
+                        RJ
+                    </div>
+<div class="flex flex-col">
+<span class="font-body-lg text-body-lg font-bold text-on-surface">Robert Johnson</span>
+<span class="font-data-sm text-data-sm text-secondary">EMP-1024</span>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<span class="bg-surface-container text-on-surface px-2 py-1 rounded-sm font-label-caps text-label-caps border border-surface-dim">AVAILABLE</span>
+<span class="material-symbols-outlined text-secondary">chevron_right</span>
+</div>
+</div>
+</section>
+</main>
+</body></html>

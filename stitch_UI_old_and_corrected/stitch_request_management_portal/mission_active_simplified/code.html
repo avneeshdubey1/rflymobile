@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Mission Active - Pilot Field</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary-container": "#7c839b",
+                        "surface-tint": "#565e74",
+                        "primary-fixed-dim": "#bec6e0",
+                        "secondary-fixed": "#ffdbca",
+                        "tertiary": "#000000",
+                        "secondary": "#9d4300",
+                        "on-secondary": "#ffffff",
+                        "on-tertiary": "#ffffff",
+                        "surface-variant": "#e0e3e5",
+                        "surface-container-lowest": "#ffffff",
+                        "primary-container": "#131b2e",
+                        "surface-container-high": "#e6e8ea",
+                        "surface": "#f7f9fb",
+                        "rfly-blue": "#0F172A",
+                        "on-secondary-fixed-variant": "#783200",
+                        "surface-dim": "#d8dadc",
+                        "on-secondary-container": "#5c2400",
+                        "secondary-container": "#fd761a",
+                        "on-surface": "#191c1e",
+                        "tertiary-fixed-dim": "#b9c7e0",
+                        "background": "#f7f9fb",
+                        "primary-fixed": "#dae2fd",
+                        "on-primary-fixed": "#131b2e",
+                        "status-offline": "#475569",
+                        "status-warning": "#9A3412",
+                        "on-error-container": "#93000a",
+                        "inverse-on-surface": "#eff1f3",
+                        "on-tertiary-fixed": "#0d1c2f",
+                        "error": "#ba1a1a",
+                        "inverse-primary": "#bec6e0",
+                        "safety-orange": "#F97316",
+                        "primary": "#000000",
+                        "surface-container": "#eceef0",
+                        "surface-container-low": "#f2f4f6",
+                        "on-secondary-fixed": "#341100",
+                        "surface-slate": "#E2E8F0",
+                        "outline-variant": "#c6c6cd",
+                        "outline": "#76777d",
+                        "on-tertiary-container": "#76859b",
+                        "inverse-surface": "#2d3133",
+                        "surface-container-highest": "#e0e3e5",
+                        "on-error": "#ffffff",
+                        "on-primary-fixed-variant": "#3f465c",
+                        "surface-bright": "#f7f9fb",
+                        "on-background": "#191c1e",
+                        "error-container": "#ffdad6",
+                        "tertiary-container": "#0d1c2f",
+                        "on-primary": "#ffffff",
+                        "on-tertiary-fixed-variant": "#3a485c",
+                        "secondary-fixed-dim": "#ffb690",
+                        "tertiary-fixed": "#d5e3fd",
+                        "on-surface-variant": "#45464d",
+                        "status-success": "#166534"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "gutter": "16px",
+                        "stack-md": "16px",
+                        "stack-lg": "24px",
+                        "margin-mobile": "20px",
+                        "touch-target-min": "48px",
+                        "stack-sm": "8px"
+                    },
+                    "fontFamily": {
+                        "label-caps": ["IBM Plex Sans"],
+                        "data-mono": ["JetBrains Mono"],
+                        "headline-lg-mobile": ["IBM Plex Sans"],
+                        "headline-lg": ["IBM Plex Sans"],
+                        "body-lg": ["IBM Plex Sans"],
+                        "body-md": ["IBM Plex Sans"],
+                        "headline-md": ["IBM Plex Sans"]
+                    },
+                    "fontSize": {
+                        "label-caps": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700" }],
+                        "data-mono": ["14px", { "lineHeight": "20px", "fontWeight": "500" }],
+                        "headline-lg-mobile": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "headline-lg": ["28px", { "lineHeight": "36px", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "headline-md": ["20px", { "lineHeight": "28px", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>.map-bg {
+    background-image: url(https://lh3.googleusercontent.com/aida-public/AB6AXuCRJoe3a48qYF4-eG7LiInkBXlJ1qi9gOlGCLVqxuNcetngBUaw17GCihhF_npHsmHpQDZK8NytIuAIdI9vnBstLquHicwJKtHTsAhcQNIQ5Lfdvn1gpTlohmBRRVjWo1NxR4i5tKpFJbrkWedICQztLUx8GEgmQn3H7mPoCd9SDtxH_UWCcmz3FeF_EM2cavIysuTeJUuB2OlArLvstcBSI9rFbRdwR5SHoN-p9sJNC1W8gjxn4qQ3);
+    background-size: cover;
+    background-position: center
+    }
+.pulse-ring {
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite
+    }
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+        } 50% {
+        opacity: .5;
+        transform: scale(1.05);
+        }
+    }</style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="bg-background text-on-surface h-screen overflow-hidden flex flex-col font-body-md relative map-bg" data-alt="Aerial view of a sprawling agricultural field in the midwest during midday. High contrast, sharp details, bright sunlight highlighting crop rows. Industrial and utilitarian aesthetic, suitable for drone operational mapping context. Desaturated earthy tones with a clinical tech overlay feel." data-location="Iowa farmland">
+<!-- TopAppBar -->
+<header class="bg-surface text-primary font-headline-md text-headline-md w-full top-0 sticky border-b border-outline-variant flat no shadows flex items-center justify-between px-margin-mobile h-touch-target-min w-full z-50">
+<div class="flex items-center gap-4">
+<button aria-label="Menu" class="flex items-center justify-center w-touch-target-min h-touch-target-min rounded-full hover:bg-surface-container-high transition-colors active:opacity-80">
+<span class="material-symbols-outlined" data-icon="menu">menu</span>
+</button>
+<span class="font-headline-md text-headline-md font-bold text-primary">Pilot Field</span>
+</div>
+<div class="flex items-center gap-4">
+<!-- Offline Status Indicator -->
+<div class="flex items-center gap-2 bg-status-offline text-white px-4 h-touch-target-min rounded-full text-label-caps font-label-caps">
+<span class="material-symbols-outlined text-[16px]" data-icon="wifi_off">wifi_off</span>
+<span class="capitalize font-body-md font-medium tracking-normal">Offline</span>
+</div>
+<div class="w-10 h-10 rounded-full bg-surface-variant overflow-hidden flex items-center justify-center">
+<img alt="user_profile_avatar" class="w-full h-full object-cover cursor-pointer" data-alt="Close up portrait of a professional drone pilot wearing safety gear, outdoors in bright sunlight. High contrast, sharp focus, industrial setting. Modern corporate aesthetic, desaturated background." onclick="window.location.href='{{DATA:SCREEN:SCREEN_8}}'" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAdYHYdyAFNZ1M2QdMScI4sQk1BB70EDC6i_lvRCvvf6GrqD5uWCNwQvVYfKdv7wiRXVXS1OT0gdDIeith2uDgSpMRg_JsxhGMDtYn0jhlWsXykgQdk6BFbbA24dYq4neRpnXeQQY-b83fb36YZuTr4ckuIv8fi69Kny4AaNRG77X_RxmQ_eL2xink3IlitVt743zIrGKSVRPArVjCMKFqUAyBU3qPH7kgtGWCH6C5EsRbAF3XFFap3"/>
+</div>
+</div>
+</header>
+<!-- Main Content Canvas (Map Background) -->
+<main class="flex-1 relative w-full h-full pb-20">
+<!-- Floating Telemetry Overlay (Top Left) -->
+<div class="absolute top-gutter left-gutter flex flex-col gap-stack-sm z-10 w-64">
+<div class="bg-surface/90 backdrop-blur-sm p-4 rounded-xl border border-surface-slate shadow-lg flex items-center gap-4">
+<span class="flex h-4 w-4 relative">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-safety-orange opacity-75"></span>
+<span class="relative inline-flex rounded-full h-4 w-4 bg-safety-orange"></span>
+</span>
+<h2 class="font-headline-md text-headline-md font-bold text-primary m-0">Mission Active</h2>
+</div>
+</div>
+<!-- Floating Action Button (Report Issue) -->
+<button class="absolute bottom-margin-mobile right-margin-mobile z-20 bg-error text-white h-touch-target-min px-6 rounded-full shadow-lg flex items-center gap-2 hover:bg-on-error-container transition-colors active:scale-95" onclick="window.location.href='{{DATA:SCREEN:SCREEN_2}}'">
+<span class="material-symbols-outlined" data-icon="report_problem">report_problem</span>
+<span class="font-body-md font-medium text-white capitalize">Report Issue</span>
+</button>
+</main>
+<!-- BottomNavBar -->
+<nav class="bg-surface border-t border-outline-variant w-full fixed bottom-0 z-50 h-[80px] flex items-center justify-around px-2 pb-safe">
+<a class="flex flex-col items-center justify-center w-16 h-touch-target-min text-on-surface-variant hover:text-primary" href="#">
+<span class="material-symbols-outlined" data-icon="calendar_today">calendar_today</span>
+<span class="text-[12px] mt-1 font-body-md font-medium">Today</span>
+</a>
+<a class="flex flex-col items-center justify-center w-16 h-touch-target-min text-primary" href="#">
+<span class="material-symbols-outlined filled" data-icon="flight_takeoff">flight_takeoff</span>
+<span class="text-[12px] mt-1 font-body-md font-medium">Missions</span>
+</a>
+<a class="flex flex-col items-center justify-center w-16 h-touch-target-min text-on-surface-variant hover:text-primary" href="#">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="text-[12px] mt-1 font-body-md font-medium">Profile</span>
+</a>
+</nav>
+</body></html>

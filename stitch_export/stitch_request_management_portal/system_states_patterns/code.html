@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>RFLY Operations - System States</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-error-container": "#93000a",
+                        "inverse-on-surface": "#eff1f3",
+                        "tertiary-fixed-dim": "#b9c7e0",
+                        "status-warning": "#9A3412",
+                        "on-secondary-fixed-variant": "#783200",
+                        "surface-container-low": "#f2f4f6",
+                        "outline-variant": "#c6c6cd",
+                        "on-tertiary-fixed": "#0d1c2f",
+                        "primary-container": "#131b2e",
+                        "surface-tint": "#565e74",
+                        "secondary-fixed": "#ffdbca",
+                        "surface-container": "#eceef0",
+                        "inverse-primary": "#bec6e0",
+                        "error-container": "#ffdad6",
+                        "rfly-blue": "#0F172A",
+                        "on-background": "#191c1e",
+                        "surface-variant": "#e0e3e5",
+                        "on-surface": "#191c1e",
+                        "surface-dim": "#d8dadc",
+                        "on-secondary-fixed": "#341100",
+                        "surface-slate": "#E2E8F0",
+                        "tertiary-fixed": "#d5e3fd",
+                        "primary": "#000000",
+                        "error": "#ba1a1a",
+                        "on-primary": "#ffffff",
+                        "on-tertiary-container": "#76859b",
+                        "on-tertiary": "#ffffff",
+                        "on-surface-variant": "#45464d",
+                        "status-success": "#166534",
+                        "secondary-fixed-dim": "#ffb690",
+                        "on-error": "#ffffff",
+                        "secondary-container": "#fd761a",
+                        "surface-container-highest": "#e0e3e5",
+                        "surface-bright": "#f7f9fb",
+                        "surface-container-lowest": "#ffffff",
+                        "outline": "#76777d",
+                        "on-secondary": "#ffffff",
+                        "tertiary-container": "#0d1c2f",
+                        "surface": "#f7f9fb",
+                        "tertiary": "#000000",
+                        "on-primary-fixed": "#131b2e",
+                        "on-primary-container": "#7c839b",
+                        "background": "#f7f9fb",
+                        "inverse-surface": "#2d3133",
+                        "on-primary-fixed-variant": "#3f465c",
+                        "on-secondary-container": "#5c2400",
+                        "status-offline": "#475569",
+                        "safety-orange": "#F97316",
+                        "primary-fixed-dim": "#bec6e0",
+                        "surface-container-high": "#e6e8ea",
+                        "on-tertiary-fixed-variant": "#3a485c",
+                        "primary-fixed": "#dae2fd",
+                        "secondary": "#9d4300"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "stack-lg": "24px",
+                        "stack-md": "16px",
+                        "gutter": "16px",
+                        "margin-mobile": "20px",
+                        "touch-target-min": "48px",
+                        "stack-sm": "8px"
+                    },
+                    "fontFamily": {
+                        "body-lg": ["IBM Plex Sans"],
+                        "headline-md": ["IBM Plex Sans"],
+                        "body-md": ["IBM Plex Sans"],
+                        "headline-lg": ["IBM Plex Sans"],
+                        "headline-lg-mobile": ["IBM Plex Sans"],
+                        "data-mono": ["JetBrains Mono"],
+                        "label-caps": ["IBM Plex Sans"]
+                    },
+                    "fontSize": {
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "headline-md": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "headline-lg": ["28px", { "lineHeight": "36px", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                        "headline-lg-mobile": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "data-mono": ["14px", { "lineHeight": "20px", "fontWeight": "500" }],
+                        "label-caps": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .shimmer {
+            background: linear-gradient(90deg, #f2f4f6 0px, #e6e8ea 40px, #f2f4f6 80px);
+            background-size: 300px 100%;
+            animation: shimmer 1.5s infinite linear;
+        }
+        @keyframes shimmer {
+            0% { background-position: -300px 0; }
+            100% { background-position: 300px 0; }
+        }
+        .bento-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 16px;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background font-body-lg min-h-screen flex flex-col md:flex-row">
+<!-- Web NavigationDrawer (Hidden on Mobile) -->
+<nav class="hidden md:flex flex-col h-full w-72 rounded-r-xl border-r border-outline-variant shadow-sm bg-surface-bright dark:bg-surface-dim py-stack-lg flex-shrink-0 z-40 fixed">
+<div class="px-gutter mb-stack-lg left_align">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-full overflow-hidden bg-surface-slate flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-outline" style="font-variation-settings: 'FILL' 1;">person</span>
+</div>
+<div>
+<h2 class="font-headline-lg text-headline-lg text-primary">RFLY Operations</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">Fleet Manager</p>
+</div>
+</div>
+</div>
+<div class="flex flex-col gap-2 mt-stack-md flex-grow overflow-y-auto">
+<a class="flex items-center gap-3 text-on-surface-variant hover:bg-surface-container-high rounded-full mx-2 px-4 py-3 hover:bg-surface-slate dark:hover:bg-surface-variant transition-all active:translate-x-1 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="point_of_sale" style="font-variation-settings: 'FILL' 0;">point_of_sale</span>
+<span class="font-body-lg text-body-lg">Sales Intake</span>
+</a>
+<a class="flex items-center gap-3 text-on-surface-variant hover:bg-surface-container-high rounded-full mx-2 px-4 py-3 hover:bg-surface-slate dark:hover:bg-surface-variant transition-all active:translate-x-1 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="hub" style="font-variation-settings: 'FILL' 0;">hub</span>
+<span class="font-body-lg text-body-lg">Fleet Mgmt</span>
+</a>
+<a class="flex items-center gap-3 bg-secondary-container text-on-secondary-container font-bold rounded-full mx-2 px-4 py-3 hover:bg-surface-slate dark:hover:bg-surface-variant transition-all active:translate-x-1 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="list_alt" style="font-variation-settings: 'FILL' 1;">list_alt</span>
+<span class="font-body-lg text-body-lg">Queues</span>
+</a>
+<a class="flex items-center gap-3 text-on-surface-variant hover:bg-surface-container-high rounded-full mx-2 px-4 py-3 hover:bg-surface-slate dark:hover:bg-surface-variant transition-all active:translate-x-1 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="analytics" style="font-variation-settings: 'FILL' 0;">analytics</span>
+<span class="font-body-lg text-body-lg">Analytics</span>
+</a>
+</div>
+</nav>
+<!-- Main Content Canvas -->
+<main class="flex-grow flex flex-col md:ml-72 pb-24 md:pb-0">
+<!-- Mobile TopAppBar -->
+<header class="md:hidden flex items-center justify-between px-margin-mobile h-touch-target-min w-full z-50 fixed top-0 bg-surface dark:bg-background border-b border-surface-slate dark:border-outline-variant flat no shadows">
+<div class="flex items-center gap-2">
+<button class="flex items-center justify-center w-touch-target-min h-touch-target-min text-primary dark:text-on-primary-fixed hover:bg-surface-container-low transition-colors active:scale-95 duration-100 rounded-full">
+<span class="material-symbols-outlined" data-icon="flight_takeoff">flight_takeoff</span>
+</button>
+<h1 class="font-headline-md text-headline-md text-rfly-blue dark:text-primary-fixed">Pilot Field</h1>
+</div>
+<button class="flex items-center justify-center w-touch-target-min h-touch-target-min text-on-surface-variant hover:bg-surface-container-low transition-colors active:scale-95 duration-100 rounded-full">
+<span class="material-symbols-outlined" data-icon="more_vert">more_vert</span>
+</button>
+</header>
+<!-- Web TopAppBar -->
+<header class="hidden md:flex items-end justify-between px-gutter py-stack-md w-full sticky top-0 z-40 bg-surface-container-lowest dark:bg-surface-container-highest bg-surface-container-high flat no shadows">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-surface-slate flex items-center justify-center">
+<span class="material-symbols-outlined text-outline">person</span>
+</div>
+<h1 class="font-headline-lg text-headline-lg text-rfly-blue">System States Exploration</h1>
+</div>
+<button class="flex items-center justify-center w-touch-target-min h-touch-target-min text-outline hover:bg-surface-container transition-colors active:opacity-80 rounded-full">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+</header>
+<div class="p-margin-mobile md:p-stack-lg mt-14 md:mt-0 flex flex-col gap-stack-lg">
+<div class="mb-4">
+<h2 class="font-headline-md text-headline-md text-on-surface mb-2">UI State Patterns</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">Reference implementation for common system feedback loops.</p>
+</div>
+<div class="bento-grid">
+<!-- State: Loading (Skeleton) -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-stack-md flex flex-col gap-stack-md">
+<div class="flex items-center gap-3 mb-2">
+<span class="material-symbols-outlined text-surface-tint">hourglass_empty</span>
+<h3 class="font-headline-md text-headline-md text-on-surface">Loading State</h3>
+</div>
+<div class="flex flex-col gap-4 p-4 bg-surface-container-low rounded-lg">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-full shimmer"></div>
+<div class="flex flex-col gap-2 flex-grow">
+<div class="h-4 w-3/4 rounded shimmer"></div>
+<div class="h-3 w-1/2 rounded shimmer"></div>
+</div>
+</div>
+<div class="h-16 w-full rounded shimmer"></div>
+<div class="h-8 w-1/3 rounded shimmer ml-auto mt-2"></div>
+</div>
+</div>
+<!-- State: Unauthorized (Blocked) -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-stack-md flex flex-col gap-stack-md">
+<div class="flex items-center gap-3 mb-2">
+<span class="material-symbols-outlined text-surface-tint">lock</span>
+<h3 class="font-headline-md text-headline-md text-on-surface">Unauthorized</h3>
+</div>
+<div class="flex flex-col items-center justify-center p-6 bg-surface-container-low rounded-lg text-center h-full border border-dashed border-outline">
+<span class="material-symbols-outlined text-4xl text-outline mb-4" style="font-variation-settings: 'FILL' 1;">admin_panel_settings</span>
+<h4 class="font-headline-md text-headline-md text-on-surface mb-2">Access Restricted</h4>
+<p class="font-body-md text-body-md text-on-surface-variant mb-6">Your current role 'Pilot L1' does not permit modifying Fleet Configuration parameters.</p>
+<button class="h-touch-target-min px-6 rounded bg-rfly-blue text-on-primary font-body-lg hover:opacity-90 active:scale-95 transition-all">
+                            Request Override
+                        </button>
+</div>
+</div>
+<!-- State: Validation Error -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-stack-md flex flex-col gap-stack-md">
+<div class="flex items-center gap-3 mb-2">
+<span class="material-symbols-outlined text-error">error</span>
+<h3 class="font-headline-md text-headline-md text-on-surface">Validation Error</h3>
+</div>
+<div class="flex flex-col gap-4 p-4 bg-surface-container-low rounded-lg">
+<div class="flex flex-col gap-2">
+<label class="font-body-lg text-body-lg text-on-surface">Flight Altitude (AGL)</label>
+<div class="relative">
+<input class="w-full h-12 bg-surface border-2 border-error text-on-surface px-4 py-2 rounded focus:outline-none font-data-mono text-data-mono" inputmode="decimal" type="number" value="550"/>
+<span class="material-symbols-outlined absolute right-3 top-3 text-error">warning</span>
+</div>
+<p class="font-body-md text-body-md text-error flex items-center gap-1">
+                                Max permitted altitude in Class G airspace is 400ft.
+                            </p>
+</div>
+<div class="flex flex-col gap-2 mt-2">
+<label class="font-body-lg text-body-lg text-on-surface">Mission ID</label>
+<input class="w-full h-12 bg-surface border-[1.5px] border-outline-variant text-on-surface px-4 py-2 rounded focus:outline-none focus:border-rfly-blue" type="text" value="MSN-99X2"/>
+</div>
+<button class="h-touch-target-min w-full rounded bg-surface-slate text-on-surface-variant font-body-lg opacity-50 cursor-not-allowed mt-2">
+                            Save Configuration
+                        </button>
+</div>
+</div>
+<!-- State: Network Retry -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-stack-md flex flex-col gap-stack-md">
+<div class="flex items-center gap-3 mb-2">
+<span class="material-symbols-outlined text-status-warning">cloud_off</span>
+<h3 class="font-headline-md text-headline-md text-on-surface">Network Failure</h3>
+</div>
+<div class="flex flex-col p-4 bg-error-container rounded-lg border border-error/20 relative overflow-hidden h-full justify-center">
+<div class="absolute inset-0 bg-error/5 z-0"></div>
+<div class="relative z-10 flex items-start gap-4">
+<div class="w-10 h-10 rounded-full bg-error/10 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-error">wifi_off</span>
+</div>
+<div class="flex flex-col gap-2">
+<h4 class="font-headline-md text-headline-md text-on-error-container">Telemetry Sync Failed</h4>
+<p class="font-body-md text-body-md text-on-error-container/80">
+                                    Unable to establish uplink with Ground Station. Check local connection or retry sync sequence.
+                                </p>
+<div class="flex gap-3 mt-4">
+<button class="h-touch-target-min px-4 rounded bg-error text-on-error font-body-lg hover:opacity-90 active:scale-95 transition-all flex items-center gap-2 shadow-sm">
+<span class="material-symbols-outlined text-sm">refresh</span>
+                                        Retry Uplink
+                                    </button>
+<button class="h-touch-target-min px-4 rounded border border-error text-on-error-container font-body-lg hover:bg-error/10 active:scale-95 transition-all">
+                                        Cache Data
+                                    </button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Mobile BottomNavBar -->
+<nav class="md:hidden fixed bottom-0 left-0 w-full flex justify-around items-center h-[64px] px-4 pb-safe bg-rfly-blue dark:bg-primary-container z-50 bg-rfly-blue shadow-md">
+<a class="flex flex-col items-center justify-center text-on-primary-container opacity-70 hover:opacity-100 transition-opacity active:scale-90 duration-150 h-full w-full" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="precision_manufacturing">precision_manufacturing</span>
+<span class="font-label-caps text-label-caps">Mission</span>
+</a>
+<a class="flex flex-col items-center justify-center text-safety-orange font-bold scale-110 hover:opacity-100 transition-opacity active:scale-90 duration-150 h-full w-full" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="sensors" style="font-variation-settings: 'FILL' 1;">sensors</span>
+<span class="font-label-caps text-label-caps">Status</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-primary-container opacity-70 hover:opacity-100 transition-opacity active:scale-90 duration-150 h-full w-full" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="warning">warning</span>
+<span class="font-label-caps text-label-caps">Alerts</span>
+</a>
+</nav>
+</body></html>

@@ -1,0 +1,196 @@
+<!DOCTYPE html><html class="h-full" lang="en" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Profile and Security</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;700;800&amp;family=JetBrains+Mono:wght@500;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-secondary-container": "#51617d",
+                        "tertiary": "#5b5f64",
+                        "secondary": "#4f5f7b",
+                        "on-secondary-fixed": "#091c34",
+                        "surface": "#f8f9fa",
+                        "surface-container-highest": "#e1e3e4",
+                        "surface-dim": "#d9dadb",
+                        "tertiary-fixed": "#dfe3e8",
+                        "on-error": "#ffffff",
+                        "inverse-surface": "#2e3132",
+                        "on-tertiary-container": "#2d3136",
+                        "on-tertiary-fixed-variant": "#43474c",
+                        "surface-variant": "#e1e3e4",
+                        "surface-container-low": "#f3f4f5",
+                        "on-secondary-fixed-variant": "#374762",
+                        "inverse-primary": "#ffb693",
+                        "error": "#ba1a1a",
+                        "on-surface-variant": "#5a4136",
+                        "on-primary-container": "#572000",
+                        "background": "#f8f9fa",
+                        "surface-tint": "#a04100",
+                        "on-surface": "#191c1d",
+                        "outline": "#8e7164",
+                        "on-tertiary-fixed": "#181c20",
+                        "surface-container-lowest": "#ffffff",
+                        "primary-fixed": "#ffdbcc",
+                        "on-primary-fixed-variant": "#7a3000",
+                        "surface-bright": "#f8f9fa",
+                        "surface-container-high": "#e7e8e9",
+                        "primary": "#a04100",
+                        "primary-container": "#ff6b00",
+                        "on-background": "#191c1d",
+                        "secondary-fixed-dim": "#b6c7e7",
+                        "on-primary": "#ffffff",
+                        "inverse-on-surface": "#f0f1f2",
+                        "secondary-container": "#ccdefe",
+                        "on-tertiary": "#ffffff",
+                        "surface-container": "#edeeef",
+                        "on-error-container": "#93000a",
+                        "primary-fixed-dim": "#ffb693",
+                        "tertiary-container": "#95999f",
+                        "secondary-fixed": "#d5e3ff",
+                        "error-container": "#ffdad6",
+                        "on-secondary": "#ffffff",
+                        "outline-variant": "#e2bfb0",
+                        "tertiary-fixed-dim": "#c3c7cc",
+                        "on-primary-fixed": "#351000"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "gutter": "12px",
+                        "stack-md": "16px",
+                        "touch-target-min": "48px",
+                        "margin-mobile": "16px",
+                        "stack-lg": "24px",
+                        "stack-sm": "8px",
+                        "base": "8px"
+                    },
+                    "fontFamily": {
+                        "display-lg": ["Hanken Grotesk"],
+                        "label-caps": ["Hanken Grotesk"],
+                        "data-sm": ["JetBrains Mono"],
+                        "headline-sm": ["Hanken Grotesk"],
+                        "data-lg": ["JetBrains Mono"],
+                        "body-md": ["Hanken Grotesk"],
+                        "headline-md": ["Hanken Grotesk"],
+                        "body-lg": ["Hanken Grotesk"]
+                    },
+                    "fontSize": {
+                        "display-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "800" }],
+                        "label-caps": ["12px", { "lineHeight": "16px", "letterSpacing": "0.08em", "fontWeight": "800" }],
+                        "data-sm": ["14px", { "lineHeight": "20px", "fontWeight": "500" }],
+                        "headline-sm": ["20px", { "lineHeight": "28px", "fontWeight": "700" }],
+                        "data-lg": ["20px", { "lineHeight": "24px", "fontWeight": "700" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "700" }],
+                        "body-lg": ["18px", { "lineHeight": "26px", "fontWeight": "500" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background h-full antialiased font-body-md flex flex-col">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-surface border-b-2 border-outline-variant flex items-center justify-between px-margin-mobile h-touch-target-min">
+<button aria-label="Menu" class="w-12 h-12 flex items-center justify-center text-primary active:scale-95 duration-100 hover:bg-surface-container-high transition-colors rounded-full">
+<span class="material-symbols-outlined">menu</span>
+</button>
+<img src="https://lh3.googleusercontent.com/aida-public/AB6AXuBM6ZaEEoi73L3Z7RT4sIRJBJeTmRqLNnkIljj_zFI0SvHlLFqO-fQaQlstlb0G_C2ZMyCEnCBpTUHEaGjwWJqveuGaxM-Zm2Nc-9pnzpXT0lWiXiWLNczUWrEnFOjWVQvK5GZn62HlXpUhflDrV-rpLaVcPR4Gl92DLL5j46bygl_vyW-1EHqEn5unOhiPDYTR9CFM0D8W9tyaZOdgSUMpVm4VAZIKN83wDNn5mPBxCAlF99blST_o" alt="RFLY Drone Mark" class="h-8 w-auto object-contain">
+<button aria-label="Offline Mode" class="w-12 h-12 flex items-center justify-center text-primary active:scale-95 duration-100 hover:bg-surface-container-high transition-colors rounded-full">
+<span class="material-symbols-outlined">cloud_off</span>
+</button>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-grow mt-touch-target-min mb-16 overflow-y-auto px-margin-mobile py-stack-lg flex flex-col gap-stack-lg max-w-2xl mx-auto w-full">
+<!-- Profile Header Card -->
+<section class="bg-surface-container-lowest border-2 border-surface-variant rounded-lg p-stack-md flex flex-col gap-stack-sm items-center text-center">
+<div class="w-24 h-24 rounded-full bg-secondary-container flex items-center justify-center mb-base border-2 border-outline-variant">
+<span class="material-symbols-outlined text-4xl text-on-secondary-container" style="font-variation-settings: 'FILL' 1;">person</span>
+</div>
+<h2 class="font-headline-md text-headline-md text-on-surface">Alex Mercer</h2>
+<p class="font-data-sm text-data-sm text-secondary bg-surface-container-high px-3 py-1 rounded-full">Pilot ID: AM-8902</p>
+</section>
+<!-- General Information Bento -->
+<section class="grid grid-cols-1 md:grid-cols-2 gap-base">
+<div class="bg-surface-container-lowest border-2 border-surface-variant rounded-lg p-stack-md flex flex-col justify-between">
+<div class="flex items-center gap-2 mb-2 text-secondary">
+<span class="material-symbols-outlined text-lg">language</span>
+<span class="font-label-caps text-label-caps uppercase">Preferred Language</span>
+</div>
+<div class="font-body-lg text-body-lg text-on-surface">English (US)</div>
+</div>
+<div class="bg-surface-container-lowest border-2 border-surface-variant rounded-lg p-stack-md flex flex-col justify-between">
+<div class="flex items-center gap-2 mb-2 text-secondary">
+<span class="material-symbols-outlined text-lg">warehouse</span>
+<span class="font-label-caps text-label-caps uppercase">Operating Center</span>
+</div>
+<div class="font-body-lg text-body-lg text-on-surface">AgriHub North West</div>
+</div>
+<div class="bg-surface-container-lowest border-2 border-surface-variant rounded-lg p-stack-md flex flex-col justify-between md:col-span-2">
+<div class="flex items-center gap-2 mb-2 text-secondary">
+<span class="material-symbols-outlined text-lg">verified_user</span>
+<span class="font-label-caps text-label-caps uppercase">Security Clearance</span>
+</div>
+<div class="flex items-center justify-between">
+<span class="font-body-lg text-body-lg text-on-surface">Level 3 (Autonomous Flights)</span>
+<span class="bg-primary-container text-on-primary-container font-label-caps text-label-caps px-2 py-1 rounded-full uppercase">Active</span>
+</div>
+</div>
+</section>
+<!-- Security Actions -->
+<section class="flex flex-col gap-base">
+<h3 class="font-headline-sm text-headline-sm text-on-surface mb-base">Security Actions</h3>
+<button class="bg-surface-container-lowest border-2 border-surface-variant hover:border-secondary hover:bg-surface-container-low transition-colors rounded-lg p-stack-md flex items-center justify-between text-left h-touch-target-min">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-secondary">devices</span>
+<span class="font-body-lg text-body-lg text-on-surface">Logout from All Devices</span>
+</div>
+<span class="material-symbols-outlined text-tertiary">chevron_right</span>
+</button>
+<button class="bg-error-container border-2 border-error text-on-error-container hover:bg-error hover:text-on-error transition-colors rounded-lg p-stack-md flex items-center justify-between text-left h-touch-target-min">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined">report_problem</span>
+<span class="font-body-lg text-body-lg font-bold">Report Lost Device</span>
+</div>
+<span class="material-symbols-outlined">chevron_right</span>
+</button>
+<button class="mt-4 bg-secondary text-on-secondary hover:opacity-90 transition-opacity rounded-full p-stack-md flex items-center justify-center gap-2 h-touch-target-min font-headline-sm text-headline-sm">
+<span class="material-symbols-outlined">logout</span>
+                Logout
+            </button>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 w-full h-16 bg-surface border-t-2 border-outline-variant flex justify-around items-center px-4 z-50 md:hidden">
+<a class="flex flex-col items-center justify-center text-on-secondary-fixed-variant hover:bg-surface-container-low active:opacity-80 transition-all w-16 h-full rounded-lg" href="#">
+<span class="material-symbols-outlined mb-1">agriculture</span>
+<span class="font-label-caps text-label-caps">Work</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-secondary-fixed-variant hover:bg-surface-container-low active:opacity-80 transition-all w-16 h-full rounded-lg" href="#">
+<span class="material-symbols-outlined mb-1">sync</span>
+<span class="font-label-caps text-label-caps">Sync</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-full px-4 py-1 active:opacity-80 transition-all h-12" href="#">
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 1;">person</span>
+<span class="font-label-caps text-label-caps">Profile</span>
+</a>
+</nav>
+
+
+</body></html>

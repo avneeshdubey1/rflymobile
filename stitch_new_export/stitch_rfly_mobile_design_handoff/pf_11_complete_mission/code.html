@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Complete Mission</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;700;800&amp;family=JetBrains+Mono:wght@500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "on-primary-container": "#572000",
+                        "surface-container": "#edeeef",
+                        "surface": "#f8f9fa",
+                        "surface-container-low": "#f3f4f5",
+                        "surface-container-lowest": "#ffffff",
+                        "on-tertiary": "#ffffff",
+                        "on-secondary": "#ffffff",
+                        "tertiary-fixed-dim": "#c3c7cc",
+                        "on-error": "#ffffff",
+                        "outline": "#8e7164",
+                        "on-primary-fixed-variant": "#7a3000",
+                        "background": "#f8f9fa",
+                        "surface-container-high": "#e7e8e9",
+                        "surface-variant": "#e1e3e4",
+                        "secondary-fixed": "#d5e3ff",
+                        "on-surface": "#191c1d",
+                        "on-secondary-container": "#51617d",
+                        "tertiary": "#5b5f64",
+                        "error-container": "#ffdad6",
+                        "primary-fixed": "#ffdbcc",
+                        "surface-tint": "#a04100",
+                        "inverse-on-surface": "#f0f1f2",
+                        "outline-variant": "#e2bfb0",
+                        "secondary-container": "#ccdefe",
+                        "inverse-primary": "#ffb693",
+                        "on-primary": "#ffffff",
+                        "tertiary-fixed": "#dfe3e8",
+                        "on-surface-variant": "#5a4136",
+                        "on-error-container": "#93000a",
+                        "on-secondary-fixed": "#091c34",
+                        "on-tertiary-container": "#2d3136",
+                        "primary-fixed-dim": "#ffb693",
+                        "on-secondary-fixed-variant": "#374762",
+                        "on-background": "#191c1d",
+                        "error": "#ba1a1a",
+                        "primary-container": "#ff6b00",
+                        "on-primary-fixed": "#351000",
+                        "primary": "#a04100",
+                        "inverse-surface": "#2e3132",
+                        "on-tertiary-fixed": "#181c20",
+                        "surface-dim": "#d9dadb",
+                        "surface-container-highest": "#e1e3e4",
+                        "tertiary-container": "#95999f",
+                        "surface-bright": "#f8f9fa",
+                        "on-tertiary-fixed-variant": "#43474c",
+                        "secondary-fixed-dim": "#b6c7e7",
+                        "secondary": "#4f5f7b"
+                    },
+                    borderRadius: {
+                        DEFAULT: "0.25rem",
+                        lg: "0.5rem",
+                        xl: "0.75rem",
+                        full: "9999px"
+                    },
+                    spacing: {
+                        base: "8px",
+                        "stack-sm": "8px",
+                        "touch-target-min": "48px",
+                        "gutter": "12px",
+                        "stack-lg": "24px",
+                        "stack-md": "16px",
+                        "margin-mobile": "16px"
+                    },
+                    fontFamily: {
+                        "headline-md": ["Hanken Grotesk"],
+                        "headline-sm": ["Hanken Grotesk"],
+                        "display-lg": ["Hanken Grotesk"],
+                        "body-md": ["Hanken Grotesk"],
+                        "data-lg": ["JetBrains Mono"],
+                        "label-caps": ["Hanken Grotesk"],
+                        "body-lg": ["Hanken Grotesk"],
+                        "data-sm": ["JetBrains Mono"]
+                    },
+                    fontSize: {
+                        "headline-md": ["24px", { lineHeight: "32px", fontWeight: "700" }],
+                        "headline-sm": ["20px", { lineHeight: "28px", fontWeight: "700" }],
+                        "display-lg": ["32px", { lineHeight: "40px", letterSpacing: "-0.02em", fontWeight: "800" }],
+                        "body-md": ["16px", { lineHeight: "24px", fontWeight: "400" }],
+                        "data-lg": ["20px", { lineHeight: "24px", fontWeight: "700" }],
+                        "label-caps": ["12px", { lineHeight: "16px", letterSpacing: "0.08em", fontWeight: "800" }],
+                        "body-lg": ["18px", { lineHeight: "26px", fontWeight: "500" }],
+                        "data-sm": ["14px", { lineHeight: "20px", fontWeight: "500" }]
+                    }
+                }
+            }
+        };
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background antialiased h-screen flex flex-col">
+<!-- TopAppBar -->
+<header class="bg-surface dark:bg-surface-container-highest fixed top-0 w-full border-b-2 border-outline-variant dark:border-outline flex items-center justify-between px-margin-mobile h-touch-target-min z-50">
+<button aria-label="Close" class="h-touch-target-min w-touch-target-min flex items-center justify-center hover:bg-surface-container-high transition-colors active:scale-95 duration-100 rounded-full text-secondary dark:text-secondary-fixed-dim">
+<span class="material-symbols-outlined" data-icon="close">close</span>
+</button>
+<h1 class="font-headline-sm text-headline-sm text-primary dark:text-primary-fixed-dim">Complete Mission</h1>
+<div class="h-touch-target-min w-touch-target-min"></div> <!-- Placeholder for balance -->
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-grow pt-[calc(48px+24px)] pb-[calc(48px+24px)] px-margin-mobile overflow-y-auto">
+<!-- Mission Summary Card -->
+<section class="bg-surface-container-lowest border-2 border-surface-variant rounded-lg p-4 mb-stack-lg shadow-sm">
+<div class="flex items-center justify-between mb-stack-sm">
+<h2 class="font-headline-sm text-headline-sm text-on-surface">Mission Delta-9</h2>
+<span class="bg-primary-container text-on-primary-container px-2 py-1 rounded-full font-label-caps text-label-caps flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]" data-icon="check_circle">check_circle</span>
+                    Applied
+                </span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant">Field Sector 4B - Pre-emergence Herbicide Application.</p>
+</section>
+<!-- Data Entry Form -->
+<form class="flex flex-col gap-stack-lg" id="completionForm">
+<!-- Actual Acreage Input -->
+<div class="flex flex-col gap-base">
+<label class="font-label-caps text-label-caps text-on-surface-variant" for="actualAcreage">Actual Acreage Covered</label>
+<div class="relative">
+<input class="w-full h-touch-target-min bg-surface-container-lowest border-2 border-outline rounded-md px-4 font-data-lg text-data-lg text-on-surface focus:border-secondary focus:ring-0 transition-colors" id="actualAcreage" min="0.01" name="actualAcreage" placeholder="0.00" required="" step="0.01" type="number"/>
+<div class="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none">
+<span class="font-body-md text-body-md text-tertiary">Acres</span>
+</div>
+</div>
+<!-- Validation Message (Hidden by default) -->
+<p class="hidden font-body-md text-body-md text-error flex items-center gap-1 mt-1" id="acreageError">
+<span class="material-symbols-outlined text-[16px]" data-icon="error">error</span>
+                    Must be a positive number.
+                </p>
+</div>
+<!-- Operational Notes -->
+<div class="flex flex-col gap-base">
+<label class="font-label-caps text-label-caps text-on-surface-variant" for="opsNotes">Operational Notes (Optional)</label>
+<textarea class="w-full bg-surface-container-lowest border-2 border-outline rounded-md p-4 font-body-md text-body-md text-on-surface focus:border-secondary focus:ring-0 transition-colors" id="opsNotes" name="opsNotes" placeholder="Any deviations from planned flight path or weather conditions observed." rows="3"></textarea>
+</div>
+</form>
+<!-- System State Indicators (Example for visualization) -->
+<div class="mt-stack-lg flex flex-col gap-stack-sm">
+<h3 class="font-label-caps text-label-caps text-tertiary">System States Demo</h3>
+<div class="flex flex-wrap gap-2">
+<span class="bg-surface-variant text-on-surface px-2 py-1 rounded-full font-label-caps text-label-caps flex items-center gap-1 border-2 border-surface-variant">
+<span class="material-symbols-outlined text-[14px]" data-icon="hourglass_empty">hourglass_empty</span>
+                    Queued
+                </span>
+<span class="bg-error-container text-on-error-container px-2 py-1 rounded-full font-label-caps text-label-caps flex items-center gap-1 border-2 border-error">
+<span class="material-symbols-outlined text-[14px]" data-icon="warning">warning</span>
+                    Conflict
+                </span>
+</div>
+</div>
+</main>
+<!-- Bottom Action Area -->
+<div class="fixed bottom-0 w-full bg-surface border-t-2 border-surface-variant p-margin-mobile z-40 pb-safe">
+<button class="w-full h-touch-target-min bg-primary text-on-primary rounded-full font-headline-sm text-headline-sm flex items-center justify-center gap-2 hover:bg-surface-tint active:scale-95 transition-all shadow-md" form="completionForm" type="submit">
+            Complete Assignment
+            <span class="material-symbols-outlined" data-icon="send">send</span>
+</button>
+</div>
+<script>
+        // Simple validation logic for demonstration
+        document.getElementById('completionForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const input = document.getElementById('actualAcreage');
+            const errorMsg = document.getElementById('acreageError');
+            
+            if (input.value <= 0 || isNaN(input.value)) {
+                input.classList.add('border-error');
+                input.classList.remove('border-outline');
+                errorMsg.classList.remove('hidden');
+            } else {
+                input.classList.remove('border-error');
+                input.classList.add('border-outline');
+                errorMsg.classList.add('hidden');
+                
+                // Simulate success
+                const btn = document.querySelector('button[type="submit"]');
+                const originalText = btn.innerHTML;
+                btn.innerHTML = '<span class="material-symbols-outlined" data-icon="done">done</span> Assignment Completed';
+                btn.classList.add('bg-secondary', 'text-on-secondary');
+                btn.classList.remove('bg-primary', 'text-on-primary');
+                
+                setTimeout(() => {
+                    btn.innerHTML = originalText;
+                    btn.classList.remove('bg-secondary', 'text-on-secondary');
+                    btn.classList.add('bg-primary', 'text-on-primary');
+                    input.value = '';
+                }, 2000);
+            }
+        });
+
+        // Clear error on input
+        document.getElementById('actualAcreage').addEventListener('input', function() {
+            this.classList.remove('border-error');
+            this.classList.add('border-outline');
+            document.getElementById('acreageError').classList.add('hidden');
+        });
+    </script>
+</body></html>

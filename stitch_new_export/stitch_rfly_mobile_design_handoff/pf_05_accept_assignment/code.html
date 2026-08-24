@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>RFLY Pilot - Accept Assignment</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;700;800&amp;family=JetBrains+Mono:wght@500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary-container": "#572000",
+                        "surface-container": "#edeeef",
+                        "surface": "#f8f9fa",
+                        "surface-container-low": "#f3f4f5",
+                        "surface-container-lowest": "#ffffff",
+                        "on-tertiary": "#ffffff",
+                        "on-secondary": "#ffffff",
+                        "tertiary-fixed-dim": "#c3c7cc",
+                        "on-error": "#ffffff",
+                        "outline": "#8e7164",
+                        "on-primary-fixed-variant": "#7a3000",
+                        "background": "#f8f9fa",
+                        "surface-container-high": "#e7e8e9",
+                        "surface-variant": "#e1e3e4",
+                        "secondary-fixed": "#d5e3ff",
+                        "on-surface": "#191c1d",
+                        "on-secondary-container": "#51617d",
+                        "tertiary": "#5b5f64",
+                        "error-container": "#ffdad6",
+                        "primary-fixed": "#ffdbcc",
+                        "surface-tint": "#a04100",
+                        "inverse-on-surface": "#f0f1f2",
+                        "outline-variant": "#e2bfb0",
+                        "secondary-container": "#ccdefe",
+                        "inverse-primary": "#ffb693",
+                        "on-primary": "#ffffff",
+                        "tertiary-fixed": "#dfe3e8",
+                        "on-surface-variant": "#5a4136",
+                        "on-error-container": "#93000a",
+                        "on-secondary-fixed": "#091c34",
+                        "on-tertiary-container": "#2d3136",
+                        "primary-fixed-dim": "#ffb693",
+                        "on-secondary-fixed-variant": "#374762",
+                        "on-background": "#191c1d",
+                        "error": "#ba1a1a",
+                        "primary-container": "#ff6b00",
+                        "on-primary-fixed": "#351000",
+                        "primary": "#a04100",
+                        "inverse-surface": "#2e3132",
+                        "on-tertiary-fixed": "#181c20",
+                        "surface-dim": "#d9dadb",
+                        "surface-container-highest": "#e1e3e4",
+                        "tertiary-container": "#95999f",
+                        "surface-bright": "#f8f9fa",
+                        "on-tertiary-fixed-variant": "#43474c",
+                        "secondary-fixed-dim": "#b6c7e7",
+                        "secondary": "#4f5f7b"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "base": "8px",
+                        "stack-sm": "8px",
+                        "touch-target-min": "48px",
+                        "gutter": "12px",
+                        "stack-lg": "24px",
+                        "stack-md": "16px",
+                        "margin-mobile": "16px"
+                    },
+                    "fontFamily": {
+                        "headline-md": ["Hanken Grotesk"],
+                        "headline-sm": ["Hanken Grotesk"],
+                        "display-lg": ["Hanken Grotesk"],
+                        "body-md": ["Hanken Grotesk"],
+                        "data-lg": ["JetBrains Mono"],
+                        "label-caps": ["Hanken Grotesk"],
+                        "body-lg": ["Hanken Grotesk"],
+                        "data-sm": ["JetBrains Mono"]
+                    },
+                    "fontSize": {
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "700" }],
+                        "headline-sm": ["20px", { "lineHeight": "28px", "fontWeight": "700" }],
+                        "display-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "800" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "data-lg": ["20px", { "lineHeight": "24px", "fontWeight": "700" }],
+                        "label-caps": ["12px", { "lineHeight": "16px", "letterSpacing": "0.08em", "fontWeight": "800" }],
+                        "body-lg": ["18px", { "lineHeight": "26px", "fontWeight": "500" }],
+                        "data-sm": ["14px", { "lineHeight": "20px", "fontWeight": "500" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .fill-icon {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background min-h-screen flex flex-col pt-16 pb-16 md:pb-0 font-body-md">
+<!-- TopAppBar -->
+<header class="bg-surface dark:bg-surface-container-highest fixed top-0 w-full border-b-2 border-outline-variant dark:border-outline flex items-center justify-between px-margin-mobile h-touch-target-min z-50">
+<button class="text-primary dark:text-primary-fixed-dim hover:bg-surface-container-high transition-colors active:scale-95 duration-100 p-2 rounded-full flex items-center justify-center h-touch-target-min w-touch-target-min">
+<span class="material-symbols-outlined">menu</span>
+</button>
+<div class="font-display-lg text-display-lg font-extrabold text-primary dark:text-primary-container truncate text-center flex-1">
+            RFLY Pilot
+        </div>
+<button class="text-primary dark:text-primary-fixed-dim hover:bg-surface-container-high transition-colors active:scale-95 duration-100 p-2 rounded-full flex items-center justify-center h-touch-target-min w-touch-target-min">
+<span class="material-symbols-outlined">cloud_off</span>
+</button>
+</header>
+<!-- Main Canvas Content -->
+<main class="flex-grow flex flex-col px-margin-mobile py-stack-lg gap-stack-lg max-w-2xl mx-auto w-full">
+<!-- Offline Queue Banner (Hidden by default, shown for demo) -->
+<div class="bg-surface-variant border-2 border-outline rounded-lg p-stack-md flex items-start gap-gutter shadow-sm">
+<span class="material-symbols-outlined text-on-surface-variant fill-icon mt-1">wifi_off</span>
+<div class="flex-1">
+<h3 class="font-body-lg text-body-lg text-on-surface-variant">Queued Offline</h3>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">Acceptance will sync when connection is restored.</p>
+</div>
+</div>
+<!-- Assignment Details Card -->
+<div class="bg-surface-container-lowest border-2 border-surface-variant rounded-lg p-stack-md flex flex-col gap-stack-md">
+<div class="flex justify-between items-start border-b border-surface-variant pb-stack-sm">
+<div>
+<span class="font-label-caps text-label-caps text-tertiary uppercase tracking-wider">Assignment Ready</span>
+<h1 class="font-headline-md text-headline-md text-on-surface mt-1">Valley View Orchards</h1>
+</div>
+<div class="bg-primary-fixed text-on-primary-fixed px-3 py-1 rounded-full flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">schedule</span>
+<span class="font-label-caps text-label-caps">Priority</span>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-gutter py-stack-sm">
+<div class="flex flex-col gap-1">
+<span class="font-label-caps text-label-caps text-tertiary">Crop Target</span>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary">grass</span>
+<span class="font-body-lg text-body-lg text-on-surface">Almond Trees</span>
+</div>
+</div>
+<div class="flex flex-col gap-1">
+<span class="font-label-caps text-label-caps text-tertiary">Service Window</span>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary">calendar_today</span>
+<span class="font-body-lg text-body-lg text-on-surface">Today, 08:00 - 14:00</span>
+</div>
+</div>
+<div class="flex flex-col gap-1 mt-stack-sm">
+<span class="font-label-caps text-label-caps text-tertiary">Payload</span>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary">water_drop</span>
+<span class="font-data-lg text-data-lg text-on-surface">Fungicide-A</span>
+</div>
+</div>
+<div class="flex flex-col gap-1 mt-stack-sm">
+<span class="font-label-caps text-label-caps text-tertiary">Est. Duration</span>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary">timer</span>
+<span class="font-data-lg text-data-lg text-on-surface">4.5 Hrs</span>
+</div>
+</div>
+</div>
+<!-- Map Placeholder Area -->
+<div class="w-full h-48 bg-surface-container rounded border border-surface-variant relative overflow-hidden mt-stack-sm">
+<img class="w-full h-full object-cover" data-alt="A highly detailed satellite view map interface showing a large geometric agricultural orchard layout in central California. The map is in a bright, high-contrast light mode UI style tailored for outdoor screen visibility, with distinct parcel boundaries outlined in stark white and safety orange against the muted greens and browns of the terrain. The aesthetic is rugged, corporate, and precision-focused." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCfjjZWoWvJ79UZ1vPeXu5fOFfAQgKqap3Ru_sq1VSmLWVv2yLPcZnljulQqKjxaNiFHyjCKnQJkECk8Pefh3hi1Fm3LHf8-bdG4hF3yZTF5g3MOdqMpaaojs6oG1IjBQYTo7vJJXzEBAhxF4n8hmpHpiCawExvCXvOx4JP_ncshNoN_OB5ETNri9hWOy43R0jfbsDPBjqScjbyLAc6gzUp0eoLTrxelBJe2t_tMBqLwhieA_Lp5Shz"/>
+<div class="absolute bottom-2 right-2 bg-surface text-on-surface px-2 py-1 rounded text-xs font-data-sm border border-outline">
+                    Zone 4B - Active
+                 </div>
+</div>
+<div class="bg-secondary-fixed text-on-secondary-fixed p-stack-sm rounded border border-secondary-container flex items-start gap-2 mt-stack-sm">
+<span class="material-symbols-outlined text-on-secondary-fixed mt-0.5">info</span>
+<p class="font-body-md text-body-md text-sm">Accepting this assignment secures the block in your schedule. Flight parameters must be configured on-site before takeoff.</p>
+</div>
+</div>
+<!-- Action Area -->
+<div class="flex flex-col gap-stack-sm mt-auto pt-stack-lg">
+<button class="w-full h-touch-target-min bg-primary-container text-on-primary-container hover:opacity-90 active:scale-95 transition-all rounded-full font-headline-sm text-headline-sm flex items-center justify-center gap-2 shadow-sm border-2 border-primary">
+<span class="material-symbols-outlined fill-icon">check_circle</span>
+                Accept Assignment
+            </button>
+<button class="w-full h-touch-target-min bg-transparent text-secondary hover:bg-surface-container-low active:bg-surface-container transition-colors rounded-full font-body-lg text-body-lg flex items-center justify-center border-2 border-secondary">
+                Decline
+            </button>
+</div>
+</main>
+<!-- BottomNavBar (Hidden on md and up, suppressed here due to transactional nature, but included per prompt rules if deemed destination. Given it's a modal/transactional screen "PF-05: Accept Assignment", we SHOULD suppress it according to the prompt's Semantic Shell Mandate: "Automatic Suppression: You MUST exclude the navigation shell if the page intent is: Linear/Transactional...". Therefore, it is omitted from this canvas to prioritize the action.) -->
+<!-- Error State Modal (Hidden by default, structure provided for dev) -->
+<div class="fixed inset-0 bg-on-background/50 hidden items-center justify-center p-margin-mobile z-[100]" id="error-modal">
+<div class="bg-surface-container-lowest border-2 border-error rounded-lg p-stack-lg max-w-sm w-full flex flex-col items-center text-center">
+<span class="material-symbols-outlined text-error text-4xl mb-stack-sm">error</span>
+<h3 class="font-headline-sm text-headline-sm text-on-surface mb-2">Schedule Conflict</h3>
+<p class="font-body-md text-body-md text-on-surface-variant mb-stack-lg">This service window overlaps with your active assignment at 'North Ridge Field'.</p>
+<button class="w-full h-touch-target-min bg-surface text-on-surface border-2 border-outline hover:bg-surface-container-low transition-colors rounded-full font-body-lg text-body-lg">
+                Dismiss
+            </button>
+</div>
+</div>
+<!-- Success Overlay (Hidden by default) -->
+<div class="fixed inset-0 bg-surface-container-lowest hidden flex-col items-center justify-center z-[100]" id="success-overlay">
+<div class="bg-primary-container rounded-full p-4 mb-stack-lg">
+<span class="material-symbols-outlined text-on-primary-container text-6xl fill-icon">done</span>
+</div>
+<h2 class="font-display-lg text-display-lg text-on-surface mb-2">Assignment Accepted</h2>
+<p class="font-body-lg text-body-lg text-on-surface-variant">Syncing to drone control unit...</p>
+</div>
+<script>
+        // Simple interactions for demonstration purposes
+        const acceptBtn = document.querySelector('button.bg-primary-container');
+        const successOverlay = document.getElementById('success-overlay');
+
+        if(acceptBtn && successOverlay) {
+            acceptBtn.addEventListener('click', () => {
+                successOverlay.classList.remove('hidden');
+                successOverlay.classList.add('flex');
+                
+                // Simulate redirect or state change
+                setTimeout(() => {
+                    successOverlay.classList.add('hidden');
+                    successOverlay.classList.remove('flex');
+                    // Typically window.location.href = '/next-step' here
+                }, 2000);
+            });
+        }
+    </script>
+</body></html>

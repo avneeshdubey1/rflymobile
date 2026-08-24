@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>RFLY Operations - Fleet Exceptions</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "surface-container-low": "#f2f4f6",
+                      "on-secondary-fixed": "#341100",
+                      "secondary-container": "#fd761a",
+                      "secondary-fixed-dim": "#ffb690",
+                      "success": "#16a34a",
+                      "surface-bright": "#f7f9fb",
+                      "surface-tint": "#565e74",
+                      "on-tertiary-container": "#98805d",
+                      "on-secondary": "#ffffff",
+                      "primary": "#000000",
+                      "warning": "#ca8a04",
+                      "surface-variant": "#e4e2e4",
+                      "tertiary-container": "#271901",
+                      "secondary-fixed": "#ffdbca",
+                      "on-secondary-container": "#5c2400",
+                      "inverse-surface": "#303032",
+                      "outline": "#76777d",
+                      "on-secondary-fixed-variant": "#783200",
+                      "surface-container": "#f0edef",
+                      "outline-variant": "#c6c6cd",
+                      "primary-container": "#131b2e",
+                      "on-primary-container": "#7c839b",
+                      "surface-dim": "#d8dadc",
+                      "inverse-on-surface": "#f3f0f2",
+                      "primary-fixed-dim": "#bec6e0",
+                      "tertiary-fixed": "#fcdeb5",
+                      "on-tertiary": "#ffffff",
+                      "tertiary": "#000000",
+                      "surface-container-high": "#eae7e9",
+                      "error-container": "#ffdad6",
+                      "surface-container-highest": "#dce1e6",
+                      "surface-container-lowest": "#ffffff",
+                      "on-surface": "#1b1b1d",
+                      "on-primary-fixed-variant": "#3f465c",
+                      "on-tertiary-fixed-variant": "#574425",
+                      "surface": "#fcf8fa",
+                      "on-primary": "#ffffff",
+                      "inverse-primary": "#bec6e0",
+                      "tertiary-fixed-dim": "#dec29a",
+                      "on-tertiary-fixed": "#271901",
+                      "on-surface-variant": "#45464d",
+                      "on-error": "#ffffff",
+                      "on-background": "#1b1b1d",
+                      "error": "#dc2626",
+                      "background": "#fcf8fa",
+                      "surface-container-medium": "#eef1f4",
+                      "secondary": "#9d4300",
+                      "on-primary-fixed": "#131b2e",
+                      "primary-fixed": "#dae2fd",
+                      "on-error-container": "#93000a"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "spacing": {
+                      "stack-md": "16px",
+                      "touch-target-min": "48px",
+                      "gutter-mobile": "12px",
+                      "margin-mobile": "16px",
+                      "stack-lg": "24px",
+                      "stack-sm": "8px"
+              },
+              "fontFamily": {
+                      "body-sm": ["IBM Plex Sans"],
+                      "body-md": ["IBM Plex Sans"],
+                      "body-lg": ["IBM Plex Sans"],
+                      "headline-sm": ["IBM Plex Sans"],
+                      "label-md": ["IBM Plex Sans"],
+                      "headline-lg": ["IBM Plex Sans"],
+                      "headline-md": ["IBM Plex Sans"],
+                      "label-lg": ["IBM Plex Sans"],
+                      "label-sm": ["IBM Plex Sans"]
+              },
+              "fontSize": {
+                      "body-sm": ["12px", {"lineHeight": "16px", "fontWeight": "400"}],
+                      "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                      "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                      "headline-sm": ["16px", {"lineHeight": "24px", "fontWeight": "700"}],
+                      "label-md": ["12px", {"lineHeight": "16px", "fontWeight": "500"}],
+                      "headline-lg": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                      "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "700"}],
+                      "label-lg": ["14px", {"lineHeight": "20px", "fontWeight": "500"}],
+                      "label-sm": ["11px", {"lineHeight": "16px", "fontWeight": "500"}]
+              }
+            },
+          },
+        }
+    </script>
+<style>
+        body { font-family: 'IBM Plex Sans', sans-serif; }
+    </style>
+</head>
+<body class="bg-background text-on-background min-h-screen flex flex-col md:flex-row pb-20 md:pb-0 pt-touch-target-min md:pt-0">
+<!-- TopAppBar -->
+<header class="bg-primary text-on-primary fixed top-0 w-full flex justify-between items-center px-margin-mobile h-touch-target-min z-50 md:hidden border-b border-outline">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">precision_manufacturing</span>
+<h1 class="font-headline-md text-headline-md font-bold tracking-tight">RFLY OPERATIONS</h1>
+</div>
+<div>
+<!-- Actions could go here -->
+</div>
+</header>
+<!-- SideNav (Desktop) -->
+<nav class="hidden md:flex flex-col w-64 bg-surface-container-lowest border-r border-outline-variant h-screen fixed left-0 top-0 z-40">
+<div class="p-margin-mobile flex items-center gap-2 bg-primary text-on-primary h-touch-target-min mb-stack-md shrink-0">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">precision_manufacturing</span>
+<span class="font-headline-md text-headline-md font-bold tracking-tight">RFLY OPS</span>
+</div>
+<div class="flex-1 overflow-y-auto px-gutter-mobile flex flex-col gap-1">
+<a class="flex items-center gap-3 p-3 rounded-DEFAULT hover:bg-surface-container-high transition-colors duration-200 text-on-surface-variant font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined">list_alt</span>
+                Queues
+            </a>
+<a class="flex items-center gap-3 p-3 rounded-DEFAULT hover:bg-surface-container-high transition-colors duration-200 text-on-surface-variant font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined">groups</span>
+                Customers
+            </a>
+<a class="flex items-center gap-3 p-3 rounded-DEFAULT hover:bg-surface-container-high transition-colors duration-200 text-on-surface-variant font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined">calendar_today</span>
+                Schedule
+            </a>
+<a class="flex items-center gap-3 p-3 rounded-DEFAULT bg-secondary-container text-on-secondary-container font-label-md text-label-md font-bold" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">report_problem</span>
+                Exceptions
+            </a>
+</div>
+</nav>
+<!-- Main Content Canvas -->
+<main class="flex-1 w-full md:ml-64 max-w-[1200px] mx-auto p-margin-mobile md:p-stack-lg">
+<!-- Header Section -->
+<div class="mb-stack-lg flex flex-col md:flex-row justify-between items-start md:items-end gap-stack-sm border-b border-outline-variant pb-stack-sm">
+<div>
+<h2 class="font-headline-lg text-headline-lg text-primary">Fleet Exception List</h2>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">High-priority queue showing grounded assets or mission blockers.</p>
+</div>
+<div class="flex gap-2 w-full md:w-auto">
+<button class="flex-1 md:flex-none h-touch-target-min px-4 border border-outline rounded-DEFAULT font-label-md text-label-md flex items-center justify-center gap-2 hover:bg-surface-container-low transition-colors text-primary">
+<span class="material-symbols-outlined">filter_list</span>
+                    Filter
+                </button>
+</div>
+</div>
+<!-- Exception List -->
+<div class="flex flex-col gap-stack-sm">
+<!-- Exception Item 1 (Critical) -->
+<div class="bg-surface-container-low border border-error rounded-DEFAULT p-4 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
+<div class="flex items-start gap-4">
+<div class="w-12 h-12 bg-error-container rounded-full flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-error" style="font-variation-settings: 'FILL' 1;">warning</span>
+</div>
+<div>
+<div class="flex items-center gap-2 mb-1">
+<span class="font-label-sm text-label-sm px-2 py-0.5 bg-surface-variant text-on-surface-variant rounded-sm">DRONE-A7X</span>
+<span class="font-label-sm text-label-sm px-2 py-0.5 bg-error text-on-error rounded-sm font-bold">CRITICAL</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-primary mb-1">Safety Hazard: Motor Failure</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Mission ID: M-8892-ALPHA • Location: Zone 4 Depot</p>
+</div>
+</div>
+<div class="w-full md:w-auto flex gap-2 shrink-0">
+<button class="flex-1 md:flex-none h-[40px] px-4 bg-secondary text-on-secondary rounded-DEFAULT font-label-md text-label-md flex items-center justify-center gap-2 hover:bg-secondary-container transition-colors">
+                        Resolve
+                     </button>
+</div>
+</div>
+<!-- Exception Item 2 (Warning) -->
+<div class="bg-surface-container-low border border-warning rounded-DEFAULT p-4 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
+<div class="flex items-start gap-4">
+<div class="w-12 h-12 bg-surface-variant rounded-full flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-warning" style="font-variation-settings: 'FILL' 1;">build</span>
+</div>
+<div>
+<div class="flex items-center gap-2 mb-1">
+<span class="font-label-sm text-label-sm px-2 py-0.5 bg-surface-variant text-on-surface-variant rounded-sm">LMV-T99</span>
+<span class="font-label-sm text-label-sm px-2 py-0.5 bg-warning text-primary rounded-sm font-bold">WARNING</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-primary mb-1">Maintenance Required: Battery Degradation</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Mission ID: M-1120-BRAVO • Location: Base Station</p>
+</div>
+</div>
+<div class="w-full md:w-auto flex gap-2 shrink-0">
+<button class="flex-1 md:flex-none h-[40px] px-4 border border-outline text-primary rounded-DEFAULT font-label-md text-label-md flex items-center justify-center gap-2 hover:bg-surface-container-high transition-colors">
+                        Review
+                     </button>
+</div>
+</div>
+<!-- Exception Item 3 (Offline) -->
+<div class="bg-surface-container-low border border-outline-variant rounded-DEFAULT p-4 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between opacity-80">
+<div class="flex items-start gap-4">
+<div class="w-12 h-12 bg-surface-variant rounded-full flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-outline" style="font-variation-settings: 'FILL' 1;">wifi_off</span>
+</div>
+<div>
+<div class="flex items-center gap-2 mb-1">
+<span class="font-label-sm text-label-sm px-2 py-0.5 bg-surface-variant text-on-surface-variant rounded-sm">DRONE-B22</span>
+<span class="font-label-sm text-label-sm px-2 py-0.5 bg-surface-variant text-on-surface-variant rounded-sm font-bold">OFFLINE</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-primary mb-1">Telemetry Lost</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Mission ID: M-3341-CHARLIE • Last Known: Sector 7G</p>
+</div>
+</div>
+<div class="w-full md:w-auto flex gap-2 shrink-0">
+<button class="flex-1 md:flex-none h-[40px] px-4 border border-outline text-primary rounded-DEFAULT font-label-md text-label-md flex items-center justify-center gap-2 hover:bg-surface-container-high transition-colors">
+                        Investigate
+                     </button>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar (Mobile) -->
+<nav class="md:hidden fixed bottom-0 left-0 w-full flex justify-around items-center h-16 px-gutter-mobile bg-surface-container-lowest border-t border-outline-variant z-50">
+<a class="flex flex-col items-center justify-center text-on-surface-variant p-2 scale-100 active:scale-90 transition-transform duration-150 ease-in-out hover:bg-surface-container-high rounded-lg w-16" href="#">
+<span class="material-symbols-outlined">list_alt</span>
+<span class="font-label-sm text-label-sm mt-1">Queues</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant p-2 scale-100 active:scale-90 transition-transform duration-150 ease-in-out hover:bg-surface-container-high rounded-lg w-16" href="#">
+<span class="material-symbols-outlined">groups</span>
+<span class="font-label-sm text-label-sm mt-1">Customers</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant p-2 scale-100 active:scale-90 transition-transform duration-150 ease-in-out hover:bg-surface-container-high rounded-lg w-16" href="#">
+<span class="material-symbols-outlined">calendar_today</span>
+<span class="font-label-sm text-label-sm mt-1">Schedule</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-full px-spacing-stack-md py-1 scale-100 active:scale-90 transition-transform duration-150 ease-in-out w-20" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">report_problem</span>
+<span class="font-label-sm text-label-sm mt-1">Exceptions</span>
+</a>
+</nav>
+</body></html>

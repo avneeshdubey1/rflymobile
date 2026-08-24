@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>RFLY Pilot - Start Mission</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;700;800&amp;family=JetBrains+Mono:wght@500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary-container": "#572000",
+                        "surface-container": "#edeeef",
+                        "surface": "#f8f9fa",
+                        "surface-container-low": "#f3f4f5",
+                        "surface-container-lowest": "#ffffff",
+                        "on-tertiary": "#ffffff",
+                        "on-secondary": "#ffffff",
+                        "tertiary-fixed-dim": "#c3c7cc",
+                        "on-error": "#ffffff",
+                        "outline": "#8e7164",
+                        "on-primary-fixed-variant": "#7a3000",
+                        "background": "#f8f9fa",
+                        "surface-container-high": "#e7e8e9",
+                        "surface-variant": "#e1e3e4",
+                        "secondary-fixed": "#d5e3ff",
+                        "on-surface": "#191c1d",
+                        "on-secondary-container": "#51617d",
+                        "tertiary": "#5b5f64",
+                        "error-container": "#ffdad6",
+                        "primary-fixed": "#ffdbcc",
+                        "surface-tint": "#a04100",
+                        "inverse-on-surface": "#f0f1f2",
+                        "outline-variant": "#e2bfb0",
+                        "secondary-container": "#ccdefe",
+                        "inverse-primary": "#ffb693",
+                        "on-primary": "#ffffff",
+                        "tertiary-fixed": "#dfe3e8",
+                        "on-surface-variant": "#5a4136",
+                        "on-error-container": "#93000a",
+                        "on-secondary-fixed": "#091c34",
+                        "on-tertiary-container": "#2d3136",
+                        "primary-fixed-dim": "#ffb693",
+                        "on-secondary-fixed-variant": "#374762",
+                        "on-background": "#191c1d",
+                        "error": "#ba1a1a",
+                        "primary-container": "#ff6b00",
+                        "on-primary-fixed": "#351000",
+                        "primary": "#a04100",
+                        "inverse-surface": "#2e3132",
+                        "on-tertiary-fixed": "#181c20",
+                        "surface-dim": "#d9dadb",
+                        "surface-container-highest": "#e1e3e4",
+                        "tertiary-container": "#95999f",
+                        "surface-bright": "#f8f9fa",
+                        "on-tertiary-fixed-variant": "#43474c",
+                        "secondary-fixed-dim": "#b6c7e7",
+                        "secondary": "#4f5f7b"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "base": "8px",
+                        "stack-sm": "8px",
+                        "touch-target-min": "48px",
+                        "gutter": "12px",
+                        "stack-lg": "24px",
+                        "stack-md": "16px",
+                        "margin-mobile": "16px"
+                    },
+                    "fontFamily": {
+                        "headline-md": ["Hanken Grotesk"],
+                        "headline-sm": ["Hanken Grotesk"],
+                        "display-lg": ["Hanken Grotesk"],
+                        "body-md": ["Hanken Grotesk"],
+                        "data-lg": ["JetBrains Mono"],
+                        "label-caps": ["Hanken Grotesk"],
+                        "body-lg": ["Hanken Grotesk"],
+                        "data-sm": ["JetBrains Mono"]
+                    },
+                    "fontSize": {
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "700" }],
+                        "headline-sm": ["20px", { "lineHeight": "28px", "fontWeight": "700" }],
+                        "display-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "800" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "data-lg": ["20px", { "lineHeight": "24px", "fontWeight": "700" }],
+                        "label-caps": ["12px", { "lineHeight": "16px", "letterSpacing": "0.08em", "fontWeight": "800" }],
+                        "body-lg": ["18px", { "lineHeight": "26px", "fontWeight": "500" }],
+                        "data-sm": ["14px", { "lineHeight": "20px", "fontWeight": "500" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined.fill {
+            font-variation-settings: 'FILL' 1;
+        }
+        
+        /* Custom Checkbox Styles */
+        .safety-checkbox:checked + label .checkbox-icon {
+            background-color: theme('colors.secondary');
+            border-color: theme('colors.secondary');
+        }
+        .safety-checkbox:checked + label .checkbox-icon span {
+            opacity: 1;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background min-h-screen flex flex-col antialiased selection:bg-primary-container selection:text-on-primary-container">
+<!-- TopAppBar (Suppressed navigation items as this is a transactional screen, keeping only close action) -->
+<header class="bg-surface border-b-2 border-outline-variant flex items-center justify-between px-margin-mobile h-touch-target-min w-full z-50 fixed top-0">
+<button aria-label="Close" class="h-touch-target-min w-touch-target-min flex items-center justify-center text-primary active:scale-95 duration-100">
+<span class="material-symbols-outlined text-[24px]">close</span>
+</button>
+<h1 class="font-headline-sm text-headline-sm text-primary">Pre-Flight Brief</h1>
+<div class="h-touch-target-min w-touch-target-min"></div> <!-- Spacer for centering -->
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-grow pt-[calc(theme('spacing.touch-target-min')+theme('spacing.stack-lg'))] pb-[calc(theme('spacing.touch-target-min')*2)] px-margin-mobile max-w-2xl mx-auto w-full">
+<!-- Mission Header Card -->
+<section class="bg-surface-container-lowest border-2 border-surface-variant rounded-lg p-stack-md mb-stack-lg relative overflow-hidden">
+<!-- decorative background accent -->
+<div class="absolute top-0 right-0 w-32 h-32 bg-primary-container/10 rounded-bl-full -z-0"></div>
+<div class="relative z-10 flex flex-col gap-base">
+<div class="flex justify-between items-start">
+<div>
+<span class="font-label-caps text-label-caps text-secondary uppercase px-2 py-1 bg-secondary-container rounded text-on-secondary-container">Accepted</span>
+<h2 class="font-display-lg text-display-lg text-on-surface mt-base">Sector Alpha-9</h2>
+</div>
+<div class="flex flex-col items-end text-right">
+<span class="font-data-lg text-data-lg text-primary">MSN-8942</span>
+<span class="font-data-sm text-data-sm text-on-surface-variant">Crop Survey</span>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-gutter mt-stack-sm border-t border-surface-variant pt-stack-sm">
+<div class="flex flex-col">
+<span class="font-label-caps text-label-caps text-on-surface-variant">Est. Duration</span>
+<span class="font-data-lg text-data-lg text-on-surface flex items-center gap-1">
+<span class="material-symbols-outlined text-[20px]">timer</span> 45m
+                        </span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-caps text-label-caps text-on-surface-variant">Target Alt</span>
+<span class="font-data-lg text-data-lg text-on-surface flex items-center gap-1">
+<span class="material-symbols-outlined text-[20px]">altitude</span> 120ft
+                        </span>
+</div>
+</div>
+</div>
+</section>
+<!-- Safety Checklist Section -->
+<section class="mb-stack-lg">
+<h3 class="font-headline-md text-headline-md text-on-surface mb-stack-md flex items-center gap-2">
+<span class="material-symbols-outlined text-primary fill">gpp_maybe</span>
+                Safety Checklist
+            </h3>
+<div class="flex flex-col gap-base">
+<!-- Checklist Item 1 -->
+<div class="relative">
+<input class="safety-checkbox sr-only" id="check1" type="checkbox"/>
+<label class="flex items-center gap-stack-md p-stack-md bg-surface-container-lowest border-2 border-surface-variant rounded-lg cursor-pointer transition-colors hover:bg-surface-container-low active:bg-surface-container-high min-h-touch-target-min" for="check1">
+<div class="checkbox-icon w-6 h-6 border-2 border-outline rounded flex items-center justify-center flex-shrink-0 transition-colors">
+<span class="material-symbols-outlined text-on-primary text-[16px] opacity-0 transition-opacity">check</span>
+</div>
+<div class="flex flex-col">
+<span class="font-body-lg text-body-lg text-on-surface">Weather conditions verified within operational limits.</span>
+</div>
+</label>
+</div>
+<!-- Checklist Item 2 -->
+<div class="relative">
+<input class="safety-checkbox sr-only" id="check2" type="checkbox"/>
+<label class="flex items-center gap-stack-md p-stack-md bg-surface-container-lowest border-2 border-surface-variant rounded-lg cursor-pointer transition-colors hover:bg-surface-container-low active:bg-surface-container-high min-h-touch-target-min" for="check2">
+<div class="checkbox-icon w-6 h-6 border-2 border-outline rounded flex items-center justify-center flex-shrink-0 transition-colors">
+<span class="material-symbols-outlined text-on-primary text-[16px] opacity-0 transition-opacity">check</span>
+</div>
+<div class="flex flex-col">
+<span class="font-body-lg text-body-lg text-on-surface">Airspace authorization active and verified.</span>
+</div>
+</label>
+</div>
+<!-- Checklist Item 3 -->
+<div class="relative">
+<input class="safety-checkbox sr-only" id="check3" type="checkbox"/>
+<label class="flex items-center gap-stack-md p-stack-md bg-surface-container-lowest border-2 border-surface-variant rounded-lg cursor-pointer transition-colors hover:bg-surface-container-low active:bg-surface-container-high min-h-touch-target-min" for="check3">
+<div class="checkbox-icon w-6 h-6 border-2 border-outline rounded flex items-center justify-center flex-shrink-0 transition-colors">
+<span class="material-symbols-outlined text-on-primary text-[16px] opacity-0 transition-opacity">check</span>
+</div>
+<div class="flex flex-col">
+<span class="font-body-lg text-body-lg text-on-surface">Drone hardware pre-flight inspection complete.</span>
+</div>
+</label>
+</div>
+</div>
+</section>
+<!-- System Status Summary -->
+<section class="bg-secondary-container/30 border border-secondary/20 rounded-lg p-stack-md mb-stack-lg">
+<h4 class="font-headline-sm text-headline-sm text-on-surface mb-stack-sm">System Ready</h4>
+<ul class="flex flex-col gap-2">
+<li class="flex items-center justify-between">
+<span class="font-body-md text-body-md text-on-surface-variant">Battery Status</span>
+<span class="font-data-sm text-data-sm text-primary flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">battery_full</span> 98%
+                    </span>
+</li>
+<li class="flex items-center justify-between">
+<span class="font-body-md text-body-md text-on-surface-variant">GPS Lock</span>
+<span class="font-data-sm text-data-sm text-secondary flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">satellite_alt</span> 14 Sats
+                    </span>
+</li>
+</ul>
+</section>
+</main>
+<!-- Fixed Bottom Action Area -->
+<div class="fixed bottom-0 left-0 w-full bg-surface border-t-2 border-surface-variant p-margin-mobile z-50">
+<div class="max-w-2xl mx-auto w-full flex flex-col gap-base">
+<p class="font-body-md text-body-md text-center text-on-surface-variant">
+                By starting, you confirm all safety checks are complete and you are assuming command.
+            </p>
+<button class="w-full h-[56px] min-h-touch-target-min bg-primary-container text-on-primary-container rounded-[24px] font-headline-md text-headline-md flex items-center justify-center gap-2 active:scale-[0.98] transition-transform shadow-sm">
+<span class="material-symbols-outlined text-[28px]">flight_takeoff</span>
+                START MISSION
+            </button>
+<button class="w-full h-touch-target-min border-2 border-secondary text-secondary rounded-[24px] font-headline-sm text-headline-sm flex items-center justify-center active:bg-secondary-container transition-colors">
+                ABORT / RETURN TO QUEUE
+            </button>
+</div>
+</div>
+<script>
+        // Simple logic to enable Start button only when all checkboxes are checked
+        document.addEventListener('DOMContentLoaded', () => {
+            const checkboxes = document.querySelectorAll('.safety-checkbox');
+            const startBtn = document.querySelector('button.bg-primary-container');
+            
+            // Initial state: disable button if visually we want it disabled. 
+            // For high-stakes, we might keep it visually active but require confirmation, 
+            // or fade it until checked. Let's make it opaque until checked.
+            startBtn.style.opacity = '0.5';
+            startBtn.style.pointerEvents = 'none';
+
+            function updateButtonState() {
+                const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+                if (allChecked) {
+                    startBtn.style.opacity = '1';
+                    startBtn.style.pointerEvents = 'auto';
+                    startBtn.classList.add('bg-primary', 'text-on-primary');
+                    startBtn.classList.remove('bg-primary-container', 'text-on-primary-container');
+                } else {
+                    startBtn.style.opacity = '0.5';
+                    startBtn.style.pointerEvents = 'none';
+                    startBtn.classList.remove('bg-primary', 'text-on-primary');
+                    startBtn.classList.add('bg-primary-container', 'text-on-primary-container');
+                }
+            }
+
+            checkboxes.forEach(cb => {
+                cb.addEventListener('change', updateButtonState);
+            });
+        });
+    </script>
+</body></html>

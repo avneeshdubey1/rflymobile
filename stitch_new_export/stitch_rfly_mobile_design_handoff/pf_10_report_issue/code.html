@@ -1,0 +1,239 @@
+<!DOCTYPE html><html class="h-full" lang="en" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>PF-10 Report Issue</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;700;800&amp;family=JetBrains+Mono:wght@500;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-secondary-container": "#51617d",
+                        "tertiary": "#5b5f64",
+                        "secondary": "#4f5f7b",
+                        "on-secondary-fixed": "#091c34",
+                        "surface": "#f8f9fa",
+                        "surface-container-highest": "#e1e3e4",
+                        "surface-dim": "#d9dadb",
+                        "tertiary-fixed": "#dfe3e8",
+                        "on-error": "#ffffff",
+                        "inverse-surface": "#2e3132",
+                        "on-tertiary-container": "#2d3136",
+                        "on-tertiary-fixed-variant": "#43474c",
+                        "surface-variant": "#e1e3e4",
+                        "surface-container-low": "#f3f4f5",
+                        "on-secondary-fixed-variant": "#374762",
+                        "inverse-primary": "#ffb693",
+                        "error": "#ba1a1a",
+                        "on-surface-variant": "#5a4136",
+                        "on-primary-container": "#572000",
+                        "background": "#f8f9fa",
+                        "surface-tint": "#a04100",
+                        "on-surface": "#191c1d",
+                        "outline": "#8e7164",
+                        "on-tertiary-fixed": "#181c20",
+                        "surface-container-lowest": "#ffffff",
+                        "primary-fixed": "#ffdbcc",
+                        "on-primary-fixed-variant": "#7a3000",
+                        "surface-bright": "#f8f9fa",
+                        "surface-container-high": "#e7e8e9",
+                        "primary": "#a04100",
+                        "primary-container": "#ff6b00",
+                        "on-background": "#191c1d",
+                        "secondary-fixed-dim": "#b6c7e7",
+                        "on-primary": "#ffffff",
+                        "inverse-on-surface": "#f0f1f2",
+                        "secondary-container": "#ccdefe",
+                        "on-tertiary": "#ffffff",
+                        "surface-container": "#edeeef",
+                        "on-error-container": "#93000a",
+                        "primary-fixed-dim": "#ffb693",
+                        "tertiary-container": "#95999f",
+                        "secondary-fixed": "#d5e3ff",
+                        "error-container": "#ffdad6",
+                        "on-secondary": "#ffffff",
+                        "outline-variant": "#e2bfb0",
+                        "tertiary-fixed-dim": "#c3c7cc",
+                        "on-primary-fixed": "#351000"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "gutter": "12px",
+                        "stack-md": "16px",
+                        "touch-target-min": "48px",
+                        "margin-mobile": "16px",
+                        "stack-lg": "24px",
+                        "stack-sm": "8px",
+                        "base": "8px"
+                    },
+                    "fontFamily": {
+                        "display-lg": ["Hanken Grotesk"],
+                        "label-caps": ["Hanken Grotesk"],
+                        "data-sm": ["JetBrains Mono"],
+                        "headline-sm": ["Hanken Grotesk"],
+                        "data-lg": ["JetBrains Mono"],
+                        "body-md": ["Hanken Grotesk"],
+                        "headline-md": ["Hanken Grotesk"],
+                        "body-lg": ["Hanken Grotesk"]
+                    },
+                    "fontSize": {
+                        "display-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "800" }],
+                        "label-caps": ["12px", { "lineHeight": "16px", "letterSpacing": "0.08em", "fontWeight": "800" }],
+                        "data-sm": ["14px", { "lineHeight": "20px", "fontWeight": "500" }],
+                        "headline-sm": ["20px", { "lineHeight": "28px", "fontWeight": "700" }],
+                        "data-lg": ["20px", { "lineHeight": "24px", "fontWeight": "700" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "700" }],
+                        "body-lg": ["18px", { "lineHeight": "26px", "fontWeight": "500" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background h-full flex flex-col font-body-md antialiased overflow-x-hidden pt-16">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full bg-surface border-b-2 border-outline-variant flex items-center justify-between px-margin-mobile h-touch-target-min z-50">
+<button class="flex items-center justify-center w-touch-target-min h-touch-target-min text-secondary hover:bg-surface-container-high transition-colors active:scale-95 duration-100 rounded-full focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">menu</span>
+</button>
+<div class="h-8 w-auto flex items-center justify-center"><img src="https://lh3.googleusercontent.com/aida-public/AB6AXuBM6ZaEEoi73L3Z7RT4sIRJBJeTmRqLNnkIljj_zFI0SvHlLFqO-fQaQlstlb0G_C2ZMyCEnCBpTUHEaGjwWJqveuGaxM-Zm2Nc-9pnzpXT0lWiXiWLNczUWrEnFOjWVQvK5GZn62HlXpUhflDrV-rpLaVcPR4Gl92DLL5j46bygl_vyW-1EHqEn5unOhiPDYTR9CFM0D8W9tyaZOdgSUMpVm4VAZIKN83wDNn5mPBxCAlF99blST_o" alt="RFLY Drone Mark" class="h-full w-auto object-contain"></div>
+<div class="flex items-center justify-center w-touch-target-min h-touch-target-min text-secondary">
+<span class="material-symbols-outlined">cloud_off</span>
+</div>
+</header>
+<main class="flex-1 w-full max-w-3xl mx-auto px-margin-mobile py-stack-lg flex flex-col gap-stack-lg pb-24">
+<!-- Header Section -->
+<section class="flex flex-col gap-stack-sm">
+<div class="flex items-center gap-base">
+<span class="material-symbols-outlined text-error text-[32px]">report</span>
+<h2 class="font-headline-md text-headline-md text-on-surface">Report Issue</h2>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant">
+                Log field anomalies, safety concerns, or blockers. This information is critical for operational safety and maintenance tracking.
+            </p>
+</section>
+<!-- Form Card -->
+<div class="bg-surface-container-lowest border-2 border-outline-variant rounded-lg p-margin-mobile shadow-sm">
+<form class="flex flex-col gap-stack-lg" id="issue-form">
+<!-- Category Selector -->
+<div class="flex flex-col gap-stack-sm">
+<label class="font-label-caps text-label-caps text-on-surface uppercase" for="issue-category">Issue Category</label>
+<div class="relative">
+<select class="appearance-none w-full bg-surface-container-lowest border-2 border-outline text-on-surface rounded font-body-lg text-body-lg h-touch-target-min px-4 py-2 focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary cursor-pointer" id="issue-category" name="category" required="">
+<option disabled="" selected="" value="">Select a category...</option>
+<option value="drone_malfunction">Drone Malfunction</option>
+<option value="safety_hazard">Safety Hazard</option>
+<option value="weather_blocker">Weather Blocker</option>
+<option value="customer_blocker">Customer Blocker</option>
+<option value="other">Other</option>
+</select>
+<div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-secondary">
+<span class="material-symbols-outlined">expand_more</span>
+</div>
+</div>
+</div>
+<!-- Note Field -->
+<div class="flex flex-col gap-stack-sm">
+<div class="flex justify-between items-baseline">
+<label class="font-label-caps text-label-caps text-on-surface uppercase" for="issue-note">Details</label>
+<span class="font-data-sm text-data-sm text-on-surface-variant" id="char-count">0/500</span>
+</div>
+<textarea class="w-full bg-surface-container-lowest border-2 border-outline text-on-surface rounded font-body-md text-body-md p-4 focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary resize-none" id="issue-note" maxlength="500" name="note" placeholder="Describe the issue clearly. Omit coordinates." required="" rows="5"></textarea>
+</div>
+<!-- Status Indicators (Hidden by default, used for demonstration) -->
+<div class="hidden flex flex-col gap-stack-sm p-4 rounded-md border-2" id="status-container">
+<div class="flex items-center gap-base">
+<span class="material-symbols-outlined" id="status-icon">info</span>
+<span class="font-headline-sm text-headline-sm" id="status-text">Status</span>
+</div>
+<p class="font-body-md text-body-md" id="status-desc"></p>
+</div>
+<!-- Action Buttons -->
+<div class="flex flex-col sm:flex-row gap-stack-md pt-stack-sm">
+<button class="w-full sm:w-1/2 h-touch-target-min rounded-full border-2 border-secondary text-secondary font-headline-sm text-headline-sm flex items-center justify-center gap-2 hover:bg-surface-container-low transition-colors focus:outline-none focus:ring-2 focus:ring-secondary focus:ring-offset-2 active:scale-95 duration-100" type="button">
+                        Cancel
+                    </button>
+<button class="w-full sm:w-1/2 h-touch-target-min rounded-full bg-primary-container text-on-primary-container font-headline-sm text-headline-sm flex items-center justify-center gap-2 hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 shadow-sm active:scale-95 duration-100" type="submit">
+                        Submit Issue
+                    </button>
+</div>
+</form>
+</div>
+<!-- Offline Status Banner -->
+<div class="bg-surface-container-high border-l-4 border-secondary rounded p-4 flex gap-stack-md items-start mt-auto">
+<span class="material-symbols-outlined text-secondary mt-1">signal_wifi_off</span>
+<div>
+<h4 class="font-headline-sm text-headline-sm text-on-surface">Offline Mode Active</h4>
+<p class="font-body-md text-body-md text-on-surface-variant">Reports will be securely queued and synced automatically when a connection is re-established.</p>
+</div>
+</div>
+</main>
+<!-- Contextual Nav Suppression: This is a linear/transactional task focused form. No BottomNavBar or SideNav should be rendered. -->
+<script>
+        const noteInput = document.getElementById('issue-note');
+        const charCount = document.getElementById('char-count');
+        const form = document.getElementById('issue-form');
+        const statusContainer = document.getElementById('status-container');
+        const statusIcon = document.getElementById('status-icon');
+        const statusText = document.getElementById('status-text');
+        const statusDesc = document.getElementById('status-desc');
+
+        // Character Counter
+        noteInput.addEventListener('input', function() {
+            const currentLength = this.value.length;
+            charCount.textContent = `${currentLength}/500`;
+            if (currentLength >= 500) {
+                charCount.classList.add('text-error');
+            } else {
+                charCount.classList.remove('text-error');
+            }
+        });
+
+        // Form Submission Simulation
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Basic validation
+            if (!form.checkValidity()) {
+                form.reportValidity();
+                return;
+            }
+
+            // Simulate Offline Queued State
+            statusContainer.classList.remove('hidden', 'border-error', 'bg-error-container', 'text-on-error-container', 'border-primary', 'bg-surface-container-low', 'text-on-surface');
+            statusContainer.classList.add('border-secondary', 'bg-secondary-container', 'text-on-secondary-container');
+            statusIcon.textContent = 'cloud_sync';
+            statusText.textContent = 'Report Queued (Offline)';
+            statusDesc.textContent = 'Your report has been saved locally. It will automatically upload when network connectivity returns.';
+
+            // Disable inputs during submission simulation
+            form.querySelectorAll('input, select, textarea, button').forEach(el => el.disabled = true);
+            
+            // In a real app, you would handle the sync logic here.
+            // For demonstration, reset after a few seconds
+            setTimeout(() => {
+                form.reset();
+                charCount.textContent = '0/500';
+                statusContainer.classList.add('hidden');
+                form.querySelectorAll('input, select, textarea, button').forEach(el => el.disabled = false);
+            }, 3000);
+        });
+    </script>
+
+
+</body></html>

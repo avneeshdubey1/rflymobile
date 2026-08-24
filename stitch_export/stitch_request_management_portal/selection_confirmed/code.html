@@ -1,0 +1,228 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>RFLY Operations - Mission Ready</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-secondary-fixed-variant": "#783200",
+                      "surface-container-high": "#e6e8ea",
+                      "surface-tint": "#565e74",
+                      "secondary-fixed-dim": "#ffb690",
+                      "error-container": "#ffdad6",
+                      "tertiary-fixed": "#d5e3fd",
+                      "inverse-primary": "#bec6e0",
+                      "outline": "#76777d",
+                      "on-surface": "#191c1e",
+                      "error": "#ba1a1a",
+                      "primary": "#000000",
+                      "on-tertiary-fixed-variant": "#3a485c",
+                      "background": "#f7f9fb",
+                      "surface-container": "#eceef0",
+                      "surface": "#f7f9fb",
+                      "on-surface-variant": "#45464d",
+                      "secondary": "#9d4300",
+                      "surface-slate": "#E2E8F0",
+                      "on-background": "#191c1e",
+                      "status-success": "#166534",
+                      "primary-container": "#131b2e",
+                      "on-error-container": "#93000a",
+                      "tertiary-container": "#0d1c2f",
+                      "rfly-blue": "#0F172A",
+                      "surface-bright": "#f7f9fb",
+                      "primary-fixed-dim": "#bec6e0",
+                      "on-primary-fixed-variant": "#3f465c",
+                      "on-tertiary": "#ffffff",
+                      "on-primary": "#ffffff",
+                      "secondary-container": "#fd761a",
+                      "surface-container-highest": "#e0e3e5",
+                      "on-secondary-fixed": "#341100",
+                      "on-tertiary-container": "#76859b",
+                      "tertiary": "#000000",
+                      "inverse-on-surface": "#eff1f3",
+                      "on-tertiary-fixed": "#0d1c2f",
+                      "on-primary-fixed": "#131b2e",
+                      "on-secondary-container": "#5c2400",
+                      "on-error": "#ffffff",
+                      "surface-container-lowest": "#ffffff",
+                      "tertiary-fixed-dim": "#b9c7e0",
+                      "surface-container-low": "#f2f4f6",
+                      "inverse-surface": "#2d3133",
+                      "status-warning": "#9A3412",
+                      "safety-orange": "#F97316",
+                      "surface-dim": "#d8dadc",
+                      "on-primary-container": "#7c839b",
+                      "primary-fixed": "#dae2fd",
+                      "on-secondary": "#ffffff",
+                      "outline-variant": "#c6c6cd",
+                      "status-offline": "#475569",
+                      "surface-variant": "#e0e3e5",
+                      "secondary-fixed": "#ffdbca"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "spacing": {
+                      "gutter": "16px",
+                      "margin-mobile": "20px",
+                      "stack-lg": "24px",
+                      "stack-md": "16px",
+                      "touch-target-min": "48px",
+                      "stack-sm": "8px"
+              },
+              "fontFamily": {
+                      "body-md": [
+                              "IBM Plex Sans"
+                      ],
+                      "body-lg": [
+                              "IBM Plex Sans"
+                      ],
+                      "label-caps": [
+                              "IBM Plex Sans"
+                      ],
+                      "headline-lg": [
+                              "IBM Plex Sans"
+                      ],
+                      "headline-md": [
+                              "IBM Plex Sans"
+                      ],
+                      "headline-lg-mobile": [
+                              "IBM Plex Sans"
+                      ],
+                      "data-mono": [
+                              "JetBrains Mono"
+                      ]
+              },
+              "fontSize": {
+                      "body-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "body-lg": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "label-caps": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "headline-lg": [
+                              "28px",
+                              {
+                                      "lineHeight": "36px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-md": [
+                              "20px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-lg-mobile": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "data-mono": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "500"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined.filled {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface text-on-surface font-body-md antialiased min-h-screen flex flex-col items-center justify-center p-margin-mobile">
+<!-- Top Navigation (Suppressed per instructions for linear/transactional success screen, but keeping a minimal header for context) -->
+<main class="w-full max-w-md bg-surface-container-lowest rounded-xl shadow-sm border border-surface-slate overflow-hidden flex flex-col">
+<!-- Success Animation / Header Area -->
+<div class="bg-rfly-blue p-stack-lg flex flex-col items-center justify-center text-center relative overflow-hidden">
+<div class="w-24 h-24 bg-status-success rounded-full flex items-center justify-center mb-stack-md shadow-md z-10">
+<span class="material-symbols-outlined filled text-on-primary text-[48px]" data-icon="check_circle">check_circle</span>
+</div>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-on-primary mb-stack-sm z-10">Mission Ready</h1>
+<p class="font-body-md text-body-md text-inverse-primary z-10">Copilot selection confirmed.</p>
+<!-- Subtle background pattern for visual interest without distraction -->
+<div class="absolute inset-0 opacity-10 pointer-events-none" style="background-image: radial-gradient(circle at center, #ffffff 1px, transparent 1px); background-size: 16px 16px;"></div>
+</div>
+<!-- Copilot Summary Card -->
+<div class="p-margin-mobile flex-1 flex flex-col gap-stack-md">
+<h2 class="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider">Assigned Copilot</h2>
+<div class="bg-surface rounded-lg border border-surface-slate p-stack-md flex items-center gap-gutter">
+<img class="w-16 h-16 rounded-full object-cover border-2 border-surface-slate" data-alt="A professional headshot of a drone pilot in a bright outdoor setting, wearing safety gear and a focused expression. The lighting is natural and clear, reinforcing an industrial, dependable aesthetic with high-contrast elements suitable for a modern field operations context." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAfCFJha5vdZN5FNkScC45tN449i-Eu60obs_bTG13ezMuhFPVrJYJYkLksdsUfRx1PiilkP1lqinpPEm7-4IQiavLn1EfDH6LbTHAiQ6Y8gET7lDob_df07DiWHgm1On22tdupzGbbxIevNRO2m-KSLf3rI-YY4odHZakBIm5yakwi0DcvXR_tSnyW5bqoMt4q39fZ2xQMio9kM9vOGxQ5XX-EqfoeFyRoEXdMYwESoMVGPD4RqamH">
+<div class="flex-1">
+<h3 class="font-headline-md text-headline-md text-on-surface">Aman R.</h3>
+<p class="font-body-md text-body-md text-on-surface-variant flex items-center gap-1 mt-1">
+<span class="material-symbols-outlined text-[16px] text-safety-orange" data-icon="verified">verified</span>
+                        Senior Operations Pilot
+                    </p>
+</div>
+</div>
+<!-- Mission Details Summary -->
+<div class="grid grid-cols-2 gap-stack-sm mt-stack-sm">
+<div class="bg-surface rounded-lg border border-surface-slate p-stack-sm flex flex-col items-start">
+<span class="font-label-caps text-label-caps text-on-surface-variant mb-1">Equipment</span>
+<span class="font-data-mono text-data-mono text-on-surface">Drone X-42</span>
+</div>
+<div class="bg-surface rounded-lg border border-surface-slate p-stack-sm flex flex-col items-start">
+<span class="font-label-caps text-label-caps text-on-surface-variant mb-1">Duration</span>
+<span class="font-data-mono text-data-mono text-on-surface">Est. 45 min</span>
+</div>
+</div>
+</div>
+<!-- Primary Action Footer -->
+<div class="p-margin-mobile border-t border-surface-slate bg-surface-container-low mt-auto">
+<button class="w-full h-touch-target-min bg-safety-orange hover:bg-secondary-container active:scale-[0.98] transition-all duration-150 rounded-lg flex items-center justify-center gap-2 shadow-md" onclick="window.location.href='{{DATA:SCREEN:SCREEN_9}}'">
+<span class="material-symbols-outlined text-on-primary" data-icon="flight_takeoff">flight_takeoff</span>
+<span class="font-headline-md text-headline-md text-on-primary">Start Mission</span>
+</button>
+<button class="w-full h-touch-target-min mt-stack-sm text-on-surface-variant hover:text-on-surface transition-colors duration-150 flex items-center justify-center font-body-lg text-body-lg">
+                Review Mission Plan
+            </button>
+</div>
+</main>
+
+
+</body></html>

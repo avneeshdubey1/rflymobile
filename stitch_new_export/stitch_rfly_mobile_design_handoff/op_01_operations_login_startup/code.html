@@ -1,0 +1,216 @@
+<!DOCTYPE html><html class="light" lang="en" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>RFLY Operations - Login</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;700;800&amp;family=JetBrains+Mono:wght@500;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "inverse-surface": "#2e3132",
+                        "on-surface": "#191c1d",
+                        "background": "#f8f9fa",
+                        "surface-container-low": "#f3f4f5",
+                        "surface": "#f8f9fa",
+                        "secondary": "#a04100",
+                        "primary": "#04162e",
+                        "surface-tint": "#4f5f7b",
+                        "status-success": "#2E7D32",
+                        "on-error": "#ffffff",
+                        "on-primary-container": "#8292b0",
+                        "tertiary-container": "#272b2f",
+                        "tertiary-fixed": "#dfe3e8",
+                        "on-secondary": "#ffffff",
+                        "inverse-primary": "#b6c7e7",
+                        "on-primary": "#ffffff",
+                        "surface-container": "#EDEEEF",
+                        "surface-variant": "#e1e3e4",
+                        "error-container": "#ffdad6",
+                        "on-secondary-container": "#572000",
+                        "on-tertiary-container": "#8e9297",
+                        "surface-container-high": "#e7e8e9",
+                        "tertiary": "#12171b",
+                        "primary-fixed-dim": "#b6c7e7",
+                        "status-error": "#D32F2F",
+                        "primary-fixed": "#d5e3ff",
+                        "status-offline": "#757575",
+                        "status-warning": "#ED6C02",
+                        "error": "#ba1a1a",
+                        "inverse-on-surface": "#f0f1f2",
+                        "surface-dim": "#d9dadb",
+                        "on-primary-fixed": "#091c34",
+                        "on-surface-variant": "#44474d",
+                        "tertiary-fixed-dim": "#c3c7cc",
+                        "on-secondary-fixed-variant": "#7a3000",
+                        "on-primary-fixed-variant": "#374762",
+                        "on-error-container": "#93000a",
+                        "secondary-fixed-dim": "#ffb693",
+                        "outline": "#75777e",
+                        "on-tertiary-fixed-variant": "#43474c",
+                        "on-tertiary": "#ffffff",
+                        "surface-bright": "#f8f9fa",
+                        "on-secondary-fixed": "#351000",
+                        "outline-variant": "#c5c6ce",
+                        "primary-container": "#1a2b44",
+                        "on-background": "#191c1d",
+                        "secondary-fixed": "#ffdbcc",
+                        "secondary-container": "#fe6b00",
+                        "on-tertiary-fixed": "#181c20",
+                        "surface-container-highest": "#e1e3e4",
+                        "surface-container-lowest": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "gutter": "12px",
+                        "margin-mobile": "16px",
+                        "base": "8px",
+                        "stack-lg": "24px",
+                        "stack-sm": "8px",
+                        "touch-target-min": "48px",
+                        "stack-md": "16px"
+                    },
+                    "fontFamily": {
+                        "data-lg": ["JetBrains Mono"],
+                        "headline-sm": ["Hanken Grotesk"],
+                        "label-caps": ["Hanken Grotesk"],
+                        "display-lg": ["Hanken Grotesk"],
+                        "body-md": ["Hanken Grotesk"],
+                        "headline-md": ["Hanken Grotesk"],
+                        "body-lg": ["Hanken Grotesk"],
+                        "data-sm": ["JetBrains Mono"]
+                    },
+                    "fontSize": {
+                        "data-lg": ["20px", { "lineHeight": "24px", "fontWeight": "700" }],
+                        "headline-sm": ["20px", { "lineHeight": "28px", "fontWeight": "700" }],
+                        "label-caps": ["12px", { "lineHeight": "16px", "letterSpacing": "0.08em", "fontWeight": "800" }],
+                        "display-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "800" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "700" }],
+                        "body-lg": ["18px", { "lineHeight": "26px", "fontWeight": "500" }],
+                        "data-sm": ["14px", { "lineHeight": "20px", "fontWeight": "500" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        
+        /* Subtle industrial pattern for background */
+        .bg-pattern {
+            background-image: radial-gradient(circle at 2px 2px, rgba(4, 22, 46, 0.05) 1px, transparent 0);
+            background-size: 24px 24px;
+        }
+    </style>
+</head>
+<body class="bg-background min-h-screen flex items-center justify-center font-body-md text-on-surface bg-pattern p-margin-mobile">
+<!-- Main Container -->
+<main class="w-full max-w-[480px] bg-surface-container-lowest border border-surface-container rounded-xl shadow-[0px_4px_0px_rgba(0,0,0,0.05)] overflow-hidden flex flex-col">
+<!-- Header Branding -->
+<div class="bg-primary px-stack-lg py-stack-lg flex flex-col items-center justify-center border-b-[4px] border-secondary relative overflow-hidden">
+<!-- Subtle abstract graphic behind logo -->
+<div class="absolute inset-0 opacity-10 pointer-events-none">
+<svg height="100%" preserveAspectRatio="none" viewBox="0 0 400 200" width="100%">
+<path class="text-primary-fixed" d="M0 100 Q 100 0 200 100 T 400 100 L 400 200 L 0 200 Z" fill="currentColor"></path>
+<path class="text-secondary" d="M0 150 Q 150 50 250 150 T 400 150 L 400 200 L 0 200 Z" fill="currentColor"></path>
+</svg>
+</div>
+<div class="z-10 flex items-center gap-stack-sm text-on-primary">
+<img src="https://lh3.googleusercontent.com/aida-public/AB6AXuBM6ZaEEoi73L3Z7RT4sIRJBJeTmRqLNnkIljj_zFI0SvHlLFqO-fQaQlstlb0G_C2ZMyCEnCBpTUHEaGjwWJqveuGaxM-Zm2Nc-9pnzpXT0lWiXiWLNczUWrEnFOjWVQvK5GZn62HlXpUhflDrV-rpLaVcPR4Gl92DLL5j46bygl_vyW-1EHqEn5unOhiPDYTR9CFM0D8W9tyaZOdgSUMpVm4VAZIKN83wDNn5mPBxCAlF99blST_o" alt="RFLY Drone Mark" class="h-16 w-16 object-contain">
+<h1 class="font-display-lg text-display-lg tracking-tight">RFLY <span class="font-headline-sm text-headline-sm text-primary-fixed-dim">Operations</span></h1>
+</div>
+<p class="font-data-sm text-data-sm text-on-primary-container mt-base z-10">System v4.2.1 • Connected</p>
+</div>
+<!-- Content Area: Login Form (Default State) -->
+<div class="p-stack-lg flex-grow flex flex-col gap-stack-lg">
+<div class="flex flex-col gap-base">
+<h2 class="font-headline-md text-headline-md text-primary">Secure Access</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">Enter your credentials to access the operations dashboard.</p>
+</div>
+<form class="flex flex-col gap-stack-md" onsubmit="event.preventDefault(); simulateLogin();">
+<!-- Email Input -->
+<div class="flex flex-col gap-base">
+<label class="font-label-caps text-label-caps text-on-surface-variant uppercase" for="email">Operator ID / Email</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-gutter top-1/2 -translate-y-1/2 text-outline" data-icon="badge">badge</span>
+<input class="w-full h-touch-target-min pl-[48px] pr-gutter bg-surface-container-lowest border-2 border-surface-container rounded-lg font-data-sm text-data-sm text-on-surface focus:border-secondary focus:ring-0 focus:outline-none transition-colors" id="email" placeholder="user@rfly.ops" required="" type="email">
+</div>
+</div>
+<!-- Password Input -->
+<div class="flex flex-col gap-base">
+<div class="flex justify-between items-center">
+<label class="font-label-caps text-label-caps text-on-surface-variant uppercase" for="password">Passcode</label>
+<a class="font-label-caps text-label-caps text-primary hover:text-secondary transition-colors" href="#">Recover Access</a>
+</div>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-gutter top-1/2 -translate-y-1/2 text-outline" data-icon="lock">lock</span>
+<input class="w-full h-touch-target-min pl-[48px] pr-gutter bg-surface-container-lowest border-2 border-surface-container rounded-lg font-data-sm text-data-sm text-on-surface focus:border-secondary focus:ring-0 focus:outline-none transition-colors" id="password" placeholder="••••••••" required="" type="password">
+</div>
+</div>
+<!-- Actions -->
+<div class="mt-base flex flex-col gap-stack-sm">
+<button class="w-full h-touch-target-min bg-secondary text-on-secondary font-headline-sm text-headline-sm rounded-full flex items-center justify-center gap-base hover:bg-on-secondary-container transition-colors active:scale-95 duration-100" type="submit">
+                        Authenticate <span class="material-symbols-outlined text-[20px]" data-icon="arrow_forward">arrow_forward</span>
+</button>
+<button class="w-full h-touch-target-min bg-transparent text-primary font-body-md text-body-md rounded-lg flex items-center justify-center hover:bg-surface-container-low transition-colors" type="button">
+                        Request Temporary Access
+                    </button>
+</div>
+</form>
+</div>
+<!-- Footer Footer -->
+<div class="p-margin-mobile bg-surface-container-low border-t border-surface-container flex items-center justify-between text-on-surface-variant">
+<div class="flex items-center gap-base">
+<div class="w-2 h-2 rounded-full bg-status-success animate-pulse"></div>
+<span class="font-data-sm text-data-sm">Server: Online</span>
+</div>
+<span class="font-label-caps text-label-caps">© 2024 RFLY INC.</span>
+</div>
+<!-- Overlay: Loading / Initialization State (Hidden by default) -->
+<div class="hidden absolute inset-0 bg-surface-container-lowest z-50 flex flex-col items-center justify-center p-stack-lg border border-surface-container rounded-xl" id="loadingOverlay">
+<div class="w-16 h-16 border-4 border-surface-container border-t-secondary rounded-full animate-spin mb-stack-lg"></div>
+<h2 class="font-headline-sm text-headline-sm text-primary mb-base">Initializing System</h2>
+<!-- Progress List -->
+<div class="w-full max-w-[300px] flex flex-col gap-base mt-stack-md">
+<div class="flex justify-between items-center font-data-sm text-data-sm">
+<span class="text-on-surface-variant">Authenticating...</span>
+<span class="material-symbols-outlined text-status-success text-[16px]" data-icon="check_circle">check_circle</span>
+</div>
+<div class="flex justify-between items-center font-data-sm text-data-sm">
+<span class="text-primary font-bold">Restoring Session...</span>
+<span class="material-symbols-outlined text-outline animate-spin text-[16px]" data-icon="sync">sync</span>
+</div>
+<div class="flex justify-between items-center font-data-sm text-data-sm">
+<span class="text-outline">Verifying Assets...</span>
+<span class="material-symbols-outlined text-outline text-[16px]" data-icon="hourglass_empty">hourglass_empty</span>
+</div>
+</div>
+</div>
+</main>
+<script>
+        function simulateLogin() {
+            const overlay = document.getElementById('loadingOverlay');
+            overlay.classList.remove('hidden');
+            
+            // Just a visual simulation, no real action needed for static UI
+            setTimeout(() => {
+                alert("Simulated: Successfully authenticated. Redirecting to Dashboard.");
+                overlay.classList.add('hidden');
+            }, 2500);
+        }
+    </script>
+
+
+</body></html>

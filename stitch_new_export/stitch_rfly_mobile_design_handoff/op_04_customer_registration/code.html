@@ -1,0 +1,241 @@
+<!DOCTYPE html><html class="light" lang="en" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Customer Registration - RFLY Operations</title>
+<!-- Google Fonts & Material Symbols -->
+<link href="https://fonts.googleapis.com" rel="preconnect">
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;700;800&amp;family=JetBrains+Mono:wght@500;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Tailwind Config -->
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "inverse-surface": "#2e3132",
+                        "on-surface": "#191c1d",
+                        "background": "#f8f9fa",
+                        "surface-container-low": "#f3f4f5",
+                        "surface": "#f8f9fa",
+                        "secondary": "#a04100",
+                        "primary": "#04162e",
+                        "surface-tint": "#4f5f7b",
+                        "status-success": "#2E7D32",
+                        "on-error": "#ffffff",
+                        "on-primary-container": "#8292b0",
+                        "tertiary-container": "#272b2f",
+                        "tertiary-fixed": "#dfe3e8",
+                        "on-secondary": "#ffffff",
+                        "inverse-primary": "#b6c7e7",
+                        "on-primary": "#ffffff",
+                        "surface-container": "#EDEEEF",
+                        "surface-variant": "#e1e3e4",
+                        "error-container": "#ffdad6",
+                        "on-secondary-container": "#572000",
+                        "on-tertiary-container": "#8e9297",
+                        "surface-container-high": "#e7e8e9",
+                        "tertiary": "#12171b",
+                        "primary-fixed-dim": "#b6c7e7",
+                        "status-error": "#D32F2F",
+                        "primary-fixed": "#d5e3ff",
+                        "status-offline": "#757575",
+                        "status-warning": "#ED6C02",
+                        "error": "#ba1a1a",
+                        "inverse-on-surface": "#f0f1f2",
+                        "surface-dim": "#d9dadb",
+                        "on-primary-fixed": "#091c34",
+                        "on-surface-variant": "#44474d",
+                        "tertiary-fixed-dim": "#c3c7cc",
+                        "on-secondary-fixed-variant": "#7a3000",
+                        "on-primary-fixed-variant": "#374762",
+                        "on-error-container": "#93000a",
+                        "secondary-fixed-dim": "#ffb693",
+                        "outline": "#75777e",
+                        "on-tertiary-fixed-variant": "#43474c",
+                        "on-tertiary": "#ffffff",
+                        "surface-bright": "#f8f9fa",
+                        "on-secondary-fixed": "#351000",
+                        "outline-variant": "#c5c6ce",
+                        "primary-container": "#1a2b44",
+                        "on-background": "#191c1d",
+                        "secondary-fixed": "#ffdbcc",
+                        "secondary-container": "#fe6b00",
+                        "on-tertiary-fixed": "#181c20",
+                        "surface-container-highest": "#e1e3e4",
+                        "surface-container-lowest": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "gutter": "12px",
+                        "margin-mobile": "16px",
+                        "base": "8px",
+                        "stack-lg": "24px",
+                        "stack-sm": "8px",
+                        "touch-target-min": "48px",
+                        "stack-md": "16px"
+                    },
+                    "fontFamily": {
+                        "data-lg": ["JetBrains Mono"],
+                        "headline-sm": ["Hanken Grotesk"],
+                        "label-caps": ["Hanken Grotesk"],
+                        "display-lg": ["Hanken Grotesk"],
+                        "body-md": ["Hanken Grotesk"],
+                        "headline-md": ["Hanken Grotesk"],
+                        "body-lg": ["Hanken Grotesk"],
+                        "data-sm": ["JetBrains Mono"]
+                    },
+                    "fontSize": {
+                        "data-lg": ["20px", {"lineHeight": "24px", "fontWeight": "700"}],
+                        "headline-sm": ["20px", {"lineHeight": "28px", "fontWeight": "700"}],
+                        "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.08em", "fontWeight": "800"}],
+                        "display-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                        "body-lg": ["18px", {"lineHeight": "26px", "fontWeight": "500"}],
+                        "data-sm": ["14px", {"lineHeight": "20px", "fontWeight": "500"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface h-screen w-full overflow-hidden flex font-body-md text-body-md">
+<!-- Desktop Navigation Drawer -->
+<aside class="hidden md:flex fixed inset-y-0 left-0 z-[60] flex-col py-stack-lg h-full w-[280px] rounded-r-xl border-r border-surface-container bg-surface-container-lowest shadow-lg transition-all duration-200 ease-in-out">
+<div class="px-4 mb-8 left_align">
+<div class="flex items-center gap-3 mb-4">
+<div class="w-12 h-12 rounded-full overflow-hidden bg-surface-variant">
+<img alt="Manager Avatar" class="w-full h-full object-cover" data-alt="A clean, modern professional headshot of a corporate manager in a bright office environment, sharp focus, neutral tones." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC7o4XGPfQnaXL0_RcUMdN5FtAm-xM5kODDIvFJcbm9kjXsrNhUcY566roAA483rS18Ncm2U61DVizKw6I21LKjRom4W8T-miKvtGCKLS5DT7STiW2RgDhwvJKntwvzXZ3B1XwHXPoc4uWP1kfdB9Z7_DDTPIO-Xmno3xWQOgkWPPJ4cs9w2WZ5WXEw0K5tdczFwmyPNqeVVP6tN_ZK4mk9v64KPxU5sMcRDs_77lsHAHL3AOOQk_Kz">
+</div>
+<div>
+<div class="font-headline-sm text-headline-sm text-secondary">Alex Morgan</div>
+<div class="font-body-md text-body-md text-primary">Fleet Manager</div>
+<div class="font-label-caps text-label-caps text-on-surface-variant mt-1">North Sector</div>
+</div>
+</div>
+</div>
+<nav class="flex-1 overflow-y-auto flex flex-col gap-1 px-2">
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container transition-all duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined">directions_run</span>
+<span class="">Fleet Status</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container transition-all duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined">inventory_2</span>
+<span class="">Inventory</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 border-l-4 border-secondary bg-surface-container-high text-primary font-bold transition-all duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined">manage_accounts</span>
+<span class="">User Management</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container transition-all duration-200 ease-in-out mt-auto" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="">Settings</span>
+</a>
+</nav>
+</aside>
+<!-- Main Content Wrapper -->
+<div class="flex-1 flex flex-col w-full h-full md:ml-[280px] relative">
+<!-- TopAppBar -->
+<header class="sticky top-0 w-full z-50 flex items-center justify-between px-margin-mobile h-[64px] bg-surface border-b border-surface-container">
+<div class="flex items-center gap-4">
+<button class="md:hidden text-primary p-2 hover:bg-surface-container-high rounded-full transition-colors active:opacity-80">
+<span class="material-symbols-outlined">menu</span>
+</button>
+<div class="flex items-center gap-2"><img src="https://lh3.googleusercontent.com/aida-public/AB6AXuBM6ZaEEoi73L3Z7RT4sIRJBJeTmRqLNnkIljj_zFI0SvHlLFqO-fQaQlstlb0G_C2ZMyCEnCBpTUHEaGjwWJqveuGaxM-Zm2Nc-9pnzpXT0lWiXiWLNczUWrEnFOjWVQvK5GZn62HlXpUhflDrV-rpLaVcPR4Gl92DLL5j46bygl_vyW-1EHqEn5unOhiPDYTR9CFM0D8W9tyaZOdgSUMpVm4VAZIKN83wDNn5mPBxCAlF99blST_o" alt="RFLY Drone Mark" class="h-8 w-8 object-contain"><div class="font-headline-md text-headline-md text-primary tracking-tight">RFLY Operations</div></div>
+</div>
+<button class="text-primary p-2 hover:bg-surface-container-high rounded-full transition-colors active:opacity-80">
+<span class="material-symbols-outlined">filter_list</span>
+</button>
+</header>
+<!-- Canvas -->
+<main class="flex-1 overflow-y-auto p-margin-mobile md:p-stack-lg pb-24 md:pb-stack-lg">
+<div class="max-w-3xl mx-auto">
+<div class="mb-stack-lg">
+<h1 class="font-display-lg text-display-lg text-primary mb-2">Register Customer</h1>
+<p class="text-on-surface-variant">Enter the operational details for the new commercial client account.</p>
+</div>
+<!-- Registration Form Card -->
+<div class="bg-surface-container-lowest border border-surface-container rounded-xl p-margin-mobile md:p-stack-lg shadow-[0px_4px_0px_rgba(0,0,0,0.05)]">
+<form action="#" class="flex flex-col gap-stack-lg" method="POST">
+<!-- Name Section -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-stack-md">
+<div class="flex flex-col gap-2">
+<label class="font-label-caps text-label-caps text-on-surface-variant" for="firstName">First Name</label>
+<input class="w-full px-4 py-3 rounded-lg border-2 border-outline-variant bg-surface focus:border-secondary focus:outline-none font-body-md text-body-md text-on-surface transition-colors" id="firstName" name="firstName" required="" type="text">
+</div>
+<div class="flex flex-col gap-2">
+<label class="font-label-caps text-label-caps text-on-surface-variant" for="lastName">Last Name</label>
+<input class="w-full px-4 py-3 rounded-lg border-2 border-outline-variant bg-surface focus:border-secondary focus:outline-none font-body-md text-body-md text-on-surface transition-colors" id="lastName" name="lastName" required="" type="text">
+</div>
+</div>
+<!-- Company Section -->
+<div class="flex flex-col gap-2 border-l-4 border-primary pl-4 py-1">
+<label class="font-label-caps text-label-caps text-on-surface-variant" for="company">Company Name</label>
+<input class="w-full px-4 py-3 rounded-lg border-2 border-outline-variant bg-surface focus:border-secondary focus:outline-none font-body-md text-body-md text-on-surface transition-colors" id="company" name="company" required="" type="text">
+</div>
+<!-- Contact Section -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-stack-md">
+<div class="flex flex-col gap-2">
+<label class="font-label-caps text-label-caps text-on-surface-variant" for="email">Business Email</label>
+<input class="w-full px-4 py-3 rounded-lg border-2 border-outline-variant bg-surface focus:border-secondary focus:outline-none font-body-md text-body-md text-on-surface transition-colors" id="email" name="email" required="" type="email">
+</div>
+<div class="flex flex-col gap-2">
+<label class="font-label-caps text-label-caps text-on-surface-variant" for="phone">Primary Phone</label>
+<input class="w-full px-4 py-3 rounded-lg border-2 border-outline-variant bg-surface focus:border-secondary focus:outline-none font-body-md text-body-md text-on-surface transition-colors" id="phone" name="phone" required="" type="tel">
+</div>
+</div>
+<!-- Actions -->
+<div class="pt-stack-md mt-stack-md border-t border-surface-variant flex justify-end gap-4">
+<button class="px-6 py-3 font-headline-sm text-headline-sm text-primary bg-transparent rounded-full hover:bg-surface-container transition-colors focus:ring-2 focus:ring-outline" type="button">
+                                Cancel
+                            </button>
+<button class="px-8 py-3 bg-secondary text-on-secondary font-headline-sm text-headline-sm rounded-full hover:bg-on-secondary-container active:scale-95 transition-all duration-150 shadow-[0px_4px_0px_rgba(0,0,0,0.05)]" type="submit">
+                                Save Customer
+                            </button>
+</div>
+</form>
+</div>
+</div>
+</main>
+</div>
+<!-- Mobile Bottom NavBar -->
+<nav class="md:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center h-touch-target-min bg-surface px-gutter shadow-[0_-1px_0_0_rgba(0,0,0,0.05)] border-t border-surface-container">
+<a class="flex flex-col items-center justify-center text-on-surface-variant px-base py-1 hover:bg-surface-container-low transition-all active:scale-95 duration-100" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-caps text-label-caps">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-full px-base py-1 hover:bg-surface-container-low transition-all active:scale-95 duration-100" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">group</span>
+<span class="font-label-caps text-label-caps">Customers</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant px-base py-1 hover:bg-surface-container-low transition-all active:scale-95 duration-100" href="#">
+<span class="material-symbols-outlined">calendar_today</span>
+<span class="font-label-caps text-label-caps">Schedule</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant px-base py-1 hover:bg-surface-container-low transition-all active:scale-95 duration-100" href="#">
+<span class="material-symbols-outlined">warning</span>
+<span class="font-label-caps text-label-caps">Exceptions</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant px-base py-1 hover:bg-surface-container-low transition-all active:scale-95 duration-100" href="#">
+<span class="material-symbols-outlined">person</span>
+<span class="font-label-caps text-label-caps">Profile</span>
+</a>
+</nav>
+
+
+</body></html>

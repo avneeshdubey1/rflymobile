@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Pilot Profile</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "surface-container-medium": "#eef1f4",
+                        "on-surface": "#1b1b1d",
+                        "inverse-surface": "#303032",
+                        "primary-fixed-dim": "#bec6e0",
+                        "surface-container-low": "#f2f4f6",
+                        "on-secondary-container": "#5c2400",
+                        "surface-dim": "#d8dadc",
+                        "on-background": "#1b1b1d",
+                        "on-error-container": "#93000a",
+                        "success": "#16a34a",
+                        "tertiary-container": "#271901",
+                        "on-tertiary-fixed-variant": "#574425",
+                        "tertiary-fixed-dim": "#dec29a",
+                        "primary": "#000000",
+                        "background": "#fcf8fa",
+                        "on-error": "#ffffff",
+                        "on-surface-variant": "#45464d",
+                        "secondary-fixed": "#ffdbca",
+                        "surface-variant": "#e4e2e4",
+                        "surface-container-high": "#e5e9ed",
+                        "on-tertiary-fixed": "#271901",
+                        "surface-container-highest": "#dce1e6",
+                        "on-tertiary-container": "#98805d",
+                        "error-container": "#ffdad6",
+                        "surface-tint": "#565e74",
+                        "surface-bright": "#f7f9fb",
+                        "secondary-fixed-dim": "#ffb690",
+                        "warning": "#ca8a04",
+                        "outline": "#76777d",
+                        "on-primary-container": "#7c839b",
+                        "tertiary": "#000000",
+                        "outline-variant": "#c6c6cd",
+                        "surface-container-lowest": "#ffffff",
+                        "primary-fixed": "#dae2fd",
+                        "surface": "#fcf8fa",
+                        "on-primary-fixed": "#131b2e",
+                        "surface-container": "#f0edef",
+                        "on-secondary": "#ffffff",
+                        "inverse-on-surface": "#f3f0f2",
+                        "error": "#dc2626",
+                        "secondary-container": "#fd761a",
+                        "on-tertiary": "#ffffff",
+                        "secondary": "#9d4300",
+                        "on-secondary-fixed-variant": "#783200",
+                        "tertiary-fixed": "#fcdeb5",
+                        "inverse-primary": "#bec6e0",
+                        "on-primary": "#ffffff",
+                        "on-primary-fixed-variant": "#3f465c",
+                        "on-secondary-fixed": "#341100",
+                        "primary-container": "#131b2e"
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    spacing: {
+                        "stack-md": "16px",
+                        "stack-sm": "8px",
+                        "margin-mobile": "16px",
+                        "stack-lg": "24px",
+                        "gutter-mobile": "12px",
+                        "touch-target-min": "48px"
+                    },
+                    fontFamily: {
+                        "label-lg": ["IBM Plex Sans"],
+                        "headline-lg": ["IBM Plex Sans"],
+                        "headline-md": ["IBM Plex Sans"],
+                        "body-sm": ["IBM Plex Sans"],
+                        "label-sm": ["IBM Plex Sans"],
+                        "label-md": ["IBM Plex Sans"],
+                        "body-lg": ["IBM Plex Sans"],
+                        "headline-sm": ["IBM Plex Sans"],
+                        "body-md": ["IBM Plex Sans"]
+                    },
+                    fontSize: {
+                        "label-lg": ["14px", { lineHeight: "20px", fontWeight: "500" }],
+                        "headline-lg": ["24px", { lineHeight: "32px", fontWeight: "700" }],
+                        "headline-md": ["20px", { lineHeight: "28px", fontWeight: "700" }],
+                        "body-sm": ["12px", { lineHeight: "16px", fontWeight: "400" }],
+                        "label-sm": ["11px", { lineHeight: "16px", fontWeight: "500" }],
+                        "label-md": ["12px", { lineHeight: "16px", fontWeight: "500" }],
+                        "body-lg": ["16px", { lineHeight: "24px", fontWeight: "400" }],
+                        "headline-sm": ["16px", { lineHeight: "24px", fontWeight: "700" }],
+                        "body-md": ["14px", { lineHeight: "20px", fontWeight: "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background min-h-screen pb-24">
+<!-- TopAppBar -->
+<header class="bg-primary dark:bg-primary-container fixed top-0 w-full z-50 transition-colors duration-200">
+<div class="flex items-center justify-between px-margin-mobile h-touch-target-min">
+<button class="text-on-primary dark:text-on-primary-container hover:bg-primary-container/20 p-2 rounded-full flex items-center justify-center transition-colors duration-200 h-touch-target-min w-touch-target-min">
+<span class="material-symbols-outlined" data-icon="menu">menu</span>
+</button>
+<h1 class="font-headline-md text-headline-md font-bold text-on-primary dark:text-on-primary-container">Pilot Field</h1>
+<button class="text-on-primary dark:text-on-primary-container hover:bg-primary-container/20 p-2 rounded-full flex items-center justify-center transition-colors duration-200 h-touch-target-min w-touch-target-min">
+<span class="material-symbols-outlined" data-icon="sync">sync</span>
+</button>
+</div>
+</header>
+<!-- Main Content -->
+<main class="pt-20 px-margin-mobile pb-stack-lg flex flex-col gap-stack-lg max-w-2xl mx-auto">
+<!-- Profile Header Card -->
+<section class="bg-surface-container-low border border-outline-variant rounded-xl p-stack-md flex flex-col items-center gap-stack-sm text-center">
+<div class="w-24 h-24 rounded-full bg-surface-variant flex items-center justify-center mb-stack-sm overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="A professional headshot of an industrial pilot or field worker wearing safety gear. Neutral background. Bright, modern light-mode aesthetic with functional corporate styling. The lighting is crisp and the mood is focused and serious, fitting a reliable enterprise application." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDQUiRTW4mbk-ZE7BEVwTeFiuCWXhe7G9I5YOlKiSuIgZMTYr9ZgNq7ubdLi3GnlV52cTv3U-vukbuydIK7s8-qn8dLNhJGQiJVu9wXwDIPn8Q2wxiSW-Dzq686qSZOi0rm-i51bHz6dmc_FNt-7b6I-OvRoam0oSn0Dpc4WdRb473BHmr-H0CWiZGzmREDcP35lQu4teSefuV3X-msWSRQqEPQdQG55SAulQI42WGy5ieJWeEzv2EJ"/>
+</div>
+<h2 class="font-headline-sm text-headline-sm text-on-surface">Alex Mercer</h2>
+<p class="font-body-md text-body-md text-on-surface-variant flex items-center gap-1 justify-center">
+<span class="material-symbols-outlined text-sm" data-icon="badge">badge</span>
+                EMP-8472-BX
+            </p>
+<div class="mt-stack-sm inline-flex items-center gap-2 px-3 py-1 bg-surface-container-high rounded-full border border-outline-variant">
+<span class="w-2 h-2 rounded-full bg-success"></span>
+<span class="font-label-sm text-label-sm text-on-surface">Active Duty</span>
+</div>
+</section>
+<!-- Settings List -->
+<section class="bg-surface-container-low border border-outline-variant rounded-xl overflow-hidden flex flex-col">
+<div class="px-stack-md py-stack-md border-b border-outline-variant flex items-center justify-between hover:bg-surface-container-medium transition-colors cursor-pointer min-h-touch-target-min">
+<div class="flex items-center gap-stack-md">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="location_city">location_city</span>
+<div>
+<p class="font-label-lg text-label-lg text-on-surface">Operating Center</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Sector 4 - Alpha Hub</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline" data-icon="chevron_right">chevron_right</span>
+</div>
+<div class="px-stack-md py-stack-md border-b border-outline-variant flex items-center justify-between hover:bg-surface-container-medium transition-colors min-h-touch-target-min">
+<div class="flex items-center gap-stack-md">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="language">language</span>
+<div>
+<p class="font-label-lg text-label-lg text-on-surface">Preferred Language</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">English (US)</p>
+</div>
+</div>
+<div class="relative inline-block w-12 h-6 align-middle select-none transition duration-200 ease-in">
+<input checked="" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer border-outline-variant transition-transform duration-200 ease-in-out" id="toggle1" name="toggle" type="checkbox"/>
+<label class="toggle-label block overflow-hidden h-6 rounded-full bg-primary cursor-pointer transition-colors duration-200 ease-in-out" for="toggle1"></label>
+</div>
+</div>
+<div class="px-stack-md py-stack-md border-b border-outline-variant flex items-center justify-between hover:bg-surface-container-medium transition-colors cursor-pointer min-h-touch-target-min">
+<div class="flex items-center gap-stack-md">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="security">security</span>
+<div>
+<p class="font-label-lg text-label-lg text-on-surface">Security Clearances</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Level 3 Authorized</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline" data-icon="chevron_right">chevron_right</span>
+</div>
+<div class="px-stack-md py-stack-md flex items-center justify-between hover:bg-surface-container-medium transition-colors cursor-pointer min-h-touch-target-min">
+<div class="flex items-center gap-stack-md">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="help">help</span>
+<div>
+<p class="font-label-lg text-label-lg text-on-surface">Field Support</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Contact Dispatch</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline" data-icon="open_in_new">open_in_new</span>
+</div>
+</section>
+<!-- Actions -->
+<section class="flex flex-col gap-stack-sm mt-stack-md">
+<button class="w-full flex items-center justify-center gap-2 bg-surface-container-low border border-outline-variant text-on-surface font-label-lg text-label-lg rounded-xl h-touch-target-min hover:bg-surface-container-medium transition-colors">
+<span class="material-symbols-outlined" data-icon="logout">logout</span>
+                Sign Out
+            </button>
+<button class="w-full flex items-center justify-center gap-2 bg-error-container/20 border border-error/30 text-error font-label-lg text-label-lg rounded-xl h-touch-target-min hover:bg-error-container/40 transition-colors">
+<span class="material-symbols-outlined text-error" data-icon="power_settings_new">power_settings_new</span>
+                Sign Out All Devices
+            </button>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="bg-surface-container dark:bg-inverse-surface border-t border-outline-variant dark:border-outline fixed bottom-0 w-full z-50 h-20 md:hidden">
+<div class="flex justify-around items-center w-full px-gutter-mobile h-full">
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-surface-variant hover:bg-surface-container-high dark:hover:bg-surface-variant active:scale-95 transition-transform duration-100 flex-1 h-full rounded-lg">
+<span class="material-symbols-outlined mb-1" data-icon="assignment">assignment</span>
+<span class="font-label-md text-label-md">Work</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-surface-variant hover:bg-surface-container-high dark:hover:bg-surface-variant active:scale-95 transition-transform duration-100 flex-1 h-full rounded-lg">
+<span class="material-symbols-outlined mb-1" data-icon="cloud_sync">cloud_sync</span>
+<span class="font-label-md text-label-md">Sync</span>
+</button>
+<button class="flex flex-col items-center justify-center bg-secondary-container dark:bg-secondary text-on-secondary-container dark:text-on-secondary rounded-full px-4 py-1 active:scale-95 transition-transform duration-100 mx-2">
+<span class="material-symbols-outlined mb-1" data-icon="account_circle">account_circle</span>
+<span class="font-label-md text-label-md">Profile</span>
+</button>
+</div>
+</nav>
+<style>
+        /* Custom styles for the toggle switch to match standard input feel */
+        .toggle-checkbox:checked {
+            right: 0;
+            border-color: #000000;
+        }
+        .toggle-checkbox {
+            right: 24px;
+            z-index: 1;
+        }
+        .toggle-label {
+             width: 48px;
+        }
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: #000000;
+        }
+        .toggle-checkbox:not(:checked) + .toggle-label {
+            background-color: #c6c6cd;
+        }
+    </style>
+<script>
+        // Simple toggle interaction logic for demonstration
+        document.querySelectorAll('input[type="checkbox"].toggle-checkbox').forEach(toggle => {
+            toggle.addEventListener('change', function() {
+                const label = this.nextElementSibling;
+                if(this.checked) {
+                    label.style.backgroundColor = '#000000';
+                    this.style.borderColor = '#000000';
+                    this.style.transform = 'translateX(24px)';
+                } else {
+                     label.style.backgroundColor = '#c6c6cd';
+                     this.style.borderColor = '#c6c6cd';
+                     this.style.transform = 'translateX(0)';
+                }
+            });
+            // Initial state check
+             if(toggle.checked) {
+                 toggle.style.transform = 'translateX(24px)';
+             }
+        });
+    </script>
+</body></html>

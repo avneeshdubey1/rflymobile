@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>RFLY Operations - Lead Intake</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "surface-container-low": "#f2f4f6",
+                      "on-secondary-fixed": "#341100",
+                      "secondary-container": "#fd761a",
+                      "secondary-fixed-dim": "#ffb690",
+                      "success": "#16a34a",
+                      "surface-bright": "#f7f9fb",
+                      "surface-tint": "#565e74",
+                      "on-tertiary-container": "#98805d",
+                      "on-secondary": "#ffffff",
+                      "primary": "#000000",
+                      "warning": "#ca8a04",
+                      "surface-variant": "#e4e2e4",
+                      "tertiary-container": "#271901",
+                      "secondary-fixed": "#ffdbca",
+                      "on-secondary-container": "#5c2400",
+                      "inverse-surface": "#303032",
+                      "outline": "#76777d",
+                      "on-secondary-fixed-variant": "#783200",
+                      "surface-container": "#f0edef",
+                      "outline-variant": "#c6c6cd",
+                      "primary-container": "#131b2e",
+                      "on-primary-container": "#7c839b",
+                      "surface-dim": "#d8dadc",
+                      "inverse-on-surface": "#f3f0f2",
+                      "primary-fixed-dim": "#bec6e0",
+                      "tertiary-fixed": "#fcdeb5",
+                      "on-tertiary": "#ffffff",
+                      "tertiary": "#000000",
+                      "surface-container-high": "#eae7e9",
+                      "error-container": "#ffdad6",
+                      "surface-container-highest": "#dce1e6",
+                      "surface-container-lowest": "#ffffff",
+                      "on-surface": "#1b1b1d",
+                      "on-primary-fixed-variant": "#3f465c",
+                      "on-tertiary-fixed-variant": "#574425",
+                      "surface": "#fcf8fa",
+                      "on-primary": "#ffffff",
+                      "inverse-primary": "#bec6e0",
+                      "tertiary-fixed-dim": "#dec29a",
+                      "on-tertiary-fixed": "#271901",
+                      "on-surface-variant": "#45464d",
+                      "on-error": "#ffffff",
+                      "on-background": "#1b1b1d",
+                      "error": "#dc2626",
+                      "background": "#fcf8fa",
+                      "surface-container-medium": "#eef1f4",
+                      "secondary": "#9d4300",
+                      "on-primary-fixed": "#131b2e",
+                      "primary-fixed": "#dae2fd",
+                      "on-error-container": "#93000a"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "spacing": {
+                      "stack-md": "16px",
+                      "touch-target-min": "48px",
+                      "gutter-mobile": "12px",
+                      "margin-mobile": "16px",
+                      "stack-lg": "24px",
+                      "stack-sm": "8px"
+              },
+              "fontFamily": {
+                      "body-sm": [
+                              "IBM Plex Sans"
+                      ],
+                      "body-md": [
+                              "IBM Plex Sans"
+                      ],
+                      "body-lg": [
+                              "IBM Plex Sans"
+                      ],
+                      "headline-sm": [
+                              "IBM Plex Sans"
+                      ],
+                      "label-md": [
+                              "IBM Plex Sans"
+                      ],
+                      "headline-lg": [
+                              "IBM Plex Sans"
+                      ],
+                      "headline-md": [
+                              "IBM Plex Sans"
+                      ],
+                      "label-lg": [
+                              "IBM Plex Sans"
+                      ],
+                      "label-sm": [
+                              "IBM Plex Sans"
+                      ]
+              },
+              "fontSize": {
+                      "body-sm": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "body-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "body-lg": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-sm": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "label-md": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "headline-lg": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "headline-md": [
+                              "20px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "label-lg": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "label-sm": [
+                              "11px",
+                              {
+                                      "lineHeight": "16px",
+                                      "fontWeight": "500"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+      </script>
+</head>
+<body class="bg-background text-on-background antialiased pb-24 md:pb-0">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full flex justify-between items-center px-margin-mobile h-touch-target-min z-50 border-b border-outline dark:border-outline-variant bg-primary dark:bg-primary-container text-on-primary dark:text-on-primary-container transition-colors duration-200">
+<div class="flex items-center gap-2">
+<button class="flex items-center justify-center w-8 h-8 rounded-full hover:bg-primary-fixed-dim/20 active:scale-95">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">arrow_back</span>
+</button>
+<span class="font-headline-md text-headline-md font-bold tracking-tight">RFLY OPERATIONS</span>
+</div>
+<div class="flex items-center gap-4">
+<button class="flex items-center justify-center w-8 h-8 rounded-full hover:bg-primary-fixed-dim/20 active:scale-95">
+<span class="material-symbols-outlined">more_vert</span>
+</button>
+</div>
+</header>
+<main class="pt-[64px] px-margin-mobile md:max-w-3xl md:mx-auto">
+<!-- Header Section -->
+<div class="mt-stack-lg mb-stack-md">
+<h1 class="font-headline-lg text-headline-lg">OP-05 Lead Intake</h1>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">Register a new potential service location.</p>
+</div>
+<!-- Location Pin Drop Area -->
+<section class="bg-surface-container-low border border-outline-variant rounded-lg overflow-hidden mb-stack-lg relative">
+<div class="p-stack-md border-b border-outline-variant bg-surface-container-lowest flex justify-between items-center">
+<h2 class="font-headline-sm text-headline-sm">Service Location</h2>
+<span class="bg-primary text-on-primary font-label-sm text-label-sm px-2 py-1 rounded">Required</span>
+</div>
+<div class="relative w-full h-[250px] bg-surface-variant" data-alt="A top-down aerial view of agricultural farmland, featuring varying rectangular plots of land in subtle shades of green, brown, and grey. The image has a clean, high-contrast industrial look, acting as a functional map backdrop for a technical UI. Lighting is flat and uniform." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAplygzC1ML4FbJ46Wy6qJAAhVb5WmUs9lxkljAupP6l9uQ9sRE_SCw3IZeockOC7NPyqlTs7dqzsLrAeIlk8GvmmVYslozD8sbFpyqjembiXjd4gtekpULEQZrMfwOrkq0ZEB2EhjftAcHK_V04t4T_d9uWKC5QA0GJ5TL3RGNi1nthpU3UEw5epWCcxR_QFoTRtW4dj8vViL3iHg6v3l3BKcScfv56JSHCY-c9PB5Ws_mpke6qeYx'); background-size: cover; background-position: center;">
+<!-- Synthetic Map Controls Overlay -->
+<div class="absolute inset-0 bg-black/10"></div>
+<div class="absolute right-4 top-4 flex flex-col gap-2">
+<button class="w-10 h-10 bg-surface-container-lowest border border-outline-variant rounded shadow-sm flex items-center justify-center hover:bg-surface-container-low active:scale-95 transition-transform">
+<span class="material-symbols-outlined">my_location</span>
+</button>
+<div class="flex flex-col border border-outline-variant rounded shadow-sm overflow-hidden bg-surface-container-lowest">
+<button class="w-10 h-10 border-b border-outline-variant flex items-center justify-center hover:bg-surface-container-low active:scale-95 transition-transform">
+<span class="material-symbols-outlined">add</span>
+</button>
+<button class="w-10 h-10 flex items-center justify-center hover:bg-surface-container-low active:scale-95 transition-transform">
+<span class="material-symbols-outlined">remove</span>
+</button>
+</div>
+</div>
+<!-- Center Pin Concept -->
+<div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 flex flex-col items-center">
+<div class="bg-secondary text-on-secondary px-3 py-1 rounded font-label-md text-label-md shadow-md mb-2 flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">location_on</span>
+                        Drop Pin
+                    </div>
+<div class="w-4 h-4 bg-secondary rounded-full border-2 border-white shadow-lg relative after:content-[''] after:absolute after:w-0.5 after:h-4 after:bg-secondary after:left-1/2 after:-translate-x-1/2 after:top-full"></div>
+</div>
+</div>
+<div class="p-stack-md bg-surface-container-lowest flex items-center gap-4">
+<div class="flex-1">
+<p class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Plus Code Resolution</p>
+<p class="font-body-md text-body-md font-mono mt-1">86FW+2Q, Farmville</p>
+</div>
+<button class="h-touch-target-min px-4 bg-surface-container-high border border-outline-variant rounded font-label-md text-label-md hover:bg-surface-container-highest active:scale-95 transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">edit_location</span>
+                    Adjust
+                </button>
+</div>
+</section>
+<!-- Customer & Crop Details Form -->
+<section class="bg-surface-container-low border border-outline-variant rounded-lg p-stack-md mb-stack-lg">
+<h2 class="font-headline-sm text-headline-sm mb-stack-md border-b border-outline-variant pb-2">Lead Details</h2>
+<div class="grid grid-cols-1 gap-stack-md">
+<!-- Customer Name -->
+<div class="flex flex-col gap-1">
+<label class="font-label-md text-label-md text-on-surface" for="customerName">Customer Name</label>
+<input class="h-touch-target-min px-3 bg-surface-container-lowest border border-outline focus:border-primary focus:ring-1 focus:ring-primary rounded font-body-md text-body-md outline-none transition-shadow" id="customerName" placeholder="e.g. John Doe Farms" type="text"/>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-stack-md">
+<!-- Crop Type -->
+<div class="flex flex-col gap-1">
+<label class="font-label-md text-label-md text-on-surface" for="cropType">Primary Crop Type</label>
+<div class="relative">
+<select class="w-full h-touch-target-min pl-3 pr-10 bg-surface-container-lowest border border-outline focus:border-primary focus:ring-1 focus:ring-primary rounded font-body-md text-body-md appearance-none outline-none transition-shadow" id="cropType">
+<option disabled="" selected="" value="">Select Crop</option>
+<option value="corn">Corn</option>
+<option value="soybeans">Soybeans</option>
+<option value="wheat">Wheat</option>
+<option value="cotton">Cotton</option>
+<option value="other">Other</option>
+</select>
+<div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none text-on-surface-variant">
+<span class="material-symbols-outlined">arrow_drop_down</span>
+</div>
+</div>
+</div>
+<!-- Acreage Estimate -->
+<div class="flex flex-col gap-1">
+<label class="font-label-md text-label-md text-on-surface" for="acreage">Acreage Estimate</label>
+<div class="relative">
+<input class="w-full h-touch-target-min pl-3 pr-16 bg-surface-container-lowest border border-outline focus:border-primary focus:ring-1 focus:ring-primary rounded font-body-md text-body-md outline-none transition-shadow" id="acreage" min="0" placeholder="0" type="number"/>
+<div class="absolute inset-y-0 right-0 flex items-center px-3 bg-surface-container-high border-l border-outline rounded-r text-on-surface-variant font-label-md text-label-md">
+                                Acres
+                            </div>
+</div>
+</div>
+</div>
+<!-- Notes -->
+<div class="flex flex-col gap-1">
+<label class="font-label-md text-label-md text-on-surface" for="notes">Notes (Optional)</label>
+<textarea class="p-3 bg-surface-container-lowest border border-outline focus:border-primary focus:ring-1 focus:ring-primary rounded font-body-md text-body-md outline-none transition-shadow resize-none" id="notes" placeholder="Access instructions, specific concerns..." rows="3"></textarea>
+</div>
+</div>
+</section>
+<!-- Actions -->
+<div class="flex flex-col md:flex-row gap-stack-md mt-stack-lg mb-stack-lg">
+<button class="w-full h-touch-target-min bg-primary text-on-primary font-headline-sm text-headline-sm rounded flex items-center justify-center gap-2 hover:bg-primary/90 active:scale-95 transition-all">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                Create Lead
+            </button>
+<button class="w-full h-touch-target-min bg-surface-container-highest text-on-surface font-headline-sm text-headline-sm rounded border border-outline-variant flex items-center justify-center gap-2 hover:bg-surface-dim active:scale-95 transition-all">
+                Cancel
+            </button>
+</div>
+</main>
+</body></html>

@@ -1,0 +1,220 @@
+<!DOCTYPE html><html class="light" lang="en" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Upgrade Required - RFLY Pilot</title>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<!-- Google Fonts: Hanken Grotesk (Brand) & JetBrains Mono (Data) -->
+<link href="https://fonts.googleapis.com" rel="preconnect">
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;700;800&amp;family=JetBrains+Mono:wght@500;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Theme Configuration -->
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-secondary-container": "#51617d",
+                    "tertiary": "#5b5f64",
+                    "secondary": "#4f5f7b",
+                    "on-secondary-fixed": "#091c34",
+                    "surface": "#f8f9fa",
+                    "surface-container-highest": "#e1e3e4",
+                    "surface-dim": "#d9dadb",
+                    "tertiary-fixed": "#dfe3e8",
+                    "on-error": "#ffffff",
+                    "inverse-surface": "#2e3132",
+                    "on-tertiary-container": "#2d3136",
+                    "on-tertiary-fixed-variant": "#43474c",
+                    "surface-variant": "#e1e3e4",
+                    "surface-container-low": "#f3f4f5",
+                    "on-secondary-fixed-variant": "#374762",
+                    "inverse-primary": "#ffb693",
+                    "error": "#ba1a1a",
+                    "on-surface-variant": "#5a4136",
+                    "on-primary-container": "#572000",
+                    "background": "#f8f9fa",
+                    "surface-tint": "#a04100",
+                    "on-surface": "#191c1d",
+                    "outline": "#8e7164",
+                    "on-tertiary-fixed": "#181c20",
+                    "surface-container-lowest": "#ffffff",
+                    "primary-fixed": "#ffdbcc",
+                    "on-primary-fixed-variant": "#7a3000",
+                    "surface-bright": "#f8f9fa",
+                    "surface-container-high": "#e7e8e9",
+                    "primary": "#a04100",
+                    "primary-container": "#ff6b00",
+                    "on-background": "#191c1d",
+                    "secondary-fixed-dim": "#b6c7e7",
+                    "on-primary": "#ffffff",
+                    "inverse-on-surface": "#f0f1f2",
+                    "secondary-container": "#ccdefe",
+                    "on-tertiary": "#ffffff",
+                    "surface-container": "#edeeef",
+                    "on-error-container": "#93000a",
+                    "primary-fixed-dim": "#ffb693",
+                    "tertiary-container": "#95999f",
+                    "secondary-fixed": "#d5e3ff",
+                    "error-container": "#ffdad6",
+                    "on-secondary": "#ffffff",
+                    "outline-variant": "#e2bfb0",
+                    "tertiary-fixed-dim": "#c3c7cc",
+                    "on-primary-fixed": "#351000"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "gutter": "12px",
+                    "stack-md": "16px",
+                    "touch-target-min": "48px",
+                    "margin-mobile": "16px",
+                    "stack-lg": "24px",
+                    "stack-sm": "8px",
+                    "base": "8px"
+            },
+            "fontFamily": {
+                    "display-lg": [
+                            "Hanken Grotesk"
+                    ],
+                    "label-caps": [
+                            "Hanken Grotesk"
+                    ],
+                    "data-sm": [
+                            "JetBrains Mono"
+                    ],
+                    "headline-sm": [
+                            "Hanken Grotesk"
+                    ],
+                    "data-lg": [
+                            "JetBrains Mono"
+                    ],
+                    "body-md": [
+                            "Hanken Grotesk"
+                    ],
+                    "headline-md": [
+                            "Hanken Grotesk"
+                    ],
+                    "body-lg": [
+                            "Hanken Grotesk"
+                    ]
+            },
+            "fontSize": {
+                    "display-lg": [
+                            "32px",
+                            {
+                                    "lineHeight": "40px",
+                                    "letterSpacing": "-0.02em",
+                                    "fontWeight": "800"
+                            }
+                    ],
+                    "label-caps": [
+                            "12px",
+                            {
+                                    "lineHeight": "16px",
+                                    "letterSpacing": "0.08em",
+                                    "fontWeight": "800"
+                            }
+                    ],
+                    "data-sm": [
+                            "14px",
+                            {
+                                    "lineHeight": "20px",
+                                    "fontWeight": "500"
+                            }
+                    ],
+                    "headline-sm": [
+                            "20px",
+                            {
+                                    "lineHeight": "28px",
+                                    "fontWeight": "700"
+                            }
+                    ],
+                    "data-lg": [
+                            "20px",
+                            {
+                                    "lineHeight": "24px",
+                                    "fontWeight": "700"
+                            }
+                    ],
+                    "body-md": [
+                            "16px",
+                            {
+                                    "lineHeight": "24px",
+                                    "fontWeight": "400"
+                            }
+                    ],
+                    "headline-md": [
+                            "24px",
+                            {
+                                    "lineHeight": "32px",
+                                    "fontWeight": "700"
+                            }
+                    ],
+                    "body-lg": [
+                            "18px",
+                            {
+                                    "lineHeight": "26px",
+                                    "fontWeight": "500"
+                            }
+                    ]
+            }
+          }
+        }
+      }
+    </script>
+</head>
+<body class="bg-surface text-on-surface h-screen w-full flex items-center justify-center relative overflow-hidden font-body-md">
+<!-- Atmospheric Background (Blurred to keep focus on the modal) -->
+<div class="absolute inset-0 w-full h-full bg-cover bg-center opacity-30 blur-sm pointer-events-none" data-alt="A wide aerial shot of a vast, meticulously planted agricultural field under harsh midday sunlight. The scene is slightly desaturated, emphasizing the rugged, professional environment of commercial drone operations. The overall tone is utilitarian and modern, fitting a light-mode corporate dashboard aesthetic with subtle earth tones and bright, clear sky." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCS9P5NWPaUpoQq_HZjcCEgpmnyxm0ZBOdGAoVTuMSbCXTiWmG8R81ge0vVwD5ZXPe4w1L3Btqk0qR-PxrFZ2HuRpoZO2V3q01Q_vdB3gW-C9QrhJ9vP-wJNcacBoJiPaJw6F_V-7528rZNkxXMAZMgjgIj9tbiU9vLlcHOQ0wbsLaaIiC_RXkjZNbhWXf6oxos10TIdPTa0F7duZEx9A3XHguS5ziu_PoHx4mXaLyUMsqYSdI9fvXj')">
+</div>
+<!-- Obfuscation layer to ensure high contrast for the blocking card -->
+<div class="absolute inset-0 w-full h-full bg-surface/80 backdrop-blur-md pointer-events-none"></div>
+<!-- Blocking Modal Card (Strict 8dp grid, solid borders, no shadows) -->
+<main class="w-full max-w-md mx-margin-mobile bg-surface-container-lowest border-[2px] border-on-secondary-fixed rounded-xl p-stack-lg flex flex-col gap-stack-lg relative z-10 shadow-none">
+<!-- Header & Warning Icon -->
+<header class="flex flex-col items-center text-center gap-stack-sm">
+<div class="w-16 h-16 rounded-full overflow-hidden mb-base border-2 border-on-secondary-fixed flex items-center justify-center bg-surface-container-lowest"><img src="https://lh3.googleusercontent.com/aida-public/AB6AXuBM6ZaEEoi73L3Z7RT4sIRJBJeTmRqLNnkIljj_zFI0SvHlLFqO-fQaQlstlb0G_C2ZMyCEnCBpTUHEaGjwWJqveuGaxM-Zm2Nc-9pnzpXT0lWiXiWLNczUWrEnFOjWVQvK5GZn62HlXpUhflDrV-rpLaVcPR4Gl92DLL5j46bygl_vyW-1EHqEn5unOhiPDYTR9CFM0D8W9tyaZOdgSUMpVm4VAZIKN83wDNn5mPBxCAlF99blST_o" alt="RFLY Drone Mark" class="w-full h-full object-cover"></div>
+<h1 class="font-headline-md text-headline-md text-on-secondary-fixed uppercase tracking-tight">
+                Mandatory System Update
+            </h1>
+<p class="font-body-md text-body-md text-on-surface-variant">
+                For continued safety and compliance during flight operations, your flight control software must be updated to the latest certified release.
+            </p>
+</header>
+<!-- Telemetry-style Version Readout -->
+<section aria-label="Version Information" class="bg-on-secondary-fixed text-on-primary border-2 border-secondary rounded-lg p-stack-md flex flex-col gap-base">
+<div class="flex justify-between items-center border-b border-secondary pb-base">
+<span class="font-label-caps text-label-caps text-secondary-fixed-dim uppercase">Current Installed Version</span>
+<span class="font-data-sm text-data-sm text-secondary-fixed-dim">v4.12.0</span>
+</div>
+<div class="flex justify-between items-center pt-base">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[16px]" style="font-variation-settings: 'FILL' 1;">warning</span>
+<span class="font-label-caps text-label-caps text-on-primary uppercase">Minimum Required</span>
+</div>
+<span class="font-data-lg text-data-lg text-primary">v4.14.2</span>
+</div>
+</section>
+<!-- Action Area -->
+<footer class="flex flex-col gap-stack-sm mt-base">
+<button aria-label="Proceed to Update Service" class="w-full h-touch-target-min bg-primary hover:bg-primary-container text-on-primary font-label-caps text-label-caps rounded-full flex items-center justify-center gap-2 transition-colors active:scale-[0.98] border-2 border-transparent focus:border-secondary focus:outline-none">
+<span class="material-symbols-outlined text-[18px]">cloud_download</span>
+                UPDATE SOFTWARE NOW
+            </button>
+<p class="font-label-caps text-label-caps text-center text-on-surface-variant mt-2 opacity-70">
+                Network connection required. estimated time: 3 mins.
+            </p>
+</footer>
+</main>
+
+
+</body></html>

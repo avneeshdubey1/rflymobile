@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Pilot Field: Assignment Detail</title>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Tailwind Config from Brand Anchors -->
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-secondary-fixed-variant": "#783200",
+                    "surface-container-high": "#e6e8ea",
+                    "surface-tint": "#565e74",
+                    "secondary-fixed-dim": "#ffb690",
+                    "error-container": "#ffdad6",
+                    "tertiary-fixed": "#d5e3fd",
+                    "inverse-primary": "#bec6e0",
+                    "outline": "#76777d",
+                    "on-surface": "#191c1e",
+                    "error": "#ba1a1a",
+                    "primary": "#000000",
+                    "on-tertiary-fixed-variant": "#3a485c",
+                    "background": "#f7f9fb",
+                    "surface-container": "#eceef0",
+                    "surface": "#f7f9fb",
+                    "on-surface-variant": "#45464d",
+                    "secondary": "#9d4300",
+                    "surface-slate": "#E2E8F0",
+                    "on-background": "#191c1e",
+                    "status-success": "#166534",
+                    "primary-container": "#131b2e",
+                    "on-error-container": "#93000a",
+                    "tertiary-container": "#0d1c2f",
+                    "rfly-blue": "#0F172A",
+                    "surface-bright": "#f7f9fb",
+                    "primary-fixed-dim": "#bec6e0",
+                    "on-primary-fixed-variant": "#3f465c",
+                    "on-tertiary": "#ffffff",
+                    "on-primary": "#ffffff",
+                    "secondary-container": "#fd761a",
+                    "surface-container-highest": "#e0e3e5",
+                    "on-secondary-fixed": "#341100",
+                    "on-tertiary-container": "#76859b",
+                    "tertiary": "#000000",
+                    "inverse-on-surface": "#eff1f3",
+                    "on-tertiary-fixed": "#0d1c2f",
+                    "on-primary-fixed": "#131b2e",
+                    "on-secondary-container": "#5c2400",
+                    "on-error": "#ffffff",
+                    "surface-container-lowest": "#ffffff",
+                    "tertiary-fixed-dim": "#b9c7e0",
+                    "surface-container-low": "#f2f4f6",
+                    "inverse-surface": "#2d3133",
+                    "status-warning": "#9A3412",
+                    "safety-orange": "#F97316",
+                    "surface-dim": "#d8dadc",
+                    "on-primary-container": "#7c839b",
+                    "primary-fixed": "#dae2fd",
+                    "on-secondary": "#ffffff",
+                    "outline-variant": "#c6c6cd",
+                    "status-offline": "#475569",
+                    "surface-variant": "#e0e3e5",
+                    "secondary-fixed": "#ffdbca"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "spacing": {
+                    "gutter": "16px",
+                    "margin-mobile": "20px",
+                    "stack-lg": "24px",
+                    "stack-md": "16px",
+                    "touch-target-min": "48px",
+                    "stack-sm": "8px"
+            },
+            "fontFamily": {
+                    "body-md": ["IBM Plex Sans", "sans-serif"],
+                    "body-lg": ["IBM Plex Sans", "sans-serif"],
+                    "label-caps": ["IBM Plex Sans", "sans-serif"],
+                    "headline-lg": ["IBM Plex Sans", "sans-serif"],
+                    "headline-md": ["IBM Plex Sans", "sans-serif"],
+                    "headline-lg-mobile": ["IBM Plex Sans", "sans-serif"],
+                    "data-mono": ["JetBrains Mono", "monospace"]
+            },
+            "fontSize": {
+                    "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                    "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                    "label-caps": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700" }],
+                    "headline-lg": ["28px", { "lineHeight": "36px", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                    "headline-md": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                    "headline-lg-mobile": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                    "data-mono": ["14px", { "lineHeight": "20px", "fontWeight": "500" }]
+            }
+          }
+        }
+      }
+    </script>
+<style>
+        /* Base typography setup for Google Fonts */
+        @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600;700&family=JetBrains+Mono:wght@500&display=swap');
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface text-on-surface antialiased min-h-screen flex flex-col relative">
+<!-- 
+      TopAppBar Implementation from JSON
+      Note: Global navigation shell (BottomNavBar) is suppressed as this is a task-focused sub-page.
+    -->
+<header class="fixed top-0 w-full z-50 bg-surface border-b border-surface-slate flex items-center justify-between px-margin-mobile h-touch-target-min shadow-sm">
+<div class="flex items-center gap-3">
+<button class="active:scale-95 transition-transform hover:bg-surface-container-high rounded-full w-touch-target-min h-touch-target-min flex items-center justify-center -ml-3 text-on-surface-variant">
+<!-- Using signal_cellular_alt as dictated by JSON strictly for leading_icon, though logically a back button would exist here in a standard app flow, we adhere to the JSON structural command. -->
+<span class="material-symbols-outlined text-[24px]">signal_cellular_alt</span>
+</button>
+<h1 class="font-headline-md text-headline-md font-bold text-rfly-blue uppercase tracking-tight">RFLY Operations</h1>
+</div>
+<div class="flex items-center">
+<button class="active:scale-95 transition-transform hover:bg-surface-container-high rounded-full w-touch-target-min h-touch-target-min flex items-center justify-center text-on-surface-variant -mr-3">
+<span class="material-symbols-outlined text-[24px]">battery_charging_full</span>
+</button>
+</div>
+</header>
+<!-- Main Content Area -->
+<main class="flex-1 pt-[72px] pb-[120px] flex flex-col">
+<!-- Header & Status Area -->
+<section class="px-margin-mobile py-stack-md flex flex-col gap-stack-sm">
+<div class="inline-flex items-center self-start px-3 py-1.5 rounded-full bg-error-container border border-error text-on-error-container gap-2 shadow-sm">
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1;">warning</span>
+<span class="font-label-caps text-label-caps uppercase">Provisional: Action Required</span>
+</div>
+<h2 class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface mt-2 tracking-tight">Assignment Detail</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">Review mission parameters and assign a copilot to proceed to operational readiness.</p>
+</section>
+<!-- Information Summary (High Contrast Bento-style Solid Card) -->
+<section class="px-margin-mobile mt-stack-sm">
+<div class="bg-surface-container-lowest border-2 border-surface-slate rounded-xl p-stack-md shadow-sm flex flex-col gap-stack-md">
+<!-- Data Row: Farmer -->
+<div class="flex flex-col gap-1">
+<span class="font-label-caps text-label-caps text-on-surface-variant uppercase">Primary Contact</span>
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center border border-surface-slate">
+<span class="material-symbols-outlined text-on-surface-variant">person</span>
+</div>
+<span class="font-body-lg text-body-lg text-on-surface font-semibold">Arjan Singh</span>
+</div>
+</div>
+<hr class="border-t-2 border-surface-slate w-full"/>
+<!-- Data Row: Farm -->
+<div class="flex flex-col gap-1">
+<span class="font-label-caps text-label-caps text-on-surface-variant uppercase">Mission Location</span>
+<div class="flex items-start justify-between">
+<span class="font-body-lg text-body-lg text-on-surface font-semibold">Green Valley Farm</span>
+<span class="material-symbols-outlined text-rfly-blue">location_on</span>
+</div>
+</div>
+<hr class="border-t-2 border-surface-slate w-full"/>
+<!-- Data Row: Drone -->
+<div class="flex flex-col gap-1">
+<span class="font-label-caps text-label-caps text-on-surface-variant uppercase">Hardware Designation</span>
+<div class="flex items-center justify-between bg-surface-container rounded-lg p-3 border border-surface-slate">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-rfly-blue">precision_manufacturing</span>
+<span class="font-data-mono text-data-mono text-on-surface text-[16px]">RFLY-7</span>
+</div>
+<span class="inline-block w-3 h-3 rounded-full bg-status-offline shadow-inner"></span>
+</div>
+</div>
+</div>
+</section>
+<!-- Contextual Map View Placeholder -->
+<section class="px-margin-mobile mt-stack-lg">
+<div class="w-full h-48 rounded-xl overflow-hidden border-2 border-surface-slate relative shadow-sm">
+<div class="w-full h-full bg-cover bg-center" data-alt="A stark, high-contrast digital map view in light mode, designed for industrial field applications. The palette utilizes strict greys, bright whites, and subtle slate tones to outline agricultural land parcels clearly. The geometry of the farm boundaries is sharp and precise, visible in high glare environments, without any typography or labels." data-location="Green Valley" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBgUY6TlsH4xhAUlYf-48IDWfUgQjqFF6WZRtTVFzeg7dwW2srqakr8yydiGVcvOQuy0dMkzDBFHdBmc-_b1tq0uMOxEW5nFq4V8ugTcC41RObfrQjClVCvzV4AO8SgABsBjUqrwxIG693Pxv1TuZ8iuA5NDzSijMzsxSZnNYAt9VK3pvdxWPlHdrrXOCvPUmBMuBj9ZtBtl_iVBP5TDOMVhRRK32p1KbUixE3JpD6Hhyntw-ZZVDnu')">
+</div>
+<!-- Gradient overlay for depth without sacrificing contrast -->
+<div class="absolute inset-0 bg-gradient-to-t from-surface-container/50 to-transparent pointer-events-none"></div>
+</div>
+</section>
+</main>
+<!-- Fixed Bottom Primary Action Area -->
+<div class="fixed bottom-0 left-0 w-full bg-surface-container-lowest border-t-2 border-surface-slate p-margin-mobile pb-8 z-50 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+<button class="w-full h-touch-target-min min-h-[56px] bg-rfly-blue hover:bg-primary-container active:scale-95 transition-all duration-150 rounded-lg flex items-center justify-center gap-3 shadow-md focus:outline-none focus:ring-4 focus:ring-primary-fixed">
+<span class="material-symbols-outlined text-on-primary text-[24px]">group_add</span>
+<span class="font-headline-md text-headline-md text-on-primary font-bold tracking-wide">Select Copilot</span>
+</button>
+</div>
+</body></html>

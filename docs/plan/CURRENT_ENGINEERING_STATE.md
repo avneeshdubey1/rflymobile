@@ -1,7 +1,7 @@
 # Current Engineering State
 
 **Status:** current shared handoff
-**Observed:** August 20, 2026
+**Observed:** August 23, 2026
 
 ## Source and deployment
 
@@ -92,17 +92,23 @@ gap in `AUTO_ASSIGNMENT_POLICY_IMPLEMENTATION_PLAN.md`.
 5. The drone import remains a separate reviewed operation after the farmer
    migration and operating-centre decision.
 
-## Local client-master import candidate
+## Client-master hotfix checkpoint
 
-The local candidate includes a separate, guarded importer for the current
-client master workbook. It reads dropdown masters, clusters, the Pilot roster,
-Drone serials, LMVs and source genset references, while deliberately excluding
-the `PRICE` sheet. It has not been committed, deployed, or run against staging
-or production. Its commit path requires an active Admin, an active selected
-operating centre, a reviewed exact plan hash, the target deployment name, a
-verified backup reference and the exact confirmation phrase. It creates roster
-Pilots inactive/offline and Drone/LMV records out of service, so imported source
-data cannot accidentally become schedulable before operations reviews it.
+The guarded client-master importer is committed and deployed. It reads dropdown
+masters, clusters, the Pilot roster, Drone serials, LMVs and source genset
+references while deliberately excluding the `PRICE` sheet. Staging proved its
+preflight/plan/backup/atomic-commit flow. The maintainer declared the production
+hotfix/import complete on August 23, 2026. Treat the web/client-master hotfix as
+closed unless a separately reproduced regression is reported; do not rerun the
+production import as part of later mobile work. Imported roster Pilots remain
+inactive/offline and imported Drone/LMV records remain out of service until an
+authorized operator reviews and activates them.
+
+There is not yet a production RFLY Operations Companion source application.
+The canonical implementation handoff for the one non-Pilot app covering Admin,
+Fleet, Sales, Farmer and Business is
+`NON_PILOT_MOBILE_APP_IMPLEMENTATION_HANDOFF.md`. Existing Stitch exports remain
+design evidence only.
 
 ## Known historical trap
 

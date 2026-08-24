@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>RFLY Operations - Select Copilot</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-secondary-fixed-variant": "#783200",
+                        "surface-container-high": "#e6e8ea",
+                        "surface-tint": "#565e74",
+                        "secondary-fixed-dim": "#ffb690",
+                        "error-container": "#ffdad6",
+                        "tertiary-fixed": "#d5e3fd",
+                        "inverse-primary": "#bec6e0",
+                        "outline": "#76777d",
+                        "on-surface": "#191c1e",
+                        "error": "#ba1a1a",
+                        "primary": "#000000",
+                        "on-tertiary-fixed-variant": "#3a485c",
+                        "background": "#f7f9fb",
+                        "surface-container": "#eceef0",
+                        "surface": "#f7f9fb",
+                        "on-surface-variant": "#45464d",
+                        "secondary": "#9d4300",
+                        "surface-slate": "#E2E8F0",
+                        "on-background": "#191c1e",
+                        "status-success": "#166534",
+                        "primary-container": "#131b2e",
+                        "on-error-container": "#93000a",
+                        "tertiary-container": "#0d1c2f",
+                        "rfly-blue": "#0F172A",
+                        "surface-bright": "#f7f9fb",
+                        "primary-fixed-dim": "#bec6e0",
+                        "on-primary-fixed-variant": "#3f465c",
+                        "on-tertiary": "#ffffff",
+                        "on-primary": "#ffffff",
+                        "secondary-container": "#fd761a",
+                        "surface-container-highest": "#e0e3e5",
+                        "on-secondary-fixed": "#341100",
+                        "on-tertiary-container": "#76859b",
+                        "tertiary": "#000000",
+                        "inverse-on-surface": "#eff1f3",
+                        "on-tertiary-fixed": "#0d1c2f",
+                        "on-primary-fixed": "#131b2e",
+                        "on-secondary-container": "#5c2400",
+                        "on-error": "#ffffff",
+                        "surface-container-lowest": "#ffffff",
+                        "tertiary-fixed-dim": "#b9c7e0",
+                        "surface-container-low": "#f2f4f6",
+                        "inverse-surface": "#2d3133",
+                        "status-warning": "#9A3412",
+                        "safety-orange": "#F97316",
+                        "surface-dim": "#d8dadc",
+                        "on-primary-container": "#7c839b",
+                        "primary-fixed": "#dae2fd",
+                        "on-secondary": "#ffffff",
+                        "outline-variant": "#c6c6cd",
+                        "status-offline": "#475569",
+                        "surface-variant": "#e0e3e5",
+                        "secondary-fixed": "#ffdbca"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "gutter": "16px",
+                        "margin-mobile": "20px",
+                        "stack-lg": "24px",
+                        "stack-md": "16px",
+                        "touch-target-min": "48px",
+                        "stack-sm": "8px"
+                    },
+                    "fontFamily": {
+                        "body-md": ["IBM Plex Sans"],
+                        "body-lg": ["IBM Plex Sans"],
+                        "label-caps": ["IBM Plex Sans"],
+                        "headline-lg": ["IBM Plex Sans"],
+                        "headline-md": ["IBM Plex Sans"],
+                        "headline-lg-mobile": ["IBM Plex Sans"],
+                        "data-mono": ["JetBrains Mono"]
+                    },
+                    "fontSize": {
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "label-caps": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700" }],
+                        "headline-lg": ["28px", { "lineHeight": "36px", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                        "headline-md": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "headline-lg-mobile": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "data-mono": ["14px", { "lineHeight": "20px", "fontWeight": "500" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .loader {
+            border: 4px solid #E2E8F0; /* surface-slate */
+            border-top: 4px solid #F97316; /* safety-orange */
+            border-radius: 50%;
+            width: 48px;
+            height: 48px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Loading overlay transition */
+        #loading-overlay {
+            transition: opacity 0.3s ease-in-out;
+        }
+        .loaded #loading-overlay {
+            opacity: 0;
+            pointer-events: none;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background font-body-md min-h-screen pt-touch-target-min pb-touch-target-min overflow-x-hidden selection:bg-primary-fixed-dim selection:text-on-primary-fixed">
+<!-- TopAppBar (Transactional - Nav Hidden) -->
+<header class="fixed top-0 w-full z-50 bg-surface border-b border-surface-slate h-touch-target-min flex items-center justify-between px-margin-mobile">
+<button aria-label="Go back" class="h-touch-target-min w-touch-target-min flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high active:scale-95 transition-transform" onclick="window.history.back()">
+<span class="material-symbols-outlined" data-icon="arrow_back">arrow_back</span>
+</button>
+<h1 class="font-headline-md text-headline-md font-bold text-rfly-blue">Select Copilot</h1>
+<div class="w-touch-target-min h-touch-target-min"></div> <!-- Spacer for centering -->
+</header>
+<!-- Main Content -->
+<main class="px-margin-mobile py-stack-lg max-w-3xl mx-auto relative min-h-[calc(100vh-96px)]">
+<!-- Search Bar -->
+<div class="mb-stack-lg relative">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant z-10" data-icon="search">search</span>
+<input aria-label="Search pilots" class="w-full h-touch-target-min pl-12 pr-4 bg-surface-container border-2 border-transparent focus:border-tertiary-container focus:bg-surface rounded-lg font-body-lg text-on-surface placeholder:text-on-surface-variant transition-colors outline-none shadow-sm" placeholder="Search pilots by name or ID..." type="text"/>
+</div>
+<!-- Filters / Sort (Minimal) -->
+<div class="flex gap-gutter mb-stack-md overflow-x-auto pb-2 hide-scrollbar">
+<button class="h-10 px-4 rounded-full bg-surface-container-high text-on-surface font-label-caps whitespace-nowrap border border-surface-slate hover:bg-surface-dim transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]" data-icon="sort">sort</span> Distance
+            </button>
+<button class="h-10 px-4 rounded-full bg-surface-container-high text-on-surface font-label-caps whitespace-nowrap border border-surface-slate hover:bg-surface-dim transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]" data-icon="star">star</span> Rating
+            </button>
+<button class="h-10 px-4 rounded-full bg-surface-container-high text-on-surface font-label-caps whitespace-nowrap border border-surface-slate hover:bg-surface-dim transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]" data-icon="check_circle">check_circle</span> Available Now
+            </button>
+</div>
+<!-- Copilot List (Bento-ish Grid on larger screens, Stack on mobile) -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-gutter" id="copilot-list">
+<!-- Candidate Card 1 (Active/Recommended) -->
+<div class="bg-surface-container-lowest border border-surface-slate rounded-xl p-4 flex flex-col gap-stack-sm relative overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer group">
+<div class="absolute top-0 left-0 w-1 h-full bg-safety-orange"></div> <!-- Recommended indicator -->
+<div class="flex justify-between items-start">
+<div class="flex items-center gap-3">
+<div class="w-12 h-12 rounded-full bg-surface-slate overflow-hidden border-2 border-surface-container-highest">
+<img alt="Vikram S." class="w-full h-full object-cover" data-alt="A professional headshot of a male drone pilot in a field environment, wearing a high-visibility vest. Bright, sunny daylight, modern corporate style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBrUo7V2Aa07ST3u0-Rt0C4O8whv8QsYPXcgyAElxN16vDeMsbCl1M_0D7DnIDMQymN5nAkx3QpmlKTAiwjmY76lVDIjSE-tGkZ2cRXeSAlNJjmk5JAIe1t1wIByPqQLsw7UvzxUOwBCPtLUCzNkN_iTWRX5554ROu67ob16S1Dz_Qi07xFGmkXCG0QTi1sgBSoihwMQJ51tx2p4pgcKbypmsc9wA7fRPEX6oBYvgyhysB6zWuTkUFw"/>
+</div>
+<div>
+<h3 class="font-headline-md text-headline-md text-on-surface m-0 leading-tight">Vikram S.</h3>
+<div class="flex items-center gap-1 mt-1 text-on-surface-variant font-data-mono text-data-mono">
+<span class="material-symbols-outlined text-[16px] text-safety-orange" data-icon="star" data-weight="fill">star</span>
+                                4.9 <span class="text-outline mx-1">•</span> 142 hrs
+                            </div>
+</div>
+</div>
+<div class="bg-status-success/10 text-status-success px-2 py-1 rounded font-label-caps flex items-center gap-1 border border-status-success/20">
+<div class="w-2 h-2 rounded-full bg-status-success"></div> Available
+                    </div>
+</div>
+<div class="mt-2 grid grid-cols-2 gap-2 p-3 bg-background rounded-lg border border-surface-slate">
+<div class="flex flex-col">
+<span class="font-label-caps text-on-surface-variant text-[10px]">Distance</span>
+<span class="font-data-mono text-data-mono text-on-surface">1.2 km</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-caps text-on-surface-variant text-[10px]">Equip</span>
+<span class="font-body-md text-body-md text-on-surface truncate">M300 RTK</span>
+</div>
+</div>
+<button class="mt-2 w-full h-touch-target-min bg-rfly-blue text-on-primary font-label-caps rounded-lg flex items-center justify-center gap-2 group-hover:bg-primary-container transition-colors shadow-md">
+<span class="material-symbols-outlined" data-icon="person_add">person_add</span> Request Copilot
+                </button>
+</div>
+<!-- Candidate Card 2 -->
+<div class="bg-surface-container-lowest border border-surface-slate rounded-xl p-4 flex flex-col gap-stack-sm shadow-sm hover:shadow-md transition-shadow cursor-pointer group">
+<div class="flex justify-between items-start">
+<div class="flex items-center gap-3">
+<div class="w-12 h-12 rounded-full bg-surface-slate overflow-hidden border border-surface-container-highest">
+<img alt="Aman R." class="w-full h-full object-cover" data-alt="A professional headshot of a female drone pilot wearing safety glasses and a hard hat. Bright, clear lighting, outdoor industrial setting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC4ozVneSYReXaZcJUWmyQYuQL14NlmjZ9ds0p6dSQbbmUZBg60KSy4KQZn1mRdWoFgRXESvYwJC3qK8wrYlrkrRaKUogXz6fRHgqYFB0nHk_AB9lSwWTasOs2D_xQj1t2i-tnnHsEoJsFkc0GBoTel_mFvosq6fCmSDMrbgEp7PF3NkmAPDse6XsdVjljAMtsGzTG5-hyH7D90AqAV3Twm2QWgZGV4Mhj8VLxmv8aNhB8sweD4Lqs_"/>
+</div>
+<div>
+<h3 class="font-headline-md text-headline-md text-on-surface m-0 leading-tight">Aman R.</h3>
+<div class="flex items-center gap-1 mt-1 text-on-surface-variant font-data-mono text-data-mono">
+<span class="material-symbols-outlined text-[16px] text-safety-orange" data-icon="star" data-weight="fill">star</span>
+                                4.7 <span class="text-outline mx-1">•</span> 89 hrs
+                            </div>
+</div>
+</div>
+<div class="bg-status-success/10 text-status-success px-2 py-1 rounded font-label-caps flex items-center gap-1 border border-status-success/20">
+<div class="w-2 h-2 rounded-full bg-status-success"></div> Available
+                    </div>
+</div>
+<div class="mt-2 grid grid-cols-2 gap-2 p-3 bg-background rounded-lg border border-surface-slate">
+<div class="flex flex-col">
+<span class="font-label-caps text-on-surface-variant text-[10px]">Distance</span>
+<span class="font-data-mono text-data-mono text-on-surface">3.4 km</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-caps text-on-surface-variant text-[10px]">Equip</span>
+<span class="font-body-md text-body-md text-on-surface truncate">M350</span>
+</div>
+</div>
+<button class="mt-2 w-full h-touch-target-min border-2 border-surface-slate text-on-surface font-label-caps rounded-lg flex items-center justify-center gap-2 hover:bg-surface-container-high transition-colors">
+                    Request Copilot
+                </button>
+</div>
+<!-- Candidate Card 3 (Busy/En Route) -->
+<div class="bg-surface border border-surface-slate rounded-xl p-4 flex flex-col gap-stack-sm opacity-80 cursor-not-allowed">
+<div class="flex justify-between items-start">
+<div class="flex items-center gap-3">
+<div class="w-12 h-12 rounded-full bg-surface-slate overflow-hidden border border-surface-container-highest grayscale">
+<span class="material-symbols-outlined text-outline text-[32px] w-full h-full flex items-center justify-center bg-surface-container" data-icon="person">person</span>
+</div>
+<div>
+<h3 class="font-headline-md text-headline-md text-on-surface-variant m-0 leading-tight">Sarah K.</h3>
+<div class="flex items-center gap-1 mt-1 text-on-surface-variant font-data-mono text-data-mono">
+<span class="material-symbols-outlined text-[16px]" data-icon="star">star</span>
+                                4.9 <span class="text-outline mx-1">•</span> 210 hrs
+                            </div>
+</div>
+</div>
+<div class="bg-status-warning/10 text-status-warning px-2 py-1 rounded font-label-caps flex items-center gap-1 border border-status-warning/20">
+<div class="w-2 h-2 rounded-full bg-status-warning"></div> In Mission
+                    </div>
+</div>
+<div class="mt-2 grid grid-cols-2 gap-2 p-3 bg-surface-container-low rounded-lg border border-surface-slate">
+<div class="flex flex-col">
+<span class="font-label-caps text-outline text-[10px]">ETA</span>
+<span class="font-data-mono text-data-mono text-on-surface-variant">45 min</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-caps text-outline text-[10px]">Distance</span>
+<span class="font-data-mono text-data-mono text-on-surface-variant">8.1 km</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Loading Overlay -->
+<div aria-busy="true" aria-label="Loading copilot data" class="absolute inset-0 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center z-20 rounded-xl" id="loading-overlay">
+<div class="loader mb-stack-md"></div>
+<p class="font-data-mono text-data-mono text-on-surface-variant animate-pulse">Syncing fleet status...</p>
+</div>
+</main>
+<script>
+        // Simulate data fetch
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => {
+                document.body.classList.add('loaded');
+            }, 1200); // 1.2s simulated delay
+        });
+    </script>
+</body></html>
