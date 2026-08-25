@@ -9,5 +9,8 @@
     "operatingCenterId": "55555555-5555-4555-8555-555555555555",
     "createdAt": "2026-01-15T09:00:00.000Z"
   },
-  "assignmentOutcome": "NEEDS_MANUAL_SCHEDULING"
+  "assignmentOutcome": "NEEDS_MANUAL_SCHEDULING",
+  "requestId": "req-123",
+  "serverTime": "2026-08-25T12:00:00.000Z",
+  "operatingTimeZone": "UTC"
 }

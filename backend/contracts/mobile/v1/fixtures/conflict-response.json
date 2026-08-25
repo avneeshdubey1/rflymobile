@@ -9,5 +9,8 @@
       "assignmentId": "00000000-0000-4000-8000-000000000030",
       "currentRevision": 4
     }
-  }
+  },
+  "requestId": "req-123",
+  "serverTime": "2026-08-25T12:00:00.000Z",
+  "operatingTimeZone": "UTC"
 }

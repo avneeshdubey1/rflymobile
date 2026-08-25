@@ -15,5 +15,8 @@
       "state": "Example State"
     },
     "recentLeads": []
-  }
+  },
+  "requestId": "req-123",
+  "serverTime": "2026-08-25T12:00:00.000Z",
+  "operatingTimeZone": "UTC"
 }

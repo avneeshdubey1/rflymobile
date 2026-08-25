@@ -22,7 +22,12 @@
     "to": "2026-08-27T00:00:00.000Z"
   },
   "assignments": [],
-  "capabilities": ["PILOT_ASSIGNMENTS_READ", "COPILOT_SELECT", "MISSION_MUTATE", "ISSUE_REPORT"],
+  "capabilities": [
+    "PILOT_ASSIGNMENTS_READ",
+    "COPILOT_SELECT",
+    "MISSION_MUTATE",
+    "ISSUE_REPORT"
+  ],
   "featureFlags": {
     "chat": false,
     "foregroundLocation": false,
@@ -41,5 +46,6 @@
     "locationIntervalSeconds": 60,
     "locationAccuracyMetres": 100,
     "backgroundLocationEnabled": false
-  }
+  },
+  "requestId": "req-123"
 }

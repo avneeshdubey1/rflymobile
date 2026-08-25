@@ -91,10 +91,54 @@ test('assignment and error contracts reject accidental fields and keep error cod
   assignment.farmer.crmHistory = 'must never cross the mobile boundary';
   assert.equal(compileDefinition(ajv, 'assignment')(assignment), false);
 
-  const codes = schema.$defs.errorResponse.properties.error.properties.code.enum;
+  const codes = schema.$defs.errorCode.enum;
   assert.equal(new Set(codes).size, codes.length);
   assert.ok(codes.includes('AUTHENTICATION_REQUIRED'));
   assert.ok(codes.includes('ASSIGNMENT_REVISION_CONFLICT'));
   assert.ok(codes.includes('CLIENT_UPGRADE_REQUIRED'));
   assert.ok(codes.includes('INTERNAL_ERROR'));
+});
+
+test('new contract definitions validate correctly', () => {
+  const ajv = new Ajv2020({ allErrors: true, strict: true });
+  addFormats(ajv);
+  ajv.addSchema(schema);
+
+  const validateNotification = compileDefinition(ajv, 'notification');
+  assert.equal(validateNotification({
+    id: '00000000-0000-0000-0000-000000000000',
+    title: 'Hello',
+    body: 'World',
+    type: 'GENERAL',
+    createdAt: '2026-08-25T12:00:00.000Z'
+  }), true);
+
+  // Missing field rejection
+  assert.equal(validateNotification({
+    title: 'Hello',
+    body: 'World',
+    type: 'GENERAL',
+    createdAt: '2026-08-25T12:00:00.000Z'
+  }), false);
+
+  const validateProfile = compileDefinition(ajv, 'userProfile');
+  assert.equal(validateProfile({
+    id: '00000000-0000-0000-0000-000000000000',
+    displayName: 'Farmer John',
+    employeeCode: null,
+    preferredLanguage: 'en',
+    homeCenterId: null,
+    role: 'FARMER'
+  }), true);
+
+  // extra field rejection
+  assert.equal(validateProfile({
+    id: '00000000-0000-0000-0000-000000000000',
+    displayName: 'Farmer John',
+    employeeCode: null,
+    preferredLanguage: 'en',
+    homeCenterId: null,
+    role: 'FARMER',
+    secretField: 'xyz'
+  }), false);
 });
