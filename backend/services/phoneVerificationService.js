@@ -11,6 +11,7 @@ const authAuditService = require('./authAuditService');
 const GENERIC_MESSAGE = 'If the account is eligible, a verification code has been sent.';
 const PURPOSES = Object.freeze({
   FARMER_PORTAL_AUTH: 'FARMER_PORTAL_AUTH',
+  FARMER_MOBILE_AUTH: 'FARMER_MOBILE_AUTH',
   FARMER_PHONE_LINK: 'FARMER_PHONE_LINK',
   BUSINESS_RECOVERY: 'BUSINESS_RECOVERY',
 });
@@ -42,7 +43,7 @@ function channelFor(config) {
 }
 
 async function findUserForPurpose(phone, purpose) {
-  if (purpose === PURPOSES.FARMER_PORTAL_AUTH) {
+  if (purpose === PURPOSES.FARMER_PORTAL_AUTH || purpose === PURPOSES.FARMER_MOBILE_AUTH) {
     return userRepository.findByPhoneForAuthentication(phoneVariants(phone), 'FARMER');
   }
   if (purpose === PURPOSES.BUSINESS_RECOVERY) {

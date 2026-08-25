@@ -8,6 +8,9 @@ const router = express.Router();
 
 router.post('/pilot/auth/login', controller.login('PILOT_FIELD'));
 router.post('/operations/auth/login', controller.login('OPERATIONS'));
+router.post('/operations/auth/farmer/request-otp', controller.requestFarmerOtp);
+router.post('/operations/auth/farmer/verify-otp', controller.verifyFarmerOtp);
+router.post('/operations/auth/business/login', controller.businessLogin);
 router.use(authenticateMobile);
 router.post('/auth/logout', controller.logout);
 router.post('/auth/logout-all', controller.logoutAll);
