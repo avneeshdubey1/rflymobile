@@ -9,6 +9,11 @@ const variants = Object.freeze({
     package: "com.rfly.pilot.staging",
     cleartext: true,
   }),
+  "production-internal-http": Object.freeze({
+    name: "RFLY Pilot",
+    package: "com.rfly.pilot",
+    cleartext: true,
+  }),
   production: Object.freeze({
     name: "RFLY Pilot",
     package: "com.rfly.pilot",
@@ -26,6 +31,14 @@ if (!variant) {
 const apiUrl = process.env.EXPO_PUBLIC_API_URL;
 if (variantName === "staging" && apiUrl !== "http://172.20.96.10:8089") {
   throw new Error("The staging APK must target http://172.20.96.10:8089");
+}
+if (
+  variantName === "production-internal-http" &&
+  apiUrl !== "http://103.238.230.152:8088"
+) {
+  throw new Error(
+    "The internal HTTP production APK must target http://103.238.230.152:8088",
+  );
 }
 if (
   variantName === "production" &&

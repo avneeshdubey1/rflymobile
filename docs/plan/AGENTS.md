@@ -1,7 +1,7 @@
 # Canonical Engineering Agent Guide
 
 **Status:** authoritative engineering entry point
-**Last reviewed:** August 10, 2026
+**Last reviewed:** August 25, 2026
 
 This is the only engineering-agent entry point for future work. Verify current
 code and tests before relying on a planning statement. Historical guidance is
@@ -60,6 +60,10 @@ kept under `docs/unrealted_docs_for_current_version/` and is never authoritative
 11. Before changing GitHub Actions, the office runner, Docker deployment,
     release evidence, APK builds, or branch promotion, read
     [CICD_OPERATIONS_CONTEXT.md](CICD_OPERATIONS_CONTEXT.md).
+12. For a source-free architecture or product review, share
+    [INTERN_CODEBASE_REVIEW_BRIEF.md](INTERN_CODEBASE_REVIEW_BRIEF.md). It is
+    intentionally sanitized; do not substitute server, VPN, migration, secret,
+    customer-data or historical documents.
 
 Do not treat a dated report, a legacy document, a seed value, or current application behaviour as an approved requirement when it conflicts with these documents.
 

@@ -1,7 +1,7 @@
 # Current Engineering State
 
 **Status:** current shared handoff
-**Observed:** August 23, 2026
+**Observed:** August 25, 2026
 
 ## Source and deployment
 
@@ -67,6 +67,15 @@ retains the private artifact for seven days. The APK uses internal debug
 signing and is staging evidence only; it is not a Play Store or production
 release.
 
+The Pilot client also has a separate, manual exact-`main` production artifact
+workflow for the current internal field trial. It refuses stale source, checks
+that the same commit is healthy on the office production stack, confirms the
+mobile API is enabled, and then builds `com.rfly.pilot` against the public
+production endpoint. This temporary artifact uses HTTP and internal debug
+signing. It is not a Play Store release and must be replaced by the normal
+HTTPS-only production variant once the company domain, TLS and release-signing
+custody are approved.
+
 The local auto-assignment candidate covers `AA-00` through `AA-09` and most
 of `AA-10`. The complete backend suite now passes 160/160; frontend lint/build,
 Pilot mobile typecheck and 18/18 tests, and Expo Doctor 21/21 pass. The migration
@@ -104,11 +113,16 @@ production import as part of later mobile work. Imported roster Pilots remain
 inactive/offline and imported Drone/LMV records remain out of service until an
 authorized operator reviews and activates them.
 
-There is not yet a production RFLY Operations Companion source application.
-The canonical implementation handoff for the one non-Pilot app covering Admin,
-Fleet, Sales, Farmer and Business is
-`NON_PILOT_MOBILE_APP_IMPLEMENTATION_HANDOFF.md`. Existing Stitch exports remain
-design evidence only.
+An interim RFLY Operations Android shell now exists under `frontend/android`.
+It is a Capacitor WebView package of the responsive web SPA, with staging and
+manual exact-`main` internal APK workflows. It can provide web-feature parity
+for a controlled demonstration, but it is not the planned native Operations
+Companion: it has no independent native offline queue, role-specific native
+navigation or completed mobile capability contract. There is still no
+`operations-mobile/` source application. The canonical implementation handoff
+for that Expo/React Native client covering Admin, Fleet, Sales, Farmer and
+Business remains `NON_PILOT_MOBILE_APP_IMPLEMENTATION_HANDOFF.md`. Existing
+Stitch exports remain design evidence only.
 
 ## Known historical trap
 

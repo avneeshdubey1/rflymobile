@@ -1,7 +1,7 @@
 # RFLY CI/CD Operations Context
 
 **Status:** current implementation handoff
-**Reviewed:** August 24, 2026
+**Reviewed:** August 25, 2026
 **Scope:** the RFLY web stack, guarded importer images, Pilot and Operations
 Android artifacts, and the office on-premises delivery path.
 
@@ -41,6 +41,7 @@ Compose project name must not be interpreted as permission to seed or reset it.
 | `.github/workflows/onprem-deploy.yml` | Successful `application-and-container-gates` run for `main` | Dedicated RFLY self-hosted office runner | Deploys the exact current `main` commit to the office production stack. |
 | `.github/workflows/release-images.yml` | Successful `application-and-container-gates` run for `main` | GitHub-hosted Ubuntu runners | Builds, scans, publishes commit-addressed GHCR images and keeps SBOM/image-digest evidence. It runs alongside production CD; production CD currently builds the exact source locally and does not pull these GHCR images. |
 | `.github/workflows/operations-production-apk.yml` | Maintainer dispatch from `main` with the exact deployed SHA and confirmation phrase | Dedicated RFLY self-hosted office runner | Verifies that the matching production web revision is healthy, then builds a separate internal Operations APK pointed at the production endpoint. |
+| `.github/workflows/pilot-production-apk.yml` | Maintainer dispatch from `main` with the exact deployed SHA and confirmation phrase | Dedicated RFLY self-hosted office runner | Verifies the matching production revision, mobile-API activation and health before building a separate internal Pilot APK pointed at production. |
 
 The authoritative reusable server isolation guidance is
 [SHARED_ONPREM_CICD_SERVER_HANDOFF.md](SHARED_ONPREM_CICD_SERVER_HANDOFF.md).
@@ -122,6 +123,15 @@ container uses that exact SHA and both production health endpoints respond. It
 then produces `com.rfly.operations`, pointed at the temporary production HTTP
 endpoint. This remains an internal, debug-signed artifact, not a Play release,
 until company signing custody, Play ownership, a domain and HTTPS are approved.
+
+The separate `pilot-production-apk` workflow has the same explicit dispatch,
+exact-current-`main` and matching-deployed-image boundary. It additionally
+refuses to build unless the production backend container has
+`MOBILE_API_ENABLED=true`. It produces `com.rfly.pilot`, verifies foreground
+location and the prohibited-permission boundary, and records the source SHA,
+endpoint and checksum. Its `production-internal-http` configuration exists only
+for the current direct-IP field trial. The ordinary `production` app variant
+continues to reject non-HTTPS endpoints.
 
 ## 5. CD: exact-commit office deployment
 
