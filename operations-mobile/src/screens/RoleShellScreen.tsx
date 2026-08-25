@@ -1,16 +1,25 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { colors } from '../theme/tokens';
+import { View, Text, StyleSheet, Button } from 'react-native';
+import { colors, spacing } from '../theme/tokens';
 
-export default function RoleShellScreen() {
+export default function RoleShellScreen({ navigation }: any) {
   return (
     <View style={styles.container}>
-      <Text style={styles.text}>Role Dashboard Shell</Text>
+      <Text style={styles.text}>Operations Dashboard</Text>
+      
+      <View style={styles.actions}>
+        <Button 
+          title="Sales / Intake" 
+          color={colors.safetyOrange}
+          onPress={() => navigation.navigate('SalesDashboard')}
+        />
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.white },
-  text: { fontSize: 20, color: colors.navy }
+  text: { fontSize: 24, color: colors.navy, marginBottom: spacing.xl },
+  actions: { width: '80%' }
 });
