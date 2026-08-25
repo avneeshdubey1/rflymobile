@@ -3,6 +3,7 @@ import axios, {
   AxiosResponse,
   InternalAxiosRequestConfig,
 } from "axios";
+import Constants from "expo-constants";
 import * as SecureStore from "./storage";
 import { z } from "zod";
 import {
@@ -13,12 +14,13 @@ import {
 
 const ZConfigUrl = z.string().url().min(1);
 
-// We rely on EXPO_PUBLIC_API_URL. It's safe since base URLs are public config, not secrets.
-const configuredApiUrl = process.env.EXPO_PUBLIC_API_URL?.trim();
+const embeddedApiUrl = Constants.expoConfig?.extra?.apiUrl;
+const configuredApiUrl =
+  typeof embeddedApiUrl === "string" ? embeddedApiUrl.trim() : undefined;
 
 if (!configuredApiUrl) {
   throw new Error(
-    "EXPO_PUBLIC_API_URL is required. Set it to an API address reachable from the Android device.",
+    "The embedded API URL is missing. Build the app with EXPO_PUBLIC_API_URL set to an API address reachable from the Android device.",
   );
 }
 

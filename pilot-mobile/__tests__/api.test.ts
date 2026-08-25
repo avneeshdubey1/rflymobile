@@ -6,6 +6,10 @@ import MockAdapter from "axios-mock-adapter";
 describe("API Configuration and Validation", () => {
   let mock: MockAdapter;
 
+  it("uses the API URL embedded in the Expo application config", () => {
+    expect(API_BASE_URL).toBe("http://localhost:3000/api/mobile/v1");
+  });
+
   beforeEach(() => {
     mock = new MockAdapter(api);
     jest.clearAllMocks();
