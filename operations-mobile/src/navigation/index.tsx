@@ -22,6 +22,8 @@ import CopilotOverrideScreen from '../screens/fleet/CopilotOverrideScreen';
 
 // Admin Screens
 import AdminDashboardScreen from '../screens/admin/AdminDashboardScreen';
+import TeamManagementScreen from '../screens/admin/TeamManagementScreen';
+import AssetManagementScreen from '../screens/admin/AssetManagementScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -50,6 +52,8 @@ export default function AppNavigator() {
 
         {/* Admin Stack */}
         <Stack.Screen name="AdminDashboard" component={AdminDashboardScreen} options={{ title: 'Admin Controls' }} />
+        <Stack.Screen name="TeamManagement" component={TeamManagementScreen} options={{ title: 'Team Directory' }} />
+        <Stack.Screen name="AssetManagement" component={AssetManagementScreen} options={{ title: 'Assets & Drones' }} />
       </Stack.Navigator>
     </NavigationContainer>
   );

@@ -41,9 +41,19 @@ export default function AdminDashboardScreen({ navigation }: any) {
         <Text style={styles.title}>4. Team Management</Text>
         <Text style={styles.description}>Manage users, roles, and administrative guards.</Text>
         <Button 
-          title="Team (Phase 6B)" 
+          title="Team Directory" 
           color={colors.darkGrey}
-          onPress={() => console.log('Phase 6B')}
+          onPress={() => navigation.navigate('TeamManagement')}
+        />
+      </View>
+
+      <View style={styles.card}>
+        <Text style={styles.title}>5. Asset Management</Text>
+        <Text style={styles.description}>Drone, LMV, Pilot management + operating-centre transfers.</Text>
+        <Button 
+          title="Assets & Transfers" 
+          color={colors.safetyOrange}
+          onPress={() => navigation.navigate('AssetManagement')}
         />
       </View>
       

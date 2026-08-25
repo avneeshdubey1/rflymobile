@@ -35,4 +35,23 @@ router.get('/operations/fleet/schedule', requireMobileApp('OPERATIONS'), require
 router.get('/operations/fleet/exceptions', requireMobileApp('OPERATIONS'), requireMobileRole('ADMIN', 'FLEET_MANAGER'), operationsController.fleetExceptions);
 router.post('/operations/assignments/:assignmentId/copilot-override', requireMobileApp('OPERATIONS'), assignmentController.overrideCopilot);
 
+
+// Phase 6B: Admin Operational Routes mapped from existing controllers
+const userController = require('../controllers/userController');
+const droneController = require('../controllers/droneController');
+const lmvController = require('../controllers/lmvController');
+
+router.get('/operations/admin/users', requireMobileApp('OPERATIONS'), requireMobileRole('ADMIN'), userController.getAllUsers);
+router.post('/operations/admin/users', requireMobileApp('OPERATIONS'), requireMobileRole('ADMIN', 'FLEET_MANAGER'), userController.addUser);
+router.patch('/operations/admin/users/:id', requireMobileApp('OPERATIONS'), requireMobileRole('ADMIN', 'FLEET_MANAGER'), userController.updateUser);
+router.patch('/operations/admin/users/:id/operating-center', requireMobileApp('OPERATIONS'), requireMobileRole('ADMIN', 'FLEET_MANAGER'), userController.updatePilotOperatingCenter);
+
+router.get('/operations/admin/drones', requireMobileApp('OPERATIONS'), requireMobileRole('ADMIN', 'FLEET_MANAGER'), droneController.getAllDrones);
+router.post('/operations/admin/drones', requireMobileApp('OPERATIONS'), requireMobileRole('ADMIN'), droneController.addDrone);
+router.patch('/operations/admin/drones/:id', requireMobileApp('OPERATIONS'), requireMobileRole('ADMIN'), droneController.updateDrone);
+
+router.get('/operations/admin/lmvs', requireMobileApp('OPERATIONS'), requireMobileRole('ADMIN', 'FLEET_MANAGER'), lmvController.getAllLmvs);
+router.post('/operations/admin/lmvs', requireMobileApp('OPERATIONS'), requireMobileRole('ADMIN'), lmvController.addLmv);
+router.patch('/operations/admin/lmvs/:id', requireMobileApp('OPERATIONS'), requireMobileRole('ADMIN'), lmvController.updateLmv);
+
 module.exports = router;
