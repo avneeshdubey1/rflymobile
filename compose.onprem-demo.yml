@@ -23,6 +23,9 @@ services:
       NODE_ENV: development
       ENFORCE_HTTPS: "false"
       TRUST_PROXY_HOPS: ${TRUST_PROXY_HOPS:-1}
+      # Temporary direct-HTTP field trial. Remove this override when the
+      # production edge moves to the approved domain/TLS configuration.
+      MOBILE_API_ENABLED: "true"
       OTP_DELIVERY_PROVIDER: ${OTP_DELIVERY_PROVIDER:-disabled}
 
   frontend:
