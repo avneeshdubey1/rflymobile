@@ -40,5 +40,14 @@ jest.mock("expo-file-system", () => ({
   deleteAsync: jest.fn().mockResolvedValue(undefined),
 }));
 
-// Provide a mock URL for testing so that api.ts doesn't throw during initialization
-process.env.EXPO_PUBLIC_API_URL = "http://localhost:3000";
+jest.mock("expo-constants", () => ({
+  __esModule: true,
+  default: {
+    expoConfig: {
+      extra: {
+        environment: "test",
+        apiUrl: "http://localhost:3000",
+      },
+    },
+  },
+}));

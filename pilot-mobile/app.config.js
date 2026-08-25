@@ -61,7 +61,7 @@ module.exports = {
       bundleIdentifier: variant.package,
     },
     android: {
-      versionCode: 2,
+      versionCode: 3,
       blockedPermissions: [
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.WRITE_EXTERNAL_STORAGE",
@@ -81,6 +81,7 @@ module.exports = {
     },
     extra: {
       environment: variantName,
+      apiUrl,
     },
     plugins: [
       "expo-router",
