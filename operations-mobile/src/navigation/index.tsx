@@ -14,6 +14,12 @@ import CustomerDetailScreen from '../screens/sales/CustomerDetailScreen';
 import CreateCustomerScreen from '../screens/sales/CreateCustomerScreen';
 import CreateLeadScreen from '../screens/sales/CreateLeadScreen';
 
+// Fleet Screens
+import FleetDashboardScreen from '../screens/fleet/FleetDashboardScreen';
+import FleetScheduleScreen from '../screens/fleet/FleetScheduleScreen';
+import FleetExceptionsScreen from '../screens/fleet/FleetExceptionsScreen';
+import CopilotOverrideScreen from '../screens/fleet/CopilotOverrideScreen';
+
 const Stack = createNativeStackNavigator();
 
 export default function AppNavigator() {
@@ -32,6 +38,12 @@ export default function AppNavigator() {
         <Stack.Screen name="CustomerDetail" component={CustomerDetailScreen} options={{ title: 'Customer Details' }} />
         <Stack.Screen name="CreateCustomer" component={CreateCustomerScreen} options={{ title: 'New Customer' }} />
         <Stack.Screen name="CreateLead" component={CreateLeadScreen} options={{ title: 'New Lead' }} />
+        
+        {/* Fleet Stack */}
+        <Stack.Screen name="FleetDashboard" component={FleetDashboardScreen} options={{ title: 'Fleet Operations' }} />
+        <Stack.Screen name="FleetSchedule" component={FleetScheduleScreen} options={{ title: 'Daily Schedule' }} />
+        <Stack.Screen name="FleetExceptions" component={FleetExceptionsScreen} options={{ title: 'Live Exceptions' }} />
+        <Stack.Screen name="CopilotOverride" component={CopilotOverrideScreen} options={{ title: 'Copilot Override' }} />
       </Stack.Navigator>
     </NavigationContainer>
   );

@@ -13,6 +13,12 @@ export default function RoleShellScreen({ navigation }: any) {
           color={colors.safetyOrange}
           onPress={() => navigation.navigate('SalesDashboard')}
         />
+        <View style={{ height: 16 }} />
+        <Button 
+          title="Fleet Operations" 
+          color={colors.navy}
+          onPress={() => navigation.navigate('FleetDashboard')}
+        />
       </View>
     </View>
   );
