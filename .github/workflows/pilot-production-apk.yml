@@ -137,18 +137,46 @@ jobs:
           rm -rf .expo node_modules/.cache android
           npx expo prebuild --platform android --clean --no-install
 
+      - name: Generate and verify production JavaScript bundle
+        working-directory: pilot-mobile
+        shell: bash
+        run: |
+          set -euo pipefail
+          bundle_output='android/app/src/main/assets/index.android.bundle'
+          assets_output='android/app/src/main/res'
+          mkdir -p "$(dirname "$bundle_output")" "$assets_output"
+          npx expo export:embed \
+            --entry-file node_modules/expo-router/entry.js \
+            --platform android \
+            --dev false \
+            --minify true \
+            --reset-cache \
+            --bytecode \
+            --bundle-output "$bundle_output" \
+            --assets-dest "$assets_output" \
+            --max-workers 2
+          test -s "$bundle_output"
+          grep -aFq 'http://103.238.230.152:8088' "$bundle_output" || {
+            echo 'Explicit production bundle does not contain the production API URL.' >&2
+            exit 1
+          }
+          if grep -aFq 'http://172.20.96.10:8089' "$bundle_output"; then
+            echo 'Explicit production bundle contains the staging API URL.' >&2
+            exit 1
+          fi
+
       - name: Build bundled standalone production-pointed APK
         working-directory: pilot-mobile
         shell: bash
         run: |
           set -euo pipefail
-          export GRADLE_USER_HOME="$RUNNER_TEMP/gradle-pilot-production-${GITHUB_RUN_ID}"
           rm -rf android/.gradle android/app/build
           chmod +x android/gradlew
           sed -i 's/^org.gradle.jvmargs=.*/org.gradle.jvmargs=-Xmx6g -XX:MaxMetaspaceSize=1g -Dfile.encoding=UTF-8/' android/gradle.properties
           sed -i 's/^org.gradle.parallel=.*/org.gradle.parallel=false/' android/gradle.properties
           sed -i 's/^reactNativeArchitectures=.*/reactNativeArchitectures=arm64-v8a/' android/gradle.properties
-          ./android/gradlew -p android clean :app:assembleRelease \
+          ./android/gradlew -p android :app:assembleRelease \
+            -x :app:createBundleReleaseJsAndAssets \
             --no-daemon --max-workers=2
 
       - name: Verify and package production APK evidence
