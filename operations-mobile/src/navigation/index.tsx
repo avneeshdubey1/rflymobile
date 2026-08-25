@@ -20,6 +20,9 @@ import FleetScheduleScreen from '../screens/fleet/FleetScheduleScreen';
 import FleetExceptionsScreen from '../screens/fleet/FleetExceptionsScreen';
 import CopilotOverrideScreen from '../screens/fleet/CopilotOverrideScreen';
 
+// Admin Screens
+import AdminDashboardScreen from '../screens/admin/AdminDashboardScreen';
+
 const Stack = createNativeStackNavigator();
 
 export default function AppNavigator() {
@@ -44,6 +47,9 @@ export default function AppNavigator() {
         <Stack.Screen name="FleetSchedule" component={FleetScheduleScreen} options={{ title: 'Daily Schedule' }} />
         <Stack.Screen name="FleetExceptions" component={FleetExceptionsScreen} options={{ title: 'Live Exceptions' }} />
         <Stack.Screen name="CopilotOverride" component={CopilotOverrideScreen} options={{ title: 'Copilot Override' }} />
+
+        {/* Admin Stack */}
+        <Stack.Screen name="AdminDashboard" component={AdminDashboardScreen} options={{ title: 'Admin Controls' }} />
       </Stack.Navigator>
     </NavigationContainer>
   );

@@ -19,6 +19,12 @@ export default function RoleShellScreen({ navigation }: any) {
           color={colors.navy}
           onPress={() => navigation.navigate('FleetDashboard')}
         />
+        <View style={{ height: 16 }} />
+        <Button 
+          title="Admin Controls" 
+          color={colors.darkGrey}
+          onPress={() => navigation.navigate('AdminDashboard')}
+        />
       </View>
     </View>
   );
