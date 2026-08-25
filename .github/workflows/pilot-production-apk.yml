@@ -27,6 +27,7 @@ jobs:
     environment: onprem-production
     env:
       CI: '1'
+      EXPO_NO_DOTENV: '1'
       RFLY_APP_VARIANT: production-internal-http
       EXPO_PUBLIC_API_URL: http://103.238.230.152:8088
     steps:
@@ -130,18 +131,24 @@ jobs:
 
       - name: Generate native Android production project
         working-directory: pilot-mobile
-        run: npx expo prebuild --platform android --clean --no-install
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf .expo node_modules/.cache android
+          npx expo prebuild --platform android --clean --no-install
 
       - name: Build bundled standalone production-pointed APK
         working-directory: pilot-mobile
         shell: bash
         run: |
           set -euo pipefail
+          export GRADLE_USER_HOME="$RUNNER_TEMP/gradle-pilot-production-${GITHUB_RUN_ID}"
+          rm -rf android/.gradle android/app/build
           chmod +x android/gradlew
           sed -i 's/^org.gradle.jvmargs=.*/org.gradle.jvmargs=-Xmx6g -XX:MaxMetaspaceSize=1g -Dfile.encoding=UTF-8/' android/gradle.properties
           sed -i 's/^org.gradle.parallel=.*/org.gradle.parallel=false/' android/gradle.properties
           sed -i 's/^reactNativeArchitectures=.*/reactNativeArchitectures=arm64-v8a/' android/gradle.properties
-          ./android/gradlew -p android :app:assembleRelease \
+          ./android/gradlew -p android clean :app:assembleRelease \
             --no-daemon --max-workers=2
 
       - name: Verify and package production APK evidence
@@ -158,6 +165,23 @@ jobs:
           "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging \
             "$artifact_dir/rfly-pilot-production.apk" \
             | grep -q "package: name='com.rfly.pilot'"
+          bundle_file="$RUNNER_TEMP/rfly-pilot-production-index.android.bundle"
+          unzip -p "$artifact_dir/rfly-pilot-production.apk" \
+            assets/index.android.bundle > "$bundle_file"
+          test -s "$bundle_file"
+          grep -aFq 'http://103.238.230.152:8088' "$bundle_file" || {
+            echo 'Production API URL is missing from the packaged JavaScript bundle.' >&2
+            exit 1
+          }
+          for forbidden_api_url in \
+            'http://172.20.96.10:8089' \
+            'http://localhost' \
+            'http://127.0.0.1'; do
+            if grep -aFq "$forbidden_api_url" "$bundle_file"; then
+              echo "Forbidden API URL is embedded in production APK: ${forbidden_api_url}" >&2
+              exit 1
+            fi
+          done
           apk_permissions="$("$ANDROID_HOME/build-tools/36.0.0/aapt" dump permissions \
             "$artifact_dir/rfly-pilot-production.apk")"
           grep -q 'android.permission.ACCESS_FINE_LOCATION' <<< "$apk_permissions"

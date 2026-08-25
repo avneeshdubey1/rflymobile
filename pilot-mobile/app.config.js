@@ -61,7 +61,7 @@ module.exports = {
       bundleIdentifier: variant.package,
     },
     android: {
-      versionCode: 1,
+      versionCode: 2,
       blockedPermissions: [
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.WRITE_EXTERNAL_STORAGE",
