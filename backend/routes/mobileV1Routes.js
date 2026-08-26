@@ -54,4 +54,23 @@ router.get('/operations/admin/lmvs', requireMobileApp('OPERATIONS'), requireMobi
 router.post('/operations/admin/lmvs', requireMobileApp('OPERATIONS'), requireMobileRole('ADMIN'), lmvController.addLmv);
 router.patch('/operations/admin/lmvs/:id', requireMobileApp('OPERATIONS'), requireMobileRole('ADMIN'), lmvController.updateLmv);
 
+
+// Phase 6C: Regions, Policies, Master Data
+const centerController = require('../controllers/centerController');
+const policyController = require('../controllers/autoAssignmentPolicyController');
+const masterDataController = require('../controllers/masterDataController');
+
+// Regions
+router.get('/operations/admin/regions', requireMobileApp('OPERATIONS'), requireMobileRole('ADMIN', 'FLEET_MANAGER'), centerController.getAllCenters);
+router.post('/operations/admin/regions', requireMobileApp('OPERATIONS'), requireMobileRole('ADMIN'), centerController.addCenter);
+router.delete('/operations/admin/regions/:id', requireMobileApp('OPERATIONS'), requireMobileRole('ADMIN'), centerController.deleteCenter);
+
+// Policies
+router.get('/operations/admin/policies', requireMobileApp('OPERATIONS'), requireMobileRole('ADMIN', 'FLEET_MANAGER'), policyController.get);
+router.put('/operations/admin/policies', requireMobileApp('OPERATIONS'), requireMobileRole('ADMIN'), policyController.update);
+
+// Master Data
+router.get('/operations/admin/master-data', requireMobileApp('OPERATIONS'), requireMobileRole('ADMIN'), masterDataController.listAdmin);
+router.post('/operations/admin/master-data/clusters', requireMobileApp('OPERATIONS'), requireMobileRole('ADMIN'), masterDataController.createCluster);
+
 module.exports = router;

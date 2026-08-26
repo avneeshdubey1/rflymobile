@@ -16,4 +16,13 @@ export const adminApi = {
   getLmvs: () => fetchApi('/api/mobile/v1/operations/admin/lmvs'),
   addLmv: (data: any) => fetchApi('/api/mobile/v1/operations/admin/lmvs', { method: 'POST', body: JSON.stringify(data) }),
   updateLmv: (id: string, data: any) => fetchApi(\`/api/mobile/v1/operations/admin/lmvs/\${id}\`, { method: 'PATCH', body: JSON.stringify(data) }),
+
+  // Phase 6C
+  getRegions: () => fetchApi('/api/mobile/v1/operations/admin/regions'),
+  addRegion: (data: any) => fetchApi('/api/mobile/v1/operations/admin/regions', { method: 'POST', body: JSON.stringify(data) }),
+  
+  getPolicies: () => fetchApi('/api/mobile/v1/operations/admin/policies'),
+  updatePolicy: (data: any) => fetchApi('/api/mobile/v1/operations/admin/policies', { method: 'PUT', body: JSON.stringify(data) }),
+  
+  getMasterData: () => fetchApi('/api/mobile/v1/operations/admin/master-data'),
 };

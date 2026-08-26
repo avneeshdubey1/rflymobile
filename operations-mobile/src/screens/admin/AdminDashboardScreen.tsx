@@ -56,6 +56,46 @@ export default function AdminDashboardScreen({ navigation }: any) {
           onPress={() => navigation.navigate('AssetManagement')}
         />
       </View>
+
+      <View style={styles.card}>
+        <Text style={styles.title}>6. Feasible Regions</Text>
+        <Text style={styles.description}>Manage operating centers and radius boundaries.</Text>
+        <Button 
+          title="Regions (Phase 6C)" 
+          color={colors.navy}
+          onPress={() => navigation.navigate('RegionManagement')}
+        />
+      </View>
+
+      <View style={styles.card}>
+        <Text style={styles.title}>7. Auto-Assignment Policy</Text>
+        <Text style={styles.description}>Configure revision-protected assignment policies.</Text>
+        <Button 
+          title="Policy (Phase 6C)" 
+          color={colors.darkGrey}
+          onPress={() => navigation.navigate('PolicyManagement')}
+        />
+      </View>
+
+      <View style={styles.card}>
+        <Text style={styles.title}>8. Master Data</Text>
+        <Text style={styles.description}>Server-backed master-data configuration for roles.</Text>
+        <Button 
+          title="Master Data (Phase 6C)" 
+          color={colors.safetyOrange}
+          onPress={() => navigation.navigate('MasterDataManagement')}
+        />
+      </View>
+
+      <View style={styles.card}>
+        <Text style={styles.title}>9. Live Pilot Location</Text>
+        <Text style={styles.description}>Track active-mission Pilot locations.</Text>
+        <Button 
+          title="Live Map (Phase 6C)" 
+          color={colors.navy}
+          onPress={() => navigation.navigate('PilotLocation')}
+        />
+      </View>
       
       <View style={{ height: 40 }} />
     </ScrollView>
