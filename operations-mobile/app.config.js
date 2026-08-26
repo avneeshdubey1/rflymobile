@@ -14,9 +14,9 @@ module.exports = ({ config }) => {
   }
 
   // Ensure API URL fails closed on physical builds
-  const apiUrl = process.env.EXPO_PUBLIC_API_URL;
+  const apiUrl = process.env.EXPO_PUBLIC_OC_API_URL;
   if (!apiUrl && (isProd || isStaging)) {
-    throw new Error('EXPO_PUBLIC_API_URL must be defined for staging and production builds.');
+    throw new Error('EXPO_PUBLIC_OC_API_URL must be defined for staging and production builds.');
   }
 
   return {

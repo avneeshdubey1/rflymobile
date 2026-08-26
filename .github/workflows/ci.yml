@@ -113,10 +113,32 @@ jobs:
       - run: npm test -- --runInBand
       - run: npm run doctor
 
+  operations-mobile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: operations-mobile
+    env:
+      EXPO_PUBLIC_OC_API_URL: https://operations-ci.example.invalid
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: operations-mobile/package-lock.json
+      - run: npm ci
+      # Expo SDK 57 runtime/build audit rules apply identically here.
+      - run: npm audit --omit=dev --audit-level=critical
+      - run: npm run typecheck
+      - run: npm test -- --runInBand
+      - run: npm run doctor
+
   isolated-container-stack:
     runs-on: ubuntu-latest
     timeout-minutes: 25
-    needs: [backend, frontend, pilot-mobile]
+    needs: [backend, frontend, pilot-mobile, operations-mobile]
     steps:
       - uses: actions/checkout@v4
       - name: Create ephemeral file-mounted secrets and deployment environment
