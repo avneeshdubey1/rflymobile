@@ -1,6 +1,5 @@
-// @ts-nocheck
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, StyleSheet, ActivityIndicator, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, FlatList, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import { colors, spacing } from '../../theme/tokens';
 import { adminApi } from '../../api/admin';
 
@@ -16,7 +15,7 @@ export default function AssetManagementScreen({ navigation }: any) {
   const loadAssets = async () => {
     setLoading(true);
     try {
-      const res = await adminApi.getDrones();
+      const res: any = await adminApi.getDrones();
       if (res.success && res.drones) {
         setDrones(res.drones);
       }
@@ -28,30 +27,21 @@ export default function AssetManagementScreen({ navigation }: any) {
   };
 
   const renderItem = ({ item }: { item: any }) => (
-    <TouchableOpacity 
-      style={styles.card} 
-      onPress={() => Alert.alert('Center Transfer', `Change operating center for ${item.label || item.id}`)}
-    >
-      <Text style={styles.name}>{item.label || 'Unnamed Drone'}</Text>
+    <View style={styles.card} testID={`asset-card-${item.id}`}>
+      <Text style={styles.name}>{item.label || item.name || 'Unnamed Drone'}</Text>
       <Text style={styles.detail}>Status: {item.status}</Text>
-      <Text style={styles.detail}>Center ID: {item.operatingCenterId}</Text>
-    </TouchableOpacity>
+      <Text style={styles.detail}>Center ID: {item.operatingCenterId || 'None'}</Text>
+    </View>
   );
 
   return (
     <View style={styles.container}>
       <View style={styles.headerRow}>
         <Text style={styles.header}>Drones & Assets</Text>
-        <TouchableOpacity 
-          style={styles.addBtn} 
-          onPress={() => Alert.alert('Stub', 'Navigate to Add Drone')}
-        >
-          <Text style={styles.addBtnText}>+ Add Drone</Text>
-        </TouchableOpacity>
       </View>
 
       {loading ? (
-        <ActivityIndicator color={colors.safetyOrange} size="large" />
+        <ActivityIndicator color={colors.safetyOrange} size="large" testID="loading-indicator" />
       ) : (
         <FlatList
           data={drones}
@@ -59,6 +49,7 @@ export default function AssetManagementScreen({ navigation }: any) {
           renderItem={renderItem}
           contentContainerStyle={styles.list}
           ListEmptyComponent={<Text style={styles.empty}>No assets found.</Text>}
+          testID="drones-list"
         />
       )}
     </View>
@@ -69,8 +60,6 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.lightGrey },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: spacing.md, backgroundColor: colors.white },
   header: { fontSize: 20, fontWeight: 'bold', color: colors.navy },
-  addBtn: { backgroundColor: colors.navy, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: 8 },
-  addBtnText: { color: colors.white, fontWeight: 'bold' },
   list: { padding: spacing.md },
   card: { 
     backgroundColor: colors.white, 

@@ -31,7 +31,6 @@ import AssetManagementScreen from '../screens/admin/AssetManagementScreen';
 import RegionManagementScreen from '../screens/admin/RegionManagementScreen';
 import PolicyManagementScreen from '../screens/admin/PolicyManagementScreen';
 import MasterDataManagementScreen from '../screens/admin/MasterDataManagementScreen';
-import PilotLocationScreen from '../screens/admin/PilotLocationScreen';
 
 // Farmer Screens
 import FarmerPhoneScreen from '../screens/farmer/FarmerPhoneScreen';
@@ -121,7 +120,6 @@ export default function AppNavigator() {
         <Stack.Screen name="RegionManagement" component={RegionManagementScreen} options={{ title: 'Feasible Regions' }} />
         <Stack.Screen name="PolicyManagement" component={PolicyManagementScreen} options={{ title: 'Assignment Policy' }} />
         <Stack.Screen name="MasterDataManagement" component={MasterDataManagementScreen} options={{ title: 'Master Data' }} />
-        <Stack.Screen name="PilotLocation" component={PilotLocationScreen} options={{ title: 'Pilot Location' }} />
 
         {/* Farmer Stack */}
         <Stack.Screen name="FarmerPhone" component={FarmerPhoneScreen} options={{ title: 'Farmer Login' }} />
