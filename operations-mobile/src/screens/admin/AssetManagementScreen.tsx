@@ -29,7 +29,7 @@ export default function AssetManagementScreen({ navigation }: any) {
   const renderItem = ({ item }: { item: any }) => (
     <TouchableOpacity 
       style={styles.card} 
-      onPress={() => Alert.alert('Center Transfer', \`Change operating center for \${item.label || item.id}\`)}
+      onPress={() => Alert.alert('Center Transfer', `Change operating center for ${item.label || item.id}`)}
     >
       <Text style={styles.name}>{item.label || 'Unnamed Drone'}</Text>
       <Text style={styles.detail}>Status: {item.status}</Text>

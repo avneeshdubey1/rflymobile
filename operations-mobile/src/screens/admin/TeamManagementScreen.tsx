@@ -29,7 +29,7 @@ export default function TeamManagementScreen({ navigation }: any) {
   const renderItem = ({ item }: { item: any }) => (
     <TouchableOpacity 
       style={styles.card} 
-      onPress={() => Alert.alert('Edit User', \`Open edit screen for \${item.name}\`)}
+      onPress={() => Alert.alert('Edit User', `Open edit screen for ${item.name}`)}
     >
       <Text style={styles.name}>{item.name}</Text>
       <Text style={styles.role}>{item.role}</Text>

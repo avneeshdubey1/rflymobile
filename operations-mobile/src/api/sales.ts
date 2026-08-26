@@ -16,20 +16,20 @@ export interface Lead {
 
 export const salesApi = {
   searchCustomers: (query: string) => 
-    fetchApi(\`/api/mobile/v1/operations/sales/customers?q=\${encodeURIComponent(query)}\`),
-    
-  findCustomerByPhone: (phone: string) => 
-    fetchApi(\`/api/mobile/v1/operations/sales/customers/by-phone?phone=\${encodeURIComponent(phone)}\`),
-    
-  createCustomer: (data: Partial<Customer>) => 
+    fetchApi(`/api/mobile/v1/operations/sales/customers?q=${encodeURIComponent(query)}`),
+
+  checkDuplicatePhone: (phone: string) =>
+    fetchApi(`/api/mobile/v1/operations/sales/customers/by-phone?phone=${encodeURIComponent(phone)}`),
+
+  createCustomer: (customerData: any) => 
     fetchApi('/api/mobile/v1/operations/sales/customers', {
       method: 'POST',
-      body: JSON.stringify(data),
+      body: JSON.stringify(customerData),
     }),
-    
-  createLead: (customerId: string, data: Partial<Lead>) => 
-    fetchApi(\`/api/mobile/v1/operations/sales/customers/\${customerId}/leads\`, {
+
+  createLead: (customerId: string, leadData: any) =>
+    fetchApi(`/api/mobile/v1/operations/sales/customers/${customerId}/leads`, {
       method: 'POST',
-      body: JSON.stringify(data),
+      body: JSON.stringify(leadData),
     }),
 };

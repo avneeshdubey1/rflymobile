@@ -9,7 +9,7 @@ export async function networkRequest(url: string, options: RequestInit = {}) {
     if (response.ok && (!options.method || options.method === 'GET')) {
       const clone = response.clone();
       const data = await clone.json();
-      await SecureStore.setItemAsync(\`cache_\${url}\`, JSON.stringify(data));
+      await SecureStore.setItemAsync(`cache_${url}`, JSON.stringify(data));
     }
 
     return response;
@@ -21,7 +21,7 @@ export async function networkRequest(url: string, options: RequestInit = {}) {
       throw { status: 0, data: { error: { message: 'Network offline. Request queued for sync.' } } };
     } else {
       // Try to read cache for GET requests
-      const cached = await SecureStore.getItemAsync(\`cache_\${url}\`);
+      const cached = await SecureStore.getItemAsync(`cache_${url}`);
       if (cached) {
         return new Response(cached, { status: 200 });
       }

@@ -18,14 +18,14 @@ export interface ExceptionItem {
 
 export const fleetApi = {
   getSchedule: (date?: string) => 
-    fetchApi(\`/api/mobile/v1/operations/fleet/schedule\${date ? \`?date=\${date}\` : ''}\`),
+    fetchApi(`/api/mobile/v1/operations/fleet/schedule${date ? `?date=${date}` : ''}`),
     
   getExceptions: () => 
     fetchApi('/api/mobile/v1/operations/fleet/exceptions'),
     
-  overrideCopilot: (assignmentId: string, copilotId: string, reason: string) => 
-    fetchApi(\`/api/mobile/v1/operations/assignments/\${assignmentId}/copilot-override\`, {
+  overrideAssignment: (assignmentId: string, copilotReason: string, payload: any) => 
+    fetchApi(`/api/mobile/v1/operations/assignments/${assignmentId}/copilot-override`, {
       method: 'POST',
-      body: JSON.stringify({ copilotId, reason }),
+      body: JSON.stringify({ copilotReason, ...payload }),
     }),
 };

@@ -71,7 +71,7 @@ export default function FarmerOTPScreen({ route, navigation }: any) {
 
       <View style={styles.resendContainer}>
         <Button 
-          title={cooldown > 0 ? \`Resend in \${cooldown}s\` : 'Resend OTP'} 
+          title={cooldown > 0 ? `Resend in ${cooldown}s` : 'Resend OTP'} 
           color={colors.darkGrey} 
           disabled={cooldown > 0 || loading} 
           onPress={handleResend} 
