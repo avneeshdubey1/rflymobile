@@ -1,4 +1,3 @@
-// @ts-nocheck
 import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, StyleSheet, ActivityIndicator } from 'react-native';
 import { colors, spacing } from '../../theme/tokens';
@@ -15,7 +14,7 @@ export default function NotificationsScreen() {
   const loadNotifications = async () => {
     setLoading(true);
     try {
-      const res = await businessApi.getNotifications();
+      const res: any = await businessApi.getNotifications();
       if (res.success && res.notifications) {
         setNotifications(res.notifications);
       }

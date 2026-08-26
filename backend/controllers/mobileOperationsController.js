@@ -258,6 +258,90 @@ async function submitFarmerRequest(req, res) {
   }
 }
 
+async function resolveBusinessOrg(userId) {
+  const prisma = require('../src/lib/prisma');
+  const membership = await prisma.businessMembership.findFirst({
+    where: { userId },
+    include: { organization: true }
+  });
+  if (!membership || !membership.organization.active) {
+    throw new OperationsMobileError('Business account is inactive or unlinked', 'UNAUTHORIZED', 403);
+  }
+  return membership;
+}
+
+async function businessDashboard(req, res) {
+  try {
+    const membership = await resolveBusinessOrg(req.auth.userId);
+    return res.json({ success: true });
+  } catch(error) {
+    return mobileError(res, req, error);
+  }
+}
+
+async function businessRequests(req, res) {
+  try {
+    const membership = await resolveBusinessOrg(req.auth.userId);
+    const prisma = require('../src/lib/prisma');
+    const leads = await prisma.lead.findMany({
+      where: { businessOrganizationId: membership.organizationId },
+      orderBy: { createdAt: 'desc' },
+      take: 50
+    });
+    
+    const requests = leads.map(l => ({
+      id: l.id,
+      crop: l.cropType,
+      area: String(l.acreage),
+      status: l.status,
+      date: l.createdAt.toISOString()
+    }));
+    return res.json({ success: true, requests });
+  } catch(error) {
+    return mobileError(res, req, error);
+  }
+}
+
+async function businessNotifications(req, res) {
+  try {
+    const membership = await resolveBusinessOrg(req.auth.userId);
+    const prisma = require('../src/lib/prisma');
+    const notifs = await prisma.notification.findMany({
+      where: { userId: req.auth.userId },
+      orderBy: { createdAt: 'desc' },
+      take: 20
+    });
+    const notifications = notifs.map(n => ({
+      id: n.id,
+      title: n.title,
+      message: n.body,
+      createdAt: n.createdAt.toISOString()
+    }));
+    return res.json({ success: true, notifications });
+  } catch(error) {
+    return mobileError(res, req, error);
+  }
+}
+
+async function businessProfile(req, res) {
+  try {
+    const membership = await resolveBusinessOrg(req.auth.userId);
+    const userRepository = require('../src/repositories/userRepository');
+    const user = await userRepository.findById(req.auth.userId);
+    
+    return res.json({
+      success: true,
+      profile: {
+        name: membership.organization.name,
+        email: user.email,
+        role: membership.role
+      }
+    });
+  } catch(error) {
+    return mobileError(res, req, error);
+  }
+}
+
 module.exports = { 
   createCustomer, 
   createLead, 
@@ -266,5 +350,9 @@ module.exports = {
   fleetSchedule, 
   searchCustomers,
   farmerDashboard,
-  submitFarmerRequest
+  submitFarmerRequest,
+  businessDashboard,
+  businessRequests,
+  businessNotifications,
+  businessProfile
 };

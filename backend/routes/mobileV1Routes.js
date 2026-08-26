@@ -35,6 +35,10 @@ router.get('/operations/fleet/schedule', requireMobileApp('OPERATIONS'), require
 router.get('/operations/fleet/exceptions', requireMobileApp('OPERATIONS'), requireMobileRole('ADMIN', 'FLEET_MANAGER'), operationsController.fleetExceptions);
 router.get('/operations/farmer/dashboard', requireMobileApp('OPERATIONS'), requireMobileRole('FARMER'), operationsController.farmerDashboard);
 router.post('/operations/farmer/requests', requireMobileApp('OPERATIONS'), requireMobileRole('FARMER'), operationsController.submitFarmerRequest);
+router.get('/operations/business/dashboard', requireMobileApp('OPERATIONS'), requireMobileRole('BUSINESS'), operationsController.businessDashboard);
+router.get('/operations/business/requests', requireMobileApp('OPERATIONS'), requireMobileRole('BUSINESS'), operationsController.businessRequests);
+router.get('/operations/business/notifications', requireMobileApp('OPERATIONS'), requireMobileRole('BUSINESS'), operationsController.businessNotifications);
+router.get('/operations/business/profile', requireMobileApp('OPERATIONS'), requireMobileRole('BUSINESS'), operationsController.businessProfile);
 router.post('/operations/assignments/:assignmentId/copilot-override', requireMobileApp('OPERATIONS'), assignmentController.overrideCopilot);
 
 

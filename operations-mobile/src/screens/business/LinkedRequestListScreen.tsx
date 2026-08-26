@@ -1,4 +1,3 @@
-// @ts-nocheck
 import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, StyleSheet, ActivityIndicator, TouchableOpacity, Alert } from 'react-native';
 import { colors, spacing } from '../../theme/tokens';
@@ -15,7 +14,7 @@ export default function LinkedRequestListScreen({ navigation }: any) {
   const loadRequests = async () => {
     setLoading(true);
     try {
-      const res = await businessApi.getLinkedRequests();
+      const res: any = await businessApi.getLinkedRequests();
       if (res.success && res.requests) {
         setRequests(res.requests);
       }

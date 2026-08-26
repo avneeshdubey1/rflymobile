@@ -1,4 +1,3 @@
-// @ts-nocheck
 import React, { useState } from 'react';
 import { View, Text, TextInput, Button, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import { colors, spacing } from '../../theme/tokens';
@@ -17,7 +16,7 @@ export default function BusinessLoginScreen({ navigation }: any) {
     }
     setLoading(true);
     try {
-      const res = await businessApi.login(email, password);
+      const res: any = await businessApi.login(email, password);
       if (res.success && res.token) {
         await useAuthStore.getState().setToken(res.token);
         await useAuthStore.getState().setProfile(res.profile, []);

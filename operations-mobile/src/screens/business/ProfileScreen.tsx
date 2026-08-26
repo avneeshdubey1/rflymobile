@@ -1,4 +1,3 @@
-// @ts-nocheck
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, Button, Alert } from 'react-native';
 import { colors, spacing } from '../../theme/tokens';
@@ -16,7 +15,7 @@ export default function ProfileScreen({ navigation }: any) {
   const loadProfile = async () => {
     setLoading(true);
     try {
-      const res = await businessApi.getProfile();
+      const res: any = await businessApi.getProfile();
       if (res.success && res.profile) {
         setProfile(res.profile);
       }
