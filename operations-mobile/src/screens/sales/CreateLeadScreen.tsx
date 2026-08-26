@@ -1,36 +1,58 @@
-// @ts-nocheck
 import React, { useState } from 'react';
 import { View, Text, TextInput, Button, StyleSheet, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { colors, spacing } from '../../theme/tokens';
-import { salesApi } from '../../api/sales';
+import { salesApi, CreateLeadDto } from '../../api/sales';
 
 export default function CreateLeadScreen({ route, navigation }: any) {
   const { customerId } = route.params;
-  const [crop, setCrop] = useState('');
-  const [area, setArea] = useState('');
-  const [purpose, setPurpose] = useState('');
-  const [location, setLocation] = useState({ lat: 0, lng: 0, address: '' }); // Stub
+  const [cropType, setCropType] = useState('');
+  const [acreage, setAcreage] = useState('');
+  const [sprayPurpose, setSprayPurpose] = useState('');
+  const [latitude, setLatitude] = useState('');
+  const [longitude, setLongitude] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const handleSimulatePin = () => {
+    // Stub coordinates resolving to numeric coordinates
+    setLatitude('17.3850');
+    setLongitude('78.4867');
+  };
+
   const handleSubmit = async () => {
-    if (!crop || !area) {
-      Alert.alert('Error', 'Please fill in required fields.');
+    if (!cropType || !acreage || !latitude || !longitude) {
+      Alert.alert('Error', 'Please fill in required fields including Map Pin.');
       return;
     }
     setLoading(true);
     try {
-      const res = await salesApi.createLead(customerId, {
-        crop,
-        area: Number(area),
-        purpose,
-        location,
-      });
+      const payload: CreateLeadDto = {
+        cropType,
+        acreage: Number(acreage),
+        sprayPurpose: sprayPurpose || undefined,
+        latitude: Number(latitude),
+        longitude: Number(longitude),
+      };
+
+      const res = await salesApi.createLead(customerId, payload);
       if (res.success) {
-        Alert.alert('Success', 'Lead created successfully.');
+        if (res.outcome === 'ACCEPTED') {
+          Alert.alert('Success', 'Lead accepted and scheduled successfully.');
+        } else if (res.outcome === 'NEEDS_MANUAL_SCHEDULING') {
+          Alert.alert('Notice', 'Lead recorded. Requires manual scheduling by Fleet team.');
+        } else {
+          Alert.alert('Success', 'Lead created successfully.');
+        }
         navigation.goBack();
+      } else {
+        Alert.alert('Error', (res as any).error?.message || 'Failed to create lead.');
       }
     } catch (err: any) {
-      Alert.alert('Error', err.data?.error?.message || 'Failed to create lead.');
+      const code = err.data?.error?.code || err.code;
+      if (code === 'OUTSIDE_SERVICE_AREA') {
+        Alert.alert('Declined', 'Service is unavailable at this location (Contact-only).');
+      } else {
+        Alert.alert('Error', err.data?.error?.message || err.message || 'Failed to create lead.');
+      }
     } finally {
       setLoading(false);
     }
@@ -40,24 +62,29 @@ export default function CreateLeadScreen({ route, navigation }: any) {
     <ScrollView style={styles.container}>
       <Text style={styles.header}>New Lead</Text>
 
-      <Text style={styles.label}>Crop Type</Text>
-      <TextInput style={styles.input} value={crop} onChangeText={setCrop} placeholder="e.g. Cotton" />
+      <Text style={styles.label}>Crop Type *</Text>
+      <TextInput style={styles.input} value={cropType} onChangeText={setCropType} placeholder="e.g. Cotton" testID="input-crop" />
 
-      <Text style={styles.label}>Area (Acres)</Text>
-      <TextInput style={styles.input} value={area} onChangeText={setArea} keyboardType="numeric" placeholder="0.0" />
+      <Text style={styles.label}>Area (Acres) *</Text>
+      <TextInput style={styles.input} value={acreage} onChangeText={setAcreage} keyboardType="numeric" placeholder="0.0" testID="input-area" />
 
       <Text style={styles.label}>Spray Purpose</Text>
-      <TextInput style={styles.input} value={purpose} onChangeText={setPurpose} placeholder="e.g. Pesticide" />
+      <TextInput style={styles.input} value={sprayPurpose} onChangeText={setSprayPurpose} placeholder="e.g. Pesticide" testID="input-purpose" />
 
       <View style={styles.locationBox}>
-        <Text style={styles.label}>Location Pin (Stub)</Text>
-        <Button title="Drop Pin on Map" onPress={() => Alert.alert('Stub', 'Map selector opens here')} color={colors.darkGrey} />
+        <Text style={styles.label}>Location Pin *</Text>
+        {latitude && longitude ? (
+          <Text style={{ marginBottom: spacing.sm, color: colors.navy }}>{latitude}, {longitude}</Text>
+        ) : (
+          <Text style={{ marginBottom: spacing.sm, color: colors.darkGrey }}>No location selected</Text>
+        )}
+        <Button title="Drop Pin on Map (Stub)" onPress={handleSimulatePin} color={colors.darkGrey} testID="btn-pin" />
       </View>
 
       {loading ? (
-        <ActivityIndicator color={colors.safetyOrange} size="large" />
+        <ActivityIndicator color={colors.safetyOrange} size="large" testID="loading-indicator" />
       ) : (
-        <Button title="Submit Lead" color={colors.navy} onPress={handleSubmit} />
+        <Button title="Submit Lead" color={colors.navy} onPress={handleSubmit} testID="btn-submit" />
       )}
       
       <View style={{ height: 40 }} />

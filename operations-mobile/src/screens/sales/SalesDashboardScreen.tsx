@@ -1,6 +1,5 @@
-// @ts-nocheck
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, Button } from 'react-native';
 import { colors, spacing } from '../../theme/tokens';
 import { salesApi, Customer } from '../../api/sales';
 
@@ -38,9 +37,13 @@ export default function SalesDashboardScreen({ navigation }: any) {
     <TouchableOpacity 
       style={styles.card} 
       onPress={() => navigation.navigate('CustomerDetail', { customer: item })}
+      testID="customer-card"
     >
-      <Text style={styles.name}>{item.name}</Text>
+      <Text style={styles.name}>{item.displayName || item.phone}</Text>
       <Text style={styles.phone}>{item.phone}</Text>
+      {item.location && item.location.village && (
+        <Text style={styles.location}>{item.location.village}, {item.location.district}</Text>
+      )}
     </TouchableOpacity>
   );
 
@@ -53,15 +56,17 @@ export default function SalesDashboardScreen({ navigation }: any) {
         placeholder="Search customers by name or phone..."
         value={query}
         onChangeText={setQuery}
+        testID="search-input"
       />
       
       <Button 
         title="+ New Customer" 
         onPress={() => navigation.navigate('CreateCustomer')}
         color={colors.safetyOrange}
+        testID="btn-new-customer"
       />
 
-      {loading && <ActivityIndicator style={{ marginTop: spacing.md }} color={colors.safetyOrange} />}
+      {loading && <ActivityIndicator style={{ marginTop: spacing.md }} color={colors.safetyOrange} testID="loading-indicator" />}
 
       <FlatList
         data={customers}
@@ -69,14 +74,13 @@ export default function SalesDashboardScreen({ navigation }: any) {
         renderItem={renderItem}
         contentContainerStyle={styles.list}
         ListEmptyComponent={
-          !loading && query.length > 2 ? <Text style={styles.empty}>No customers found.</Text> : null
+          !loading && query.length > 2 ? <Text style={styles.empty} testID="empty-list">No customers found.</Text> : null
         }
+        testID="customer-list"
       />
     </View>
   );
 }
-
-import { Button } from 'react-native'; // Moved to top logically, added here for brevity
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.lightGrey, padding: spacing.md },
@@ -102,5 +106,6 @@ const styles = StyleSheet.create({
   },
   name: { fontSize: 18, fontWeight: 'bold', color: colors.navy },
   phone: { fontSize: 14, color: colors.darkGrey },
+  location: { fontSize: 12, color: colors.darkGrey, marginTop: spacing.xs },
   empty: { textAlign: 'center', marginTop: spacing.lg, color: colors.darkGrey }
 });

@@ -68,8 +68,7 @@ export async function fetchApi<T>(endpoint: string, options: RequestInit = {}, s
     const result = schema.safeParse(data);
     if (!result.success) {
       console.error('Schema validation failed for endpoint:', endpoint, result.error);
-      // Depending on strictness, we might throw or just log.
-      // throw classifyError(500, { error: { message: 'Invalid response schema' } });
+      throw classifyError(500, { error: { message: 'Invalid response schema from server' } });
     } else {
       return result.data;
     }
