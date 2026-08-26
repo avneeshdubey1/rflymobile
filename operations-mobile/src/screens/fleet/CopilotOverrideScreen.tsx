@@ -9,14 +9,14 @@ export default function CopilotOverrideScreen({ route, navigation }: any) {
   const [reason, setReason] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async () => {
-    if (!copilotId || !reason) {
-      Alert.alert('Error', 'Please provide Copilot ID and Reason.');
+  const handleOverride = async () => {
+    if (reason.length < 5) {
+      Alert.alert('Error', 'Reason must be at least 5 characters long.');
       return;
     }
     setLoading(true);
     try {
-      const res = await fleetApi.overrideCopilot(assignmentId, copilotId, reason);
+      const res = await fleetApi.overrideAssignment(assignmentId, reason, { copilotId: copilotId });
       if (res.success) {
         Alert.alert('Success', 'Copilot overridden successfully.');
         navigation.goBack();
@@ -53,7 +53,7 @@ export default function CopilotOverrideScreen({ route, navigation }: any) {
       {loading ? (
         <ActivityIndicator color={colors.safetyOrange} size="large" />
       ) : (
-        <Button title="Submit Override" color={colors.navy} onPress={handleSubmit} />
+        <Button title="Submit Override" color={colors.navy} onPress={handleOverride} />
       )}
     </View>
   );
