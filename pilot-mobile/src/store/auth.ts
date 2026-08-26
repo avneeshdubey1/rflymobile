@@ -26,6 +26,7 @@ export type AuthStateStatus =
   | "UNAUTHENTICATED"
   | "AUTHENTICATING"
   | "BOOTSTRAPPING"
+  | "RECOVERY_REQUIRED"
   | "READY"
   | "UPGRADE_REQUIRED"
   | "REVOKED";
@@ -65,6 +66,21 @@ async function getOrGenerateInstallationKey(): Promise<string> {
   return key;
 }
 
+function safeAuthMessage(error: any, fallback: string): string {
+  if (error?.code === "INSTALLATION_LIMIT_REACHED") {
+    return "This account is already linked to the maximum number of devices. Ask an administrator to remove an old device.";
+  }
+  if (error?.code === "INSTALLATION_NOT_ALLOWED") {
+    return "This device cannot be registered for the Pilot app. Contact an administrator.";
+  }
+  if (error?.code === "ASSIGNMENT_LOCATION_INCOMPLETE") {
+    return "One assigned job needs its farm location corrected by Fleet before work can synchronize.";
+  }
+  return typeof error?.code === "string" && typeof error?.message === "string"
+    ? error.message
+    : fallback;
+}
+
 export const useAuthStore = create<AuthState>((set, get) => ({
   status: "INITIALIZING",
   profile: null,
@@ -76,6 +92,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   error: null,
 
   initialize: async () => {
+    set({ status: "INITIALIZING", error: null });
     try {
       const installationKey = await getOrGenerateInstallationKey();
       const token = await SecureStore.getItemAsync(STORE_KEYS.ACCESS_TOKEN);
@@ -139,22 +156,30 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           } else if (e?.code === "CLIENT_UPGRADE_REQUIRED") {
             get().handleUpgradeRequired();
           } else if (e?.retryable && profile) {
-            await initDatabase(profile.id);
-            set({
-              status: "READY",
-              profile,
-              error: "Offline mode: showing securely cached work.",
-            });
+            try {
+              await initDatabase(profile.id);
+              set({
+                status: "READY",
+                profile,
+                error: "Offline mode: showing securely cached work.",
+              });
+            } catch {
+              set({
+                status: "RECOVERY_REQUIRED",
+                profile,
+                error:
+                  "Secure offline storage could not be opened. Retry without reinstalling the app.",
+              });
+            }
           } else {
-            await SecureStore.deleteItemAsync(STORE_KEYS.ACCESS_TOKEN);
             set({
-              status: "UNAUTHENTICATED",
-              profile: null,
+              status: "RECOVERY_REQUIRED",
+              profile,
               operatingCenter: null,
               capabilities: [],
               featureFlags: null,
               policies: null,
-              error: e.message || "Failed to bootstrap session.",
+              error: safeAuthMessage(e, "Failed to restore the session."),
             });
           }
         }
@@ -176,6 +201,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   login: async (email, password) => {
     set({ status: "AUTHENTICATING", error: null });
+    let authenticatedProfile: PilotProfile | null = null;
     try {
       const installationKey = await getOrGenerateInstallationKey();
 
@@ -194,8 +220,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       );
 
       if (loginRes.profile.role !== "PILOT") {
-        throw new Error("This app is restricted to Field Pilots.");
+        throw Object.assign(
+          new Error("This app is restricted to Field Pilots."),
+          { code: "ROLE_NOT_ALLOWED" },
+        );
       }
+
+      authenticatedProfile = loginRes.profile;
 
       await SecureStore.setItemAsync(
         STORE_KEYS.ACCESS_TOKEN,
@@ -227,6 +258,34 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         error: null,
       });
     } catch (e: any) {
+      if (
+        e?.code === "AUTHENTICATION_REQUIRED" ||
+        e?.code === "SESSION_REVOKED" ||
+        e?.code === "SESSION_EXPIRED"
+      ) {
+        get().handleUnauthorized();
+        return;
+      }
+
+      if (authenticatedProfile) {
+        // Authentication succeeded. A bootstrap or local-cache failure must
+        // not destroy the valid installation-bound session and force another
+        // login/installation registration cycle.
+        set({
+          status:
+            e?.code === "CLIENT_UPGRADE_REQUIRED"
+              ? "UPGRADE_REQUIRED"
+              : "RECOVERY_REQUIRED",
+          profile: authenticatedProfile,
+          operatingCenter: null,
+          capabilities: [],
+          featureFlags: null,
+          policies: null,
+          error: safeAuthMessage(e, "The session was created but setup did not finish."),
+        });
+        return;
+      }
+
       await SecureStore.deleteItemAsync(STORE_KEYS.ACCESS_TOKEN);
       await SecureStore.deleteItemAsync(STORE_KEYS.PROFILE_CACHE);
       set({
@@ -239,7 +298,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         capabilities: [],
         featureFlags: null,
         policies: null,
-        error: e?.message || "Login failed",
+        error: safeAuthMessage(e, "Login failed"),
       });
     }
   },

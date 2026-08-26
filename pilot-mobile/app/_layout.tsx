@@ -28,10 +28,15 @@ export default function RootLayout() {
   useEffect(() => {
     if (busyStatuses.has(status)) return;
     const root = segments[0];
-    const isPublic = root === "login" || root === "upgrade";
+    const isPublic =
+      root === "login" || root === "upgrade" || root === "recovery";
 
     if (status === "UPGRADE_REQUIRED" && root !== "upgrade") {
       router.replace("/upgrade");
+      return;
+    }
+    if (status === "RECOVERY_REQUIRED" && root !== "recovery") {
+      router.replace("/recovery");
       return;
     }
     if ((status === "UNAUTHENTICATED" || status === "REVOKED") && !isPublic) {
