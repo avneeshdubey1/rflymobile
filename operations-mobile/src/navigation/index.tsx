@@ -35,6 +35,14 @@ import FarmerOTPScreen from '../screens/farmer/FarmerOTPScreen';
 import FarmerDashboardScreen from '../screens/farmer/FarmerDashboardScreen';
 import ServiceRequestWizard from '../screens/farmer/ServiceRequestWizard';
 
+// Business Screens
+import BusinessLoginScreen from '../screens/business/BusinessLoginScreen';
+import BusinessDashboardScreen from '../screens/business/BusinessDashboardScreen';
+import LinkedRequestListScreen from '../screens/business/LinkedRequestListScreen';
+import LinkedRequestDetailScreen from '../screens/business/LinkedRequestDetailScreen';
+import NotificationsScreen from '../screens/business/NotificationsScreen';
+import ProfileScreen from '../screens/business/ProfileScreen';
+
 const Stack = createNativeStackNavigator();
 
 export default function AppNavigator() {
@@ -74,6 +82,14 @@ export default function AppNavigator() {
         <Stack.Screen name="FarmerOTP" component={FarmerOTPScreen} options={{ title: 'Verify OTP' }} />
         <Stack.Screen name="FarmerDashboard" component={FarmerDashboardScreen} options={{ title: 'Farmer Dashboard' }} />
         <Stack.Screen name="ServiceRequestWizard" component={ServiceRequestWizard} options={{ title: 'New Request' }} />
+        
+        {/* Business Stack */}
+        <Stack.Screen name="BusinessLogin" component={BusinessLoginScreen} options={{ title: 'Business Login' }} />
+        <Stack.Screen name="BusinessDashboard" component={BusinessDashboardScreen} options={{ title: 'B2B Dashboard' }} />
+        <Stack.Screen name="LinkedRequestList" component={LinkedRequestListScreen} options={{ title: 'Linked Requests' }} />
+        <Stack.Screen name="LinkedRequestDetail" component={LinkedRequestDetailScreen} options={{ title: 'Request Detail' }} />
+        <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ title: 'Notifications' }} />
+        <Stack.Screen name="Profile" component={ProfileScreen} options={{ title: 'Organization Profile' }} />
       </Stack.Navigator>
     </NavigationContainer>
   );

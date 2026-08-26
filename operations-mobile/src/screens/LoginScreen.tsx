@@ -17,6 +17,12 @@ export default function LoginScreen({ navigation }: any) {
           color={colors.navy}
           onPress={() => navigation.navigate('FarmerPhone')} 
         />
+        <View style={{ height: spacing.md }} />
+        <Button 
+          title="B2B Partner Login" 
+          color={colors.darkGrey}
+          onPress={() => navigation.navigate('BusinessLogin')} 
+        />
       </View>
     </View>
   );
