@@ -184,4 +184,87 @@ async function fleetExceptions(req, res) {
   }
 }
 
-module.exports = { createCustomer, createLead, findCustomerByPhone, fleetExceptions, fleetSchedule, searchCustomers };
+async function farmerDashboard(req, res) {
+  try {
+    const userRepository = require('../src/repositories/userRepository');
+    const user = await userRepository.findById(req.auth.userId);
+    if (!user) throw new OperationsMobileError('User not found', 'RESOURCE_NOT_FOUND', 404);
+
+    const customer = await customerService.ensureForFarmerUser(user);
+    if (!customer) throw new OperationsMobileError('Customer account not found', 'RESOURCE_NOT_FOUND', 404);
+
+    const history = (customer.recentLeads || []).map((lead) => ({
+      id: lead.id,
+      status: lead.status,
+      area: String(lead.acreage),
+      crop: lead.cropType,
+      date: new Date(lead.createdAt).toISOString(),
+    }));
+
+    return res.json({ success: true, history });
+  } catch (error) {
+    return mobileError(res, req, error);
+  }
+}
+
+async function submitFarmerRequest(req, res) {
+  try {
+    assertAllowedBody(req.body, new Set([
+      'acreage', 'latitude', 'longitude', 'farmerAddress', 'cropType', 'notes',
+      'soilType', 'cropAgeWeeks', 'chemicalBrand', 'sprayPurpose', 'hasChemical',
+      'chemicalProofUrl', 'expectedDate', 'expectedTime', 'waterBodyNearby', 'terrainType',
+    ]));
+
+    const userRepository = require('../src/repositories/userRepository');
+    const user = await userRepository.findById(req.auth.userId);
+    if (!user) throw new OperationsMobileError('User not found', 'RESOURCE_NOT_FOUND', 404);
+
+    const customerContext = await customerService.ensureForFarmerUser(user);
+    if (!customerContext) throw new OperationsMobileError('Customer context missing', 'RESOURCE_NOT_FOUND', 404);
+
+    const result = await intakeService.createIntake({
+      ...req.body,
+      farmerName: customerContext.displayName,
+      farmerPhone: customerContext.phone,
+      farmerAddress: req.body.farmerAddress || [customerContext.village, customerContext.district].filter(Boolean).join(', '),
+      preferredLanguage: customerContext.preferredLanguage,
+      customerId: customerContext.id,
+      intakeChannel: 'FARMER_APP',
+      actorId: req.auth.userId,
+    });
+
+    if (result.outcome === 'DECLINED') {
+      return res.status(422).json({
+        success: false,
+        error: {
+          code: 'OUTSIDE_SERVICE_AREA',
+          message: 'Service is unavailable at this location',
+          retryable: false,
+          requestId: req.requestId,
+        },
+      });
+    }
+
+    const assignment = await intakeService.triggerAutoAssignment(result.lead.id, req.auth.userId);
+    
+    return res.status(201).json({
+      success: true,
+      outcome: 'ACCEPTED',
+      lead: leadDto(result.lead),
+      assignmentOutcome: assignment?.outcome || null,
+    });
+  } catch (error) {
+    return mobileError(res, req, error);
+  }
+}
+
+module.exports = { 
+  createCustomer, 
+  createLead, 
+  findCustomerByPhone, 
+  fleetExceptions, 
+  fleetSchedule, 
+  searchCustomers,
+  farmerDashboard,
+  submitFarmerRequest
+};

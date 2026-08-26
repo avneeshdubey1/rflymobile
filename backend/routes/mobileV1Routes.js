@@ -33,6 +33,8 @@ router.post('/operations/sales/customers', requireMobileApp('OPERATIONS'), requi
 router.post('/operations/sales/customers/:customerId/leads', requireMobileApp('OPERATIONS'), requireMobileRole('ADMIN', 'SALES'), operationsController.createLead);
 router.get('/operations/fleet/schedule', requireMobileApp('OPERATIONS'), requireMobileRole('ADMIN', 'FLEET_MANAGER'), operationsController.fleetSchedule);
 router.get('/operations/fleet/exceptions', requireMobileApp('OPERATIONS'), requireMobileRole('ADMIN', 'FLEET_MANAGER'), operationsController.fleetExceptions);
+router.get('/operations/farmer/dashboard', requireMobileApp('OPERATIONS'), requireMobileRole('FARMER'), operationsController.farmerDashboard);
+router.post('/operations/farmer/requests', requireMobileApp('OPERATIONS'), requireMobileRole('FARMER'), operationsController.submitFarmerRequest);
 router.post('/operations/assignments/:assignmentId/copilot-override', requireMobileApp('OPERATIONS'), assignmentController.overrideCopilot);
 
 
