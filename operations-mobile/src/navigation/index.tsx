@@ -29,6 +29,12 @@ import PolicyManagementScreen from '../screens/admin/PolicyManagementScreen';
 import MasterDataManagementScreen from '../screens/admin/MasterDataManagementScreen';
 import PilotLocationScreen from '../screens/admin/PilotLocationScreen';
 
+// Farmer Screens
+import FarmerPhoneScreen from '../screens/farmer/FarmerPhoneScreen';
+import FarmerOTPScreen from '../screens/farmer/FarmerOTPScreen';
+import FarmerDashboardScreen from '../screens/farmer/FarmerDashboardScreen';
+import ServiceRequestWizard from '../screens/farmer/ServiceRequestWizard';
+
 const Stack = createNativeStackNavigator();
 
 export default function AppNavigator() {
@@ -62,6 +68,12 @@ export default function AppNavigator() {
         <Stack.Screen name="PolicyManagement" component={PolicyManagementScreen} options={{ title: 'Assignment Policy' }} />
         <Stack.Screen name="MasterDataManagement" component={MasterDataManagementScreen} options={{ title: 'Master Data' }} />
         <Stack.Screen name="PilotLocation" component={PilotLocationScreen} options={{ title: 'Pilot Location' }} />
+
+        {/* Farmer Stack */}
+        <Stack.Screen name="FarmerPhone" component={FarmerPhoneScreen} options={{ title: 'Farmer Login' }} />
+        <Stack.Screen name="FarmerOTP" component={FarmerOTPScreen} options={{ title: 'Verify OTP' }} />
+        <Stack.Screen name="FarmerDashboard" component={FarmerDashboardScreen} options={{ title: 'Farmer Dashboard' }} />
+        <Stack.Screen name="ServiceRequestWizard" component={ServiceRequestWizard} options={{ title: 'New Request' }} />
       </Stack.Navigator>
     </NavigationContainer>
   );

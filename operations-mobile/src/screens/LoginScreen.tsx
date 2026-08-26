@@ -7,10 +7,17 @@ export default function LoginScreen({ navigation }: any) {
     <View style={styles.container}>
       <Text style={styles.title}>RFLY Operations Login</Text>
       <Button 
-        title="Sign In" 
+        title="Sign In (Staff)" 
         color={colors.safetyOrange}
         onPress={() => navigation.replace('RoleShell')} 
       />
+      <View style={{ marginTop: spacing.xl }}>
+        <Button 
+          title="I am a Farmer" 
+          color={colors.navy}
+          onPress={() => navigation.navigate('FarmerPhone')} 
+        />
+      </View>
     </View>
   );
 }
