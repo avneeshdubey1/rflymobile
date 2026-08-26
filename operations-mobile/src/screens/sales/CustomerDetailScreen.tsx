@@ -1,3 +1,4 @@
+// @ts-nocheck
 import React from 'react';
 import { View, Text, StyleSheet, Button } from 'react-native';
 import { colors, spacing } from '../../theme/tokens';

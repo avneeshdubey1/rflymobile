@@ -1,6 +1,10 @@
-import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import React, { useEffect, useState } from 'react';
+import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { useAuthStore } from '../store/auth';
+import { setAuthInterceptors } from '../api/client';
+import { authApi } from '../api/auth';
+
 import LoginScreen from '../screens/LoginScreen';
 import RoleShellScreen from '../screens/RoleShellScreen';
 import AccessDeniedScreen from '../screens/AccessDeniedScreen';
@@ -44,11 +48,53 @@ import NotificationsScreen from '../screens/business/NotificationsScreen';
 import ProfileScreen from '../screens/business/ProfileScreen';
 
 const Stack = createNativeStackNavigator();
+export const navigationRef = createNavigationContainerRef<any>();
 
 export default function AppNavigator() {
+  const { isHydrated, hydrate, token, logout, setProfile } = useAuthStore();
+  const [isBootstrapping, setIsBootstrapping] = useState(true);
+  
+  useEffect(() => {
+    setAuthInterceptors(
+      () => {
+        logout();
+        if (navigationRef.isReady()) {
+          navigationRef.navigate('Login');
+        }
+      },
+      () => {
+        if (navigationRef.isReady()) {
+          navigationRef.navigate('MandatoryUpgrade');
+        }
+      }
+    );
+  }, [logout]);
+
+  useEffect(() => {
+    const init = async () => {
+      const storedToken = await hydrate();
+      if (storedToken) {
+        try {
+          const bootstrap = await authApi.bootstrap();
+          setProfile(bootstrap.user, bootstrap.capabilities);
+        } catch (e: any) {
+          if (e.status === 401) {
+            await logout();
+          }
+        }
+      }
+      setIsBootstrapping(false);
+    };
+    init();
+  }, [hydrate, logout, setProfile]);
+
+  if (!isHydrated || isBootstrapping) {
+    return <LoadingScreen />;
+  }
+
   return (
-    <NavigationContainer>
-      <Stack.Navigator initialRouteName="Login" screenOptions={{ headerShown: true }}>
+    <NavigationContainer ref={navigationRef}>
+      <Stack.Navigator initialRouteName={token ? "RoleShell" : "Login"} screenOptions={{ headerShown: true }}>
         <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
         <Stack.Screen name="RoleShell" component={RoleShellScreen} options={{ title: 'Dashboard' }} />
         <Stack.Screen name="AccessDenied" component={AccessDeniedScreen} options={{ headerShown: false }} />
