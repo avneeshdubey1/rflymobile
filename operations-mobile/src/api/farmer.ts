@@ -14,7 +14,7 @@ export const farmerApi = {
     }),
     
   getDashboard: () => 
-    fetchApi('/api/mobile/v1/operations/farmer/dashboard'), // Assuming a dashboard endpoint exists
+    fetchApi('/api/mobile/v1/operations/farmer/dashboard', {}, undefined, { dataset: 'customerSummary', key: 'farmer_dashboard' }),
     
   submitRequest: (requestData: any) => 
     fetchApi('/api/mobile/v1/operations/farmer/requests', {

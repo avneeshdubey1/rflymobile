@@ -8,14 +8,14 @@ export const businessApi = {
     }),
     
   getDashboard: () => 
-    fetchApi('/api/mobile/v1/operations/business/dashboard'), // Assuming a dashboard endpoint exists
+    fetchApi('/api/mobile/v1/operations/business/dashboard', {}, undefined, { dataset: 'businessLinkedData', key: 'dashboard' }),
     
   getLinkedRequests: () => 
-    fetchApi('/api/mobile/v1/operations/business/requests'),
+    fetchApi('/api/mobile/v1/operations/business/requests', {}, undefined, { dataset: 'businessLinkedData', key: 'requests' }),
     
   getNotifications: () => 
-    fetchApi('/api/mobile/v1/operations/business/notifications'),
+    fetchApi('/api/mobile/v1/operations/business/notifications', {}, undefined, { dataset: 'businessLinkedData', key: 'notifications' }),
     
   getProfile: () => 
-    fetchApi('/api/mobile/v1/operations/business/profile'),
+    fetchApi('/api/mobile/v1/operations/business/profile', {}, undefined, { dataset: 'businessLinkedData', key: 'profile' }),
 };

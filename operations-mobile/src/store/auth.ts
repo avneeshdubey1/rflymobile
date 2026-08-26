@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import * as SecureStore from 'expo-secure-store';
+import { purgeUserCache } from '../storage/cache';
 
 const TOKEN_KEY = 'userToken';
 
@@ -30,8 +31,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   logout: async () => {
+    const currentProfile = get().profile;
     await SecureStore.deleteItemAsync(TOKEN_KEY);
-    // Purge other user-scoped data caches here if any
+    if (currentProfile?.id) {
+      await purgeUserCache(currentProfile.id);
+    }
     set({ token: null, profile: null, capabilities: [] });
   },
 

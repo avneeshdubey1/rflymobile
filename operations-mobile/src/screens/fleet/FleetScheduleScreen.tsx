@@ -8,6 +8,7 @@ export default function FleetScheduleScreen({ navigation }: any) {
   const [schedule, setSchedule] = useState<ScheduleItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [isOfflineStale, setIsOfflineStale] = useState(false);
   
   const { capabilities } = useAuthStore();
   const isAdmin = (capabilities || []).includes('admin:access');
@@ -18,13 +19,15 @@ export default function FleetScheduleScreen({ navigation }: any) {
 
   const loadSchedule = async () => {
     try {
+      setIsOfflineStale(false);
       const now = new Date();
       const start = new Date(now.setHours(0, 0, 0, 0)).toISOString();
       const end = new Date(now.setHours(23, 59, 59, 999)).toISOString();
       
-      const res = await fleetApi.getSchedule(start, end);
+      const res: any = await fleetApi.getSchedule(start, end);
       if (res.success && res.assignments) {
         setSchedule(res.assignments);
+        if (res._isStale) setIsOfflineStale(true);
       }
     } catch (err: any) {
       Alert.alert('Error', err.data?.error?.message || err.message || 'Failed to load schedule');
@@ -77,6 +80,11 @@ export default function FleetScheduleScreen({ navigation }: any) {
 
   return (
     <View style={styles.container}>
+      {isOfflineStale && (
+        <View style={styles.staleBanner}>
+          <Text style={styles.staleText}>⚠️ Viewing offline cached data</Text>
+        </View>
+      )}
       {loading ? (
         <ActivityIndicator color={colors.safetyOrange} size="large" testID="loading-indicator" />
       ) : (
@@ -113,5 +121,7 @@ const styles = StyleSheet.create({
   actions: { marginTop: spacing.md, alignItems: 'flex-end' },
   overrideBtn: { padding: spacing.sm, backgroundColor: colors.lightGrey, borderRadius: 4, borderWidth: 1, borderColor: colors.navy },
   overrideText: { color: colors.navy, fontWeight: 'bold' },
-  empty: { textAlign: 'center', marginTop: spacing.xl, color: colors.darkGrey }
+  empty: { textAlign: 'center', marginTop: spacing.xl, color: colors.darkGrey },
+  staleBanner: { backgroundColor: colors.error, padding: spacing.sm, alignItems: 'center' },
+  staleText: { color: colors.white, fontWeight: 'bold' }
 });

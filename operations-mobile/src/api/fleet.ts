@@ -88,10 +88,10 @@ export const CopilotOverrideResponseSchema = z.object({
 
 export const fleetApi = {
   getSchedule: (from: string, to: string) => 
-    fetchApi(`/api/mobile/v1/operations/fleet/schedule?from=${from}&to=${to}`, {}, ScheduleResponseSchema),
+    fetchApi(`/api/mobile/v1/operations/fleet/schedule?from=${from}&to=${to}`, {}, ScheduleResponseSchema, { dataset: 'customerSummary', key: `schedule_${from}_${to}` }),
     
   getExceptions: (from: string, to: string) => 
-    fetchApi(`/api/mobile/v1/operations/fleet/exceptions?from=${from}&to=${to}`, {}, ExceptionsResponseSchema),
+    fetchApi(`/api/mobile/v1/operations/fleet/exceptions?from=${from}&to=${to}`, {}, ExceptionsResponseSchema, { dataset: 'customerSummary', key: `exceptions_${from}_${to}` }),
     
   overrideAssignment: (assignmentId: string, candidateId: string, expectedRevision: number, reason: string) => 
     fetchApi(`/api/mobile/v1/operations/assignments/${assignmentId}/copilot-override`, {

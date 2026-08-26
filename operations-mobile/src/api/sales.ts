@@ -84,10 +84,10 @@ export interface CreateLeadDto {
 
 export const salesApi = {
   searchCustomers: (query: string) => 
-    fetchApi(`/api/mobile/v1/operations/sales/customers?q=${encodeURIComponent(query)}`, {}, SearchCustomersResponseSchema),
+    fetchApi(`/api/mobile/v1/operations/sales/customers?q=${encodeURIComponent(query)}`, {}, SearchCustomersResponseSchema, { dataset: 'customerSummary', key: `search_${query}` }),
 
   checkDuplicatePhone: (phone: string) =>
-    fetchApi(`/api/mobile/v1/operations/sales/customers/by-phone?phone=${encodeURIComponent(phone)}`, {}, CheckDuplicateResponseSchema),
+    fetchApi(`/api/mobile/v1/operations/sales/customers/by-phone?phone=${encodeURIComponent(phone)}`, {}, CheckDuplicateResponseSchema, { dataset: 'customerSummary', key: `phone_${phone}` }),
 
   createCustomer: (customerData: CreateCustomerDto) => 
     fetchApi('/api/mobile/v1/operations/sales/customers', {
