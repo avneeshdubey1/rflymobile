@@ -13,3 +13,8 @@ veda
 .vscode/
 *.DS_Store
 .env
+
+android/
+ios/
+.env.local
+.env.*
