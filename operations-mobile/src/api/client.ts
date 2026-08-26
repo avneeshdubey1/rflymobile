@@ -1,4 +1,5 @@
 import * as SecureStore from 'expo-secure-store';
+import { networkRequest } from '../network/NetworkInterceptor';
 
 const BASE_URL = process.env.EXPO_PUBLIC_OC_API_URL || 'http://localhost:3000';
 
@@ -14,7 +15,7 @@ export async function fetchApi(endpoint: string, options: RequestInit = {}) {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const response = await fetch(`${BASE_URL}${endpoint}`, {
+  const response = await networkRequest(`${BASE_URL}${endpoint}`, {
     ...options,
     headers,
   });
