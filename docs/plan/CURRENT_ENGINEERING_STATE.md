@@ -77,8 +77,8 @@ HTTPS-only production variant once the company domain, TLS and release-signing
 custody are approved.
 
 The local auto-assignment candidate covers `AA-00` through `AA-09` and most
-of `AA-10`. The complete backend suite now passes 160/160; frontend lint/build,
-Pilot mobile typecheck and 18/18 tests, and Expo Doctor 21/21 pass. The migration
+of `AA-10`. The complete backend suite now passes 172/172; frontend lint/build,
+Pilot mobile typecheck and 22/22 tests, and Expo Doctor 21/21 pass. The migration
 harness replays all 29 migrations with 61 validated checks. The rebuilt isolated Compose stack
 migrates once and reports healthy database/jobs without exposing PostgreSQL or
 the backend on host ports. A focused real-browser audit passes 6/6 for policy
@@ -113,16 +113,20 @@ production import as part of later mobile work. Imported roster Pilots remain
 inactive/offline and imported Drone/LMV records remain out of service until an
 authorized operator reviews and activates them.
 
-An interim RFLY Operations Android shell now exists under `frontend/android`.
-It is a Capacitor WebView package of the responsive web SPA, with staging and
-manual exact-`main` internal APK workflows. It can provide web-feature parity
-for a controlled demonstration, but it is not the planned native Operations
-Companion: it has no independent native offline queue, role-specific native
-navigation or completed mobile capability contract. There is still no
-`operations-mobile/` source application. The canonical implementation handoff
-for that Expo/React Native client covering Admin, Fleet, Sales, Farmer and
-Business remains `NON_PILOT_MOBILE_APP_IMPLEMENTATION_HANDOFF.md`. Existing
-Stitch exports remain design evidence only.
+The separate Expo/React Native Operations Companion now exists under
+`operations-mobile/`. Its corrective recovery candidate implements real mobile
+authentication, server-issued role/capability navigation, typed Sales/Fleet/
+Farmer/Business contracts, safe user-scoped read caching, and foreground-only
+location. Local evidence passes TypeScript, 24/24 Jest tests and Expo Doctor
+21/21. Its staging APK job is consolidated into the main CI workflow and is
+gated on the web, backend, both mobile clients, and isolated Compose stack. It
+is not yet production-accepted: exact-SHA office-runner APK evidence and
+role-by-role physical-device testing remain open. The older Capacitor WebView
+shell is retained only as historical/interim material and is not the release
+target. Continue through
+`one-ness program/OPERATIONS_MOBILE_CORRECTION_PLAN.md`; do not begin OC-12
+until its physical acceptance gates are recorded. Existing Stitch exports
+remain design evidence only.
 
 ## Known historical trap
 

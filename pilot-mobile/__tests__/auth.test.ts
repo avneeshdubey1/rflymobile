@@ -12,6 +12,7 @@ describe("Auth Store", () => {
     useAuthStore.setState({
       status: "INITIALIZING",
       profile: null,
+      operatingCenter: null,
       capabilities: [],
       featureFlags: null,
       policies: null,
@@ -129,6 +130,71 @@ describe("Auth Store", () => {
 
     expect(useAuthStore.getState().status).toBe("READY");
     expect(useAuthStore.getState().capabilities).toContain("MISSION_MUTATE");
+  });
+
+  it("explains an installation cap instead of reducing a valid 409 envelope to HTTP 409", async () => {
+    mock.onPost("/pilot/auth/login").reply(409, {
+      success: false,
+      error: {
+        code: "INSTALLATION_LIMIT_REACHED",
+        message: "The active installation limit has been reached",
+        retryable: false,
+      },
+    });
+
+    await useAuthStore
+      .getState()
+      .login("pilot@example.test", "password123123123");
+
+    expect(useAuthStore.getState().status).toBe("UNAUTHENTICATED");
+    expect(useAuthStore.getState().error).toMatch(/maximum number of devices/i);
+  });
+
+  it("preserves an authenticated session when bootstrap needs operational recovery", async () => {
+    const validProfile = {
+      id: "22345678-1234-4234-8234-123456789012",
+      role: "PILOT",
+      displayName: "Pilot",
+      employeeCode: null,
+      preferredLanguage: "en",
+      homeCenterId: null,
+      pilotAvailabilityState: "AVAILABLE",
+    };
+
+    mock.onPost("/pilot/auth/login").reply(200, {
+      success: true,
+      session: {
+        accessToken: "token123456789012345678901234567890",
+        tokenType: "Bearer",
+        idleExpiresAt: "2026-08-18T12:00:00Z",
+        absoluteExpiresAt: "2026-08-18T12:00:00Z",
+      },
+      installation: {
+        id: "32345678-1234-4234-8234-123456789012",
+        platform: "ANDROID",
+        appVersion: "1.0.0",
+      },
+      profile: validProfile,
+    });
+    mock.onGet("/pilot/bootstrap").reply(409, {
+      success: false,
+      error: {
+        code: "ASSIGNMENT_LOCATION_INCOMPLETE",
+        message: "Assigned farm location is incomplete",
+        retryable: false,
+      },
+    });
+
+    await useAuthStore
+      .getState()
+      .login("pilot@example.test", "password123123123");
+
+    expect(useAuthStore.getState().status).toBe("RECOVERY_REQUIRED");
+    expect(useAuthStore.getState().profile).toEqual(validProfile);
+    expect(SecureStore.deleteItemAsync).not.toHaveBeenCalledWith(
+      "rfly_access_token",
+    );
+    expect(useAuthStore.getState().error).toMatch(/farm location corrected/i);
   });
 
   it("handleUnauthorized transitions to REVOKED and clears token", () => {

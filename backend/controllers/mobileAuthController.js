@@ -30,7 +30,7 @@ function capabilities(app, role) {
   }
   const byRole = {
     ADMIN: ['OPERATIONS_OVERVIEW', 'CUSTOMER_READ', 'SALES_INTAKE', 'FLEET_SCHEDULE', 'CREW_OVERRIDE'],
-    FLEET_MANAGER: ['OPERATIONS_OVERVIEW', 'CUSTOMER_READ', 'FLEET_SCHEDULE', 'CREW_OVERRIDE'],
+    FLEET_MANAGER: ['OPERATIONS_OVERVIEW', 'CUSTOMER_READ', 'FLEET_SCHEDULE'],
     SALES: ['OPERATIONS_OVERVIEW', 'CUSTOMER_READ', 'SALES_INTAKE'],
   };
   return byRole[role] || [];
@@ -101,7 +101,7 @@ function login(app) {
       const user = email ? await userRepository.findByEmailForAuthentication(email) : null;
       const passwordValid = await verifyPassword(req.body.password, user?.passwordHash || INVALID_ACCOUNT_PASSWORD_HASH);
       if (!passwordValid) throw new mobileSessionService.MobileAuthError('Invalid email or password', 'INVALID_CREDENTIALS');
-      if (!mobileSessionService.APP_ROLES[app]?.has(user.role) || !user.active || user.archivedAt) {
+      if (!mobileSessionService.APP_ROLES[app]?.has(user.role) || !user.active || user.archivedAt || ['FARMER', 'BUSINESS'].includes(user.role)) {
         throw new mobileSessionService.MobileAuthError('Invalid email or password', 'INVALID_CREDENTIALS');
       }
       if (needsRehash(user.passwordHash)) {
@@ -249,4 +249,171 @@ async function updatePilotAvailability(req, res) {
   }
 }
 
-module.exports = { adminRevokeInstallation, bootstrap, login, logout, logoutAll, revokeInstallation, updatePilotAvailability };
+
+async function requestFarmerOtp(req, res) {
+  try {
+    const config = req.app.get('config');
+    if (!config.mobile.enabled) throw new mobileSessionService.MobileAuthError('Mobile API is not enabled', 'MOBILE_API_DISABLED', 503);
+    const result = await require('../services/phoneVerificationService').issueChallenge({
+      phone: req.body.phone,
+      purpose: require('../services/phoneVerificationService').PURPOSES.FARMER_MOBILE_AUTH,
+    }, config);
+    return res.status(202).json(result);
+  } catch (error) {
+    const status = Number.isInteger(error.status) ? error.status : 500;
+    const clientMessage = status >= 500
+      ? 'Unable to request verification code'
+      : error.message;
+    return res.status(status).json({
+        success: false,
+        serverTime: new Date().toISOString(),
+        operatingTimeZone: req.app.get('config').operatingTimeZone,
+        requestId: req.requestId,
+        error: {
+          code: error.code || (status === 400 ? 'VALIDATION_FAILED' : 'OTP_REQUEST_FAILED'),
+          message: clientMessage,
+          retryable: status >= 500,
+          requestId: req.requestId,
+        },
+    });
+  }
+}
+
+async function resendFarmerOtp(req, res) {
+  try {
+    const body = req.body;
+    if (!body || typeof body !== 'object' || Array.isArray(body)
+      || Object.keys(body).some((field) => field !== 'challengeId')
+      || typeof body.challengeId !== 'string') {
+      throw new mobileSessionService.MobileAuthError('Verification request is invalid', 'VALIDATION_FAILED', 400);
+    }
+    const result = await require('../services/phoneVerificationService').resendChallenge({
+      challengeId: body.challengeId,
+    }, req.app.get('config'));
+    return res.status(202).json(result);
+  } catch (error) {
+    return authError(res, req, error);
+  }
+}
+
+async function verifyFarmerOtp(req, res) {
+  try {
+    const config = req.app.get('config');
+    if (!config.mobile.enabled) throw new mobileSessionService.MobileAuthError('Mobile API is not enabled', 'MOBILE_API_DISABLED', 503);
+    
+    // validate
+    if (!req.body.installationKey || typeof req.body.installationKey !== 'string' || req.body.installationKey.length < 32 || req.body.installationKey.length > 256) {
+      throw new mobileSessionService.MobileAuthError('Login credentials are invalid', 'VALIDATION_FAILED', 400);
+    }
+
+    const challenge = await require('../services/phoneVerificationService').verifyChallenge({
+      challengeId: req.body.challengeId,
+      code: req.body.code,
+      purpose: require('../services/phoneVerificationService').PURPOSES.FARMER_MOBILE_AUTH,
+      allowedRoles: new Set(['FARMER']),
+    }, config);
+
+    const user = challenge.userId ? await userRepository.findByPhoneForAuthentication([challenge.user.phone], 'FARMER') : null;
+    if (!user || user.role !== 'FARMER' || user.active === false || user.archivedAt) {
+      throw new mobileSessionService.MobileAuthError('This account cannot sign in', 'ROLE_NOT_ALLOWED', 403);
+    }
+
+    const installation = await mobileSessionService.registerInstallation({
+      user,
+      app: 'OPERATIONS',
+      installationKey: req.body.installationKey,
+      label: req.body.deviceLabel,
+      config,
+    });
+    const created = await mobileSessionService.createSession({ user, installation, config });
+    
+    await authAuditService.record({
+      entityType: 'MobileSession',
+      entityId: created.session.id,
+      action: 'MOBILE_SESSION_CREATED',
+      actorId: user.id,
+      state: { userId: user.id, role: user.role, app: 'OPERATIONS', installationId: installation.id, status: 'ACTIVE' },
+    });
+    
+    return res.json({
+        success: true,
+        serverTime: new Date().toISOString(),
+        operatingTimeZone: config.operatingTimeZone,
+        requestId: req.requestId,
+        session: {
+          accessToken: created.accessToken,
+          tokenType: 'Bearer',
+          idleExpiresAt: created.session.idleExpiresAt.toISOString(),
+          absoluteExpiresAt: created.session.absoluteExpiresAt.toISOString(),
+        },
+        installation: { id: installation.id, platform: 'ANDROID', appVersion: req.body.appVersion },
+        profile: safeProfile(user),
+    });
+  } catch (error) {
+    if (error.code && error.code.includes('OTP')) {
+        error.status = error.status || 401;
+    }
+    return authError(res, req, error);
+  }
+}
+
+async function businessLogin(req, res) {
+  try {
+    const config = req.app.get('config');
+    if (!config.mobile.enabled) throw new mobileSessionService.MobileAuthError('Mobile API is not enabled', 'MOBILE_API_DISABLED', 503);
+    validateLoginRequest(req.body);
+    
+    const versionComparison = compareVersions(req.body.appVersion, config.mobile.minimumVersion);
+    if (versionComparison === null) throw new mobileSessionService.MobileAuthError('A valid app version is required', 'VALIDATION_FAILED', 400);
+    if (versionComparison < 0) throw new mobileSessionService.MobileAuthError('Install a supported app version before continuing', 'CLIENT_UPGRADE_REQUIRED', 426);
+    
+    const email = require('../services/identityService').normalizeEmail(req.body.email);
+    const user = email ? await userRepository.findByEmailForAuthentication(email) : null;
+    const passwordValid = await require('../services/passwordService').verifyPassword(req.body.password, user?.passwordHash || require('../services/passwordService').INVALID_ACCOUNT_PASSWORD_HASH);
+    
+    if (!passwordValid) throw new mobileSessionService.MobileAuthError('Invalid email or password', 'INVALID_CREDENTIALS');
+    if (!user || user.role !== 'BUSINESS' || !user.active || user.archivedAt) {
+      throw new mobileSessionService.MobileAuthError('Invalid email or password', 'INVALID_CREDENTIALS');
+    }
+
+    const installation = await mobileSessionService.registerInstallation({
+      user,
+      app: 'OPERATIONS',
+      installationKey: req.body.installationKey,
+      label: req.body.deviceLabel,
+      config,
+    });
+    const created = await mobileSessionService.createSession({ user, installation, config });
+    
+    await authAuditService.record({
+      entityType: 'MobileSession',
+      entityId: created.session.id,
+      action: 'MOBILE_SESSION_CREATED',
+      actorId: user.id,
+      state: { userId: user.id, role: user.role, app: 'OPERATIONS', installationId: installation.id, status: 'ACTIVE' },
+    });
+    
+    return res.json({
+        success: true,
+        serverTime: new Date().toISOString(),
+        operatingTimeZone: config.operatingTimeZone,
+        requestId: req.requestId,
+        session: {
+          accessToken: created.accessToken,
+          tokenType: 'Bearer',
+          idleExpiresAt: created.session.idleExpiresAt.toISOString(),
+          absoluteExpiresAt: created.session.absoluteExpiresAt.toISOString(),
+        },
+        installation: { id: installation.id, platform: 'ANDROID', appVersion: req.body.appVersion },
+        profile: safeProfile(user),
+    });
+  } catch (error) {
+    return authError(res, req, error);
+  }
+}
+
+module.exports = {
+  requestFarmerOtp,
+  resendFarmerOtp,
+  verifyFarmerOtp,
+  businessLogin, adminRevokeInstallation, bootstrap, login, logout, logoutAll, revokeInstallation, updatePilotAvailability };

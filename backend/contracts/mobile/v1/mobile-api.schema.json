@@ -15,88 +15,190 @@
       "type": "string",
       "pattern": "^(0|[1-9]\\d*)(\\.\\d{1,2})?$"
     },
-    "pilotProfile": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["id", "displayName", "employeeCode", "preferredLanguage", "homeCenterId", "role"],
-      "properties": {
-        "id": { "$ref": "#/$defs/uuid" },
-        "displayName": { "type": "string", "minLength": 1, "maxLength": 120 },
-        "employeeCode": { "type": ["string", "null"], "maxLength": 80 },
-        "preferredLanguage": { "type": "string", "minLength": 2, "maxLength": 12 },
-        "homeCenterId": {
-          "anyOf": [
-            { "$ref": "#/$defs/uuid" },
-            { "type": "null" }
-          ]
-        },
-        "role": { "enum": ["ADMIN", "FLEET_MANAGER", "SALES", "PILOT"] }
-      }
-    },
     "operatingCenter": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "code", "displayName"],
+      "required": [
+        "id",
+        "code",
+        "displayName"
+      ],
       "properties": {
-        "id": { "$ref": "#/$defs/uuid" },
-        "code": { "type": "string", "minLength": 1, "maxLength": 80 },
-        "displayName": { "type": "string", "minLength": 1, "maxLength": 160 }
+        "id": {
+          "$ref": "#/$defs/uuid"
+        },
+        "code": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
       }
     },
     "crewMember": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "displayName", "crewRole"],
+      "required": [
+        "id",
+        "displayName",
+        "crewRole"
+      ],
       "properties": {
-        "id": { "$ref": "#/$defs/uuid" },
-        "displayName": { "type": "string", "minLength": 1, "maxLength": 120 },
-        "crewRole": { "enum": ["PRIMARY_PILOT", "COPILOT"] }
+        "id": {
+          "$ref": "#/$defs/uuid"
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "crewRole": {
+          "enum": [
+            "PRIMARY_PILOT",
+            "COPILOT"
+          ]
+        }
       }
     },
     "assignment": {
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "id", "leadId", "revision", "status", "crewFormationState", "dailySequence",
-        "serviceWindowStart", "serviceWindowEnd", "farmer", "farm", "crop",
-        "expectedAcreage", "actualAcreage", "issue", "crew", "drone", "lmv", "operatingCenter",
-        "operationalNotes", "updatedAt", "allowedActions"
+        "id",
+        "leadId",
+        "revision",
+        "status",
+        "crewFormationState",
+        "dailySequence",
+        "serviceWindowStart",
+        "serviceWindowEnd",
+        "farmer",
+        "farm",
+        "crop",
+        "expectedAcreage",
+        "actualAcreage",
+        "issue",
+        "crew",
+        "drone",
+        "lmv",
+        "operatingCenter",
+        "operationalNotes",
+        "updatedAt",
+        "allowedActions"
       ],
       "properties": {
-        "id": { "$ref": "#/$defs/uuid" },
-        "leadId": { "$ref": "#/$defs/uuid" },
-        "revision": { "type": "integer", "minimum": 1 },
-        "status": { "enum": ["SCHEDULED", "PILOT_ACCEPTED", "IN_PROGRESS", "COMPLETED", "CANCELLED", "FLAGGED"] },
-        "crewFormationState": { "enum": ["PENDING_COPILOT_SELECTION", "READY", "LEGACY_INCOMPLETE"] },
-        "dailySequence": { "type": "integer", "minimum": 1 },
-        "serviceWindowStart": { "$ref": "#/$defs/timestamp" },
-        "serviceWindowEnd": { "$ref": "#/$defs/timestamp" },
+        "id": {
+          "$ref": "#/$defs/uuid"
+        },
+        "leadId": {
+          "$ref": "#/$defs/uuid"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "status": {
+          "enum": [
+            "SCHEDULED",
+            "PILOT_ACCEPTED",
+            "IN_PROGRESS",
+            "COMPLETED",
+            "CANCELLED",
+            "FLAGGED"
+          ]
+        },
+        "crewFormationState": {
+          "enum": [
+            "PENDING_COPILOT_SELECTION",
+            "READY",
+            "LEGACY_INCOMPLETE"
+          ]
+        },
+        "dailySequence": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "serviceWindowStart": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "serviceWindowEnd": {
+          "$ref": "#/$defs/timestamp"
+        },
         "farmer": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["displayName", "operationalPhone"],
+          "required": [
+            "displayName",
+            "operationalPhone"
+          ],
           "properties": {
-            "displayName": { "type": "string", "minLength": 1, "maxLength": 120 },
-            "operationalPhone": { "type": "string", "pattern": "^\\+[1-9]\\d{7,14}$" }
+            "displayName": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 120
+            },
+            "operationalPhone": {
+              "type": "string",
+              "pattern": "^\\+[1-9]\\d{7,14}$"
+            }
           }
         },
         "farm": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["displayAddress", "plusCode", "latitude", "longitude"],
+          "required": [
+            "displayAddress",
+            "plusCode",
+            "latitude",
+            "longitude"
+          ],
           "properties": {
-            "displayAddress": { "type": "string", "minLength": 1, "maxLength": 300 },
-            "plusCode": { "type": ["string", "null"], "maxLength": 160 },
-            "latitude": { "type": "number", "minimum": -90, "maximum": 90 },
-            "longitude": { "type": "number", "minimum": -180, "maximum": 180 }
+            "displayAddress": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 300
+            },
+            "plusCode": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "maxLength": 160
+            },
+            "latitude": {
+              "type": "number",
+              "minimum": -90,
+              "maximum": 90
+            },
+            "longitude": {
+              "type": "number",
+              "minimum": -180,
+              "maximum": 180
+            }
           }
         },
-        "crop": { "type": ["string", "null"], "maxLength": 120 },
-        "expectedAcreage": { "$ref": "#/$defs/decimal" },
+        "crop": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 120
+        },
+        "expectedAcreage": {
+          "$ref": "#/$defs/decimal"
+        },
         "actualAcreage": {
           "anyOf": [
-            { "$ref": "#/$defs/decimal" },
-            { "type": "null" }
+            {
+              "$ref": "#/$defs/decimal"
+            },
+            {
+              "type": "null"
+            }
           ]
         },
         "issue": {
@@ -104,30 +206,66 @@
             {
               "type": "object",
               "additionalProperties": false,
-              "required": ["category", "note", "reportedAt"],
+              "required": [
+                "category",
+                "note",
+                "reportedAt"
+              ],
               "properties": {
-                "category": { "enum": ["DRONE_MALFUNCTION", "SAFETY_HAZARD", "WEATHER_BLOCKER", "CUSTOMER_BLOCKER", "OTHER"] },
-                "note": { "type": "string", "minLength": 1, "maxLength": 500 },
-                "reportedAt": { "$ref": "#/$defs/timestamp" }
+                "category": {
+                  "enum": [
+                    "DRONE_MALFUNCTION",
+                    "SAFETY_HAZARD",
+                    "WEATHER_BLOCKER",
+                    "CUSTOMER_BLOCKER",
+                    "OTHER"
+                  ]
+                },
+                "note": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 500
+                },
+                "reportedAt": {
+                  "$ref": "#/$defs/timestamp"
+                }
               }
             },
-            { "type": "null" }
+            {
+              "type": "null"
+            }
           ]
         },
         "crew": {
           "type": "array",
           "minItems": 1,
           "maxItems": 2,
-          "items": { "$ref": "#/$defs/crewMember" }
+          "items": {
+            "$ref": "#/$defs/crewMember"
+          }
         },
         "drone": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["id", "code", "serialNumber"],
+          "required": [
+            "id",
+            "code",
+            "serialNumber"
+          ],
           "properties": {
-            "id": { "$ref": "#/$defs/uuid" },
-            "code": { "type": "string", "minLength": 1, "maxLength": 80 },
-            "serialNumber": { "type": "string", "minLength": 1, "maxLength": 160 }
+            "id": {
+              "$ref": "#/$defs/uuid"
+            },
+            "code": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            "serialNumber": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 160
+            }
           }
         },
         "lmv": {
@@ -135,266 +273,774 @@
             {
               "type": "object",
               "additionalProperties": false,
-              "required": ["id", "registrationNumber", "label"],
+              "required": [
+                "id",
+                "registrationNumber",
+                "label"
+              ],
               "properties": {
-                "id": { "$ref": "#/$defs/uuid" },
-                "registrationNumber": { "type": "string", "minLength": 1, "maxLength": 80 },
-                "label": { "type": ["string", "null"], "maxLength": 120 }
+                "id": {
+                  "$ref": "#/$defs/uuid"
+                },
+                "registrationNumber": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 80
+                },
+                "label": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "maxLength": 120
+                }
               }
             },
-            { "type": "null" }
+            {
+              "type": "null"
+            }
           ]
         },
         "operatingCenter": {
           "anyOf": [
-            { "$ref": "#/$defs/operatingCenter" },
-            { "type": "null" }
+            {
+              "$ref": "#/$defs/operatingCenter"
+            },
+            {
+              "type": "null"
+            }
           ]
         },
         "operationalNotes": {
           "type": "array",
           "maxItems": 10,
-          "items": { "type": "string", "minLength": 1, "maxLength": 500 }
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          }
         },
-        "updatedAt": { "$ref": "#/$defs/timestamp" },
+        "updatedAt": {
+          "$ref": "#/$defs/timestamp"
+        },
         "allowedActions": {
           "type": "array",
           "uniqueItems": true,
-          "items": { "enum": ["SELECT_COPILOT", "ACCEPT", "REJECT", "START", "COMPLETE", "REPORT_ISSUE", "SEND_LOCATION"] }
+          "items": {
+            "enum": [
+              "SELECT_COPILOT",
+              "ACCEPT",
+              "REJECT",
+              "START",
+              "COMPLETE",
+              "REPORT_ISSUE",
+              "SEND_LOCATION"
+            ]
+          }
         }
       }
     },
     "loginRequest": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["email", "password", "installationKey", "platform", "appVersion", "deviceLabel"],
+      "required": [
+        "email",
+        "password",
+        "installationKey",
+        "platform",
+        "appVersion",
+        "deviceLabel"
+      ],
       "properties": {
-        "email": { "type": "string", "format": "email", "maxLength": 254 },
-        "password": { "type": "string", "minLength": 12, "maxLength": 128 },
-        "installationKey": { "type": "string", "minLength": 32, "maxLength": 256 },
-        "platform": { "const": "ANDROID" },
-        "appVersion": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
-        "deviceLabel": { "type": ["string", "null"], "maxLength": 80 }
+        "email": {
+          "type": "string",
+          "format": "email",
+          "maxLength": 254
+        },
+        "password": {
+          "type": "string",
+          "minLength": 12,
+          "maxLength": 128
+        },
+        "installationKey": {
+          "type": "string",
+          "minLength": 32,
+          "maxLength": 256
+        },
+        "platform": {
+          "const": "ANDROID"
+        },
+        "appVersion": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$"
+        },
+        "deviceLabel": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 80
+        }
       }
     },
     "loginResponse": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["success", "session", "installation", "profile"],
+      "required": [
+        "success",
+        "session",
+        "installation",
+        "profile",
+        "requestId",
+        "serverTime",
+        "operatingTimeZone"
+      ],
       "properties": {
-        "success": { "const": true },
+        "success": {
+          "const": true
+        },
         "session": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["accessToken", "tokenType", "idleExpiresAt", "absoluteExpiresAt"],
+          "required": [
+            "accessToken",
+            "tokenType",
+            "idleExpiresAt",
+            "absoluteExpiresAt"
+          ],
           "properties": {
-            "accessToken": { "type": "string", "minLength": 32, "maxLength": 512 },
-            "tokenType": { "const": "Bearer" },
-            "idleExpiresAt": { "$ref": "#/$defs/timestamp" },
-            "absoluteExpiresAt": { "$ref": "#/$defs/timestamp" }
+            "accessToken": {
+              "type": "string",
+              "minLength": 32,
+              "maxLength": 512
+            },
+            "tokenType": {
+              "const": "Bearer"
+            },
+            "idleExpiresAt": {
+              "$ref": "#/$defs/timestamp"
+            },
+            "absoluteExpiresAt": {
+              "$ref": "#/$defs/timestamp"
+            }
           }
         },
         "installation": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["id", "platform", "appVersion"],
+          "required": [
+            "id",
+            "platform",
+            "appVersion"
+          ],
           "properties": {
-            "id": { "$ref": "#/$defs/uuid" },
-            "platform": { "const": "ANDROID" },
-            "appVersion": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" }
+            "id": {
+              "$ref": "#/$defs/uuid"
+            },
+            "platform": {
+              "const": "ANDROID"
+            },
+            "appVersion": {
+              "type": "string",
+              "pattern": "^\\d+\\.\\d+\\.\\d+$"
+            }
           }
         },
-        "profile": { "$ref": "#/$defs/pilotProfile" }
+        "profile": {
+          "$ref": "#/$defs/userProfile"
+        },
+        "requestId": {
+          "$ref": "#/$defs/requestId"
+        },
+        "serverTime": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "operatingTimeZone": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        }
       }
     },
     "bootstrapResponse": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["success", "apiVersion", "app", "serverTime", "operatingTimeZone", "profile", "operatingCenter", "assignmentWindow", "assignments", "capabilities", "featureFlags", "appVersions", "sync", "policies"],
+      "required": [
+        "success",
+        "apiVersion",
+        "app",
+        "serverTime",
+        "operatingTimeZone",
+        "profile",
+        "operatingCenter",
+        "assignmentWindow",
+        "assignments",
+        "capabilities",
+        "featureFlags",
+        "appVersions",
+        "sync",
+        "policies",
+        "requestId"
+      ],
       "properties": {
-        "success": { "const": true },
-        "apiVersion": { "const": "v1" },
-        "app": { "enum": ["PILOT_FIELD", "OPERATIONS"] },
-        "serverTime": { "$ref": "#/$defs/timestamp" },
-        "operatingTimeZone": { "type": "string", "minLength": 1, "maxLength": 80 },
-        "profile": { "$ref": "#/$defs/pilotProfile" },
+        "success": {
+          "const": true
+        },
+        "apiVersion": {
+          "const": "v1"
+        },
+        "app": {
+          "enum": [
+            "PILOT_FIELD",
+            "OPERATIONS"
+          ]
+        },
+        "serverTime": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "operatingTimeZone": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "profile": {
+          "$ref": "#/$defs/userProfile"
+        },
         "operatingCenter": {
           "anyOf": [
-            { "$ref": "#/$defs/operatingCenter" },
-            { "type": "null" }
+            {
+              "$ref": "#/$defs/operatingCenter"
+            },
+            {
+              "type": "null"
+            }
           ]
         },
         "assignmentWindow": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["from", "to"],
+          "required": [
+            "from",
+            "to"
+          ],
           "properties": {
-            "from": { "$ref": "#/$defs/timestamp" },
-            "to": { "$ref": "#/$defs/timestamp" }
+            "from": {
+              "$ref": "#/$defs/timestamp"
+            },
+            "to": {
+              "$ref": "#/$defs/timestamp"
+            }
           }
         },
-        "assignments": { "type": "array", "maxItems": 100, "items": { "$ref": "#/$defs/assignment" } },
+        "assignments": {
+          "type": "array",
+          "maxItems": 100,
+          "items": {
+            "$ref": "#/$defs/assignment"
+          }
+        },
         "capabilities": {
           "type": "array",
           "uniqueItems": true,
           "items": {
-            "enum": ["PILOT_ASSIGNMENTS_READ", "COPILOT_SELECT", "MISSION_MUTATE", "ISSUE_REPORT", "FOREGROUND_LOCATION", "OPERATIONS_OVERVIEW", "CUSTOMER_READ", "SALES_INTAKE", "FLEET_SCHEDULE", "CREW_OVERRIDE"]
+            "$ref": "#/$defs/capability"
           }
         },
         "featureFlags": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["chat", "foregroundLocation", "issueReporting"],
+          "required": [
+            "chat",
+            "foregroundLocation",
+            "issueReporting"
+          ],
           "properties": {
-            "chat": { "type": "boolean" },
-            "foregroundLocation": { "type": "boolean" },
-            "issueReporting": { "type": "boolean" }
+            "chat": {
+              "type": "boolean"
+            },
+            "foregroundLocation": {
+              "type": "boolean"
+            },
+            "issueReporting": {
+              "type": "boolean"
+            }
           }
         },
         "appVersions": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["minimum", "recommended"],
+          "required": [
+            "minimum",
+            "recommended"
+          ],
           "properties": {
-            "minimum": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
-            "recommended": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" }
+            "minimum": {
+              "type": "string",
+              "pattern": "^\\d+\\.\\d+\\.\\d+$"
+            },
+            "recommended": {
+              "type": "string",
+              "pattern": "^\\d+\\.\\d+\\.\\d+$"
+            }
           }
         },
         "sync": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["cursor"],
+          "required": [
+            "cursor"
+          ],
           "properties": {
-            "cursor": { "type": "string", "minLength": 1, "maxLength": 512 }
+            "cursor": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            }
           }
         },
         "policies": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["offlineGraceSeconds", "terminalCacheSeconds", "locationIntervalSeconds", "locationAccuracyMetres", "backgroundLocationEnabled"],
+          "required": [
+            "offlineGraceSeconds",
+            "terminalCacheSeconds",
+            "locationIntervalSeconds",
+            "locationAccuracyMetres",
+            "backgroundLocationEnabled"
+          ],
           "properties": {
-            "offlineGraceSeconds": { "type": "integer", "minimum": 0 },
-            "terminalCacheSeconds": { "type": "integer", "minimum": 0 },
-            "locationIntervalSeconds": { "type": "integer", "minimum": 1 },
-            "locationAccuracyMetres": { "type": "integer", "minimum": 1 },
-            "backgroundLocationEnabled": { "const": false }
+            "offlineGraceSeconds": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "terminalCacheSeconds": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "locationIntervalSeconds": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "locationAccuracyMetres": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "backgroundLocationEnabled": {
+              "const": false
+            }
           }
+        },
+        "requestId": {
+          "$ref": "#/$defs/requestId"
         }
       }
     },
     "mutationReceipt": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["clientActionId", "assignmentId", "action", "outcome", "resultingRevision", "receivedAt"],
+      "required": [
+        "clientActionId",
+        "assignmentId",
+        "action",
+        "outcome",
+        "resultingRevision",
+        "receivedAt"
+      ],
       "properties": {
-        "clientActionId": { "$ref": "#/$defs/uuid" },
-        "assignmentId": { "$ref": "#/$defs/uuid" },
-        "action": { "enum": ["ACCEPT", "REJECT", "START", "COMPLETE", "REPORT_ISSUE", "LOCATION"] },
-        "outcome": { "enum": ["APPLIED", "ALREADY_APPLIED", "CONFLICT", "REJECTED", "RETRY_LATER"] },
-        "resultingRevision": { "type": "integer", "minimum": 1 },
-        "receivedAt": { "$ref": "#/$defs/timestamp" }
+        "clientActionId": {
+          "$ref": "#/$defs/uuid"
+        },
+        "assignmentId": {
+          "$ref": "#/$defs/uuid"
+        },
+        "action": {
+          "enum": [
+            "ACCEPT",
+            "REJECT",
+            "START",
+            "COMPLETE",
+            "REPORT_ISSUE",
+            "LOCATION"
+          ]
+        },
+        "outcome": {
+          "enum": [
+            "APPLIED",
+            "ALREADY_APPLIED",
+            "CONFLICT",
+            "REJECTED",
+            "RETRY_LATER"
+          ]
+        },
+        "resultingRevision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "receivedAt": {
+          "$ref": "#/$defs/timestamp"
+        }
       }
     },
     "mutationRequest": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["assignmentId", "clientActionId", "action", "expectedRevision"],
+      "required": [
+        "assignmentId",
+        "clientActionId",
+        "action",
+        "expectedRevision"
+      ],
       "allOf": [
         {
-          "if": { "properties": { "action": { "const": "COMPLETE" } }, "required": ["action"] },
-          "then": { "properties": { "actualAcreage": {} }, "required": ["actualAcreage"] },
-          "else": { "properties": { "actualAcreage": {} }, "not": { "required": ["actualAcreage"] } }
-        },
-        {
-          "if": { "properties": { "action": { "const": "REPORT_ISSUE" } }, "required": ["action"] },
-          "then": { "properties": { "issueCategory": {}, "issueNote": {} }, "required": ["issueCategory", "issueNote"] },
+          "if": {
+            "properties": {
+              "action": {
+                "const": "COMPLETE"
+              }
+            },
+            "required": [
+              "action"
+            ]
+          },
+          "then": {
+            "properties": {
+              "actualAcreage": {}
+            },
+            "required": [
+              "actualAcreage"
+            ]
+          },
           "else": {
-            "properties": { "issueCategory": {} },
-            "not": { "required": ["issueCategory"] }
+            "properties": {
+              "actualAcreage": {}
+            },
+            "not": {
+              "required": [
+                "actualAcreage"
+              ]
+            }
           }
         },
         {
-          "if": { "properties": { "action": { "enum": ["REPORT_ISSUE", "REJECT"] } }, "required": ["action"] },
-          "then": { "required": ["issueNote"] },
-          "else": { "not": { "required": ["issueNote"] } }
+          "if": {
+            "properties": {
+              "action": {
+                "const": "REPORT_ISSUE"
+              }
+            },
+            "required": [
+              "action"
+            ]
+          },
+          "then": {
+            "properties": {
+              "issueCategory": {},
+              "issueNote": {}
+            },
+            "required": [
+              "issueCategory",
+              "issueNote"
+            ]
+          },
+          "else": {
+            "properties": {
+              "issueCategory": {}
+            },
+            "not": {
+              "required": [
+                "issueCategory"
+              ]
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "action": {
+                "enum": [
+                  "REPORT_ISSUE",
+                  "REJECT"
+                ]
+              }
+            },
+            "required": [
+              "action"
+            ]
+          },
+          "then": {
+            "required": [
+              "issueNote"
+            ]
+          },
+          "else": {
+            "not": {
+              "required": [
+                "issueNote"
+              ]
+            }
+          }
         }
       ],
       "properties": {
-        "assignmentId": { "$ref": "#/$defs/uuid" },
-        "clientActionId": { "$ref": "#/$defs/uuid" },
-        "action": { "enum": ["ACCEPT", "REJECT", "START", "COMPLETE", "REPORT_ISSUE"] },
-        "expectedRevision": { "type": "integer", "minimum": 1 },
-        "actualAcreage": { "$ref": "#/$defs/decimal" },
-        "issueCategory": { "enum": ["DRONE_MALFUNCTION", "SAFETY_HAZARD", "WEATHER_BLOCKER", "CUSTOMER_BLOCKER", "OTHER"] },
-        "issueNote": { "type": "string", "minLength": 1, "maxLength": 500 }
+        "assignmentId": {
+          "$ref": "#/$defs/uuid"
+        },
+        "clientActionId": {
+          "$ref": "#/$defs/uuid"
+        },
+        "action": {
+          "enum": [
+            "ACCEPT",
+            "REJECT",
+            "START",
+            "COMPLETE",
+            "REPORT_ISSUE"
+          ]
+        },
+        "expectedRevision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "actualAcreage": {
+          "$ref": "#/$defs/decimal"
+        },
+        "issueCategory": {
+          "enum": [
+            "DRONE_MALFUNCTION",
+            "SAFETY_HAZARD",
+            "WEATHER_BLOCKER",
+            "CUSTOMER_BLOCKER",
+            "OTHER"
+          ]
+        },
+        "issueNote": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        }
       }
     },
     "syncRequest": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["cursor", "mutations"],
+      "required": [
+        "cursor",
+        "mutations"
+      ],
       "properties": {
-        "cursor": { "type": "string", "minLength": 1, "maxLength": 512 },
+        "cursor": {
+          "$ref": "#/$defs/cursor"
+        },
         "mutations": {
           "type": "array",
           "minItems": 1,
           "maxItems": 20,
-          "items": { "$ref": "#/$defs/mutationRequest" }
+          "items": {
+            "$ref": "#/$defs/mutationRequest"
+          }
         }
       }
     },
     "syncResponse": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["success", "serverTime", "mutationReceipts", "nextCursor", "fullResyncRequired", "changedAssignments", "removedAssignmentIds"],
+      "required": [
+        "success",
+        "serverTime",
+        "mutationReceipts",
+        "nextCursor",
+        "fullResyncRequired",
+        "changedAssignments",
+        "removedAssignmentIds",
+        "requestId",
+        "operatingTimeZone"
+      ],
       "properties": {
-        "success": { "const": true },
-        "serverTime": { "$ref": "#/$defs/timestamp" },
-        "mutationReceipts": { "type": "array", "maxItems": 20, "items": { "$ref": "#/$defs/mutationReceipt" } },
-        "nextCursor": { "type": "string", "minLength": 1, "maxLength": 512 },
-        "fullResyncRequired": { "type": "boolean" },
-        "changedAssignments": { "type": "array", "maxItems": 100, "items": { "$ref": "#/$defs/assignment" } },
-        "removedAssignmentIds": { "type": "array", "maxItems": 100, "uniqueItems": true, "items": { "$ref": "#/$defs/uuid" } }
+        "success": {
+          "const": true
+        },
+        "serverTime": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "mutationReceipts": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {
+            "$ref": "#/$defs/mutationReceipt"
+          }
+        },
+        "nextCursor": {
+          "$ref": "#/$defs/cursor"
+        },
+        "fullResyncRequired": {
+          "type": "boolean"
+        },
+        "changedAssignments": {
+          "type": "array",
+          "maxItems": 100,
+          "items": {
+            "$ref": "#/$defs/assignment"
+          }
+        },
+        "removedAssignmentIds": {
+          "type": "array",
+          "maxItems": 100,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/uuid"
+          }
+        },
+        "requestId": {
+          "$ref": "#/$defs/requestId"
+        },
+        "operatingTimeZone": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        }
       }
     },
     "changePage": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["success", "serverTime", "nextCursor", "fullResyncRequired", "changedAssignments", "removedAssignmentIds"],
+      "required": [
+        "success",
+        "serverTime",
+        "nextCursor",
+        "fullResyncRequired",
+        "changedAssignments",
+        "removedAssignmentIds",
+        "requestId",
+        "operatingTimeZone"
+      ],
       "properties": {
-        "success": { "const": true },
-        "serverTime": { "$ref": "#/$defs/timestamp" },
-        "nextCursor": { "type": "string", "minLength": 1, "maxLength": 512 },
-        "fullResyncRequired": { "type": "boolean" },
-        "changedAssignments": { "type": "array", "maxItems": 100, "items": { "$ref": "#/$defs/assignment" } },
-        "removedAssignmentIds": { "type": "array", "maxItems": 100, "uniqueItems": true, "items": { "$ref": "#/$defs/uuid" } }
+        "success": {
+          "const": true
+        },
+        "serverTime": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "nextCursor": {
+          "$ref": "#/$defs/cursor"
+        },
+        "fullResyncRequired": {
+          "type": "boolean"
+        },
+        "changedAssignments": {
+          "type": "array",
+          "maxItems": 100,
+          "items": {
+            "$ref": "#/$defs/assignment"
+          }
+        },
+        "removedAssignmentIds": {
+          "type": "array",
+          "maxItems": 100,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/uuid"
+          }
+        },
+        "requestId": {
+          "$ref": "#/$defs/requestId"
+        },
+        "operatingTimeZone": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        }
       }
     },
     "operationsCustomer": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "displayName", "phone", "preferredLanguage", "ownership", "totalAcres", "location", "recentLeads"],
+      "required": [
+        "id",
+        "displayName",
+        "phone",
+        "preferredLanguage",
+        "ownership",
+        "totalAcres",
+        "location",
+        "recentLeads"
+      ],
       "properties": {
-        "id": { "$ref": "#/$defs/uuid" },
-        "displayName": { "type": "string", "minLength": 2, "maxLength": 120 },
-        "phone": { "type": "string", "pattern": "^\\+[1-9]\\d{7,14}$" },
-        "preferredLanguage": { "type": "string", "minLength": 2, "maxLength": 12 },
-        "ownership": { "type": ["string", "null"], "enum": ["OWNER", "TENANT", null] },
+        "id": {
+          "$ref": "#/$defs/uuid"
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 120
+        },
+        "phone": {
+          "type": "string",
+          "pattern": "^\\+[1-9]\\d{7,14}$"
+        },
+        "preferredLanguage": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 12
+        },
+        "ownership": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "OWNER",
+            "TENANT",
+            null
+          ]
+        },
         "totalAcres": {
           "anyOf": [
-            { "$ref": "#/$defs/decimal" },
-            { "type": "null" }
+            {
+              "$ref": "#/$defs/decimal"
+            },
+            {
+              "type": "null"
+            }
           ]
         },
         "location": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["village", "mandal", "district", "state"],
+          "required": [
+            "village",
+            "mandal",
+            "district",
+            "state"
+          ],
           "properties": {
-            "village": { "type": ["string", "null"], "maxLength": 120 },
-            "mandal": { "type": ["string", "null"], "maxLength": 120 },
-            "district": { "type": ["string", "null"], "maxLength": 120 },
-            "state": { "type": ["string", "null"], "maxLength": 120 }
+            "village": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "maxLength": 120
+            },
+            "mandal": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "maxLength": 120
+            },
+            "district": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "maxLength": 120
+            },
+            "state": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "maxLength": 120
+            }
           }
         },
         "recentLeads": {
@@ -403,13 +1049,35 @@
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["id", "status", "acreage", "crop", "createdAt"],
+            "required": [
+              "id",
+              "status",
+              "acreage",
+              "crop",
+              "createdAt"
+            ],
             "properties": {
-              "id": { "$ref": "#/$defs/uuid" },
-              "status": { "type": "string", "minLength": 1, "maxLength": 40 },
-              "acreage": { "$ref": "#/$defs/decimal" },
-              "crop": { "type": ["string", "null"], "maxLength": 120 },
-              "createdAt": { "$ref": "#/$defs/timestamp" }
+              "id": {
+                "$ref": "#/$defs/uuid"
+              },
+              "status": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 40
+              },
+              "acreage": {
+                "$ref": "#/$defs/decimal"
+              },
+              "crop": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "maxLength": 120
+              },
+              "createdAt": {
+                "$ref": "#/$defs/timestamp"
+              }
             }
           }
         }
@@ -418,84 +1086,296 @@
     "operationsCustomerResponse": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["success", "customer"],
+      "required": [
+        "success",
+        "customer",
+        "requestId",
+        "serverTime",
+        "operatingTimeZone"
+      ],
       "properties": {
-        "success": { "const": true },
-        "created": { "type": "boolean" },
-        "customer": { "$ref": "#/$defs/operationsCustomer" }
+        "success": {
+          "const": true
+        },
+        "created": {
+          "type": "boolean"
+        },
+        "customer": {
+          "$ref": "#/$defs/operationsCustomer"
+        },
+        "requestId": {
+          "$ref": "#/$defs/requestId"
+        },
+        "serverTime": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "operatingTimeZone": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        }
       }
     },
     "operationsCustomerListResponse": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["success", "customers"],
+      "required": [
+        "success",
+        "customers",
+        "requestId",
+        "serverTime",
+        "operatingTimeZone"
+      ],
       "properties": {
-        "success": { "const": true },
-        "customers": { "type": "array", "maxItems": 30, "items": { "$ref": "#/$defs/operationsCustomer" } }
+        "success": {
+          "const": true
+        },
+        "customers": {
+          "type": "array",
+          "maxItems": 30,
+          "items": {
+            "$ref": "#/$defs/operationsCustomer"
+          }
+        },
+        "requestId": {
+          "$ref": "#/$defs/requestId"
+        },
+        "serverTime": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "operatingTimeZone": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        }
       }
     },
     "operationsLeadResponse": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["success", "outcome", "lead", "assignmentOutcome"],
+      "required": [
+        "success",
+        "outcome",
+        "lead",
+        "assignmentOutcome",
+        "requestId",
+        "serverTime",
+        "operatingTimeZone"
+      ],
       "properties": {
-        "success": { "const": true },
-        "outcome": { "const": "ACCEPTED" },
+        "success": {
+          "const": true
+        },
+        "outcome": {
+          "const": "ACCEPTED"
+        },
         "lead": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["id", "status", "acreage", "crop", "operatingCenterId", "createdAt"],
+          "required": [
+            "id",
+            "status",
+            "acreage",
+            "crop",
+            "operatingCenterId",
+            "createdAt"
+          ],
           "properties": {
-            "id": { "$ref": "#/$defs/uuid" },
-            "status": { "type": "string", "minLength": 1, "maxLength": 40 },
-            "acreage": { "$ref": "#/$defs/decimal" },
-            "crop": { "type": ["string", "null"], "maxLength": 120 },
-            "operatingCenterId": { "$ref": "#/$defs/uuid" },
-            "createdAt": { "$ref": "#/$defs/timestamp" }
+            "id": {
+              "$ref": "#/$defs/uuid"
+            },
+            "status": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 40
+            },
+            "acreage": {
+              "$ref": "#/$defs/decimal"
+            },
+            "crop": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "maxLength": 120
+            },
+            "operatingCenterId": {
+              "$ref": "#/$defs/uuid"
+            },
+            "createdAt": {
+              "$ref": "#/$defs/timestamp"
+            }
           }
         },
-        "assignmentOutcome": { "type": ["string", "null"], "maxLength": 80 }
+        "assignmentOutcome": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 80
+        },
+        "requestId": {
+          "$ref": "#/$defs/requestId"
+        },
+        "serverTime": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "operatingTimeZone": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        }
       }
     },
     "operationsScheduleAssignment": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "leadId", "revision", "status", "crewFormationState", "dailySequence", "serviceWindow", "farmerDisplayName", "crop", "expectedAcreage", "operatingCenter", "crew", "drone", "lmv", "issueCategory"],
+      "required": [
+        "id",
+        "leadId",
+        "revision",
+        "status",
+        "crewFormationState",
+        "dailySequence",
+        "serviceWindow",
+        "farmerDisplayName",
+        "crop",
+        "expectedAcreage",
+        "operatingCenter",
+        "crew",
+        "drone",
+        "lmv",
+        "issueCategory"
+      ],
       "properties": {
-        "id": { "$ref": "#/$defs/uuid" },
-        "leadId": { "$ref": "#/$defs/uuid" },
-        "revision": { "type": "integer", "minimum": 1 },
-        "status": { "type": "string", "minLength": 1, "maxLength": 40 },
-        "crewFormationState": { "enum": ["PENDING_COPILOT_SELECTION", "READY", "LEGACY_INCOMPLETE"] },
-        "dailySequence": { "type": "integer", "minimum": 1 },
+        "id": {
+          "$ref": "#/$defs/uuid"
+        },
+        "leadId": {
+          "$ref": "#/$defs/uuid"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "status": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40
+        },
+        "crewFormationState": {
+          "enum": [
+            "PENDING_COPILOT_SELECTION",
+            "READY",
+            "LEGACY_INCOMPLETE"
+          ]
+        },
+        "dailySequence": {
+          "type": "integer",
+          "minimum": 1
+        },
         "serviceWindow": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["start", "end"],
-          "properties": { "start": { "$ref": "#/$defs/timestamp" }, "end": { "$ref": "#/$defs/timestamp" } }
+          "required": [
+            "start",
+            "end"
+          ],
+          "properties": {
+            "start": {
+              "$ref": "#/$defs/timestamp"
+            },
+            "end": {
+              "$ref": "#/$defs/timestamp"
+            }
+          }
         },
-        "farmerDisplayName": { "type": "string", "minLength": 1, "maxLength": 120 },
-        "crop": { "type": ["string", "null"], "maxLength": 120 },
-        "expectedAcreage": { "anyOf": [{ "$ref": "#/$defs/decimal" }, { "type": "null" }] },
-        "operatingCenter": { "anyOf": [{ "$ref": "#/$defs/operatingCenter" }, { "type": "null" }] },
+        "farmerDisplayName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "crop": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 120
+        },
+        "expectedAcreage": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/decimal"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "operatingCenter": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/operatingCenter"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "crew": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["primaryPilot", "copilot"],
+          "required": [
+            "primaryPilot",
+            "copilot"
+          ],
           "properties": {
-            "primaryPilot": { "$ref": "#/$defs/operationsStaff" },
-            "copilot": { "anyOf": [{ "$ref": "#/$defs/operationsStaff" }, { "type": "null" }] }
+            "primaryPilot": {
+              "$ref": "#/$defs/operationsStaff"
+            },
+            "copilot": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/operationsStaff"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
           }
         },
         "drone": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["id", "code", "serialNumber", "status"],
+          "required": [
+            "id",
+            "code",
+            "serialNumber",
+            "status"
+          ],
           "properties": {
-            "id": { "$ref": "#/$defs/uuid" },
-            "code": { "type": "string", "minLength": 1, "maxLength": 160 },
-            "serialNumber": { "type": "string", "minLength": 1, "maxLength": 160 },
-            "status": { "enum": ["AVAILABLE", "ASSIGNED", "MAINTENANCE", "OUT_OF_SERVICE"] }
+            "id": {
+              "$ref": "#/$defs/uuid"
+            },
+            "code": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 160
+            },
+            "serialNumber": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 160
+            },
+            "status": {
+              "enum": [
+                "AVAILABLE",
+                "ASSIGNED",
+                "MAINTENANCE",
+                "OUT_OF_SERVICE"
+              ]
+            }
           }
         },
         "lmv": {
@@ -503,125 +1383,533 @@
             {
               "type": "object",
               "additionalProperties": false,
-              "required": ["id", "registrationNumber", "label", "status"],
+              "required": [
+                "id",
+                "registrationNumber",
+                "label",
+                "status"
+              ],
               "properties": {
-                "id": { "$ref": "#/$defs/uuid" },
-                "registrationNumber": { "type": "string", "minLength": 1, "maxLength": 80 },
-                "label": { "type": "string", "minLength": 1, "maxLength": 160 },
-                "status": { "enum": ["AVAILABLE", "ASSIGNED", "MAINTENANCE", "OUT_OF_SERVICE"] }
+                "id": {
+                  "$ref": "#/$defs/uuid"
+                },
+                "registrationNumber": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 80
+                },
+                "label": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 160
+                },
+                "status": {
+                  "enum": [
+                    "AVAILABLE",
+                    "ASSIGNED",
+                    "MAINTENANCE",
+                    "OUT_OF_SERVICE"
+                  ]
+                }
               }
             },
-            { "type": "null" }
+            {
+              "type": "null"
+            }
           ]
         },
-        "issueCategory": { "type": ["string", "null"], "enum": ["DRONE_MALFUNCTION", "SAFETY_HAZARD", "WEATHER_BLOCKER", "CUSTOMER_BLOCKER", "OTHER", null] }
+        "issueCategory": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "DRONE_MALFUNCTION",
+            "SAFETY_HAZARD",
+            "WEATHER_BLOCKER",
+            "CUSTOMER_BLOCKER",
+            "OTHER",
+            null
+          ]
+        }
       }
     },
     "operationsStaff": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "displayName", "employeeCode"],
+      "required": [
+        "id",
+        "displayName",
+        "employeeCode"
+      ],
       "properties": {
-        "id": { "$ref": "#/$defs/uuid" },
-        "displayName": { "type": "string", "minLength": 1, "maxLength": 120 },
-        "employeeCode": { "type": ["string", "null"], "maxLength": 80 }
+        "id": {
+          "$ref": "#/$defs/uuid"
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "employeeCode": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 80
+        }
       }
     },
     "operationsFleetScheduleResponse": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["success", "from", "to", "assignments"],
+      "required": [
+        "success",
+        "from",
+        "to",
+        "assignments",
+        "requestId",
+        "serverTime",
+        "operatingTimeZone"
+      ],
       "properties": {
-        "success": { "const": true },
-        "from": { "$ref": "#/$defs/timestamp" },
-        "to": { "$ref": "#/$defs/timestamp" },
-        "assignments": { "type": "array", "maxItems": 200, "items": { "$ref": "#/$defs/operationsScheduleAssignment" } }
+        "success": {
+          "const": true
+        },
+        "from": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "to": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "assignments": {
+          "type": "array",
+          "maxItems": 200,
+          "items": {
+            "$ref": "#/$defs/operationsScheduleAssignment"
+          }
+        },
+        "requestId": {
+          "$ref": "#/$defs/requestId"
+        },
+        "serverTime": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "operatingTimeZone": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        }
       }
     },
     "operationsFleetExceptionResponse": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["success", "from", "to", "exceptions"],
+      "required": [
+        "success",
+        "from",
+        "to",
+        "exceptions",
+        "requestId",
+        "serverTime",
+        "operatingTimeZone"
+      ],
       "properties": {
-        "success": { "const": true },
-        "from": { "$ref": "#/$defs/timestamp" },
-        "to": { "$ref": "#/$defs/timestamp" },
+        "success": {
+          "const": true
+        },
+        "from": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "to": {
+          "$ref": "#/$defs/timestamp"
+        },
         "exceptions": {
           "type": "array",
           "maxItems": 100,
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["type", "id", "codes", "assignment", "lead"],
+            "required": [
+              "type",
+              "id",
+              "codes",
+              "assignment",
+              "lead"
+            ],
             "properties": {
-              "type": { "enum": ["ASSIGNMENT", "UNSCHEDULED_LEAD"] },
-              "id": { "$ref": "#/$defs/uuid" },
-              "codes": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "enum": ["COPILOT_SELECTION_PENDING", "LEGACY_CREW_REVIEW_REQUIRED", "LMV_REQUIRED", "MISSION_ISSUE_REPORTED", "NEEDS_MANUAL_SCHEDULING"] } },
-              "assignment": { "anyOf": [{ "$ref": "#/$defs/operationsScheduleAssignment" }, { "type": "null" }] },
+              "type": {
+                "enum": [
+                  "ASSIGNMENT",
+                  "UNSCHEDULED_LEAD"
+                ]
+              },
+              "id": {
+                "$ref": "#/$defs/uuid"
+              },
+              "codes": {
+                "type": "array",
+                "minItems": 1,
+                "uniqueItems": true,
+                "items": {
+                  "enum": [
+                    "COPILOT_SELECTION_PENDING",
+                    "LEGACY_CREW_REVIEW_REQUIRED",
+                    "LMV_REQUIRED",
+                    "MISSION_ISSUE_REPORTED",
+                    "NEEDS_MANUAL_SCHEDULING"
+                  ]
+                }
+              },
+              "assignment": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/operationsScheduleAssignment"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
               "lead": {
                 "anyOf": [
                   {
                     "type": "object",
                     "additionalProperties": false,
-                    "required": ["id", "farmerDisplayName", "expectedAcreage", "crop", "createdAt", "operatingCenter"],
+                    "required": [
+                      "id",
+                      "farmerDisplayName",
+                      "expectedAcreage",
+                      "crop",
+                      "createdAt",
+                      "operatingCenter"
+                    ],
                     "properties": {
-                      "id": { "$ref": "#/$defs/uuid" },
-                      "farmerDisplayName": { "type": "string", "minLength": 1, "maxLength": 120 },
-                      "expectedAcreage": { "anyOf": [{ "$ref": "#/$defs/decimal" }, { "type": "null" }] },
-                      "crop": { "type": ["string", "null"], "maxLength": 120 },
-                      "createdAt": { "$ref": "#/$defs/timestamp" },
-                      "operatingCenter": { "anyOf": [{ "$ref": "#/$defs/operatingCenter" }, { "type": "null" }] }
+                      "id": {
+                        "$ref": "#/$defs/uuid"
+                      },
+                      "farmerDisplayName": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 120
+                      },
+                      "expectedAcreage": {
+                        "anyOf": [
+                          {
+                            "$ref": "#/$defs/decimal"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "crop": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "maxLength": 120
+                      },
+                      "createdAt": {
+                        "$ref": "#/$defs/timestamp"
+                      },
+                      "operatingCenter": {
+                        "anyOf": [
+                          {
+                            "$ref": "#/$defs/operatingCenter"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
                     }
                   },
-                  { "type": "null" }
+                  {
+                    "type": "null"
+                  }
                 ]
               }
             }
           }
+        },
+        "requestId": {
+          "$ref": "#/$defs/requestId"
+        },
+        "serverTime": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "operatingTimeZone": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
         }
       }
     },
     "errorResponse": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["success", "error"],
+      "required": [
+        "success",
+        "error",
+        "requestId",
+        "serverTime",
+        "operatingTimeZone"
+      ],
       "properties": {
-        "success": { "const": false },
+        "success": {
+          "const": false
+        },
         "error": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["code", "message", "retryable", "requestId"],
+          "required": [
+            "code",
+            "message",
+            "retryable",
+            "requestId"
+          ],
           "properties": {
             "code": {
-              "enum": [
-                "VALIDATION_FAILED", "AUTHENTICATION_REQUIRED", "INVALID_CREDENTIALS",
-                "SESSION_EXPIRED", "SESSION_REVOKED", "ROLE_NOT_ALLOWED",
-                "RESOURCE_NOT_FOUND", "ASSIGNMENT_REVISION_CONFLICT", "ASSIGNMENT_REASSIGNED",
-                "ASSIGNMENT_CANCELLED", "MISSION_STATE_CONFLICT", "SEQUENCE_BLOCKED",
-                "ASSIGNMENT_LOCATION_INCOMPLETE", "PRIMARY_PILOT_REQUIRED",
-                "CREW_FORMATION_NOT_PENDING", "COPILOT_REPLACEMENT_CLOSED",
-                "COPILOT_SELECTION_DEADLINE_PASSED", "COPILOT_NOT_ELIGIBLE",
-                "COPILOT_SELF_SELECTION", "COPILOT_CROSS_CENTRE", "COPILOT_LICENCE_EXPIRED",
-                "COPILOT_SCHEDULE_CONFLICT", "LEGACY_CREW_REVIEW_REQUIRED",
-                "RESOURCE_UNAVAILABLE", "ISSUE_REJECTED", "LOCATION_NOT_ALLOWED",
-                "LOCATION_INVALID", "RATE_LIMITED", "CLIENT_UPGRADE_REQUIRED",
-                "RETRY_LATER", "INTERNAL_ERROR"
-              ]
+              "$ref": "#/$defs/errorCode"
             },
-            "message": { "type": "string", "minLength": 1, "maxLength": 240 },
-            "retryable": { "type": "boolean" },
-            "requestId": { "type": "string", "minLength": 1, "maxLength": 128 },
+            "message": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 240
+            },
+            "retryable": {
+              "type": "boolean"
+            },
+            "requestId": {
+              "$ref": "#/$defs/requestId"
+            },
             "details": {
               "type": "object",
               "additionalProperties": false,
               "properties": {
-                "assignmentId": { "$ref": "#/$defs/uuid" },
-                "currentRevision": { "type": "integer", "minimum": 1 },
-                "blockedBySequence": { "type": "integer", "minimum": 1 },
-                "retryAfterSeconds": { "type": "integer", "minimum": 1 }
+                "assignmentId": {
+                  "$ref": "#/$defs/uuid"
+                },
+                "currentRevision": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "blockedBySequence": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "retryAfterSeconds": {
+                  "type": "integer",
+                  "minimum": 1
+                }
               }
             }
           }
+        },
+        "requestId": {
+          "$ref": "#/$defs/requestId"
+        },
+        "serverTime": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "operatingTimeZone": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        }
+      }
+    },
+    "requestId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "cursor": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512
+    },
+    "capability": {
+      "enum": [
+        "PILOT_ASSIGNMENTS_READ",
+        "COPILOT_SELECT",
+        "MISSION_MUTATE",
+        "ISSUE_REPORT",
+        "FOREGROUND_LOCATION",
+        "OPERATIONS_OVERVIEW",
+        "CUSTOMER_READ",
+        "SALES_INTAKE",
+        "FLEET_SCHEDULE",
+        "CREW_OVERRIDE"
+      ]
+    },
+    "errorCode": {
+      "enum": [
+        "VALIDATION_FAILED",
+        "AUTHENTICATION_REQUIRED",
+        "INVALID_CREDENTIALS",
+        "SESSION_EXPIRED",
+        "SESSION_REVOKED",
+        "ROLE_NOT_ALLOWED",
+        "RESOURCE_NOT_FOUND",
+        "ASSIGNMENT_REVISION_CONFLICT",
+        "ASSIGNMENT_REASSIGNED",
+        "ASSIGNMENT_CANCELLED",
+        "MISSION_STATE_CONFLICT",
+        "SEQUENCE_BLOCKED",
+        "ASSIGNMENT_LOCATION_INCOMPLETE",
+        "PRIMARY_PILOT_REQUIRED",
+        "CREW_FORMATION_NOT_PENDING",
+        "COPILOT_REPLACEMENT_CLOSED",
+        "COPILOT_SELECTION_DEADLINE_PASSED",
+        "COPILOT_NOT_ELIGIBLE",
+        "COPILOT_SELF_SELECTION",
+        "COPILOT_CROSS_CENTRE",
+        "COPILOT_LICENCE_EXPIRED",
+        "COPILOT_SCHEDULE_CONFLICT",
+        "LEGACY_CREW_REVIEW_REQUIRED",
+        "RESOURCE_UNAVAILABLE",
+        "ISSUE_REJECTED",
+        "LOCATION_NOT_ALLOWED",
+        "LOCATION_INVALID",
+        "RATE_LIMITED",
+        "CLIENT_UPGRADE_REQUIRED",
+        "RETRY_LATER",
+        "INTERNAL_ERROR",
+        "OTP_EXPIRED",
+        "OTP_COOLDOWN_ACTIVE",
+        "OTP_ATTEMPT_LIMIT_EXCEEDED",
+        "INVALID_OTP",
+        "INSTALLATION_LIMIT_REACHED",
+        "USER_ARCHIVED"
+      ]
+    },
+    "userProfile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "displayName",
+        "employeeCode",
+        "preferredLanguage",
+        "homeCenterId",
+        "role"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/uuid"
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "employeeCode": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 80
+        },
+        "preferredLanguage": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 12
+        },
+        "homeCenterId": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/uuid"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "role": {
+          "enum": [
+            "ADMIN",
+            "FLEET_MANAGER",
+            "SALES",
+            "PILOT",
+            "FARMER",
+            "BUSINESS"
+          ]
+        }
+      }
+    },
+    "notification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "title",
+        "body",
+        "type",
+        "createdAt"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/uuid"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "body": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "type": {
+          "enum": [
+            "GENERAL",
+            "ASSIGNMENT_UPDATE",
+            "ALERT"
+          ]
+        },
+        "createdAt": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "read": {
+          "type": "boolean"
+        },
+        "actionPath": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 200
+        }
+      }
+    },
+    "masterChoice": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "type",
+        "label",
+        "active"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/uuid"
+        },
+        "type": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "active": {
+          "type": "boolean"
         }
       }
     }

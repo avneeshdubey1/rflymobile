@@ -336,10 +336,13 @@ exports.updateUser = async(req, res) => {
             if (existing.role !== 'PILOT') return res.status(400).json({ error: 'Only Pilots can have a preferred vehicle' });
             const assignedLmvId = String(req.body.assignedLmvId || '').trim() || null;
             const effectiveCenterId = updateData.homeCenterId || existing.homeCenterId;
-            if (assignedLmvId && !isEligiblePreferredLmv(await lmvRepository.findById(assignedLmvId), effectiveCenterId)) {
+            if (assignedLmvId === existing.assignedLmvId && !homeCenterChanged) {
+                // Preserve an existing preference while the vehicle is temporarily unavailable.
+            } else if (assignedLmvId && !isEligiblePreferredLmv(await lmvRepository.findById(assignedLmvId), effectiveCenterId)) {
                 return res.status(409).json({ error: 'The preferred vehicle must be operational at the Pilot operating center' });
+            } else {
+                updateData.assignedLmvId = assignedLmvId;
             }
-            updateData.assignedLmvId = assignedLmvId;
         } else if (homeCenterChanged) {
             updateData.assignedLmvId = null;
         }

@@ -52,6 +52,11 @@ kept under `docs/unrealted_docs_for_current_version/` and is never authoritative
     as the canonical execution plan and
     [STITCH_NON_PILOT_MOBILE_APP_HANDOFF.md](STITCH_NON_PILOT_MOBILE_APP_HANDOFF.md)
     as its supporting UI/design brief.
+    The current `operations-mobile/` corrective candidate passes its local
+    source and contract gates but still requires office-runner and physical-
+    device acceptance. Before changing or releasing it, follow
+    [one-ness program/OPERATIONS_MOBILE_CORRECTION_PLAN.md](one-ness%20program/OPERATIONS_MOBILE_CORRECTION_PLAN.md)
+    and do not begin OC-12 until its OMR-00 through OMR-11 gates pass.
     When repairing or rebuilding the current Expo Pilot client, use
     [GEMINI_PILOT_MOBILE_REBUILD_HANDOFF.md](GEMINI_PILOT_MOBILE_REBUILD_HANDOFF.md)
     as the coding-agent execution workbook.

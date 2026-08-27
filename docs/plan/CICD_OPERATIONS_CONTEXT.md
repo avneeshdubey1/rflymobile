@@ -110,11 +110,13 @@ and staging API address. GitHub retains it for seven days. It is an internally
 debug-signed staging APK: it is not automatically installed, not served by the
 web stack, and not a Play Store release. Metro is not required to run it.
 
-The `operations-capacitor-apk` staging job follows the same exact-SHA and
-seven-day evidence boundary for the Operations Capacitor shell. It generates
-the committed RFLY launcher and splash resources from
-`frontend/src/assets/logo.png` and produces `com.rfly.operations.staging`,
-pointed at the VPN/LAN staging URL.
+The `operations-staging-apk` job follows the same exact-SHA and seven-day
+evidence boundary for the separate Expo/React Native Operations Companion. It
+runs the Operations TypeScript, Jest, Expo Doctor and critical dependency
+gates again on the office runner, generates a clean Android project, and
+produces `com.rfly.operations.staging` pointed at the VPN/LAN staging URL. It
+also verifies the signature, embedded staging endpoint and prohibited Android
+permission boundary before uploading the artifact.
 
 The separate `operations-production-apk` workflow is deliberately manual. It
 must be dispatched from `main` with the full current `main` SHA and the explicit

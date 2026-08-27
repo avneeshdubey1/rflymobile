@@ -14,5 +14,7 @@
   "nextCursor": "example-next-cursor",
   "fullResyncRequired": false,
   "changedAssignments": [],
-  "removedAssignmentIds": []
+  "removedAssignmentIds": [],
+  "requestId": "req-123",
+  "operatingTimeZone": "UTC"
 }

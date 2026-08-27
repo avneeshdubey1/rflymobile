@@ -45,6 +45,7 @@ test('master-data choices preserve every independently loaded category', async (
 
     assert.deepEqual(result, {
       requestTypes: ['B2B', 'B2C'],
+      clusterTypes: ['CLUSTER', 'HUB', 'SPOKE', 'MINIHUB'],
       clusters,
       crops,
       sprayPurposes: values.SPRAY_PURPOSE,

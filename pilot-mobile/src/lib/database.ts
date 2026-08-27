@@ -13,6 +13,14 @@ import {
 
 const CURRENT_SCHEMA_VERSION = 2;
 
+type Database = Awaited<ReturnType<typeof SQLite.openDatabaseAsync>>;
+
+// expo-sqlite can reject native calls when the same file is repeatedly opened
+// while initialization, synchronization, and React lifecycle work overlap.
+// Keep exactly one handle and one initialization promise per profile.
+const databasePromises = new Map<string, Promise<Database>>();
+const initializationPromises = new Map<string, Promise<Database>>();
+
 export interface MutationRecord {
   mutation: MutationRequest;
   status: string;
@@ -30,66 +38,99 @@ export function getDbName(profileId: string): string {
 /**
  * Initializes the database for a specific profile, running migrations if necessary.
  */
-export async function initDatabase(profileId: string) {
+function openDatabase(profileId: string): Promise<Database> {
   const dbName = getDbName(profileId);
-  const db = await SQLite.openDatabaseAsync(dbName);
+  const existing = databasePromises.get(dbName);
+  if (existing) return existing;
 
-  await db.execAsync(`
-    PRAGMA journal_mode = WAL;
-    CREATE TABLE IF NOT EXISTS schema_info (
-      version INTEGER PRIMARY KEY
-    );
-  `);
+  const opening = SQLite.openDatabaseAsync(dbName).catch((error) => {
+    databasePromises.delete(dbName);
+    throw error;
+  });
+  databasePromises.set(dbName, opening);
+  return opening;
+}
 
-  // Check current version
+async function migrateDatabase(db: Database) {
+  await db.execAsync("PRAGMA journal_mode = WAL");
+  await db.execAsync("PRAGMA busy_timeout = 5000");
+  await db.execAsync(
+    "CREATE TABLE IF NOT EXISTS schema_info (version INTEGER PRIMARY KEY)",
+  );
+
   const row = await db.getFirstAsync<{ version: number }>(
     "SELECT MAX(version) as version FROM schema_info",
   );
   let currentVersion = row?.version || 0;
 
   if (currentVersion < 1) {
-    // V1 Schema Migration
     await db.withTransactionAsync(async () => {
-      await db.execAsync(`
-        CREATE TABLE IF NOT EXISTS assignments (
+      await db.execAsync(`CREATE TABLE IF NOT EXISTS assignments (
           id TEXT PRIMARY KEY,
           encrypted_data TEXT NOT NULL,
           updated_at INTEGER NOT NULL
-        );
-        CREATE TABLE IF NOT EXISTS mutations (
+        )`);
+      await db.execAsync(`CREATE TABLE IF NOT EXISTS mutations (
           clientActionId TEXT PRIMARY KEY,
           assignmentId TEXT NOT NULL,
           action TEXT NOT NULL,
           encrypted_payload TEXT NOT NULL,
           status TEXT NOT NULL,
           created_at INTEGER NOT NULL
-        );
-        CREATE TABLE IF NOT EXISTS metadata (
+        )`);
+      await db.execAsync(`CREATE TABLE IF NOT EXISTS metadata (
           key TEXT PRIMARY KEY,
           value TEXT NOT NULL
-        );
-        INSERT INTO schema_info (version) VALUES (1);
-      `);
+        )`);
+      await db.runAsync("INSERT OR IGNORE INTO schema_info (version) VALUES (?)", 1);
     });
     currentVersion = 1;
   }
 
   if (currentVersion < 2) {
     await db.withTransactionAsync(async () => {
-      await db.execAsync(`
-        ALTER TABLE mutations ADD COLUMN encrypted_receipt TEXT;
-        ALTER TABLE mutations ADD COLUMN updated_at INTEGER;
-        UPDATE mutations SET updated_at = created_at WHERE updated_at IS NULL;
-        INSERT INTO schema_info (version) VALUES (2);
-      `);
+      const columns = await db.getAllAsync<{ name: string }>(
+        "PRAGMA table_info(mutations)",
+      );
+      const names = new Set(columns.map(({ name }) => name));
+      if (!names.has("encrypted_receipt")) {
+        await db.execAsync(
+          "ALTER TABLE mutations ADD COLUMN encrypted_receipt TEXT",
+        );
+      }
+      if (!names.has("updated_at")) {
+        await db.execAsync("ALTER TABLE mutations ADD COLUMN updated_at INTEGER");
+      }
+      await db.runAsync(
+        "UPDATE mutations SET updated_at = created_at WHERE updated_at IS NULL",
+      );
+      await db.runAsync("INSERT OR IGNORE INTO schema_info (version) VALUES (?)", 2);
     });
   }
-
-  return db;
 }
 
-export const getDb = (profileId: string) =>
-  SQLite.openDatabaseAsync(getDbName(profileId));
+/**
+ * Initializes the database for a specific profile, running migrations once.
+ */
+export async function initDatabase(profileId: string): Promise<Database> {
+  const dbName = getDbName(profileId);
+  const existing = initializationPromises.get(dbName);
+  if (existing) return existing;
+
+  const initializing = (async () => {
+    const db = await openDatabase(profileId);
+    await migrateDatabase(db);
+    return db;
+  })().catch((error) => {
+    initializationPromises.delete(dbName);
+    throw error;
+  });
+
+  initializationPromises.set(dbName, initializing);
+  return initializing;
+}
+
+export const getDb = (profileId: string) => initDatabase(profileId);
 
 // --- Assignment Helpers ---
 
@@ -104,15 +145,18 @@ export async function saveAssignments(
     const statement = await db.prepareAsync(
       "INSERT OR REPLACE INTO assignments (id, encrypted_data, updated_at) VALUES ($id, $encrypted_data, $updated_at)",
     );
-    for (const a of assignments) {
-      const encryptedData = encryptPayload(a, key);
-      await statement.executeAsync({
-        $id: a.id,
-        $encrypted_data: encryptedData,
-        $updated_at: new Date(a.updatedAt).getTime(),
-      });
+    try {
+      for (const a of assignments) {
+        const encryptedData = encryptPayload(a, key);
+        await statement.executeAsync({
+          $id: a.id,
+          $encrypted_data: encryptedData,
+          $updated_at: new Date(a.updatedAt).getTime(),
+        });
+      }
+    } finally {
+      await statement.finalizeAsync();
     }
-    await statement.finalizeAsync();
   });
 }
 
@@ -305,13 +349,24 @@ export async function deleteMutation(
  */
 export async function purgeDatabase(profileId: string) {
   const dbName = getDbName(profileId);
+  const initialization = initializationPromises.get(dbName);
+  const connection = databasePromises.get(dbName);
+  initializationPromises.delete(dbName);
+  databasePromises.delete(dbName);
+
   try {
-    const db = await getDb(profileId);
+    const db = await (initialization ?? connection);
+    if (!db) throw new Error("Database was not open");
     await db.closeAsync();
+  } catch {
+    // The file may already be closed or absent. Deletion and crypto-shredding
+    // remain mandatory and are attempted independently below.
+  }
+
+  try {
     await SQLite.deleteDatabaseAsync(dbName);
   } catch {
-    // Crypto-shredding the key below remains mandatory even if the file was
-    // already absent or the platform had no open database handle.
+    // Crypto-shredding below is the final fail-closed erasure boundary.
   }
 
   // Crypto-shred the key

@@ -3,7 +3,7 @@ const mobileSessionRepository = require('../src/repositories/mobileSessionReposi
 
 const APP_ROLES = Object.freeze({
   PILOT_FIELD: new Set(['PILOT']),
-  OPERATIONS: new Set(['ADMIN', 'FLEET_MANAGER', 'SALES']),
+  OPERATIONS: new Set(['ADMIN', 'FLEET_MANAGER', 'SALES', 'FARMER', 'BUSINESS']),
 });
 
 class MobileAuthError extends Error {

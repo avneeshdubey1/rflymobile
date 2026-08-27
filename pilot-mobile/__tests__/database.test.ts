@@ -1,5 +1,9 @@
 import { encryptPayload, decryptPayload } from "../src/lib/encryption";
-import { getDbName, purgeDatabase } from "../src/lib/database";
+import {
+  getDbName,
+  initDatabase,
+  purgeDatabase,
+} from "../src/lib/database";
 import * as SQLite from "expo-sqlite";
 import * as SecureStore from "expo-secure-store";
 
@@ -37,6 +41,22 @@ describe("Encryption & Storage Scope", () => {
     expect(dbName2).toBe("pilot_field_profile-2.db");
     expect(dbName1).not.toBe(dbName2);
     expect(dbNameUnsafe).toBe("pilot_field_profilewithunsafechars.db");
+  });
+
+  it("serializes concurrent initialization through one native database handle", async () => {
+    const profileId = "concurrent-profile";
+
+    const [first, second, third] = await Promise.all([
+      initDatabase(profileId),
+      initDatabase(profileId),
+      initDatabase(profileId),
+    ]);
+
+    expect(first).toBe(second);
+    expect(second).toBe(third);
+    expect(SQLite.openDatabaseAsync).toHaveBeenCalledTimes(1);
+
+    await purgeDatabase(profileId);
   });
 
   it("purgeDatabase closes and deletes the scoped database and key", async () => {

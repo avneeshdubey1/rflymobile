@@ -14,6 +14,7 @@ import MyDrones from '../components/MyDrones';
 import AutoAssignmentPolicyPanel from '../components/AutoAssignmentPolicyPanel';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { csrfHeaders } from '../utils/csrf';
 
 const localizer = dateFnsLocalizer({ format, parse, startOfWeek, getDay, locales: { 'en-US': enUS } });
 const withDragAndDrop = dragAndDropModule.default ?? dragAndDropModule;
@@ -58,8 +59,16 @@ function FleetManagerDashboard() {
   const [newLmv, setNewLmv] = useState({ registrationNo: '', label: '', homeCenterId: '', capacity: 1 });
 
   const showNotice = useCallback((kind, message) => setNotice({ kind, message }), []);
-  const request = useCallback(async (url, options) => {
-    const response = await fetch(`${API}${url}`, options);
+  const request = useCallback(async (url, options = {}) => {
+    const method = String(options.method || 'GET').toUpperCase();
+    const response = await fetch(`${API}${url}`, {
+      ...options,
+      credentials: 'include',
+      headers: {
+        ...(options.headers || {}),
+        ...(method === 'GET' || method === 'HEAD' ? {} : csrfHeaders()),
+      },
+    });
     const data = await response.json().catch(() => ({}));
     if (!response.ok || !data.success) throw new Error(data.error || 'The request could not be completed');
     return data;
@@ -117,8 +126,25 @@ function FleetManagerDashboard() {
 
   const eligiblePilots = useMemo(() => pilots.filter((pilot) => pilot.active && !pilot.archivedAt
     && pilot.pilotAvailabilityState === 'AVAILABLE' && pilot.homeCenterId === selectedLead?.matchedCenterId), [pilots, selectedLead]);
-  const eligibleDrones = useMemo(() => drones.filter((drone) => ['AVAILABLE', 'ASSIGNED'].includes(drone.status) && drone.homeCenterId === selectedLead?.matchedCenterId), [drones, selectedLead]);
-  const eligibleLmvs = useMemo(() => lmvs.filter((lmv) => ['AVAILABLE', 'ASSIGNED'].includes(lmv.status) && lmv.homeCenterId === selectedLead?.matchedCenterId), [lmvs, selectedLead]);
+  const eligibleDrones = useMemo(() => drones.filter((drone) => drone.status === 'AVAILABLE'
+    && drone.operationalState === 'IN_SERVICE' && drone.availabilityState === 'AVAILABLE'
+    && !drone.archivedAt && drone.homeCenterId === selectedLead?.matchedCenterId), [drones, selectedLead]);
+  const eligibleLmvs = useMemo(() => lmvs.filter((lmv) => lmv.status === 'AVAILABLE'
+    && lmv.operationalState === 'IN_SERVICE' && lmv.availabilityState === 'AVAILABLE'
+    && lmv.homeCenterId === selectedLead?.matchedCenterId), [lmvs, selectedLead]);
+
+  const selectPrimaryPilot = useCallback((pilotId) => {
+    const pilot = eligiblePilots.find((candidate) => candidate.id === pilotId);
+    const preferredDroneId = eligibleDrones.some((drone) => drone.id === pilot?.assignedDroneId) ? pilot.assignedDroneId : '';
+    const preferredLmvId = eligibleLmvs.some((lmv) => lmv.id === pilot?.assignedLmvId) ? pilot.assignedLmvId : '';
+    setScheduleDraft((draft) => ({
+      ...draft,
+      pilotId,
+      copilotId: draft.copilotId === pilotId ? '' : draft.copilotId,
+      droneId: preferredDroneId,
+      lmvId: preferredLmvId,
+    }));
+  }, [eligibleDrones, eligibleLmvs, eligiblePilots]);
 
   const selectLeadForScheduling = useCallback((lead) => {
     const date = new Date(calendarDate);
@@ -342,7 +368,7 @@ const [eyebrow, title, description] = pageCopy[activeSection] || pageCopy.schedu
                 {!eligibleLmvs.length && <div className="notice notice--error" role="alert">No schedulable LMV is registered at this operating center. Add one from the LMVs tab.</div>}
                 <div className="input-group"><label htmlFor="crew-start">{t('calendar_service_start')}</label><input id="crew-start" type="datetime-local" value={scheduleDraft.serviceWindowStart} onChange={(event) => setScheduleDraft({ ...scheduleDraft, serviceWindowStart: event.target.value })} required /></div>
                 <div className="input-group"><label htmlFor="crew-end">{t('calendar_service_end')}</label><input id="crew-end" type="datetime-local" value={scheduleDraft.serviceWindowEnd} onChange={(event) => setScheduleDraft({ ...scheduleDraft, serviceWindowEnd: event.target.value })} required /></div>
-                <div className="input-group"><label htmlFor="primary-pilot">Primary Pilot</label><select id="primary-pilot" value={scheduleDraft.pilotId} onChange={(event) => setScheduleDraft({ ...scheduleDraft, pilotId: event.target.value })} required><option value="">Select primary Pilot</option>{eligiblePilots.map((pilot) => <option key={pilot.id} value={pilot.id}>{pilot.name}</option>)}</select></div>
+                <div className="input-group"><label htmlFor="primary-pilot">Primary Pilot</label><select id="primary-pilot" value={scheduleDraft.pilotId} onChange={(event) => selectPrimaryPilot(event.target.value)} required><option value="">Select primary Pilot</option>{eligiblePilots.map((pilot) => <option key={pilot.id} value={pilot.id}>{pilot.name}</option>)}</select>{scheduleDraft.pilotId && <span className="field-hint">Preferred drone and vehicle are filled automatically when they are currently eligible. You may select another available asset.</span>}</div>
                 {isAdmin ? <div className="input-group"><label htmlFor="crew-copilot">Copilot <span className="field-hint">(optional Admin override)</span></label><select id="crew-copilot" value={scheduleDraft.copilotId} onChange={(event) => setScheduleDraft({ ...scheduleDraft, copilotId: event.target.value })}><option value="">Let the Primary Pilot choose</option>{eligiblePilots.filter((pilot) => pilot.id !== scheduleDraft.pilotId).map((pilot) => <option key={pilot.id} value={pilot.id}>{pilot.name}</option>)}</select></div> : <p className="caption">After Fleet reserves the Primary Pilot, drone and LMV, the Primary Pilot selects one eligible Copilot in the Pilot app.</p>}
                 <div className="input-group"><label htmlFor="crew-drone">Drone</label><select id="crew-drone" value={scheduleDraft.droneId} onChange={(event) => setScheduleDraft({ ...scheduleDraft, droneId: event.target.value })} required><option value="">Select drone</option>{eligibleDrones.map((drone) => <option key={drone.id} value={drone.id}>{drone.model} · {drone.serialNumber} ({readableStatus(drone.status)})</option>)}</select></div>
                 <div className="input-group"><label htmlFor="crew-lmv">LMV</label><select id="crew-lmv" value={scheduleDraft.lmvId} onChange={(event) => setScheduleDraft({ ...scheduleDraft, lmvId: event.target.value })} required><option value="">Select LMV</option>{eligibleLmvs.map((lmv) => <option key={lmv.id} value={lmv.id}>{lmv.registrationNo}{lmv.label ? ` · ${lmv.label}` : ''} ({readableStatus(lmv.status)})</option>)}</select></div>

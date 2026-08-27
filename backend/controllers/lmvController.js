@@ -4,6 +4,12 @@ const auditLogRepository = require('../src/repositories/auditLogRepository');
 const operatingCenterRepository = require('../src/repositories/operatingCenterRepository');
 
 const validStatuses = new Set(['AVAILABLE', 'ASSIGNED', 'MAINTENANCE', 'OUT_OF_SERVICE']);
+const lifecycleForStatus = {
+  AVAILABLE: { status: 'AVAILABLE', operationalState: 'IN_SERVICE', availabilityState: 'AVAILABLE' },
+  ASSIGNED: { status: 'ASSIGNED', operationalState: 'IN_SERVICE', availabilityState: 'ASSIGNED' },
+  MAINTENANCE: { status: 'MAINTENANCE', operationalState: 'MAINTENANCE', availabilityState: 'UNAVAILABLE' },
+  OUT_OF_SERVICE: { status: 'OUT_OF_SERVICE', operationalState: 'OUT_OF_SERVICE', availabilityState: 'UNAVAILABLE' },
+};
 
 function normalizeRegistration(value) {
   return String(value || '').trim().toUpperCase();
@@ -110,7 +116,7 @@ exports.updateStatus = async (req, res) => {
     }
     if (before.status === 'ASSIGNED' && req.body.status !== 'ASSIGNED') await assertNoActiveAssignment(before.id);
     if (['MAINTENANCE', 'OUT_OF_SERVICE'].includes(req.body.status)) await assertNoActiveAssignment(before.id);
-    const lmv = await lmvRepository.update(before.id, { status: req.body.status }, { actorId: req.auth.userId });
+    const lmv = await lmvRepository.update(before.id, lifecycleForStatus[req.body.status], { actorId: req.auth.userId });
     await auditLogRepository.create({ entityType: 'LMV', entityId: lmv.id, action: 'STATUS_CHANGE', actorId: req.auth.userId, beforeState: before, afterState: lmv, reason: req.body.reason || null });
     res.json({ success: true, lmv });
   } catch (error) {

@@ -5,6 +5,12 @@ const operatingCenterRepository = require('../src/repositories/operatingCenterRe
 const { setHistoryActor } = require('../src/repositories/historyActorRepository');
 const prisma = require('../src/lib/prisma');
 const validStatuses = new Set(['AVAILABLE', 'ASSIGNED', 'MAINTENANCE', 'OUT_OF_SERVICE']);
+const lifecycleForStatus = {
+    AVAILABLE: { status: 'AVAILABLE', operationalState: 'IN_SERVICE', availabilityState: 'AVAILABLE' },
+    ASSIGNED: { status: 'ASSIGNED', operationalState: 'IN_SERVICE', availabilityState: 'ASSIGNED' },
+    MAINTENANCE: { status: 'MAINTENANCE', operationalState: 'MAINTENANCE', availabilityState: 'UNAVAILABLE' },
+    OUT_OF_SERVICE: { status: 'OUT_OF_SERVICE', operationalState: 'OUT_OF_SERVICE', availabilityState: 'UNAVAILABLE' },
+};
 
 function optionalText(value, maximum = 120) {
     if (value === undefined || value === null || String(value).trim() === '') return null;
@@ -221,7 +227,7 @@ exports.updateStatus = async(req, res) => {
         }
         if (before.status === 'ASSIGNED' && req.body.status !== 'ASSIGNED') await assertNoActiveAssignment(before.id);
         if (['MAINTENANCE', 'OUT_OF_SERVICE'].includes(req.body.status)) await assertNoActiveAssignment(before.id);
-        const drone = await droneRepository.update(before.id, { status: req.body.status }, { actorId: req.auth.userId });
+        const drone = await droneRepository.update(before.id, lifecycleForStatus[req.body.status], { actorId: req.auth.userId });
         await auditLogRepository.create({
             entityType: 'Drone',
             entityId: drone.id,

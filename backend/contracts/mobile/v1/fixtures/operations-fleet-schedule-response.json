@@ -10,18 +10,42 @@
       "status": "SCHEDULED",
       "crewFormationState": "PENDING_COPILOT_SELECTION",
       "dailySequence": 1,
-      "serviceWindow": { "start": "2026-01-15T09:00:00.000Z", "end": "2026-01-15T11:00:00.000Z" },
+      "serviceWindow": {
+        "start": "2026-01-15T09:00:00.000Z",
+        "end": "2026-01-15T11:00:00.000Z"
+      },
       "farmerDisplayName": "Example Farmer",
       "crop": "Example Crop",
       "expectedAcreage": "3.00",
-      "operatingCenter": { "id": "55555555-5555-4555-8555-555555555555", "code": "EX-1", "displayName": "Example Centre" },
+      "operatingCenter": {
+        "id": "55555555-5555-4555-8555-555555555555",
+        "code": "EX-1",
+        "displayName": "Example Centre"
+      },
       "crew": {
-        "primaryPilot": { "id": "88888888-8888-4888-8888-888888888888", "displayName": "Example Pilot", "employeeCode": "P-1" },
+        "primaryPilot": {
+          "id": "88888888-8888-4888-8888-888888888888",
+          "displayName": "Example Pilot",
+          "employeeCode": "P-1"
+        },
         "copilot": null
       },
-      "drone": { "id": "99999999-9999-4999-8999-999999999999", "code": "D-1", "serialNumber": "SERIAL-1", "status": "ASSIGNED" },
-      "lmv": { "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", "registrationNumber": "TN-00-AA-0001", "label": "LMV 1", "status": "ASSIGNED" },
+      "drone": {
+        "id": "99999999-9999-4999-8999-999999999999",
+        "code": "D-1",
+        "serialNumber": "SERIAL-1",
+        "status": "ASSIGNED"
+      },
+      "lmv": {
+        "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        "registrationNumber": "TN-00-AA-0001",
+        "label": "LMV 1",
+        "status": "ASSIGNED"
+      },
       "issueCategory": null
     }
-  ]
+  ],
+  "requestId": "req-123",
+  "serverTime": "2026-08-25T12:00:00.000Z",
+  "operatingTimeZone": "UTC"
 }

@@ -60,16 +60,22 @@ export default function ManagePilots() {
 
     const activeCenters = useMemo(() => centers.filter((center) => center.active), [centers]);
     const eligibleDrones = useMemo(() => drones.filter((drone) => (
-        !drone.archivedAt &&
-        drone.homeCenterId === form.homeCenterId &&
-        ['AVAILABLE', 'ASSIGNED'].includes(drone.status) &&
-        drone.operationalState === 'IN_SERVICE' &&
-        ['AVAILABLE', 'ASSIGNED'].includes(drone.availabilityState)
-    )), [drones, form.homeCenterId]);
+        drone.id === form.assignedDroneId || (
+            !drone.archivedAt &&
+            (!drone.assignedPilot || drone.assignedPilot.id === editingId) &&
+            drone.homeCenterId === form.homeCenterId &&
+            drone.status === 'AVAILABLE' &&
+            drone.operationalState === 'IN_SERVICE' &&
+            drone.availabilityState === 'AVAILABLE'
+        )
+    )), [drones, editingId, form.assignedDroneId, form.homeCenterId]);
     const eligibleLmvs = useMemo(() => lmvs.filter((lmv) => (
-        lmv.homeCenterId === form.homeCenterId && ['AVAILABLE', 'ASSIGNED'].includes(lmv.status)
-        && lmv.operationalState === 'IN_SERVICE' && ['AVAILABLE', 'ASSIGNED'].includes(lmv.availabilityState)
-    )), [lmvs, form.homeCenterId]);
+        lmv.id === form.assignedLmvId || (
+            (!lmv.assignedPilot || lmv.assignedPilot.id === editingId) &&
+            lmv.homeCenterId === form.homeCenterId && lmv.status === 'AVAILABLE'
+            && lmv.operationalState === 'IN_SERVICE' && lmv.availabilityState === 'AVAILABLE'
+        )
+    )), [lmvs, editingId, form.assignedLmvId, form.homeCenterId]);
 
     const handleChange = (e) => setForm((current) => ({
         ...current,
@@ -247,13 +253,15 @@ export default function ManagePilots() {
                                 <th className="px-4 py-3 text-left text-base font-bold text-gray-700">Email</th>
                                 <th className="px-4 py-3 text-left text-base font-bold text-gray-700">Phone</th>
                                 <th className="px-4 py-3 text-left text-base font-bold text-gray-700">Location</th>
+                                <th className="px-4 py-3 text-left text-base font-bold text-gray-700">Preferred Drone</th>
+                                <th className="px-4 py-3 text-left text-base font-bold text-gray-700">Preferred Vehicle</th>
                                 <th className="px-4 py-3 text-left text-base font-bold text-gray-700">License ID</th>
                                 <th className="px-4 py-3 text-left text-base font-bold text-gray-700">Status</th>
                                 <th className="px-4 py-3 text-right text-base font-bold text-gray-700">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
-                            <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-400">Loading pilots…</td></tr>
+                            <tr><td colSpan={9} className="px-4 py-8 text-center text-gray-400">Loading pilots…</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -276,7 +284,8 @@ export default function ManagePilots() {
                                 <th className="px-4 py-3 text-left text-base font-bold text-gray-700">Email</th>
                                 <th className="px-4 py-3 text-left text-base font-bold text-gray-700">Phone</th>
                                 <th className="px-4 py-3 text-left text-base font-bold text-gray-700">Location</th>
-                                <th className="px-4 py-3 text-left text-base font-bold text-gray-700">Assign Drone</th>
+                                <th className="px-4 py-3 text-left text-base font-bold text-gray-700">Preferred Drone</th>
+                                <th className="px-4 py-3 text-left text-base font-bold text-gray-700">Preferred Vehicle</th>
                                 <th className="px-4 py-3 text-left text-base font-bold text-gray-700">License ID</th>
                                 <th className="px-4 py-3 text-left text-base font-bold text-gray-700">Status</th>
                                 <th className="px-4 py-3 text-right text-base font-bold text-gray-700">Actions</th>
@@ -313,6 +322,9 @@ export default function ManagePilots() {
                                         {drones.find((d) => d.id === pilot.assignedDroneId)?.uin
                                             || drones.find((d) => d.id === pilot.assignedDroneId)?.model
                                             || '—'}
+                                    </td>
+                                    <td className="px-4 py-3 text-gray-700">
+                                        {lmvs.find((lmv) => lmv.id === pilot.assignedLmvId)?.registrationNo || '—'}
                                     </td>
                                     <td className="px-4 py-3 text-gray-700">{pilot.licenseId || '—'}</td>
                                     <td className="px-4 py-3">
@@ -401,8 +413,9 @@ export default function ManagePilots() {
                                         className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                                     >
                                         <option value="">No preferred drone</option>
-                                        {eligibleDrones.map((d) => <option key={d.id} value={d.id}>{d.name || d.model} · {d.uin || d.serialNumber}</option>)}
+                                        {eligibleDrones.map((d) => <option key={d.id} value={d.id}>{d.name || d.model} · {d.uin || d.serialNumber}{d.status !== 'AVAILABLE' || d.operationalState !== 'IN_SERVICE' || d.availabilityState !== 'AVAILABLE' ? ' · currently unavailable' : ''}</option>)}
                                     </select>
+                                    {form.homeCenterId && eligibleDrones.length === 0 && <span className="mt-1 block text-xs text-amber-700">No available drone at this center. Return an imported drone to service from Fleet Overview, or register one.</span>}
                                 </label>
                             </div>
                             <label className="block">
@@ -410,8 +423,9 @@ export default function ManagePilots() {
                                 <select name="assignedLmvId" value={form.assignedLmvId} onChange={handleChange}
                                     className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100">
                                     <option value="">No preferred vehicle</option>
-                                    {eligibleLmvs.map((lmv) => <option key={lmv.id} value={lmv.id}>{lmv.registrationNo}{lmv.label ? ` · ${lmv.label}` : ''}</option>)}
+                                    {eligibleLmvs.map((lmv) => <option key={lmv.id} value={lmv.id}>{lmv.registrationNo}{lmv.label ? ` · ${lmv.label}` : ''}{lmv.status !== 'AVAILABLE' || lmv.operationalState !== 'IN_SERVICE' || lmv.availabilityState !== 'AVAILABLE' ? ' · currently unavailable' : ''}</option>)}
                                 </select>
+                                {form.homeCenterId && eligibleLmvs.length === 0 && <span className="mt-1 block text-xs text-amber-700">No available vehicle at this center. Return an imported LMV to service from Fleet Overview, or register one.</span>}
                                 <span className="mt-1 block text-xs text-gray-500">Scheduling prefers this vehicle when it is safe and available; it never bypasses centre, maintenance, or conflict checks.</span>
                             </label>
 

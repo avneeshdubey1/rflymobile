@@ -184,4 +184,171 @@ async function fleetExceptions(req, res) {
   }
 }
 
-module.exports = { createCustomer, createLead, findCustomerByPhone, fleetExceptions, fleetSchedule, searchCustomers };
+async function farmerDashboard(req, res) {
+  try {
+    const userRepository = require('../src/repositories/userRepository');
+    const user = await userRepository.findById(req.auth.userId);
+    if (!user) throw new OperationsMobileError('User not found', 'RESOURCE_NOT_FOUND', 404);
+
+    const customer = await customerService.ensureForFarmerUser(user);
+    if (!customer) throw new OperationsMobileError('Customer account not found', 'RESOURCE_NOT_FOUND', 404);
+
+    const history = (customer.recentLeads || []).map((lead) => ({
+      id: lead.id,
+      status: lead.status,
+      area: String(lead.acreage),
+      crop: lead.cropType,
+      date: new Date(lead.createdAt).toISOString(),
+    }));
+
+    return res.json({ success: true, history });
+  } catch (error) {
+    return mobileError(res, req, error);
+  }
+}
+
+async function submitFarmerRequest(req, res) {
+  try {
+    assertAllowedBody(req.body, new Set([
+      'acreage', 'latitude', 'longitude', 'farmerAddress', 'cropType', 'notes',
+      'soilType', 'cropAgeWeeks', 'chemicalBrand', 'sprayPurpose', 'hasChemical',
+      'chemicalProofUrl', 'expectedDate', 'expectedTime', 'waterBodyNearby', 'terrainType',
+    ]));
+
+    const userRepository = require('../src/repositories/userRepository');
+    const user = await userRepository.findById(req.auth.userId);
+    if (!user) throw new OperationsMobileError('User not found', 'RESOURCE_NOT_FOUND', 404);
+
+    const customerContext = await customerService.ensureForFarmerUser(user);
+    if (!customerContext) throw new OperationsMobileError('Customer context missing', 'RESOURCE_NOT_FOUND', 404);
+
+    const result = await intakeService.createIntake({
+      ...req.body,
+      farmerName: customerContext.displayName,
+      farmerPhone: customerContext.phone,
+      farmerAddress: req.body.farmerAddress || [customerContext.village, customerContext.district].filter(Boolean).join(', '),
+      preferredLanguage: customerContext.preferredLanguage,
+      customerId: customerContext.id,
+      intakeChannel: 'FARMER_APP',
+      actorId: req.auth.userId,
+    });
+
+    if (result.outcome === 'DECLINED') {
+      return res.status(422).json({
+        success: false,
+        error: {
+          code: 'OUTSIDE_SERVICE_AREA',
+          message: 'Service is unavailable at this location',
+          retryable: false,
+          requestId: req.requestId,
+        },
+      });
+    }
+
+    const assignment = await intakeService.triggerAutoAssignment(result.lead.id, req.auth.userId);
+    
+    return res.status(201).json({
+      success: true,
+      outcome: 'ACCEPTED',
+      lead: leadDto(result.lead),
+      assignmentOutcome: assignment?.outcome || null,
+    });
+  } catch (error) {
+    return mobileError(res, req, error);
+  }
+}
+
+async function resolveBusinessOrg(userId) {
+  const portalRepository = require('../src/repositories/portalRepository');
+  const memberships = await portalRepository.findBusinessMemberships(userId);
+  if (memberships.length === 0) {
+    throw new OperationsMobileError('Business account is inactive or unlinked', 'ROLE_NOT_ALLOWED', 403);
+  }
+  return memberships[0];
+}
+
+async function businessDashboard(req, res) {
+  try {
+    const membership = await resolveBusinessOrg(req.auth.userId);
+    const leads = membership.organization.leads;
+
+    const summary = {
+      totalRequests: leads.length,
+      activeRequests: leads.filter(l => l.status !== 'COMPLETED' && l.status !== 'DECLINED').length,
+      recentActivity: leads.slice(0, 5).map(l => ({ id: l.id, status: l.status, date: l.createdAt.toISOString() }))
+    };
+    return res.json({ success: true, summary });
+  } catch(error) {
+    return mobileError(res, req, error);
+  }
+}
+
+async function businessRequests(req, res) {
+  try {
+    const membership = await resolveBusinessOrg(req.auth.userId);
+    const leads = membership.organization.leads;
+    
+    const requests = leads.slice(0, 50).map(l => ({
+      id: l.id,
+      crop: l.cropType,
+      area: String(l.acreage),
+      status: l.status,
+      date: l.createdAt.toISOString()
+    }));
+    return res.json({ success: true, requests });
+  } catch(error) {
+    return mobileError(res, req, error);
+  }
+}
+
+async function businessNotifications(req, res) {
+  try {
+    await resolveBusinessOrg(req.auth.userId);
+    const notificationRepository = require('../src/repositories/notificationRepository');
+    const notifs = await notificationRepository.findForRecipient(req.auth.userId, 20);
+    const notifications = notifs.map(n => ({
+      id: n.id,
+      type: n.type,
+      message: n.message,
+      readAt: n.readAt ? n.readAt.toISOString() : null,
+      createdAt: n.createdAt.toISOString(),
+    }));
+    return res.json({ success: true, notifications });
+  } catch(error) {
+    return mobileError(res, req, error);
+  }
+}
+
+async function businessProfile(req, res) {
+  try {
+    const membership = await resolveBusinessOrg(req.auth.userId);
+    const userRepository = require('../src/repositories/userRepository');
+    const user = await userRepository.findById(req.auth.userId);
+    
+    return res.json({
+      success: true,
+      profile: {
+        name: membership.organization.name,
+        email: user.email,
+        role: user.role
+      }
+    });
+  } catch(error) {
+    return mobileError(res, req, error);
+  }
+}
+
+module.exports = { 
+  createCustomer, 
+  createLead, 
+  findCustomerByPhone, 
+  fleetExceptions, 
+  fleetSchedule, 
+  searchCustomers,
+  farmerDashboard,
+  submitFarmerRequest,
+  businessDashboard,
+  businessRequests,
+  businessNotifications,
+  businessProfile
+};
