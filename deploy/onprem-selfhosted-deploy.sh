@@ -47,6 +47,35 @@ fail() {
   exit 1
 }
 
+retry_command() {
+  local description="$1"
+  shift
+  local attempt=1
+  local max_attempts="${DEPLOY_REGISTRY_MAX_ATTEMPTS:-5}"
+  local delay_seconds
+
+  case "$max_attempts" in
+    *[!0-9]*|'') fail "DEPLOY_REGISTRY_MAX_ATTEMPTS must be a positive integer" ;;
+  esac
+  [ "$max_attempts" -ge 1 ] || fail "DEPLOY_REGISTRY_MAX_ATTEMPTS must be at least 1"
+
+  while true; do
+    echo "${description} (attempt ${attempt}/${max_attempts})."
+    if "$@"; then
+      return 0
+    fi
+
+    if [ "$attempt" -ge "$max_attempts" ]; then
+      fail "${description} failed after ${max_attempts} attempts"
+    fi
+
+    delay_seconds=$((attempt * 10))
+    echo "${description} failed; retrying in ${delay_seconds} seconds." >&2
+    sleep "$delay_seconds"
+    attempt=$((attempt + 1))
+  done
+}
+
 require_file() {
   local file="$1"
   [ -r "$file" ] || fail "Required file is not readable: $file"
@@ -271,8 +300,15 @@ export IMAGE_TAG="$source_sha"
 
 compose config --quiet
 
-echo "Building deployment images."
-compose build db migrate backend frontend
+# Compose BuildKit resolves Dockerfile frontends and base-image metadata through
+# Docker Hub even when layers are already cached. The office connection has
+# occasionally returned short-lived DNS failures for auth.docker.io. Build the
+# targets sequentially and retry each one so a transient registry lookup cannot
+# abort an otherwise safe deployment or create a burst of concurrent lookups.
+echo "Building deployment images sequentially with registry retry protection."
+retry_command "Building migration image" compose build migrate
+retry_command "Building backend image" compose build backend
+retry_command "Building frontend image" compose build frontend
 
 echo "Starting database."
 compose up --detach db
