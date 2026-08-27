@@ -23,6 +23,14 @@ const CACHE_RULES: Record<string, CacheConfig> = {
   businessLinkedData: { ttl: 60 * 60 * 1000 } // 1 hour if approved
 };
 
+async function cacheStorageKey(dataset: string, key: string): Promise<string> {
+  const digest = await Crypto.digestStringAsync(
+    Crypto.CryptoDigestAlgorithm.SHA256,
+    `${dataset}:${key}`,
+  );
+  return `@cache_${dataset}_${digest}`;
+}
+
 async function getMasterKey(): Promise<string> {
   let key = await SecureStore.getItemAsync(MASTER_KEY_ALIAS);
   if (!key) {
@@ -42,12 +50,12 @@ export async function setCache(dataset: string, key: string, data: any, userId: 
   
   const json = JSON.stringify(payload);
   const encrypted = CryptoJS.AES.encrypt(json, masterKey).toString();
-  await AsyncStorage.setItem(`@cache_${dataset}_${key}`, encrypted);
+  await AsyncStorage.setItem(await cacheStorageKey(dataset, key), encrypted);
 }
 
 export async function getCache(dataset: string, key: string, userId: string): Promise<{ data: any, isStale: boolean } | null> {
   const masterKey = await getMasterKey();
-  const encrypted = await AsyncStorage.getItem(`@cache_${dataset}_${key}`);
+  const encrypted = await AsyncStorage.getItem(await cacheStorageKey(dataset, key));
   if (!encrypted) return null;
 
   try {
@@ -64,13 +72,12 @@ export async function getCache(dataset: string, key: string, userId: string): Pr
 
     return { data: payload.data, isStale };
   } catch (err) {
-    console.warn(`Failed to decrypt cache for ${dataset}_${key}`);
     return null;
   }
 }
 
 export async function removeCache(dataset: string, key: string): Promise<void> {
-  await AsyncStorage.removeItem(`@cache_${dataset}_${key}`);
+  await AsyncStorage.removeItem(await cacheStorageKey(dataset, key));
 }
 
 export async function purgeUserCache(userId: string): Promise<void> {

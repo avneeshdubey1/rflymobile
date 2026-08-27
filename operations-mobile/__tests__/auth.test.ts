@@ -6,10 +6,10 @@ import * as SecureStore from 'expo-secure-store';
 jest.mock('../src/api/client', () => ({
   fetchApi: jest.fn(),
   getPlatformInfo: jest.fn().mockResolvedValue({
-    platform: 'android',
+    platform: 'ANDROID',
     appVersion: '1.0.0',
     deviceLabel: 'Test Device',
-    installationKey: 'test-key',
+    installationKey: 'test-installation-key-12345678901234567890',
   }),
   setAuthInterceptors: jest.fn(),
 }));
@@ -29,14 +29,28 @@ describe('Authentication Flow', () => {
   });
 
   it('valid staff login succeeds and saves token', async () => {
-    mockFetchApi.mockResolvedValueOnce({ token: 'valid-token', user: { email: 'admin@example.com' } });
+    mockFetchApi.mockResolvedValueOnce({
+      success: true,
+      session: {
+        accessToken: 'valid-token-that-is-long-enough',
+        tokenType: 'Bearer',
+      },
+      profile: {
+        id: 'de305d54-75b4-431b-adb2-eb6b9e546014',
+        displayName: 'Admin',
+        role: 'ADMIN',
+      },
+    });
     const res = await authApi.login({ email: 'admin@example.com', password: 'password123' });
     
     expect(mockFetchApi).toHaveBeenCalledWith('/api/mobile/v1/operations/auth/login', expect.objectContaining({
       method: 'POST',
       body: expect.stringContaining('admin@example.com')
     }), expect.any(Object));
-    expect(res.token).toBe('valid-token');
+    const submitted = JSON.parse(mockFetchApi.mock.calls[0][1].body);
+    expect(submitted.platform).toBe('ANDROID');
+    expect(submitted.installationKey.length).toBeGreaterThanOrEqual(32);
+    expect(res.session.accessToken).toBe('valid-token-that-is-long-enough');
   });
 
   it('invalid password rejects and does not leak existence', async () => {

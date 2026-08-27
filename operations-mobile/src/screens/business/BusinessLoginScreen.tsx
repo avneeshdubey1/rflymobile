@@ -16,11 +16,9 @@ export default function BusinessLoginScreen({ navigation }: any) {
     }
     setLoading(true);
     try {
-      const res: any = await businessApi.login(email, password);
-      if (res.success && res.token) {
-        await useAuthStore.getState().setToken(res.token);
-        await useAuthStore.getState().setProfile(res.profile, []);
-        navigation.replace('BusinessDashboard');
+      const res = await businessApi.login(email, password);
+      if (res.success && res.session?.accessToken) {
+        await useAuthStore.getState().establishSession(res.session.accessToken, res.profile, []);
       }
     } catch (err: any) {
       Alert.alert('Error', err.data?.error?.message || 'Invalid credentials');

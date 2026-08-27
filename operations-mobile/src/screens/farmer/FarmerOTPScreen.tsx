@@ -1,4 +1,3 @@
-// @ts-nocheck
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, Button, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import { colors, spacing } from '../../theme/tokens';
@@ -7,7 +6,8 @@ import { useAuthStore } from '../../store/auth';
 import { t } from '../../i18n/farmer';
 
 export default function FarmerOTPScreen({ route, navigation }: any) {
-  const { phone } = route.params;
+  const { phone, challengeId: initialChallengeId } = route.params;
+  const [challengeId] = useState(initialChallengeId);
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [cooldown, setCooldown] = useState(30);
@@ -21,14 +21,12 @@ export default function FarmerOTPScreen({ route, navigation }: any) {
   }, [cooldown]);
 
   const handleVerify = async () => {
-    if (code.length < 4) return;
+    if (code.length < 4 || !challengeId) return;
     setLoading(true);
     try {
-      const res = await farmerApi.verifyOtp(phone, code);
-      if (res.success && res.token) {
-        await useAuthStore.getState().setToken(res.token);
-        await useAuthStore.getState().setProfile(res.profile, []);
-        navigation.replace('FarmerDashboard');
+      const res = await farmerApi.verifyOtp(challengeId, code);
+      if (res.success && res.session?.accessToken) {
+        await useAuthStore.getState().establishSession(res.session.accessToken, res.profile, []);
       }
     } catch (err: any) {
       Alert.alert('Error', err.data?.error?.message || 'Invalid OTP');
@@ -41,7 +39,7 @@ export default function FarmerOTPScreen({ route, navigation }: any) {
     if (cooldown > 0) return;
     setLoading(true);
     try {
-      await farmerApi.requestOtp(phone);
+      await farmerApi.resendOtp(challengeId);
       setCooldown(30);
     } catch (err: any) {
       Alert.alert('Error', 'Failed to resend OTP');

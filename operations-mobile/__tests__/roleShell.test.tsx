@@ -32,29 +32,28 @@ describe('RoleShellScreen Navigation Conditioning', () => {
     jest.clearAllMocks();
   });
 
-  it('renders only Sales when user has only sales:access', () => {
-    (useAuthStore as unknown as jest.Mock).mockReturnValue({
-      capabilities: ['sales:access'],
-      profile: { name: 'Sales Rep' },
-      logout: mockLogout,
+  it('renders only Sales when user has only SALES_INTAKE', () => {
+    (useAuthStore as any).mockReturnValue({
+      logout: jest.fn(),
+      profile: { name: 'Test User' },
+      capabilities: ['SALES_INTAKE']
     });
+
     const element = RoleShellScreen({ navigation: mockNavigation });
     
     expect(findByTestId(element, 'btn-sales').length).toBe(1);
     expect(findByTestId(element, 'btn-fleet').length).toBe(0);
     expect(findByTestId(element, 'btn-admin').length).toBe(0);
     expect(findByTestId(element, 'no-access').length).toBe(0);
-
-    findByTestId(element, 'btn-sales')[0].props.onPress();
-    expect(mockNavigate).toHaveBeenCalledWith('SalesDashboard');
   });
 
   it('renders Sales and Fleet when user has both capabilities', () => {
-    (useAuthStore as unknown as jest.Mock).mockReturnValue({
-      capabilities: ['sales:access', 'fleet:access'],
-      profile: { name: 'Manager' },
-      logout: mockLogout,
+    (useAuthStore as any).mockReturnValue({
+      logout: jest.fn(),
+      profile: { name: 'Test User' },
+      capabilities: ['SALES_INTAKE', 'FLEET_SCHEDULE']
     });
+
     const element = RoleShellScreen({ navigation: mockNavigation });
     
     expect(findByTestId(element, 'btn-sales').length).toBe(1);

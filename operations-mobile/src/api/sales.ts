@@ -5,7 +5,7 @@ export const LeadSchema = z.object({
   id: z.string(),
   status: z.string(),
   acreage: z.string(),
-  crop: z.string(),
+  crop: z.string().nullable(),
   operatingCenterId: z.string().optional().nullable(),
   createdAt: z.string(),
 });
@@ -48,7 +48,7 @@ export const CreateLeadResponseSchema = z.object({
   success: z.boolean(),
   outcome: z.string(),
   lead: LeadSchema.optional(),
-  assignmentOutcome: z.any().optional(),
+  assignmentOutcome: z.string().nullable(),
 });
 
 export interface CreateCustomerDto {

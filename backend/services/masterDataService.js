@@ -38,7 +38,17 @@ async function choices() {
     masterDataRepository.listValues('LEAD_SOURCE', true),
     masterDataRepository.listValues('REPORTING_ADMIN', true),
   ]);
-  return { requestTypes: ['B2B', 'B2C'], clusters, crops, sprayPurposes, b2bSubcategories, b2cClassifications, leadSources, reportingAdmins };
+  return {
+    requestTypes: ['B2B', 'B2C'],
+    clusterTypes: [...CLUSTER_TYPES],
+    clusters,
+    crops,
+    sprayPurposes,
+    b2bSubcategories,
+    b2cClassifications,
+    leadSources,
+    reportingAdmins,
+  };
 }
 
 async function listAdmin() {

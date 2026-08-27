@@ -1,7 +1,10 @@
 const prisma = require('../lib/prisma');
 const { setHistoryActor } = require('./historyActorRepository');
 
-const include = { homeCenter: true };
+const include = {
+    homeCenter: true,
+    assignedPilot: { select: { id: true, name: true } },
+};
 
 module.exports = {
     create: (data, options = {}) => prisma.$transaction(async (transaction) => {

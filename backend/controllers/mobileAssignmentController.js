@@ -105,6 +105,19 @@ async function eligibleCopilots(req, res) {
   }
 }
 
+async function eligibleCopilotsForOperations(req, res) {
+  try {
+    const assignmentId = requireUuid(req.params.assignmentId, 'assignmentId');
+    const candidates = await crewFormationRepository.listEligibleCopilotsForStaff({
+      assignmentId,
+      actorId: req.auth.userId,
+    });
+    return res.json({ success: true, assignmentId, candidates });
+  } catch (error) {
+    return mobileError(res, req, error);
+  }
+}
+
 async function selectCopilot(req, res) {
   try {
     requireBody(req.body, ['candidateId', 'expectedRevision']);
@@ -273,4 +286,4 @@ async function sync(req, res) {
   }
 }
 
-module.exports = { changes, detail, eligibleCopilots, list, mobileError, mutate, overrideCopilot, recordLocation, selectCopilot, sync };
+module.exports = { changes, detail, eligibleCopilots, eligibleCopilotsForOperations, list, mobileError, mutate, overrideCopilot, recordLocation, selectCopilot, sync };

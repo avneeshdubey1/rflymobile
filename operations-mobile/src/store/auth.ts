@@ -1,16 +1,19 @@
 import { create } from 'zustand';
 import * as SecureStore from 'expo-secure-store';
 import { purgeUserCache } from '../storage/cache';
+import type { MobileProfile } from '../api/auth';
+import { setLanguage } from '../i18n/farmer';
 
 const TOKEN_KEY = 'userToken';
 
 interface AuthState {
   token: string | null;
-  profile: any | null;
+  profile: MobileProfile | null;
   capabilities: string[];
   isHydrated: boolean;
   setToken: (token: string) => Promise<void>;
-  setProfile: (profile: any, capabilities: string[]) => void;
+  setProfile: (profile: MobileProfile, capabilities: string[]) => void;
+  establishSession: (token: string, profile: MobileProfile, capabilities: string[]) => Promise<void>;
   logout: () => Promise<void>;
   hydrate: () => Promise<string | null>;
 }
@@ -26,8 +29,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ token });
   },
 
-  setProfile: (profile: any, capabilities: string[]) => {
+  setProfile: (profile: MobileProfile, capabilities: string[]) => {
+    setLanguage(profile.preferredLanguage);
     set({ profile, capabilities });
+  },
+
+  establishSession: async (token: string, profile: MobileProfile, capabilities: string[]) => {
+    await SecureStore.setItemAsync(TOKEN_KEY, token);
+    setLanguage(profile.preferredLanguage);
+    set({ token, profile, capabilities });
   },
 
   logout: async () => {
@@ -36,6 +46,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (currentProfile?.id) {
       await purgeUserCache(currentProfile.id);
     }
+    setLanguage('en');
     set({ token: null, profile: null, capabilities: [] });
   },
 

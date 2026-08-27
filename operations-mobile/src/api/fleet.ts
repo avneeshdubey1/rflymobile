@@ -83,7 +83,24 @@ export const ExceptionsResponseSchema = z.object({
 
 export const CopilotOverrideResponseSchema = z.object({
   success: z.boolean(),
-  assignment: ScheduleItemSchema.optional(),
+  assignment: z.object({
+    id: z.string().uuid(),
+    revision: z.number().int().positive(),
+    crewFormationState: z.string(),
+    primaryPilot: z.object({ id: z.string().uuid(), displayName: z.string() }),
+    copilot: z.object({ id: z.string().uuid(), displayName: z.string() }),
+  }),
+});
+
+export const EligibleCopilotsResponseSchema = z.object({
+  success: z.literal(true),
+  assignmentId: z.string().uuid(),
+  candidates: z.array(z.object({
+    id: z.string().uuid(),
+    name: z.string(),
+    employeeCode: z.string().nullable(),
+    homeCenterId: z.string().uuid().nullable(),
+  })),
 });
 
 export const fleetApi = {
@@ -93,6 +110,9 @@ export const fleetApi = {
   getExceptions: (from: string, to: string) => 
     fetchApi(`/api/mobile/v1/operations/fleet/exceptions?from=${from}&to=${to}`, {}, ExceptionsResponseSchema, { dataset: 'customerSummary', key: `exceptions_${from}_${to}` }),
     
+  getEligibleCopilots: (assignmentId: string) =>
+    fetchApi(`/api/mobile/v1/operations/assignments/${assignmentId}/eligible-copilots`, {}, EligibleCopilotsResponseSchema),
+
   overrideAssignment: (assignmentId: string, candidateId: string, expectedRevision: number, reason: string) => 
     fetchApi(`/api/mobile/v1/operations/assignments/${assignmentId}/copilot-override`, {
       method: 'POST',

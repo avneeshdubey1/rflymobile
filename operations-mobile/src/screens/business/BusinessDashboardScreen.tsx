@@ -2,14 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { colors, spacing } from '../../theme/tokens';
 import { useAuthStore } from '../../store/auth';
+import { businessApi } from '../../api/business';
 
 export default function BusinessDashboardScreen({ navigation }: any) {
   const [profile, setProfile] = useState<any>(null);
+  const [summary, setSummary] = useState<{ totalRequests: number; activeRequests: number } | null>(null);
 
   useEffect(() => {
     const init = async () => {
       const p = await useAuthStore.getState().profile;
       setProfile(p);
+      const result = await businessApi.getDashboard();
+      setSummary(result.summary);
     };
     init();
   }, []);
@@ -22,6 +26,12 @@ export default function BusinessDashboardScreen({ navigation }: any) {
       </View>
 
       <View style={styles.grid}>
+        {summary && (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>{summary.activeRequests} active / {summary.totalRequests} total requests</Text>
+            <Text style={styles.cardDesc}>Only records explicitly linked to this organization are included.</Text>
+          </View>
+        )}
         <TouchableOpacity style={styles.card} onPress={() => navigation.navigate('LinkedRequestList')}>
           <Text style={styles.cardTitle}>Linked Requests</Text>
           <Text style={styles.cardDesc}>View requests associated with your organization.</Text>

@@ -30,7 +30,7 @@ function capabilities(app, role) {
   }
   const byRole = {
     ADMIN: ['OPERATIONS_OVERVIEW', 'CUSTOMER_READ', 'SALES_INTAKE', 'FLEET_SCHEDULE', 'CREW_OVERRIDE'],
-    FLEET_MANAGER: ['OPERATIONS_OVERVIEW', 'CUSTOMER_READ', 'FLEET_SCHEDULE', 'CREW_OVERRIDE'],
+    FLEET_MANAGER: ['OPERATIONS_OVERVIEW', 'CUSTOMER_READ', 'FLEET_SCHEDULE'],
     SALES: ['OPERATIONS_OVERVIEW', 'CUSTOMER_READ', 'SALES_INTAKE'],
   };
   return byRole[role] || [];
@@ -260,14 +260,39 @@ async function requestFarmerOtp(req, res) {
     }, config);
     return res.status(202).json(result);
   } catch (error) {
-    const status = /phone/i.test(error.message || '') ? 400 : error.status || 500;
+    const status = Number.isInteger(error.status) ? error.status : 500;
+    const clientMessage = status >= 500
+      ? 'Unable to request verification code'
+      : error.message;
     return res.status(status).json({
         success: false,
         serverTime: new Date().toISOString(),
         operatingTimeZone: req.app.get('config').operatingTimeZone,
         requestId: req.requestId,
-        error: { code: 'INVALID_CREDENTIALS', message: status === 400 ? error.message : 'Unable to request verification code', retryable: false, requestId: req.requestId }
+        error: {
+          code: error.code || (status === 400 ? 'VALIDATION_FAILED' : 'OTP_REQUEST_FAILED'),
+          message: clientMessage,
+          retryable: status >= 500,
+          requestId: req.requestId,
+        },
     });
+  }
+}
+
+async function resendFarmerOtp(req, res) {
+  try {
+    const body = req.body;
+    if (!body || typeof body !== 'object' || Array.isArray(body)
+      || Object.keys(body).some((field) => field !== 'challengeId')
+      || typeof body.challengeId !== 'string') {
+      throw new mobileSessionService.MobileAuthError('Verification request is invalid', 'VALIDATION_FAILED', 400);
+    }
+    const result = await require('../services/phoneVerificationService').resendChallenge({
+      challengeId: body.challengeId,
+    }, req.app.get('config'));
+    return res.status(202).json(result);
+  } catch (error) {
+    return authError(res, req, error);
   }
 }
 
@@ -389,5 +414,6 @@ async function businessLogin(req, res) {
 
 module.exports = {
   requestFarmerOtp,
+  resendFarmerOtp,
   verifyFarmerOtp,
   businessLogin, adminRevokeInstallation, bootstrap, login, logout, logoutAll, revokeInstallation, updatePilotAvailability };

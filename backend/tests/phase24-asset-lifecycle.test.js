@@ -100,13 +100,30 @@ test('drone and LMV writes accept only active operating centers and bounded text
   });
   assert.equal(droneStatus.response.status, 200, JSON.stringify(droneStatus.data));
   assert.equal(lmvStatus.response.status, 200, JSON.stringify(lmvStatus.data));
+  assert.equal(droneStatus.data.drone.operationalState, 'MAINTENANCE');
+  assert.equal(droneStatus.data.drone.availabilityState, 'UNAVAILABLE');
+  assert.equal(lmvStatus.data.lmv.operationalState, 'OUT_OF_SERVICE');
+  assert.equal(lmvStatus.data.lmv.availabilityState, 'UNAVAILABLE');
+
+  const droneReturned = await request('/api/drones/update-status', {
+    method: 'POST',
+    body: { droneId: createdDrone.data.drone.id, status: 'AVAILABLE' },
+  });
+  const lmvReturned = await request('/api/lmvs/update-status', {
+    method: 'POST',
+    body: { lmvId: createdLmv.data.lmv.id, status: 'AVAILABLE' },
+  });
+  assert.equal(droneReturned.data.drone.operationalState, 'IN_SERVICE');
+  assert.equal(droneReturned.data.drone.availabilityState, 'AVAILABLE');
+  assert.equal(lmvReturned.data.lmv.operationalState, 'IN_SERVICE');
+  assert.equal(lmvReturned.data.lmv.availabilityState, 'AVAILABLE');
 
   const [droneHistory, lmvHistory] = await Promise.all([
     prisma.droneHistory.findMany({ where: { droneId: createdDrone.data.drone.id }, orderBy: { version: 'asc' } }),
     prisma.lMVHistory.findMany({ where: { lmvId: createdLmv.data.lmv.id }, orderBy: { version: 'asc' } }),
   ]);
-  assert.deepEqual(droneHistory.map(({ eventType }) => eventType), ['CREATED', 'UPDATED', 'STATUS_CHANGED']);
-  assert.deepEqual(lmvHistory.map(({ eventType }) => eventType), ['CREATED', 'UPDATED', 'STATUS_CHANGED']);
+  assert.deepEqual(droneHistory.map(({ eventType }) => eventType), ['CREATED', 'UPDATED', 'STATUS_CHANGED', 'STATUS_CHANGED']);
+  assert.deepEqual(lmvHistory.map(({ eventType }) => eventType), ['CREATED', 'UPDATED', 'STATUS_CHANGED', 'STATUS_CHANGED']);
   assert.equal(droneHistory.every((entry) => entry.actorUserId === admin.id), true);
   assert.equal(lmvHistory.every((entry) => entry.actorUserId === admin.id), true);
 

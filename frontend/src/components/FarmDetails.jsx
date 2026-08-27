@@ -43,6 +43,7 @@ const initialForm = {
     remarks: "",
     requestType: "B2C",
     b2bSubcategoryCode: "",
+    clusterType: "",
     clusterId: "",
     reportingAdminCode: "",
     leadSourceCode: ""
@@ -58,7 +59,7 @@ function FarmDetails() {
     const [farmerMessage, setFarmerMessage] = useState("");
     const [notice, setNotice] = useState(null);
     const [mapKey, setMapKey] = useState(0); // forces TerrainMap to remount/reset
-    const [masters, setMasters] = useState({ clusters: [], crops: [], sprayPurposes: [], b2bSubcategories: [], leadSources: [], reportingAdmins: [] });
+    const [masters, setMasters] = useState({ clusterTypes: [], clusters: [], crops: [], sprayPurposes: [], b2bSubcategories: [], leadSources: [], reportingAdmins: [] });
 
     const [form, setForm] = useState(initialForm);
     useEffect(() => {
@@ -201,6 +202,7 @@ function FarmDetails() {
                     mandal: farmer.mandal || "",
                     district: farmer.district || "",
                     state: farmer.state || "",
+                    clusterType: farmer.cluster?.type || "",
                     clusterId: farmer.clusterId || "",
 
                     // Subscription
@@ -228,6 +230,7 @@ function FarmDetails() {
                     mandal: "",
                     district: "",
                     state: "",
+                    clusterType: "",
                     clusterId: "",
 
                     subscriptionCardNumber: "",
@@ -431,12 +434,18 @@ function FarmDetails() {
                         </div>
                         <div className="row-group">
                             <div className="input-group">
-                                <label>{t('Cluster')}</label>
-                                <select required disabled={busy} value={form.clusterId} onChange={e => setForm({ ...form, clusterId: e.target.value })}>
-                                    <option value="">Select cluster</option>
-                                    {masters.clusters.map(item => <option key={item.id} value={item.id}>{item.displayName}</option>)}
+                                <label>{t('Cluster Type')}</label>
+                                <select required disabled={busy} value={form.clusterType} onChange={e => setForm({ ...form, clusterType: e.target.value, clusterId: '' })}>
+                                    <option value="">Select cluster type</option>
+                                    {(masters.clusterTypes || ['CLUSTER', 'HUB', 'SPOKE', 'MINIHUB']).map((type) => <option key={type} value={type}>{type}</option>)}
                                 </select>
-                                <span className="field-hint">Cluster Type: {masters.clusters.find(item => item.id === form.clusterId)?.type || '—'}</span>
+                            </div>
+                            <div className="input-group">
+                                <label>{t('Cluster')}</label>
+                                <select required disabled={busy || !form.clusterType} value={form.clusterId} onChange={e => setForm({ ...form, clusterId: e.target.value })}>
+                                    <option value="">{form.clusterType ? 'Select cluster' : 'Select cluster type first'}</option>
+                                    {masters.clusters.filter((item) => item.type === form.clusterType).map(item => <option key={item.id} value={item.id}>{item.displayName}</option>)}
+                                </select>
                             </div>
                             <div className="input-group">
                                 <label>{t('Reporting Admin')}</label>

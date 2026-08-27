@@ -1,28 +1,56 @@
+import { z } from 'zod';
 import { fetchApi } from './client';
 
+const UserListSchema = z.object({
+  success: z.literal(true),
+  users: z.array(z.object({
+    id: z.string().uuid(), name: z.string(), email: z.string().email(), role: z.string(), active: z.boolean(),
+  }).passthrough()),
+});
+
+const DroneListSchema = z.object({
+  success: z.literal(true),
+  drones: z.array(z.object({
+    id: z.string().uuid(), status: z.string(), operatingCenterId: z.string().uuid().nullable().optional(),
+  }).passthrough()),
+});
+
+const RegionListSchema = z.object({
+  success: z.literal(true),
+  centers: z.array(z.object({
+    id: z.string().uuid(), name: z.string(), latitude: z.number(), longitude: z.number(), radiusKm: z.number(), active: z.boolean(),
+  }).passthrough()),
+});
+
+const PolicySchema = z.object({
+  success: z.literal(true),
+  policy: z.object({
+    enabled: z.boolean(), searchHorizonDays: z.number().int(), workingDayStartMinutes: z.number().int(),
+    workingDayEndMinutes: z.number().int(), maxJobsPerUnitPerDay: z.number().int(), revision: z.number().int().positive(),
+  }).passthrough(),
+});
+
+const MasterDataSchema = z.object({
+  success: z.literal(true),
+  data: z.object({
+    clusters: z.array(z.object({
+      id: z.string().uuid(), code: z.string(), displayName: z.string(), type: z.string(), active: z.boolean(),
+    }).passthrough()),
+    values: z.array(z.object({
+      id: z.string().uuid(), category: z.string(), code: z.string(), displayName: z.string(), active: z.boolean(),
+    }).passthrough()),
+    crops: z.array(z.object({
+      id: z.string().uuid(), code: z.string(), displayName: z.string(), active: z.boolean(),
+    }).passthrough()),
+  }),
+});
+
+// Mutating Admin controls remain absent until mobile-specific confirmation,
+// validation, conflict and audit contracts exist.
 export const adminApi = {
-  // Users
-  getUsers: () => fetchApi('/api/mobile/v1/operations/admin/users'),
-  addUser: (data: any) => fetchApi('/api/mobile/v1/operations/admin/users', { method: 'POST', body: JSON.stringify(data) }),
-  updateUser: (id: string, data: any) => fetchApi(`/api/mobile/v1/operations/admin/users/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
-  updatePilotCenter: (id: string, operatingCenterId: string) => fetchApi(`/api/mobile/v1/operations/admin/users/${id}/operating-center`, { method: 'PATCH', body: JSON.stringify({ operatingCenterId }) }),
-
-  // Drones
-  getDrones: () => fetchApi('/api/mobile/v1/operations/admin/drones'),
-  addDrone: (data: any) => fetchApi('/api/mobile/v1/operations/admin/drones', { method: 'POST', body: JSON.stringify(data) }),
-  updateDrone: (id: string, data: any) => fetchApi(`/api/mobile/v1/operations/admin/drones/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
-
-  // LMVs
-  getLmvs: () => fetchApi('/api/mobile/v1/operations/admin/lmvs'),
-  addLmv: (data: any) => fetchApi('/api/mobile/v1/operations/admin/lmvs', { method: 'POST', body: JSON.stringify(data) }),
-  updateLmv: (id: string, data: any) => fetchApi(`/api/mobile/v1/operations/admin/lmvs/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
-
-  // Phase 6C
-  getRegions: () => fetchApi('/api/mobile/v1/operations/admin/regions'),
-  addRegion: (data: any) => fetchApi('/api/mobile/v1/operations/admin/regions', { method: 'POST', body: JSON.stringify(data) }),
-  
-  getPolicies: () => fetchApi('/api/mobile/v1/operations/admin/policies'),
-  updatePolicy: (data: any) => fetchApi('/api/mobile/v1/operations/admin/policies', { method: 'PUT', body: JSON.stringify(data) }),
-  
-  getMasterData: () => fetchApi('/api/mobile/v1/operations/admin/master-data'),
+  getUsers: () => fetchApi('/api/mobile/v1/operations/admin/users', {}, UserListSchema),
+  getDrones: () => fetchApi('/api/mobile/v1/operations/admin/drones', {}, DroneListSchema),
+  getRegions: () => fetchApi('/api/mobile/v1/operations/admin/regions', {}, RegionListSchema),
+  getPolicies: () => fetchApi('/api/mobile/v1/operations/admin/policies', {}, PolicySchema),
+  getMasterData: () => fetchApi('/api/mobile/v1/operations/admin/master-data', {}, MasterDataSchema),
 };

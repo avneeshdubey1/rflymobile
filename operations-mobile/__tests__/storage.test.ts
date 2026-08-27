@@ -15,6 +15,12 @@ jest.mock('expo-secure-store', () => ({
   deleteItemAsync: jest.fn(),
 }));
 
+jest.mock('expo-crypto', () => ({
+  CryptoDigestAlgorithm: { SHA256: 'SHA-256' },
+  digestStringAsync: jest.fn(async (_algorithm, value: string) => `hash_${value.length}`),
+  randomUUID: jest.fn(() => 'cache-master-key'),
+}));
+
 jest.mock('crypto-js', () => {
   return {
     AES: {
@@ -34,9 +40,10 @@ describe('Cache & Draft Behaviour (OMR-09)', () => {
   it('sets cache with encryption and user scope', async () => {
     await setCache('customerSummary', 'search_query', { foo: 'bar' }, 'user_123');
     expect(AsyncStorage.setItem).toHaveBeenCalledWith(
-      '@cache_customerSummary_search_query',
+      '@cache_customerSummary_hash_28',
       expect.stringContaining('enc_')
     );
+    expect((AsyncStorage.setItem as jest.Mock).mock.calls[0][0]).not.toContain('search_query');
   });
 
   it('retrieves cache and validates user isolation', async () => {

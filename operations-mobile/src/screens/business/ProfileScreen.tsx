@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ActivityIndicator, Button, Alert } from 'react-
 import { colors, spacing } from '../../theme/tokens';
 import { businessApi } from '../../api/business';
 import { useAuthStore } from '../../store/auth';
+import { authApi } from '../../api/auth';
 
 export default function ProfileScreen({ navigation }: any) {
   const [profile, setProfile] = useState<any>(null);
@@ -27,8 +28,11 @@ export default function ProfileScreen({ navigation }: any) {
   };
 
   const handleLogout = async () => {
-    await useAuthStore.getState().logout();
-    navigation.replace('Login');
+    try {
+      await authApi.logout();
+    } finally {
+      await useAuthStore.getState().logout();
+    }
   };
 
   if (loading) {

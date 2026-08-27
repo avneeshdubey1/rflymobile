@@ -156,6 +156,36 @@ async function listEligibleCopilots({ assignmentId, actorId, now = new Date() })
   return candidates.filter((_, index) => !conflicts[index]).map(candidateProjection);
 }
 
+async function listEligibleCopilotsForStaff({ assignmentId, actorId, now = new Date() }) {
+  const actor = await prisma.user.findUnique({
+    where: { id: actorId },
+    select: { role: true, active: true, archivedAt: true },
+  });
+  if (!actor || !actor.active || actor.archivedAt || !overrideRoles.has(actor.role)) {
+    throw crewError('Only an active Admin may override a Copilot', 'CREW_OVERRIDE_FORBIDDEN');
+  }
+  const assignment = await prisma.assignment.findUnique({
+    where: { id: assignmentId },
+    include: { lead: { select: { status: true, matchedCenterId: true } } },
+  });
+  assertFormationOpen(assignment, now);
+  const candidates = await prisma.user.findMany({
+    where: {
+      role: 'PILOT',
+      active: true,
+      archivedAt: null,
+      pilotAvailabilityState: 'AVAILABLE',
+      homeCenterId: assignment.lead.matchedCenterId,
+      id: { not: assignment.pilotId },
+      OR: [{ pilotLicenseExpiry: null }, { pilotLicenseExpiry: { gt: assignmentWindow(assignment).start } }],
+    },
+    select: { id: true, name: true, employeeCode: true, homeCenterId: true },
+    orderBy: [{ name: 'asc' }, { id: 'asc' }],
+  });
+  const conflicts = await Promise.all(candidates.map((candidate) => findCandidateConflict(prisma, assignment, candidate.id)));
+  return candidates.filter((_, index) => !conflicts[index]).map(candidateProjection);
+}
+
 async function writeFormationAudit(transaction, { assignment, candidateId, actorId, action, reason }) {
   return transaction.auditLog.create({
     data: {
@@ -295,6 +325,7 @@ function overrideCopilot(input) {
 
 module.exports = {
   listEligibleCopilots,
+  listEligibleCopilotsForStaff,
   selectCopilot,
   overrideCopilot,
 };

@@ -10,19 +10,18 @@ export default function LoginScreen({ navigation }: any) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   
-  const { setToken, setProfile } = useAuthStore();
+  const { establishSession } = useAuthStore();
 
   const handleLogin = async () => {
     setLoading(true);
     setError('');
     try {
       const result = await authApi.login({ email, password });
-      await setToken(result.token);
-      
-      const bootstrap = await authApi.bootstrap();
-      setProfile(bootstrap.user, bootstrap.capabilities);
-      
-      navigation.replace('RoleShell');
+      const bootstrap = await authApi.bootstrap(result.session.accessToken);
+      if (!['ADMIN', 'FLEET_MANAGER', 'SALES'].includes(bootstrap.profile.role)) {
+        throw new Error('This account is not permitted to use staff sign-in.');
+      }
+      await establishSession(result.session.accessToken, bootstrap.profile, bootstrap.capabilities);
     } catch (err: any) {
       if (err.status === 401) {
         setError('Invalid credentials');

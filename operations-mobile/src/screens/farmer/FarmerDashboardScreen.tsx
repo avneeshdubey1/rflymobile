@@ -51,8 +51,7 @@ export default function FarmerDashboardScreen({ navigation }: any) {
   return (
     <View style={styles.container}>
       <View style={styles.headerBox}>
-        <Text style={styles.greeting}>{t('welcome')}, {profile?.name || 'Farmer'}</Text>
-        <Text style={styles.phone}>{profile?.phone}</Text>
+        <Text style={styles.greeting}>{t('welcome')}, {profile?.displayName || 'Farmer'}</Text>
       </View>
 
       <TouchableOpacity 

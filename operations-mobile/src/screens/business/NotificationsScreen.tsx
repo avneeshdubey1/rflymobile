@@ -27,7 +27,7 @@ export default function NotificationsScreen() {
 
   const renderItem = ({ item }: { item: any }) => (
     <View style={styles.card}>
-      <Text style={styles.title}>{item.title}</Text>
+      <Text style={styles.title}>{String(item.type).replaceAll('_', ' ')}</Text>
       <Text style={styles.message}>{item.message}</Text>
       <Text style={styles.time}>{new Date(item.createdAt).toLocaleString()}</Text>
     </View>

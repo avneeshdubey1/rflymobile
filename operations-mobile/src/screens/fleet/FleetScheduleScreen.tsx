@@ -10,8 +10,8 @@ export default function FleetScheduleScreen({ navigation }: any) {
   const [refreshing, setRefreshing] = useState(false);
   const [isOfflineStale, setIsOfflineStale] = useState(false);
   
-  const { capabilities } = useAuthStore();
-  const isAdmin = (capabilities || []).includes('admin:access');
+  const { profile } = useAuthStore();
+  const isAdmin = profile?.role === 'ADMIN';
 
   useEffect(() => {
     loadSchedule();

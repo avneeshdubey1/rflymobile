@@ -15,8 +15,8 @@ export default function MasterDataManagementScreen() {
     setLoading(true);
     try {
       const res: any = await adminApi.getMasterData();
-      if (res.success && res.clusters) {
-        setData(res.clusters);
+      if (res.success) {
+        setData(res.data.clusters);
       }
     } catch (err: any) {
       Alert.alert('Error', err.data?.error?.message || 'Failed to load master data');
@@ -27,8 +27,8 @@ export default function MasterDataManagementScreen() {
 
   const renderItem = ({ item }: { item: any }) => (
     <View style={styles.card} testID={`master-card-${item.id}`}>
-      <Text style={styles.name}>{item.name}</Text>
-      <Text style={styles.detail}>Type: {item.clusterType}</Text>
+      <Text style={styles.name}>{item.displayName}</Text>
+      <Text style={styles.detail}>Type: {item.type}</Text>
       <Text style={styles.status}>{item.active ? 'Active' : 'Inactive'}</Text>
     </View>
   );

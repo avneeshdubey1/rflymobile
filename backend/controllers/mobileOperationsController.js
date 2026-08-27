@@ -259,21 +259,25 @@ async function submitFarmerRequest(req, res) {
 }
 
 async function resolveBusinessOrg(userId) {
-  const prisma = require('../src/lib/prisma');
-  const membership = await prisma.businessMembership.findFirst({
-    where: { userId },
-    include: { organization: true }
-  });
-  if (!membership || !membership.organization.active) {
-    throw new OperationsMobileError('Business account is inactive or unlinked', 'UNAUTHORIZED', 403);
+  const portalRepository = require('../src/repositories/portalRepository');
+  const memberships = await portalRepository.findBusinessMemberships(userId);
+  if (memberships.length === 0) {
+    throw new OperationsMobileError('Business account is inactive or unlinked', 'ROLE_NOT_ALLOWED', 403);
   }
-  return membership;
+  return memberships[0];
 }
 
 async function businessDashboard(req, res) {
   try {
     const membership = await resolveBusinessOrg(req.auth.userId);
-    return res.json({ success: true });
+    const leads = membership.organization.leads;
+
+    const summary = {
+      totalRequests: leads.length,
+      activeRequests: leads.filter(l => l.status !== 'COMPLETED' && l.status !== 'DECLINED').length,
+      recentActivity: leads.slice(0, 5).map(l => ({ id: l.id, status: l.status, date: l.createdAt.toISOString() }))
+    };
+    return res.json({ success: true, summary });
   } catch(error) {
     return mobileError(res, req, error);
   }
@@ -282,14 +286,9 @@ async function businessDashboard(req, res) {
 async function businessRequests(req, res) {
   try {
     const membership = await resolveBusinessOrg(req.auth.userId);
-    const prisma = require('../src/lib/prisma');
-    const leads = await prisma.lead.findMany({
-      where: { businessOrganizationId: membership.organizationId },
-      orderBy: { createdAt: 'desc' },
-      take: 50
-    });
+    const leads = membership.organization.leads;
     
-    const requests = leads.map(l => ({
+    const requests = leads.slice(0, 50).map(l => ({
       id: l.id,
       crop: l.cropType,
       area: String(l.acreage),
@@ -304,18 +303,15 @@ async function businessRequests(req, res) {
 
 async function businessNotifications(req, res) {
   try {
-    const membership = await resolveBusinessOrg(req.auth.userId);
-    const prisma = require('../src/lib/prisma');
-    const notifs = await prisma.notification.findMany({
-      where: { userId: req.auth.userId },
-      orderBy: { createdAt: 'desc' },
-      take: 20
-    });
+    await resolveBusinessOrg(req.auth.userId);
+    const notificationRepository = require('../src/repositories/notificationRepository');
+    const notifs = await notificationRepository.findForRecipient(req.auth.userId, 20);
     const notifications = notifs.map(n => ({
       id: n.id,
-      title: n.title,
-      message: n.body,
-      createdAt: n.createdAt.toISOString()
+      type: n.type,
+      message: n.message,
+      readAt: n.readAt ? n.readAt.toISOString() : null,
+      createdAt: n.createdAt.toISOString(),
     }));
     return res.json({ success: true, notifications });
   } catch(error) {
@@ -334,7 +330,7 @@ async function businessProfile(req, res) {
       profile: {
         name: membership.organization.name,
         email: user.email,
-        role: membership.role
+        role: user.role
       }
     });
   } catch(error) {

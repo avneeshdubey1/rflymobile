@@ -29,6 +29,7 @@ const initialFarmerData = {
     subscriptionCardNumber: "",
     subscriptionYear: "2026-27",
     remarks: "",
+    clusterType: "",
     clusterId: "",
 };
 
@@ -64,6 +65,7 @@ function CustomerRegistration({ API, user, confirmModal, setConfirmModal }) {
     const [farmerNotice, setFarmerNotice] = useState(null);
     const [submitting, setSubmitting] = useState(false);
     const [clusters, setClusters] = useState([]);
+    const [clusterTypes, setClusterTypes] = useState([]);
 
     useEffect(() => {
         fetch(`${API}/api/master-data/choices`, { credentials: 'include' })
@@ -71,6 +73,7 @@ function CustomerRegistration({ API, user, confirmModal, setConfirmModal }) {
                 const body = await response.json();
                 if (!response.ok) throw new Error(body.error || 'Failed to load clusters');
                 setClusters(body.data.clusters || []);
+                setClusterTypes(body.data.clusterTypes || ['CLUSTER', 'HUB', 'SPOKE', 'MINIHUB']);
             })
             .catch((error) => setFarmerNotice({ type: 'error', message: error.message }));
     }, [API]);
@@ -96,6 +99,7 @@ function CustomerRegistration({ API, user, confirmModal, setConfirmModal }) {
                 displayName: farmerData.name,
                 ownership: farmerData.ownership.toUpperCase(),
             };
+            delete payload.clusterType;
             const response = await fetch(`${API}/api/customers/sales`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json", ...csrfHeaders() },
@@ -122,8 +126,16 @@ function CustomerRegistration({ API, user, confirmModal, setConfirmModal }) {
                 return;
             }
 
-            setFarmerNotice({ type: "success", message: "Customer registered successfully!" });
-            setFarmerData(initialFarmerData);
+            if (data.created) {
+                setFarmerNotice({ type: "success", message: "Customer registered successfully!" });
+                setFarmerData(initialFarmerData);
+                window.dispatchEvent(new CustomEvent('rfly:customers-changed', { detail: { customerId: data.customer?.id } }));
+            } else {
+                setFarmerNotice({
+                    type: "warning",
+                    message: `This mobile number is already registered${data.customer?.displayName ? ` to ${data.customer.displayName}` : ''}. No duplicate customer was created.`,
+                });
+            }
         } catch (error) {
             console.error(error);
             setFarmerNotice({ type: "error", message: "An unexpected error occurred. Please try again." });
@@ -331,11 +343,15 @@ function CustomerRegistration({ API, user, confirmModal, setConfirmModal }) {
                                 backgroundColor:
                                     farmerNotice.type === "success"
                                         ? "#d4edda"
-                                        : "#f8d7da",
+                                        : farmerNotice.type === "warning"
+                                            ? "#fff3cd"
+                                            : "#f8d7da",
                                 color:
                                     farmerNotice.type === "success"
                                         ? "#155724"
-                                        : "#721c24",
+                                        : farmerNotice.type === "warning"
+                                            ? "#664d03"
+                                            : "#721c24",
                                 fontWeight: "600",
                                 textAlign: "center",
                             }}
@@ -570,15 +586,26 @@ function CustomerRegistration({ API, user, confirmModal, setConfirmModal }) {
 
                                 <div className="row-group">
                                     <div className="input-group">
-                                        <label>Cluster</label>
-                                        <select value={farmerData.clusterId} onChange={handleChange("clusterId")} required>
-                                            <option value="">Select cluster</option>
-                                            {clusters.map(cluster => <option key={cluster.id} value={cluster.id}>{cluster.displayName}</option>)}
+                                        <label>Cluster Type</label>
+                                        <select
+                                            value={farmerData.clusterType}
+                                            onChange={(event) => setFarmerData((current) => ({
+                                                ...current,
+                                                clusterType: event.target.value,
+                                                clusterId: '',
+                                            }))}
+                                            required
+                                        >
+                                            <option value="">Select cluster type</option>
+                                            {clusterTypes.map((type) => <option key={type} value={type}>{type}</option>)}
                                         </select>
                                     </div>
                                     <div className="input-group">
-                                        <label>Cluster Type</label>
-                                        <input value={clusters.find(cluster => cluster.id === farmerData.clusterId)?.type || ''} readOnly placeholder="Derived from cluster" />
+                                        <label>Cluster</label>
+                                        <select value={farmerData.clusterId} onChange={handleChange("clusterId")} required disabled={!farmerData.clusterType}>
+                                            <option value="">{farmerData.clusterType ? 'Select cluster' : 'Select cluster type first'}</option>
+                                            {clusters.filter((cluster) => cluster.type === farmerData.clusterType).map(cluster => <option key={cluster.id} value={cluster.id}>{cluster.displayName}</option>)}
+                                        </select>
                                     </div>
                                 </div>
 

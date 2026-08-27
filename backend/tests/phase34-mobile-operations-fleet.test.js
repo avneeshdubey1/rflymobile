@@ -59,13 +59,14 @@ test.before(async () => {
   });
   ids.centers.push(center.id);
   const passwordHash = await hashPassword(password);
-  const [fleet, admin, sales, pilot] = await Promise.all([
+  const [fleet, admin, sales, pilot, copilotCandidate] = await Promise.all([
     prisma.user.create({ data: { name: 'P34 Fleet', email: `p34-fleet-${runId}@example.test`, passwordHash, role: 'FLEET_MANAGER' } }),
     prisma.user.create({ data: { name: 'P34 Admin', email: `p34-admin-${runId}@example.test`, passwordHash, role: 'ADMIN' } }),
     prisma.user.create({ data: { name: 'P34 Sales', email: `p34-sales-${runId}@example.test`, passwordHash, role: 'SALES' } }),
     prisma.user.create({ data: { name: 'P34 Pilot', email: `p34-pilot-${runId}@example.test`, passwordHash, role: 'PILOT', homeCenterId: center.id } }),
+    prisma.user.create({ data: { name: 'P34 Copilot Candidate', email: `p34-copilot-${runId}@example.test`, passwordHash, role: 'PILOT', homeCenterId: center.id, pilotAvailabilityState: 'AVAILABLE' } }),
   ]);
-  ids.users.push(fleet.id, admin.id, sales.id, pilot.id);
+  ids.users.push(fleet.id, admin.id, sales.id, pilot.id, copilotCandidate.id);
   [fleetToken, adminToken, salesToken] = await Promise.all([login(fleet), login(admin), login(sales)]);
   const [drone, lmv] = await Promise.all([
     prisma.drone.create({ data: { name: 'P34 Drone', model: 'P34', serialNumber: `P34-D-${runId}`, homeCenterId: center.id, status: 'ASSIGNED' } }),
@@ -151,6 +152,22 @@ test('Sales mobile sessions cannot read or mutate Fleet schedule capabilities', 
   assert.equal(exceptions.response.status, 403);
   assert.equal(override.response.status, 403);
   assert.equal(override.data.error.code, 'ROLE_NOT_ALLOWED');
+});
+
+test('eligible Copilot lookup is Admin-only and returns same-centre available candidates', async () => {
+  const adminResult = await request(`/api/mobile/v1/operations/assignments/${assignment.id}/eligible-copilots`, {
+    token: adminToken,
+  });
+  assert.equal(adminResult.response.status, 200, JSON.stringify(adminResult.data));
+  assert.equal(adminResult.data.assignmentId, assignment.id);
+  assert.equal(adminResult.data.candidates.some((candidate) => candidate.id === ids.users[4]), true);
+  assert.equal(adminResult.data.candidates.some((candidate) => candidate.id === ids.users[3]), false);
+
+  const fleetResult = await request(`/api/mobile/v1/operations/assignments/${assignment.id}/eligible-copilots`, {
+    token: fleetToken,
+  });
+  assert.equal(fleetResult.response.status, 403);
+  assert.equal(fleetResult.data.error.code, 'ROLE_NOT_ALLOWED');
 });
 
 test.after(async () => {

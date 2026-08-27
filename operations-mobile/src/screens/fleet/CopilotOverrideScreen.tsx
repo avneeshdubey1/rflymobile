@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, Button, StyleSheet, ActivityIndicator, Alert, FlatList, TouchableOpacity } from 'react-native';
 import { colors, spacing } from '../../theme/tokens';
 import { fleetApi } from '../../api/fleet';
-import { adminApi } from '../../api/admin';
 
 export default function CopilotOverrideScreen({ route, navigation }: any) {
   const { assignmentId, revision } = route.params;
@@ -18,11 +17,9 @@ export default function CopilotOverrideScreen({ route, navigation }: any) {
 
   const loadCandidates = async () => {
     try {
-      // OMR-05: Retrieve eligible candidates (in Operations app, we filter all users for PILOT)
-      const res: any = await adminApi.getUsers();
-      if (res.success && res.users) {
-        const pilots = res.users.filter((u: any) => u.role === 'PILOT');
-        setCandidates(pilots);
+      const res: any = await fleetApi.getEligibleCopilots(assignmentId);
+      if (res.success && res.candidates) {
+        setCandidates(res.candidates);
       }
     } catch (err: any) {
       Alert.alert('Error', 'Failed to load eligible copilots.');

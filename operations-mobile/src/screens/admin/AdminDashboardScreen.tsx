@@ -31,9 +31,9 @@ export default function AdminDashboardScreen({ navigation }: any) {
 
       <View style={styles.card}>
         <Text style={styles.title}>Team Management</Text>
-        <Text style={styles.description}>Manage users, roles, and administrative guards.</Text>
-        <Button 
-          title="Team Directory" 
+        <Text style={styles.description}>Review users, roles, and account status.</Text>
+        <Button
+          title="View Team Directory"
           color={colors.darkGrey}
           onPress={() => navigation.navigate('TeamManagement')}
           testID="btn-team"
@@ -42,9 +42,9 @@ export default function AdminDashboardScreen({ navigation }: any) {
 
       <View style={styles.card}>
         <Text style={styles.title}>Asset Management</Text>
-        <Text style={styles.description}>Drone, LMV, Pilot management + operating-centre transfers.</Text>
-        <Button 
-          title="Assets & Transfers" 
+        <Text style={styles.description}>Review Drone status and operating-centre ownership.</Text>
+        <Button
+          title="View Assets"
           color={colors.safetyOrange}
           onPress={() => navigation.navigate('AssetManagement')}
           testID="btn-assets"
@@ -53,7 +53,7 @@ export default function AdminDashboardScreen({ navigation }: any) {
 
       <View style={styles.card}>
         <Text style={styles.title}>Feasible Regions</Text>
-        <Text style={styles.description}>Manage operating centers and radius boundaries.</Text>
+        <Text style={styles.description}>Review operating centres and radius boundaries.</Text>
         <Button 
           title="Regions" 
           color={colors.navy}
@@ -64,7 +64,7 @@ export default function AdminDashboardScreen({ navigation }: any) {
 
       <View style={styles.card}>
         <Text style={styles.title}>Auto-Assignment Policy</Text>
-        <Text style={styles.description}>Configure revision-protected assignment policies.</Text>
+        <Text style={styles.description}>Review the active revision-protected assignment policy.</Text>
         <Button 
           title="Policy" 
           color={colors.darkGrey}
@@ -75,7 +75,7 @@ export default function AdminDashboardScreen({ navigation }: any) {
 
       <View style={styles.card}>
         <Text style={styles.title}>Master Data</Text>
-        <Text style={styles.description}>Server-backed master-data configuration for roles.</Text>
+        <Text style={styles.description}>Review server-backed master data.</Text>
         <Button 
           title="Master Data" 
           color={colors.safetyOrange}

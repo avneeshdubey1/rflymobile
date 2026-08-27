@@ -14,20 +14,19 @@ export default function RoleShellScreen({ navigation }: any) {
       // ignore
     } finally {
       await logout();
-      navigation.replace('Login');
     }
   };
 
   const caps = capabilities || [];
-  const hasSales = caps.includes('sales:access');
-  const hasFleet = caps.includes('fleet:access');
-  const hasAdmin = caps.includes('admin:access');
+  const hasSales = caps.includes('SALES_INTAKE');
+  const hasFleet = caps.includes('FLEET_SCHEDULE');
+  const hasAdmin = profile?.role === 'ADMIN';
   const hasNone = !hasSales && !hasFleet && !hasAdmin;
 
   return (
     <View style={styles.container}>
       <Text style={styles.text}>Operations Dashboard</Text>
-      {profile && <Text style={{ marginBottom: spacing.lg }}>Welcome, {profile.name || profile.displayName || profile.email}</Text>}
+      {profile && <Text style={{ marginBottom: spacing.lg }}>Welcome, {profile.displayName || profile.employeeCode || 'team member'}</Text>}
       
       <View style={styles.actions}>
         {hasSales && (

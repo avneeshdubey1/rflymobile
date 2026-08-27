@@ -1,4 +1,3 @@
-// @ts-nocheck
 import React, { useState } from 'react';
 import { View, Text, TextInput, Button, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import { colors, spacing } from '../../theme/tokens';
@@ -17,9 +16,7 @@ export default function FarmerPhoneScreen({ navigation }: any) {
     setLoading(true);
     try {
       const res = await farmerApi.requestOtp(phone);
-      if (res.success) {
-        navigation.navigate('FarmerOTP', { phone });
-      }
+      navigation.navigate('FarmerOTP', { phone, challengeId: res.challengeId });
     } catch (err: any) {
       Alert.alert('Error', err.data?.error?.message || 'Failed to send OTP');
     } finally {

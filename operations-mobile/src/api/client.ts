@@ -23,7 +23,7 @@ export async function getInstallationKey(): Promise<string> {
 
 export async function getPlatformInfo() {
   return {
-    platform: Platform.OS,
+    platform: Platform.OS.toUpperCase(),
     appVersion: Application.nativeApplicationVersion || '1.0.0',
     deviceLabel: Device.modelName || 'Unknown Device',
     installationKey: await getInstallationKey(),
@@ -62,11 +62,9 @@ export async function fetchApi<T>(endpoint: string, options: RequestInit = {}, s
     if (cacheConfig && userId && (!options.method || options.method === 'GET')) {
       const cached = await getCache(cacheConfig.dataset, cacheConfig.key, userId);
       if (cached) {
-        if (cached.isStale) {
-          console.warn(`Returning STALE offline cache for ${endpoint}`);
-          cached.data._isStale = true; // Inject stale marker if the caller cares
-        }
-        return cached.data as T;
+        return (cached.isStale && cached.data && typeof cached.data === 'object'
+          ? { ...cached.data, _isStale: true }
+          : cached.data) as T;
       }
     }
     throw classifyError(0, { error: { message: 'Network offline' } });
@@ -87,7 +85,6 @@ export async function fetchApi<T>(endpoint: string, options: RequestInit = {}, s
   if (schema) {
     const result = schema.safeParse(data);
     if (!result.success) {
-      console.error('Schema validation failed for endpoint:', endpoint, result.error);
       throw classifyError(500, { error: { message: 'Invalid response schema from server' } });
     } else {
       data = result.data;

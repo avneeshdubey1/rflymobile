@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { API_URL as API } from "../config";
 import { SkeletonTableRows } from "./Skeleton";
 import "./RegisteredFarmers.css";
@@ -10,7 +10,19 @@ function RegisteredFarmers() {
     const [currentPage, setCurrentPage] = useState(1);
     const [totalFarmers, setTotalFarmers] = useState(0);
     const [totalPages, setTotalPages] = useState(0);
+    const [loadError, setLoadError] = useState("");
+    const [refreshVersion, setRefreshVersion] = useState(0);
     const farmersPerPage = 10;
+
+    const requestRefresh = useCallback(() => {
+        setCurrentPage(1);
+        setRefreshVersion((version) => version + 1);
+    }, []);
+
+    useEffect(() => {
+        window.addEventListener('rfly:customers-changed', requestRefresh);
+        return () => window.removeEventListener('rfly:customers-changed', requestRefresh);
+    }, [requestRefresh]);
 
     useEffect(() => {
         const controller = new AbortController();
@@ -24,6 +36,7 @@ function RegisteredFarmers() {
                 });
                 const response = await fetch(`${API}/api/customers/sales?${params}`, {
                     signal: controller.signal,
+                    credentials: 'include',
                 });
                 const data = await response.json().catch(() => ({}));
 
@@ -31,8 +44,12 @@ function RegisteredFarmers() {
                 setFarmers(data.customers || []);
                 setTotalFarmers(data.pagination?.total || 0);
                 setTotalPages(data.pagination?.totalPages || 0);
+                setLoadError("");
             } catch (error) {
-                if (error.name !== "AbortError") console.error("Failed to fetch farmers:", error);
+                if (error.name !== "AbortError") {
+                    console.error("Failed to fetch farmers:", error);
+                    setLoadError(error.message || "Failed to load registered customers.");
+                }
             } finally {
                 if (!controller.signal.aborted) setLoading(false);
             }
@@ -41,7 +58,7 @@ function RegisteredFarmers() {
             clearTimeout(timer);
             controller.abort();
         };
-    }, [currentPage, search]);
+    }, [currentPage, refreshVersion, search]);
     const indexOfFirstFarmer = (currentPage - 1) * farmersPerPage;
     const indexOfLastFarmer = indexOfFirstFarmer + farmers.length;
 
@@ -79,6 +96,7 @@ function RegisteredFarmers() {
                 />
             </div>
             <div className="panel-body">
+                {loadError && <div className="notice notice--error" role="alert">{loadError}</div>}
                 <div className="table-scroll">
                     <table className="table">
                         <thead>

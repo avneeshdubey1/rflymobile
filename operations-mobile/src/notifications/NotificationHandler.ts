@@ -1,22 +1,33 @@
-// Stub for expo-notifications since we don't want to install the actual heavy library right now
-// It demonstrates how the standard push maps correctly to the OC-01 schema format.
+import * as Notifications from 'expo-notifications';
+import { Platform } from 'react-native';
 
 export const NotificationHandler = {
   configure() {
-    console.log('Push notifications configured for foreground/background');
+    Notifications.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowAlert: true,
+        shouldShowBanner: true,
+        shouldShowList: true,
+        shouldPlaySound: true,
+        shouldSetBadge: true,
+      }),
+    });
+
+    if (Platform.OS === 'android') {
+      void Notifications.setNotificationChannelAsync('operations-updates', {
+        name: 'default',
+        importance: Notifications.AndroidImportance.MAX,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: '#FF231F7C',
+      });
+    }
   },
   
-  handleIncoming(notification: any) {
+  parseIncoming(notification: Notifications.Notification) {
     const { data } = notification.request.content;
     
     // Check if it maps to OC-01 schema (e.g., contains standard operations payload)
-    if (data.requestId && data.type) {
-      console.log('Received OC-01 compliant push notification', data);
-      
-      // Additional routing logic based on notification type
-      // e.g. Navigate to RequestDetail if type === 'REQUEST_UPDATE'
-    } else {
-      console.log('Non-standard push notification received');
-    }
+    if (!data || typeof data.requestId !== 'string' || typeof data.type !== 'string') return null;
+    return { requestId: data.requestId, type: data.type };
   }
 };

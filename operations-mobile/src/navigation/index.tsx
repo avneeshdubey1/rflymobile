@@ -50,16 +50,13 @@ const Stack = createNativeStackNavigator();
 export const navigationRef = createNavigationContainerRef<any>();
 
 export default function AppNavigator() {
-  const { isHydrated, hydrate, token, logout, setProfile } = useAuthStore();
+  const { isHydrated, hydrate, token, profile, capabilities, logout, setProfile } = useAuthStore();
   const [isBootstrapping, setIsBootstrapping] = useState(true);
   
   useEffect(() => {
     setAuthInterceptors(
       () => {
-        logout();
-        if (navigationRef.isReady()) {
-          navigationRef.navigate('Login');
-        }
+        void logout();
       },
       () => {
         if (navigationRef.isReady()) {
@@ -75,11 +72,9 @@ export default function AppNavigator() {
       if (storedToken) {
         try {
           const bootstrap = await authApi.bootstrap();
-          setProfile(bootstrap.user, bootstrap.capabilities);
-        } catch (e: any) {
-          if (e.status === 401) {
-            await logout();
-          }
+          setProfile(bootstrap.profile, bootstrap.capabilities);
+        } catch (_error) {
+          await logout();
         }
       }
       setIsBootstrapping(false);
@@ -91,49 +86,68 @@ export default function AppNavigator() {
     return <LoadingScreen />;
   }
 
+  const role = profile?.role;
+  const initialRoute = !token
+    ? 'Login'
+    : role === 'FARMER'
+      ? 'FarmerDashboard'
+      : role === 'BUSINESS'
+        ? 'BusinessDashboard'
+        : ['ADMIN', 'FLEET_MANAGER', 'SALES'].includes(role || '')
+          ? 'RoleShell'
+          : 'AccessDenied';
+
   return (
     <NavigationContainer ref={navigationRef}>
-      <Stack.Navigator initialRouteName={token ? "RoleShell" : "Login"} screenOptions={{ headerShown: true }}>
-        <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
-        <Stack.Screen name="RoleShell" component={RoleShellScreen} options={{ title: 'Dashboard' }} />
-        <Stack.Screen name="AccessDenied" component={AccessDeniedScreen} options={{ headerShown: false }} />
-        <Stack.Screen name="Offline" component={OfflineScreen} options={{ headerShown: false }} />
+      <Stack.Navigator key={`${token ? role : 'guest'}-navigator`} initialRouteName={initialRoute} screenOptions={{ headerShown: true }}>
+        {!token && <>
+          <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="FarmerPhone" component={FarmerPhoneScreen} options={{ title: 'Farmer Login' }} />
+          <Stack.Screen name="FarmerOTP" component={FarmerOTPScreen} options={{ title: 'Verify OTP' }} />
+          <Stack.Screen name="BusinessLogin" component={BusinessLoginScreen} options={{ title: 'Business Login' }} />
+        </>}
+
+        {token && profile?.role === 'FARMER' && <>
+          <Stack.Screen name="FarmerDashboard" component={FarmerDashboardScreen} options={{ title: 'Farmer Dashboard' }} />
+          <Stack.Screen name="ServiceRequestWizard" component={ServiceRequestWizard} options={{ title: 'New Request' }} />
+        </>}
+
+        {token && profile?.role === 'BUSINESS' && <>
+          <Stack.Screen name="BusinessDashboard" component={BusinessDashboardScreen} options={{ title: 'B2B Dashboard' }} />
+          <Stack.Screen name="LinkedRequestList" component={LinkedRequestListScreen} options={{ title: 'Linked Requests' }} />
+          <Stack.Screen name="LinkedRequestDetail" component={LinkedRequestDetailScreen} options={{ title: 'Request Detail' }} />
+          <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ title: 'Notifications' }} />
+          <Stack.Screen name="Profile" component={ProfileScreen} options={{ title: 'Organization Profile' }} />
+        </>}
+
+        {token && ['ADMIN', 'FLEET_MANAGER', 'SALES'].includes(profile?.role || '') && <>
+          <Stack.Screen name="RoleShell" component={RoleShellScreen} options={{ title: 'Dashboard' }} />
+          {capabilities.includes('SALES_INTAKE') && <>
+            <Stack.Screen name="SalesDashboard" component={SalesDashboardScreen} options={{ title: 'Customers' }} />
+            <Stack.Screen name="CustomerDetail" component={CustomerDetailScreen} options={{ title: 'Customer Details' }} />
+            <Stack.Screen name="CreateCustomer" component={CreateCustomerScreen} options={{ title: 'New Customer' }} />
+            <Stack.Screen name="CreateLead" component={CreateLeadScreen} options={{ title: 'New Lead' }} />
+          </>}
+          {capabilities.includes('FLEET_SCHEDULE') && <>
+            <Stack.Screen name="FleetDashboard" component={FleetDashboardScreen} options={{ title: 'Fleet Operations' }} />
+            <Stack.Screen name="FleetSchedule" component={FleetScheduleScreen} options={{ title: 'Daily Schedule' }} />
+            <Stack.Screen name="FleetExceptions" component={FleetExceptionsScreen} options={{ title: 'Live Exceptions' }} />
+          </>}
+          {profile?.role === 'ADMIN' && <>
+            <Stack.Screen name="CopilotOverride" component={CopilotOverrideScreen} options={{ title: 'Copilot Override' }} />
+            <Stack.Screen name="AdminDashboard" component={AdminDashboardScreen} options={{ title: 'Admin Controls' }} />
+            <Stack.Screen name="TeamManagement" component={TeamManagementScreen} options={{ title: 'Team Directory' }} />
+            <Stack.Screen name="AssetManagement" component={AssetManagementScreen} options={{ title: 'Assets & Drones' }} />
+            <Stack.Screen name="RegionManagement" component={RegionManagementScreen} options={{ title: 'Feasible Regions' }} />
+            <Stack.Screen name="PolicyManagement" component={PolicyManagementScreen} options={{ title: 'Assignment Policy' }} />
+            <Stack.Screen name="MasterDataManagement" component={MasterDataManagementScreen} options={{ title: 'Master Data' }} />
+          </>}
+        </>}
+
+        {token && profile && !['ADMIN', 'FLEET_MANAGER', 'SALES', 'FARMER', 'BUSINESS'].includes(profile.role) &&
+          <Stack.Screen name="AccessDenied" component={AccessDeniedScreen} options={{ headerShown: false }} />}
+        {token && <Stack.Screen name="Offline" component={OfflineScreen} options={{ headerShown: false }} />}
         <Stack.Screen name="MandatoryUpgrade" component={MandatoryUpgradeScreen} options={{ headerShown: false }} />
-        <Stack.Screen name="Loading" component={LoadingScreen} options={{ headerShown: false }} />
-        
-        {/* Sales Stack */}
-        <Stack.Screen name="SalesDashboard" component={SalesDashboardScreen} options={{ title: 'Customers' }} />
-        <Stack.Screen name="CustomerDetail" component={CustomerDetailScreen} options={{ title: 'Customer Details' }} />
-        <Stack.Screen name="CreateCustomer" component={CreateCustomerScreen} options={{ title: 'New Customer' }} />
-        <Stack.Screen name="CreateLead" component={CreateLeadScreen} options={{ title: 'New Lead' }} />
-        
-        {/* Fleet Stack */}
-        <Stack.Screen name="FleetDashboard" component={FleetDashboardScreen} options={{ title: 'Fleet Operations' }} />
-        <Stack.Screen name="FleetSchedule" component={FleetScheduleScreen} options={{ title: 'Daily Schedule' }} />
-        <Stack.Screen name="FleetExceptions" component={FleetExceptionsScreen} options={{ title: 'Live Exceptions' }} />
-        <Stack.Screen name="CopilotOverride" component={CopilotOverrideScreen} options={{ title: 'Copilot Override' }} />
-
-        {/* Admin Stack */}
-        <Stack.Screen name="AdminDashboard" component={AdminDashboardScreen} options={{ title: 'Admin Controls' }} />
-        <Stack.Screen name="TeamManagement" component={TeamManagementScreen} options={{ title: 'Team Directory' }} />
-        <Stack.Screen name="AssetManagement" component={AssetManagementScreen} options={{ title: 'Assets & Drones' }} />
-        <Stack.Screen name="RegionManagement" component={RegionManagementScreen} options={{ title: 'Feasible Regions' }} />
-        <Stack.Screen name="PolicyManagement" component={PolicyManagementScreen} options={{ title: 'Assignment Policy' }} />
-        <Stack.Screen name="MasterDataManagement" component={MasterDataManagementScreen} options={{ title: 'Master Data' }} />
-
-        {/* Farmer Stack */}
-        <Stack.Screen name="FarmerPhone" component={FarmerPhoneScreen} options={{ title: 'Farmer Login' }} />
-        <Stack.Screen name="FarmerOTP" component={FarmerOTPScreen} options={{ title: 'Verify OTP' }} />
-        <Stack.Screen name="FarmerDashboard" component={FarmerDashboardScreen} options={{ title: 'Farmer Dashboard' }} />
-        <Stack.Screen name="ServiceRequestWizard" component={ServiceRequestWizard} options={{ title: 'New Request' }} />
-        
-        {/* Business Stack */}
-        <Stack.Screen name="BusinessLogin" component={BusinessLoginScreen} options={{ title: 'Business Login' }} />
-        <Stack.Screen name="BusinessDashboard" component={BusinessDashboardScreen} options={{ title: 'B2B Dashboard' }} />
-        <Stack.Screen name="LinkedRequestList" component={LinkedRequestListScreen} options={{ title: 'Linked Requests' }} />
-        <Stack.Screen name="LinkedRequestDetail" component={LinkedRequestDetailScreen} options={{ title: 'Request Detail' }} />
-        <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ title: 'Notifications' }} />
-        <Stack.Screen name="Profile" component={ProfileScreen} options={{ title: 'Organization Profile' }} />
       </Stack.Navigator>
     </NavigationContainer>
   );

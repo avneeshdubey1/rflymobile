@@ -2,6 +2,7 @@ const express = require('express');
 const controller = require('../controllers/mobileAuthController');
 const assignmentController = require('../controllers/mobileAssignmentController');
 const operationsController = require('../controllers/mobileOperationsController');
+const masterDataController = require('../controllers/masterDataController');
 const { authenticateMobile, requireMobileApp, requireMobileRole } = require('../middleware/mobileAuth');
 
 const router = express.Router();
@@ -9,6 +10,7 @@ const router = express.Router();
 router.post('/pilot/auth/login', controller.login('PILOT_FIELD'));
 router.post('/operations/auth/login', controller.login('OPERATIONS'));
 router.post('/operations/auth/farmer/request-otp', controller.requestFarmerOtp);
+router.post('/operations/auth/farmer/resend-otp', controller.resendFarmerOtp);
 router.post('/operations/auth/farmer/verify-otp', controller.verifyFarmerOtp);
 router.post('/operations/auth/business/login', controller.businessLogin);
 router.use(authenticateMobile);
@@ -27,6 +29,7 @@ router.post('/pilot/assignments/:assignmentId/copilot', requireMobileApp('PILOT_
 router.post('/pilot/assignments/:assignmentId/actions', requireMobileApp('PILOT_FIELD'), assignmentController.mutate);
 router.post('/pilot/assignments/:assignmentId/location', requireMobileApp('PILOT_FIELD'), assignmentController.recordLocation);
 router.get('/operations/bootstrap', requireMobileApp('OPERATIONS'), controller.bootstrap);
+router.get('/operations/master-data/choices', requireMobileApp('OPERATIONS'), requireMobileRole('ADMIN', 'FLEET_MANAGER', 'SALES', 'FARMER'), masterDataController.choices);
 router.get('/operations/sales/customers', requireMobileApp('OPERATIONS'), requireMobileRole('ADMIN', 'FLEET_MANAGER', 'SALES'), operationsController.searchCustomers);
 router.get('/operations/sales/customers/by-phone', requireMobileApp('OPERATIONS'), requireMobileRole('ADMIN', 'FLEET_MANAGER', 'SALES'), operationsController.findCustomerByPhone);
 router.post('/operations/sales/customers', requireMobileApp('OPERATIONS'), requireMobileRole('ADMIN', 'SALES'), operationsController.createCustomer);
@@ -39,7 +42,8 @@ router.get('/operations/business/dashboard', requireMobileApp('OPERATIONS'), req
 router.get('/operations/business/requests', requireMobileApp('OPERATIONS'), requireMobileRole('BUSINESS'), operationsController.businessRequests);
 router.get('/operations/business/notifications', requireMobileApp('OPERATIONS'), requireMobileRole('BUSINESS'), operationsController.businessNotifications);
 router.get('/operations/business/profile', requireMobileApp('OPERATIONS'), requireMobileRole('BUSINESS'), operationsController.businessProfile);
-router.post('/operations/assignments/:assignmentId/copilot-override', requireMobileApp('OPERATIONS'), assignmentController.overrideCopilot);
+router.get('/operations/assignments/:assignmentId/eligible-copilots', requireMobileApp('OPERATIONS'), requireMobileRole('ADMIN'), assignmentController.eligibleCopilotsForOperations);
+router.post('/operations/assignments/:assignmentId/copilot-override', requireMobileApp('OPERATIONS'), requireMobileRole('ADMIN'), assignmentController.overrideCopilot);
 
 
 // Phase 6B: Admin Operational Routes mapped from existing controllers
@@ -47,7 +51,7 @@ const userController = require('../controllers/userController');
 const droneController = require('../controllers/droneController');
 const lmvController = require('../controllers/lmvController');
 
-router.get('/operations/admin/users', requireMobileApp('OPERATIONS'), requireMobileRole('ADMIN'), userController.getAllUsers);
+router.get('/operations/admin/users', requireMobileApp('OPERATIONS'), requireMobileRole('ADMIN', 'FLEET_MANAGER'), userController.getAllUsers);
 router.post('/operations/admin/users', requireMobileApp('OPERATIONS'), requireMobileRole('ADMIN', 'FLEET_MANAGER'), userController.addUser);
 router.patch('/operations/admin/users/:id', requireMobileApp('OPERATIONS'), requireMobileRole('ADMIN', 'FLEET_MANAGER'), userController.updateUser);
 router.patch('/operations/admin/users/:id/operating-center', requireMobileApp('OPERATIONS'), requireMobileRole('ADMIN', 'FLEET_MANAGER'), userController.updatePilotOperatingCenter);
@@ -64,7 +68,6 @@ router.patch('/operations/admin/lmvs/:id', requireMobileApp('OPERATIONS'), requi
 // Phase 6C: Regions, Policies, Master Data
 const centerController = require('../controllers/centerController');
 const policyController = require('../controllers/autoAssignmentPolicyController');
-const masterDataController = require('../controllers/masterDataController');
 
 // Regions
 router.get('/operations/admin/regions', requireMobileApp('OPERATIONS'), requireMobileRole('ADMIN', 'FLEET_MANAGER'), centerController.getAllCenters);
