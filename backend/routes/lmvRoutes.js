@@ -8,5 +8,6 @@ router.get('/all', authenticate, authorize('ADMIN', 'FLEET_MANAGER'), lmvControl
 router.post('/add', authenticate, authorize('ADMIN', 'FLEET_MANAGER'), lmvController.addLmv);
 router.put('/:id', authenticate, authorize('ADMIN', 'FLEET_MANAGER'), lmvController.updateLmv);
 router.post('/update-status', authenticate, authorize('ADMIN', 'FLEET_MANAGER'), lmvController.updateStatus);
+router.delete('/:id', authenticate, authorize('ADMIN', 'FLEET_MANAGER'), lmvController.deleteLmv);
 
 module.exports = router;

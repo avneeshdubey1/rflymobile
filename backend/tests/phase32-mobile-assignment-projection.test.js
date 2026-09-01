@@ -6,6 +6,7 @@ const prisma = require('../src/lib/prisma');
 const assignments = require('../src/repositories/assignmentOperationRepository');
 const { hashPassword } = require('../services/passwordService');
 const { purgeExpired } = require('../jobs/mobileAssignmentChangePurgeJob');
+const { issueToken } = require('../middleware/auth');
 
 const runId = `${process.pid}-${Date.now()}`;
 const ids = { centers: [], users: [], drones: [], lmvs: [], leads: [], assignments: [], installations: [] };
@@ -328,6 +329,7 @@ test('controlled issue reporting is idempotent, coordinate-free and visible to F
     action: 'REPORT_ISSUE',
     expectedRevision: revision,
     issueCategory: 'DRONE_MALFUNCTION',
+    maintenanceReasonCode: 'PROPELLER_DAMAGED',
     issueNote: 'Motor vibration exceeded the safe operating limit.',
   };
   const reported = await request(`/api/mobile/v1/pilot/assignments/${scheduled.assignment.id}/actions`, {
@@ -346,6 +348,84 @@ test('controlled issue reporting is idempotent, coordinate-free and visible to F
   assert.equal((await prisma.lMV.findUnique({ where: { id: lmv.id } })).status, 'AVAILABLE');
   assert.equal(await prisma.auditLog.count({ where: { entityId: scheduled.assignment.id, action: 'MISSION_ISSUE_REPORTED' } }), 1);
   assert.ok(await prisma.notification.findFirst({ where: { leadId: lead.id, type: 'MISSION_FLAGGED' } }));
+
+  const maintenance = await prisma.assetMaintenanceRequest.findFirst({
+    where: { assignmentId: scheduled.assignment.id, droneId: drone.id },
+  });
+  assert.ok(maintenance, 'asset issue must create an attributable maintenance request');
+  assert.equal(maintenance.status, 'PENDING');
+  assert.equal(maintenance.reasonCode, 'PROPELLER_DAMAGED');
+  assert.equal(maintenance.requestedById, primary.id);
+
+  const denied = await request('/api/maintenance-requests', { token: issueToken(primary) });
+  assert.equal(denied.response.status, 403);
+  const listed = await request('/api/maintenance-requests?status=PENDING', { token: issueToken(fleet) });
+  assert.equal(listed.response.status, 200, JSON.stringify(listed.data));
+  assert.ok(listed.data.requests.some((item) => item.id === maintenance.id));
+  const accepted = await request(`/api/maintenance-requests/${maintenance.id}/accept`, {
+    method: 'POST', token: issueToken(fleet), body: { note: 'Fleet inspection accepted.' },
+  });
+  assert.equal(accepted.response.status, 200, JSON.stringify(accepted.data));
+  assert.equal(accepted.data.request.processedBy.id, fleet.id);
+  const resolved = await request(`/api/maintenance-requests/${maintenance.id}/resolve`, {
+    method: 'POST', token: issueToken(admin), body: { note: 'Motor isolated for workshop repair.', returnToService: false },
+  });
+  assert.equal(resolved.response.status, 200, JSON.stringify(resolved.data));
+  assert.equal(resolved.data.request.resolvedBy.id, admin.id);
+  assert.equal((await prisma.drone.findUnique({ where: { id: drone.id } })).status, 'MAINTENANCE');
+});
+
+test('LMV malfunction reports quarantine the vehicle without quarantining the drone', async () => {
+  const [missionDrone, missionLmv, lead] = await Promise.all([
+    prisma.drone.create({
+      data: { name: 'P32 LMV Issue Drone', model: 'P32', serialNumber: `P32-LMV-ISSUE-D-${runId}`, homeCenterId: center.id, status: 'ASSIGNED', availabilityState: 'ASSIGNED' },
+    }),
+    prisma.lMV.create({
+      data: { registrationNo: `P32-LMV-ISSUE-${runId}`, label: 'P32 Issue Vehicle', homeCenterId: center.id, status: 'ASSIGNED', availabilityState: 'ASSIGNED' },
+    }),
+    prisma.lead.create({
+      data: {
+        farmerName: 'P32 LMV Issue Farmer', farmerPhone: '+919000000034', farmerAddress: 'P32 LMV Issue Farm', acreage: 2,
+        intakeChannel: 'MANUAL_SALES', status: 'IN_PROGRESS', latitude: 11.5004, longitude: 77.2004, matchedCenterId: center.id,
+      },
+    }),
+  ]);
+  ids.drones.push(missionDrone.id);
+  ids.lmvs.push(missionLmv.id);
+  ids.leads.push(lead.id);
+  const issueAssignment = await prisma.assignment.create({
+    data: {
+      leadId: lead.id,
+      pilotId: primary.id,
+      copilotId: outsider.id,
+      droneId: missionDrone.id,
+      lmvId: missionLmv.id,
+      scheduledDate: new Date(Date.now() + 72 * 60 * 60_000),
+      serviceWindowStart: new Date(Date.now() + 72 * 60 * 60_000),
+      serviceWindowEnd: new Date(Date.now() + 74 * 60 * 60_000),
+      dailySequence: 1,
+      expectedAcreage: 2,
+    },
+  });
+  ids.assignments.push(issueAssignment.id);
+
+  const reported = await request(`/api/mobile/v1/pilot/assignments/${issueAssignment.id}/actions`, {
+    method: 'POST', token: primaryToken,
+    body: {
+      clientActionId: crypto.randomUUID(),
+      action: 'REPORT_ISSUE',
+      expectedRevision: issueAssignment.revision,
+      issueCategory: 'LMV_MALFUNCTION',
+      maintenanceReasonCode: 'TYRE_ISSUE',
+      issueNote: 'Rear tyre is damaged and the vehicle cannot continue safely.',
+    },
+  });
+  assert.equal(reported.response.status, 200, JSON.stringify(reported.data));
+  assert.equal((await prisma.lMV.findUnique({ where: { id: missionLmv.id } })).status, 'MAINTENANCE');
+  assert.equal((await prisma.drone.findUnique({ where: { id: missionDrone.id } })).status, 'AVAILABLE');
+  const maintenance = await prisma.assetMaintenanceRequest.findFirst({ where: { assignmentId: issueAssignment.id } });
+  assert.equal(maintenance.assetType, 'LMV');
+  assert.equal(maintenance.reasonCode, 'TYRE_ISSUE');
 });
 
 test('cursor sync returns bounded changes and a tombstone after assignment removal', async () => {
@@ -405,6 +485,7 @@ test.after(async () => {
   await prisma.mobileAssignmentChange.deleteMany({ where: { userId: { in: ids.users } } });
   await prisma.notificationEscalation.deleteMany({ where: { assignmentId: { in: ids.assignments } } });
   await prisma.notification.deleteMany({ where: { leadId: { in: ids.leads } } });
+  await prisma.assetMaintenanceRequest.deleteMany({ where: { assignmentId: { in: ids.assignments } } });
   await prisma.auditLog.deleteMany({ where: { entityId: { in: [...ids.assignments, ...ids.leads] } } });
   await prisma.$transaction(async (transaction) => {
     await transaction.$queryRaw`SELECT set_config('rfly.allow_history_mutation', 'on', true)`;

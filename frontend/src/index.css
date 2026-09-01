@@ -1,26 +1,26 @@
 @import "tailwindcss";
 :root {
     color-scheme: light;
-    --canvas: #e9eee6;
-    --canvas-deep: #dce5da;
-    --surface: #f7f6f0;
-    --surface-raised: #fffdf7;
-    --surface-sage: #e2eadf;
-    --surface-muted: #edf1ea;
-    --sidebar: #17271f;
-    --sidebar-raised: #20362b;
-    --text-primary: #17221b;
-    --text-secondary: #617067;
-    --text-faint: #7f8b83;
-    --text-inverse: #f5f7f1;
-    --border: #c9d3c7;
-    --border-strong: #aebdaf;
-    --primary: #2e6b4d;
-    --primary-hover: #24563e;
-    --primary-soft: #d6e8da;
-    --accent: #c48a2c;
-    --accent-dark: #7b5518;
-    --accent-soft: #f3e5c8;
+    --canvas: #f8f9fa;
+    --canvas-deep: #eef1f5;
+    --surface: #f8f9fa;
+    --surface-raised: #ffffff;
+    --surface-sage: #e9eef5;
+    --surface-muted: #f1f3f6;
+    --sidebar: #04162e;
+    --sidebar-raised: #1a2b44;
+    --text-primary: #04162e;
+    --text-secondary: #536174;
+    --text-faint: #718096;
+    --text-inverse: #f8f9fa;
+    --border: #d7dce3;
+    --border-strong: #b8c0cc;
+    --primary: #04162e;
+    --primary-hover: #1a2b44;
+    --primary-soft: #e9eef5;
+    --accent: #fe6b00;
+    --accent-dark: #a04100;
+    --accent-soft: #fff0e5;
     --danger: #b44a40;
     --danger-dark: #84342e;
     --danger-soft: #f5ddda;
@@ -28,12 +28,12 @@
     --success-soft: #dcecdf;
     --info: #3e7086;
     --info-soft: #dce9ee;
-    --shadow-sm: 0 1px 2px rgba(23, 39, 31, 0.08);
-    --shadow-md: 0 10px 28px rgba(23, 39, 31, 0.08), 0 2px 5px rgba(23, 39, 31, 0.04);
-    --shadow-lg: 0 24px 60px rgba(15, 33, 24, 0.16);
-    --radius-sm: 9px;
-    --radius-md: 14px;
-    --radius-lg: 20px;
+    --shadow-sm: 0 1px 2px rgba(4, 22, 46, 0.06);
+    --shadow-md: 0 8px 24px rgba(4, 22, 46, 0.08);
+    --shadow-lg: 0 18px 50px rgba(4, 22, 46, 0.14);
+    --radius-sm: 8px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
 }
 
 * {
@@ -53,7 +53,7 @@ body {
     min-height: 100vh;
     background: var(--canvas);
     color: var(--text-primary);
-    font-family: "Segoe UI Variable", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family: Inter, "Segoe UI Variable", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
     font-size: 15px;
     line-height: 1.5;
     text-rendering: optimizeLegibility;
@@ -83,7 +83,7 @@ a:focus-visible,
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
-    box-shadow: 0 0 0 3px rgba(46, 107, 77, 0.24);
+    box-shadow: 0 0 0 3px rgba(254, 107, 0, 0.25);
 }
 
 h1,
@@ -94,7 +94,7 @@ h5,
 h6 {
     margin: 0;
     color: inherit;
-    font-family: "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
+    font-family: "Plus Jakarta Sans", Inter, "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
     letter-spacing: -0.025em;
     line-height: 1.2;
 }
@@ -145,7 +145,7 @@ input:focus,
 select:focus,
 textarea:focus {
     border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(46, 107, 77, 0.14);
+    box-shadow: 0 0 0 3px rgba(254, 107, 0, 0.16);
 }
 
 input:disabled,
@@ -690,6 +690,10 @@ textarea:disabled {
     gap: 0.34rem;
     flex: 1;
     padding: 0.35rem 0;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
 }
 
 .ops-nav button {
@@ -1160,9 +1164,26 @@ textarea:disabled {
 
 .fleet-layout {
     display: grid;
-    grid-template-columns: minmax(250px, 320px) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
     gap: 1rem;
     align-items: start;
+}
+
+.crew-scheduling-panel {
+    min-width: 0;
+}
+
+.crew-schedule-form {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: start;
+}
+
+.crew-schedule-form > .button-row,
+.crew-schedule-form > .panel-title-row,
+.crew-schedule-form > .notice,
+.crew-schedule-form > .caption,
+.crew-schedule-form > .button-wide {
+    grid-column: 1 / -1;
 }
 
 .queue-card {
@@ -1199,6 +1220,104 @@ textarea:disabled {
 .calendar-stage {
     height: 70vh;
     min-height: 560px;
+}
+
+.calendar-toolbar-premium {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.8rem;
+}
+
+.calendar-toolbar-premium__navigation,
+.calendar-toolbar-premium__tools {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.calendar-toolbar-premium button,
+.calendar-toolbar-premium input {
+    min-height: 40px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+}
+
+.calendar-toolbar-premium button {
+    padding: 0.5rem 0.78rem;
+    color: var(--text-primary);
+    font-weight: 750;
+}
+
+.calendar-toolbar-premium button:hover,
+.calendar-toolbar-premium button:focus-visible,
+.calendar-toolbar-premium button.is-active {
+    color: #fff;
+    border-color: var(--primary);
+    background: var(--primary);
+}
+
+.calendar-toolbar-premium__navigation strong {
+    min-width: 150px;
+    text-align: center;
+}
+
+.calendar-toolbar-premium__tools label {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    color: var(--text-secondary);
+    font-size: 0.78rem;
+    font-weight: 750;
+}
+
+.calendar-toolbar-premium input {
+    width: auto;
+    padding: 0.4rem 0.6rem;
+}
+
+.calendar-popout-action {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 0.8rem;
+}
+
+.calendar-popout-action .action-btn {
+    text-decoration: none;
+}
+
+.calendar-popout-page {
+    min-height: 100vh;
+    padding: clamp(0.85rem, 2vw, 1.6rem);
+    background: var(--canvas);
+}
+
+.calendar-popout-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    max-width: 1800px;
+    margin: 0 auto 1rem;
+}
+
+.calendar-popout-header h1 {
+    margin: 0.1rem 0 0.25rem;
+}
+
+.calendar-popout-panel {
+    max-width: 1800px;
+    margin: 0 auto;
+    padding: 0.8rem;
+}
+
+.calendar-popout-panel .calendar-stage {
+    height: calc(100vh - 190px);
+    min-height: 650px;
 }
 
 .rbc-calendar {
@@ -1354,6 +1473,51 @@ textarea:disabled {
 
 .mission-actions input {
     max-width: 190px;
+}
+
+.copilot-selection-dialog {
+    width: min(620px, calc(100vw - 2rem));
+}
+
+.copilot-candidate-list {
+    display: grid;
+    max-height: min(46vh, 390px);
+    gap: 0.55rem;
+    padding-right: 0.2rem;
+    overflow-y: auto;
+}
+
+.copilot-candidate {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-height: 64px;
+    padding: 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface);
+    cursor: pointer;
+}
+
+.copilot-candidate:hover,
+.copilot-candidate.is-selected {
+    border-color: var(--primary);
+    background: var(--primary-soft);
+}
+
+.copilot-candidate input {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--primary);
+}
+
+.copilot-candidate span {
+    display: grid;
+    gap: 0.15rem;
+}
+
+.copilot-candidate small {
+    color: var(--text-secondary);
 }
 
 
@@ -1826,7 +1990,7 @@ tbody tr[aria-selected="true"] {
     min-width: 130px;
     color: #eef5ef;
     border-color: rgba(255, 255, 255, 0.2);
-    background: #21372b;
+    background: var(--sidebar-raised);
 }
 
 .navbar .login-btn {
@@ -1836,7 +2000,7 @@ tbody tr[aria-selected="true"] {
 }
 
 .navbar .login-btn:hover {
-    color: #17271f;
+    color: var(--sidebar);
     border-color: #e5c782;
     background: #e5c782;
 }
@@ -1855,7 +2019,7 @@ tbody tr[aria-selected="true"] {
     padding: clamp(2.5rem, 6vw, 6.5rem);
     overflow: hidden;
     color: var(--text-inverse);
-    background: linear-gradient(155deg, #244232, #17271f 72%);
+    background: linear-gradient(155deg, var(--sidebar-raised), var(--sidebar) 72%);
 }
 
 .hero-intro::before {
@@ -2861,7 +3025,7 @@ tbody tr[aria-selected="true"] {
 }
 
 .status-step.active strong {
-    color: #2e6b4d;
+    color: var(--primary);
 }
 
 .request-info {
@@ -3095,4 +3259,276 @@ tbody tr[aria-selected="true"] {
     font-weight: 600;
     color: #374151;
     white-space: nowrap;
+}
+
+/* Release 1 operations refinement: bounded fleet lists and accountable maintenance. */
+.fleet-scroll-region,
+.admin-fleet-grid .data-stack {
+    max-height: min(58vh, 640px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+}
+
+.data-row--retired {
+    opacity: 0.68;
+    background: var(--surface-muted);
+}
+
+.asset-center-control {
+    min-width: 210px;
+}
+
+.maintenance-list {
+    display: grid;
+    gap: 0.85rem;
+}
+
+.maintenance-card {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 0.62fr);
+    gap: 1rem;
+    padding: 1rem;
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--accent);
+    border-radius: var(--radius-md);
+    background: var(--surface-raised);
+}
+
+.maintenance-card--activity {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.asset-lifecycle-dialog {
+    width: min(620px, calc(100vw - 2rem));
+}
+
+.asset-lifecycle-dialog__asset {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.8rem;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface-muted);
+}
+
+.asset-lifecycle-dialog__asset > div:last-child {
+    display: grid;
+    gap: 0.1rem;
+}
+
+.asset-lifecycle-dialog__asset span:last-child {
+    color: var(--text-secondary);
+    font-size: 0.78rem;
+}
+
+.quick-reason-fieldset {
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+
+.quick-reason-fieldset legend {
+    margin-bottom: 0.45rem;
+    color: var(--text-primary);
+    font-size: 0.82rem;
+    font-weight: 800;
+}
+
+.quick-reason-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.5rem;
+}
+
+.quick-reason-grid button {
+    min-height: 44px;
+    padding: 0.55rem 0.7rem;
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: var(--surface);
+    text-align: left;
+}
+
+.quick-reason-grid button:hover,
+.quick-reason-grid button.is-active {
+    color: var(--primary);
+    border-color: var(--primary);
+    background: var(--primary-soft);
+}
+
+.maintenance-card__summary,
+.maintenance-card__actions {
+    display: grid;
+    align-content: start;
+    gap: 0.65rem;
+}
+
+.maintenance-card__asset {
+    margin-right: 0.65rem;
+    color: var(--text-primary);
+    font-weight: 800;
+}
+
+.maintenance-card__actions textarea {
+    min-height: 82px;
+}
+
+.segmented-control {
+    display: inline-flex;
+    padding: 3px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--surface-muted);
+}
+
+.segmented-control button {
+    min-height: 40px;
+    padding: 0 1rem;
+    border: 0;
+    border-radius: 6px;
+    color: var(--text-secondary);
+    background: transparent;
+    cursor: pointer;
+}
+
+.segmented-control button.is-active {
+    color: var(--text-inverse);
+    background: var(--primary);
+}
+
+.checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    min-height: 44px;
+}
+
+.policy-preview__status {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.policy-fields {
+    display: grid;
+    gap: 0.85rem;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    transition: opacity 180ms ease, filter 180ms ease;
+}
+
+.policy-preview--disabled .policy-fields {
+    opacity: 0.48;
+    filter: grayscale(0.25);
+}
+
+.manual-queue-scroll {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 0.75rem;
+}
+
+.manual-queue-scroll .queue-card + .queue-card {
+    margin-top: 0;
+}
+
+@media (max-width: 1050px) {
+    .crew-schedule-form {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+/* Rubber-band motion keeps pointer scheduling readable without changing its server rules. */
+.calendar-stage--premium .rbc-event {
+    color: #fff;
+    background: var(--primary);
+    border-left: 4px solid var(--accent) !important;
+    box-shadow: 0 2px 8px rgba(4, 22, 46, 0.16);
+    transition: transform 220ms cubic-bezier(.2, 1.55, .45, 1), box-shadow 180ms ease, filter 180ms ease;
+    will-change: transform;
+}
+
+.calendar-stage--premium .rbc-addons-dnd-dragging {
+    cursor: grabbing;
+}
+
+.calendar-stage--premium .rbc-time-slot {
+    transition: background-color 110ms ease;
+}
+
+.calendar-stage--premium .rbc-time-slot:hover {
+    background: rgba(224, 175, 84, 0.08);
+}
+
+.calendar-stage--premium .rbc-event.calendar-event--automatic {
+    background: #1a2b44;
+}
+
+.calendar-stage--premium .rbc-event.calendar-event--manual {
+    background: #a04100;
+}
+
+.calendar-stage--premium .rbc-event:hover,
+.calendar-stage--premium .rbc-event.rbc-selected {
+    z-index: 5;
+    transform: translateY(-2px) scale(1.018);
+    box-shadow: 0 10px 24px rgba(4, 22, 46, 0.24);
+    filter: saturate(1.08);
+}
+
+.calendar-stage--premium .rbc-addons-dnd-drag-preview,
+.calendar-stage--premium .rbc-addons-dnd-dragged-event {
+    opacity: 0.9;
+    transform: scale(1.035) rotate(-0.35deg);
+    box-shadow: 0 16px 34px rgba(4, 22, 46, 0.3);
+}
+
+@media (max-width: 720px) {
+    .crew-schedule-form {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .maintenance-card {
+        grid-template-columns: 1fr;
+    }
+
+    .quick-reason-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .maintenance-board .panel-header,
+    .data-row__actions {
+        align-items: stretch;
+    }
+
+    .asset-center-control,
+    .data-row__actions > button {
+        width: 100%;
+    }
+
+    .calendar-stage--premium {
+        min-width: 720px;
+    }
+
+    .calendar-toolbar-premium,
+    .calendar-popout-header {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .calendar-toolbar-premium__navigation,
+    .calendar-toolbar-premium__tools {
+        width: 100%;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .calendar-stage--premium .rbc-event {
+        transition: none;
+    }
 }

@@ -29,12 +29,14 @@ current broad Prisma `include` graph directly.
 | Other crew member ID and display name | Coordinate the two-person unit | Assigned crew only | Device: assignment retention; no email, phone, address, proof or licence identifier |
 | Drone code/serial and LMV registration/label | Identify reserved assets | Assigned crew only for that assignment | Device: assignment retention; server: fleet master/history |
 | Bounded operational notes | Communicate safety and service instructions | Assigned crew only | Device: assignment retention; exclude CRM remarks, payment notes and unrestricted free-form histories |
+| B2C cash handover status and exact reported amount | Let assigned crew report physical cash after mission completion without approving price or invoice | Assigned crew for its own completed B2C assignment; Admin read-only reconciliation queue | Online confirmation only; immutable server record in integer minor units; no offline replay, QR payload, merchant secret or invoice state in the Pilot cache |
 | Server-calculated allowed actions | Render controls without copying policy into the app | Assigned crew only | Recomputed on every server response; never authoritative on the device |
 | Latest own synchronization state and safe receipts | Explain pending/applied/conflicted work | Owning user and installation only | Development receipt/cache retention: 24 hours after terminal assignment; production duration requires approval |
 
 The Pilot DTO must exclude password/authentication internals, personal identity
 documents, home addresses, licence identifiers, unrelated staff/customer data,
-CRM history, billing/payment data, AuditLog, provider payloads, internal
+CRM history, billing/payment data other than the narrowly allow-listed B2C cash
+handover status for the Pilot's own completed assignment, AuditLog, provider payloads, internal
 configuration, database fields, and unrestricted nested relations.
 
 The development bootstrap window is **today plus 14 upcoming days and one prior

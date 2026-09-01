@@ -45,6 +45,7 @@ export const ZFarm = z.object({
 export const ZIssue = z.object({
   category: z.enum([
     "DRONE_MALFUNCTION",
+    "LMV_MALFUNCTION",
     "SAFETY_HAZARD",
     "WEATHER_BLOCKER",
     "CUSTOMER_BLOCKER",
@@ -52,6 +53,23 @@ export const ZIssue = z.object({
   ]),
   note: z.string().min(1).max(500),
   reportedAt: ZTimestamp,
+});
+
+export const ZMaintenanceRequest = z.object({
+  id: ZUuid,
+  assetType: z.enum(["DRONE", "LMV"]),
+  reasonCode: z.enum([
+    "BATTERY_NOT_CHARGED",
+    "PROPELLER_DAMAGED",
+    "VEHICLE_BREAKDOWN",
+    "TYRE_ISSUE",
+    "ENGINE_ISSUE",
+    "ELECTRICAL_ISSUE",
+    "OTHER",
+  ]),
+  status: z.enum(["PENDING", "ACCEPTED", "REJECTED", "RESOLVED"]),
+  processedBy: z.string().min(1).max(120).nullable(),
+  updatedAt: ZTimestamp,
 });
 
 export const ZDrone = z.object({
@@ -74,7 +92,17 @@ export const ZAssignmentAllowedAction = z.enum([
   "COMPLETE",
   "REPORT_ISSUE",
   "SEND_LOCATION",
+  "COLLECT_PAYMENT",
 ]);
+
+export const ZCashCollection = z.object({
+  id: ZUuid,
+  amount: ZDecimal,
+  currencyCode: z.string().regex(/^[A-Z]{3}$/),
+  method: z.literal("CASH"),
+  reviewStatus: z.enum(["PENDING_REVIEW", "CONFIRMED", "VOIDED"]),
+  recordedAt: ZTimestamp,
+});
 
 export const ZAssignment = z.object({
   id: ZUuid,
@@ -88,6 +116,7 @@ export const ZAssignment = z.object({
     "CANCELLED",
     "FLAGGED",
   ]),
+  requestType: z.enum(["B2B", "B2C"]).nullable(),
   crewFormationState: z.enum([
     "PENDING_COPILOT_SELECTION",
     "READY",
@@ -102,6 +131,8 @@ export const ZAssignment = z.object({
   expectedAcreage: ZDecimal,
   actualAcreage: ZDecimal.nullable(),
   issue: ZIssue.nullable(),
+  maintenanceRequest: ZMaintenanceRequest.nullable(),
+  cashCollection: ZCashCollection.nullable(),
   crew: z.array(ZCrewMember).min(1).max(2),
   drone: ZDrone,
   lmv: ZLmv.nullable(),
@@ -119,6 +150,12 @@ export const ZAssignmentListResponse = z.object({
 export const ZAssignmentResponse = z.object({
   success: z.literal(true),
   assignment: ZAssignment,
+});
+
+export const ZCashCollectionResponse = z.object({
+  success: z.literal(true),
+  outcome: z.enum(["RECORDED", "ALREADY_RECORDED"]),
+  collection: ZCashCollection,
 });
 
 export const ZPilotAvailabilityResponse = z.object({
@@ -245,6 +282,15 @@ export const ZMutationRequest = z
     expectedRevision: z.number().int().min(1),
     actualAcreage: ZDecimal.optional(),
     issueCategory: ZIssue.shape.category.optional(),
+    maintenanceReasonCode: z.enum([
+      "BATTERY_NOT_CHARGED",
+      "PROPELLER_DAMAGED",
+      "VEHICLE_BREAKDOWN",
+      "TYRE_ISSUE",
+      "ENGINE_ISSUE",
+      "ELECTRICAL_ISSUE",
+      "OTHER",
+    ]).optional(),
     issueNote: z.string().min(1).max(500).optional(),
   })
   .refine(
@@ -315,6 +361,9 @@ export const ZApiErrorCode = z.enum([
   "LOCATION_NOT_ALLOWED",
   "LOCATION_INVALID",
   "ACTIVE_ASSIGNMENT_BLOCKS_OFFLINE",
+  "COLLECTION_NOT_ALLOWED",
+  "COLLECTION_ALREADY_RECORDED",
+  "ACTION_ID_REUSED",
   "RATE_LIMITED",
   "CLIENT_UPGRADE_REQUIRED",
   "RETRY_LATER",

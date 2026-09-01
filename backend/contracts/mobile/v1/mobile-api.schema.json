@@ -72,6 +72,7 @@
         "leadId",
         "revision",
         "status",
+        "requestType",
         "crewFormationState",
         "dailySequence",
         "serviceWindowStart",
@@ -82,6 +83,8 @@
         "expectedAcreage",
         "actualAcreage",
         "issue",
+        "maintenanceRequest",
+        "cashCollection",
         "crew",
         "drone",
         "lmv",
@@ -110,6 +113,10 @@
             "CANCELLED",
             "FLAGGED"
           ]
+        },
+        "requestType": {
+          "type": ["string", "null"],
+          "enum": ["B2B", "B2C", null]
         },
         "crewFormationState": {
           "enum": [
@@ -215,6 +222,7 @@
                 "category": {
                   "enum": [
                     "DRONE_MALFUNCTION",
+                    "LMV_MALFUNCTION",
                     "SAFETY_HAZARD",
                     "WEATHER_BLOCKER",
                     "CUSTOMER_BLOCKER",
@@ -234,6 +242,42 @@
             {
               "type": "null"
             }
+          ]
+        },
+        "maintenanceRequest": {
+          "anyOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "assetType", "reasonCode", "status", "processedBy", "updatedAt"],
+              "properties": {
+                "id": { "$ref": "#/$defs/uuid" },
+                "assetType": { "enum": ["DRONE", "LMV"] },
+                "reasonCode": { "enum": ["BATTERY_NOT_CHARGED", "PROPELLER_DAMAGED", "VEHICLE_BREAKDOWN", "TYRE_ISSUE", "ENGINE_ISSUE", "ELECTRICAL_ISSUE", "OTHER"] },
+                "status": { "enum": ["PENDING", "ACCEPTED", "REJECTED", "RESOLVED"] },
+                "processedBy": { "type": ["string", "null"], "maxLength": 120 },
+                "updatedAt": { "$ref": "#/$defs/timestamp" }
+              }
+            },
+            { "type": "null" }
+          ]
+        },
+        "cashCollection": {
+          "anyOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "amount", "currencyCode", "method", "reviewStatus", "recordedAt"],
+              "properties": {
+                "id": { "$ref": "#/$defs/uuid" },
+                "amount": { "$ref": "#/$defs/decimal" },
+                "currencyCode": { "type": "string", "pattern": "^[A-Z]{3}$" },
+                "method": { "const": "CASH" },
+                "reviewStatus": { "enum": ["PENDING_REVIEW", "CONFIRMED", "VOIDED"] },
+                "recordedAt": { "$ref": "#/$defs/timestamp" }
+              }
+            },
+            { "type": "null" }
           ]
         },
         "crew": {
@@ -334,7 +378,8 @@
               "START",
               "COMPLETE",
               "REPORT_ISSUE",
-              "SEND_LOCATION"
+              "SEND_LOCATION",
+              "COLLECT_PAYMENT"
             ]
           }
         }
@@ -807,6 +852,7 @@
         "issueCategory": {
           "enum": [
             "DRONE_MALFUNCTION",
+            "LMV_MALFUNCTION",
             "SAFETY_HAZARD",
             "WEATHER_BLOCKER",
             "CUSTOMER_BLOCKER",
@@ -817,6 +863,17 @@
           "type": "string",
           "minLength": 1,
           "maxLength": 500
+        },
+        "maintenanceReasonCode": {
+          "enum": [
+            "BATTERY_NOT_CHARGED",
+            "PROPELLER_DAMAGED",
+            "VEHICLE_BREAKDOWN",
+            "TYRE_ISSUE",
+            "ENGINE_ISSUE",
+            "ELECTRICAL_ISSUE",
+            "OTHER"
+          ]
         }
       }
     },
@@ -1425,6 +1482,7 @@
           ],
           "enum": [
             "DRONE_MALFUNCTION",
+            "LMV_MALFUNCTION",
             "SAFETY_HAZARD",
             "WEATHER_BLOCKER",
             "CUSTOMER_BLOCKER",

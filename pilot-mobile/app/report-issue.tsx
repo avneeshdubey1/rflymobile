@@ -25,6 +25,7 @@ import {
 
 const categories = [
   ["DRONE_MALFUNCTION", "Drone malfunction"],
+  ["LMV_MALFUNCTION", "LMV / vehicle malfunction"],
   ["SAFETY_HAZARD", "Safety hazard"],
   ["WEATHER_BLOCKER", "Weather blocker"],
   ["CUSTOMER_BLOCKER", "Customer blocker"],
@@ -33,6 +34,25 @@ const categories = [
 
 type Category = (typeof categories)[number][0];
 
+const maintenanceReasons = {
+  DRONE_MALFUNCTION: [
+    ["BATTERY_NOT_CHARGED", "Battery not charged"],
+    ["PROPELLER_DAMAGED", "Propeller damaged"],
+    ["ELECTRICAL_ISSUE", "Electrical issue"],
+    ["OTHER", "Other"],
+  ],
+  LMV_MALFUNCTION: [
+    ["VEHICLE_BREAKDOWN", "Vehicle breakdown"],
+    ["TYRE_ISSUE", "Tyre damage"],
+    ["ENGINE_ISSUE", "Engine issue"],
+    ["ELECTRICAL_ISSUE", "Electrical issue"],
+    ["OTHER", "Other"],
+  ],
+} as const;
+
+type MaintenanceReasonCode =
+  (typeof maintenanceReasons)[keyof typeof maintenanceReasons][number][0];
+
 export default function ReportIssueScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
@@ -40,6 +60,8 @@ export default function ReportIssueScreen() {
   const queueMutation = useSyncStore((state) => state.queueMutation);
   const [assignment, setAssignment] = useState<Assignment | null>(null);
   const [category, setCategory] = useState<Category | null>(null);
+  const [maintenanceReasonCode, setMaintenanceReasonCode] =
+    useState<MaintenanceReasonCode | null>(null);
   const [note, setNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -50,7 +72,8 @@ export default function ReportIssueScreen() {
 
   const submit = async () => {
     const trimmed = note.trim();
-    if (!assignment || !category || !trimmed) {
+    const isAssetIssue = category === "DRONE_MALFUNCTION" || category === "LMV_MALFUNCTION";
+    if (!assignment || !category || !trimmed || (isAssetIssue && !maintenanceReasonCode)) {
       setError("Choose a category and describe what happened.");
       return;
     }
@@ -68,6 +91,7 @@ export default function ReportIssueScreen() {
         expectedRevision: assignment.revision,
         issueCategory: category,
         issueNote: trimmed,
+        ...(maintenanceReasonCode ? { maintenanceReasonCode } : {}),
       };
       await queueMutation(mutation);
       router.replace({
@@ -113,7 +137,10 @@ export default function ReportIssueScreen() {
                 styles.category,
                 category === value && styles.categorySelected,
               ]}
-              onPress={() => setCategory(value)}
+              onPress={() => {
+                setCategory(value);
+                setMaintenanceReasonCode(null);
+              }}
               accessibilityRole="radio"
               accessibilityState={{ selected: category === value }}
             >
@@ -134,6 +161,29 @@ export default function ReportIssueScreen() {
             </TouchableOpacity>
           ))}
         </View>
+        {category && category in maintenanceReasons ? (
+          <>
+            <Text style={[styles.label, styles.noteLabel]}>QUICK REASON</Text>
+            <View style={styles.quickReasons}>
+              {maintenanceReasons[category as keyof typeof maintenanceReasons].map(([value, label]) => (
+                <TouchableOpacity
+                  key={value}
+                  style={[
+                    styles.quickReason,
+                    maintenanceReasonCode === value && styles.quickReasonSelected,
+                  ]}
+                  onPress={() => {
+                    setMaintenanceReasonCode(value);
+                    if (!note.trim()) setNote(label);
+                  }}
+                  accessibilityRole="button"
+                >
+                  <Text style={styles.quickReasonText}>{label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </>
+        ) : null}
         <Text style={[styles.label, styles.noteLabel]}>WHAT HAPPENED?</Text>
         <TextInput
           style={styles.note}
@@ -220,6 +270,21 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFF1F1",
   },
   categoryText: { ...typography.body, color: colors.textPrimary },
+  quickReasons: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
+  quickReason: {
+    minHeight: 44,
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: colors.disabled,
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.md,
+  },
+  quickReasonSelected: {
+    borderColor: colors.status.error,
+    backgroundColor: "#FFF1F1",
+  },
+  quickReasonText: { ...typography.caption, color: colors.textPrimary, fontWeight: "700" },
   noteLabel: { marginTop: spacing.lg },
   note: {
     minHeight: 150,

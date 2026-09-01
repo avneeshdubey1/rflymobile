@@ -28,6 +28,7 @@ router.get('/pilot/assignments/:assignmentId/eligible-copilots', requireMobileAp
 router.post('/pilot/assignments/:assignmentId/copilot', requireMobileApp('PILOT_FIELD'), assignmentController.selectCopilot);
 router.post('/pilot/assignments/:assignmentId/actions', requireMobileApp('PILOT_FIELD'), assignmentController.mutate);
 router.post('/pilot/assignments/:assignmentId/location', requireMobileApp('PILOT_FIELD'), assignmentController.recordLocation);
+router.post('/pilot/assignments/:assignmentId/cash-collection', requireMobileApp('PILOT_FIELD'), assignmentController.collectCash);
 router.get('/operations/bootstrap', requireMobileApp('OPERATIONS'), controller.bootstrap);
 router.get('/operations/master-data/choices', requireMobileApp('OPERATIONS'), requireMobileRole('ADMIN', 'FLEET_MANAGER', 'SALES', 'FARMER'), masterDataController.choices);
 router.get('/operations/sales/customers', requireMobileApp('OPERATIONS'), requireMobileRole('ADMIN', 'FLEET_MANAGER', 'SALES'), operationsController.searchCustomers);

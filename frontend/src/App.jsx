@@ -64,6 +64,7 @@ function App() {
           {/* Protected Fleet Manager Routes */}
           <Route element={<ProtectedRoute allowedRoles={['admin', 'fleet-manager']} />}>
             <Route path="/fleet-manager" element={<FleetManagerDashboard />} />
+            <Route path="/fleet-calendar" element={<FleetManagerDashboard calendarOnly />} />
           </Route>
 
           {/* Protected Farmer Routes */}

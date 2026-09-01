@@ -1,7 +1,55 @@
 # Current Engineering State
 
 **Status:** current shared handoff
-**Observed:** August 25, 2026
+**Observed:** September 1, 2026
+
+## August 31 local Pilot scheduling and cash-report candidate
+
+- Manual assignment and rescheduling now require a future service-window start,
+  preserving the service start as the approved Copilot-selection deadline. The
+  previously reproduced empty-Copilot case was caused by creating an assignment
+  after its selected window had already ended, not by the candidate Pilot's
+  centre, availability, licence, Drone, or LMV state.
+- Pilot assignment and Copilot-selection screens now fall back to a known route
+  when opened directly, so a back action no longer dispatches an unhandled
+  `GO_BACK` action.
+- A completed B2C crew may submit one exact, idempotent cash-handover report.
+  Admin can read pending reports. This is an operational report only: it does
+  not approve price, issue an invoice, reconcile settlement, or enable UPI.
+  The displayed QR remains explicitly non-payable until RFLY supplies an
+  approved merchant QR/provider configuration.
+- The consolidated candidate passes backend 179/179, Pilot 22/22 plus
+  TypeScript and Expo Doctor 21/21, frontend lint/build, the disposable
+  37-migration/66-check clean/populated replay, and a focused real-browser 4/4
+  covering calendar persistence, browser Primary-Pilot Copilot selection,
+  mobile containment and health. Staging, merchant QR, finance reconciliation,
+  and physical-device acceptance remain pending.
+
+## August 31 local Fleet consistency and asset-lifecycle candidate
+
+- `B2C Cash Reports` is promoted near the top of the Admin navigation. It is
+  still deployment-feature-gated and remains a pending operational report, not
+  an invoice or reconciled settlement.
+- Pilot Drone/LMV links are now explicitly shareable preferences. Several
+  Pilots may prefer the same office asset and assets may remain unpreferred as
+  backups. Actual Assignment rows remain exclusive and retain the existing
+  crew, Drone, LMV, centre, availability, and overlap checks.
+- Admin and Fleet Pilot rosters receive a minimal authenticated realtime
+  invalidation signal after Pilot mutations and refetch server-authorized data;
+  window-focus refresh remains the fallback. No Pilot profile data is placed in
+  the socket event.
+- Fleet calendar movement uses five-minute resolution, direct date/view
+  navigation, and a separate full-tab calendar route. Server-side validation,
+  conflict rejection, and the manual editor remain authoritative.
+- Admin/Fleet Drone and LMV maintenance now uses a structured modal with quick
+  reasons plus a required accountable note. Operations-created work appears in
+  the same request ledger as Pilot reports, while direct status changes,
+  returns, and retirements appear in a separate attributed lifecycle activity
+  view. Active-mission asset faults still go through the mission issue path.
+- The browser Pilot workspace now uses the same server-authoritative,
+  revision-checked Copilot formation service as the Android Pilot client. It
+  lists only eligible candidates for the assigned Primary Pilot and keeps
+  mission acceptance locked until the crew is ready.
 
 ## Source and deployment
 
@@ -50,6 +98,23 @@ mismatches, and the reconciliation checksum matched. This is staging evidence,
 not proof that production has been imported.
 
 ## Current gates and next work
+
+The local Release 1 maintenance/asset-lifecycle candidate now supports safe LMV
+transfer and retirement, Pilot- and Operations-raised Drone/LMV maintenance,
+Admin/Fleet processing accountability, affected-asset quarantine, attributed
+lifecycle activity, shareable asset preferences, Admin capability supremacy,
+responsive bounded fleet views, a visible disabled auto-assignment policy, and
+the revised Fleet-versus-Admin Copilot boundary. Current evidence is recorded
+above: backend 179/179, frontend lint/build, Pilot TypeScript and 22/22 tests,
+Expo Doctor 21/21, the 37-migration/66-check disposable migration harness, and
+focused real-browser acceptance 4/4 all pass. Prior browser evidence includes
+policy roles, persisted resource/window changes, normalized sequence,
+server-rejected overlap with rollback, keyboard scheduling, bounded calendar
+queries, terminal opt-in, mobile Admin containment, tablet Fleet containment,
+database health, and scheduled-job health. Human functional/visual acceptance,
+focused commit review, staging deployment, and production promotion remain
+pending. Use `RELEASE_1_FUNCTIONAL_ACCEPTANCE_CHECKLIST.md`; the non-Pilot
+Operations Companion is explicitly outside this acceptance run.
 
 The local Pilot mobile candidate now has a distinct AVAILABLE/OFFLINE
 operational state and foreground-only live mission location. Offline Pilots are

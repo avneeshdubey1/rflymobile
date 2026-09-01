@@ -15,6 +15,9 @@ const statusTone = (status) => {
   if (status === 'PILOT_ACCEPTED') return 'warning';
   return '';
 };
+const responseMessage = (data, fallback) => (
+  typeof data?.error === 'string' ? data.error : data?.error?.message || fallback
+);
 
 function PilotMissionPanel() {
   const { user } = useAuth();
@@ -27,14 +30,55 @@ function PilotMissionPanel() {
   const [decommissionReason, setDecommissionReason] = useState({});
   const [gpsStatus, setGpsStatus] = useState('GPS will start after you accept a mission.');
   const [transitioningMissionIds, setTransitioningMissionIds] = useState(() => new Set());
+  const [copilotDialog, setCopilotDialog] = useState(null);
 
   const refreshQueueCount = useCallback(async () => setQueuedCount(userId ? (await queuedActions(userId)).length : 0), [userId]);
   const fetchMissions = useCallback(async () => {
     const response = await fetch(`${API}/api/assignments/pilot`);
     const data = await response.json().catch(() => ({}));
-    if (!response.ok || !data.success) throw new Error(data.error || 'Could not load missions');
+    if (!response.ok || !data.success) throw new Error(responseMessage(data, 'Could not load missions'));
     setMissions(data.missions || []);
   }, []);
+
+  const openCopilotSelection = useCallback(async (mission) => {
+    setCopilotDialog({ mission, candidates: [], selectedId: '', loading: true, submitting: false, error: '' });
+    try {
+      const response = await fetch(`${API}/api/assignments/${mission.id}/eligible-copilots`);
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.success) throw new Error(responseMessage(data, 'Eligible Copilots could not be loaded'));
+      setCopilotDialog((current) => current?.mission.id === mission.id
+        ? { ...current, candidates: data.candidates || [], loading: false }
+        : current);
+    } catch (error) {
+      setCopilotDialog((current) => current?.mission.id === mission.id
+        ? { ...current, loading: false, error: error.message }
+        : current);
+    }
+  }, []);
+
+  const confirmCopilotSelection = useCallback(async (event) => {
+    event.preventDefault();
+    if (!copilotDialog?.selectedId || copilotDialog.submitting) return;
+    const { mission, selectedId } = copilotDialog;
+    setCopilotDialog((current) => ({ ...current, submitting: true, error: '' }));
+    try {
+      const response = await fetch(`${API}/api/assignments/${mission.id}/copilot`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ candidateId: selectedId, expectedRevision: mission.revision }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.success) throw new Error(responseMessage(data, 'Copilot selection failed'));
+      setCopilotDialog(null);
+      setNotice({ kind: 'success', message: `${data.mission?.copilot?.name || 'Copilot'} joined the crew.` });
+      await fetchMissions();
+    } catch (error) {
+      setCopilotDialog((current) => current?.mission.id === mission.id
+        ? { ...current, submitting: false, error: error.message }
+        : current);
+      await fetchMissions().catch(() => undefined);
+    }
+  }, [copilotDialog, fetchMissions]);
 
   const syncQueue = useCallback(async () => {
     if (!navigator.onLine || !userId) return;
@@ -74,7 +118,7 @@ function PilotMissionPanel() {
     try {
       const response = await fetch(action.url, { method: action.method || 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(action.body || {}) });
       const data = await response.json().catch(() => ({}));
-      if (!response.ok || !data.success) throw new Error(data.error || 'Action failed');
+      if (!response.ok || !data.success) throw new Error(responseMessage(data, 'Action failed'));
       if (action.kind !== 'location') await fetchMissions();
     } catch (error) {
       if (error instanceof TypeError) {
@@ -145,6 +189,8 @@ function PilotMissionPanel() {
         {missions.map((mission) => {
           const status = mission.lead?.status;
           const details = mission.lead || {};
+          const isPrimaryPilot = mission.pilotId === userId;
+          const crewPending = mission.crewFormationState === 'PENDING_COPILOT_SELECTION';
           const cardTone = status === 'COMPLETED' ? 'mission-card--completed' : activeStatuses.has(status) ? 'mission-card--active' : '';
           return (
             <article key={mission.id} className={`mission-card ${cardTone}`}>
@@ -153,9 +199,14 @@ function PilotMissionPanel() {
                 <div className="mission-card__detail"><span>Location</span><strong><LocationLink latitude={details.latitude} longitude={details.longitude} address={details.farmerAddress} centerName={details.matchedCenter?.name} farmerName={details.farmerName} fallback="Mission field location" /></strong></div>
                 <div className="mission-card__detail"><span>Expected area</span><strong>{mission.expectedAcreage} acres</strong></div>
                 <div className="mission-card__detail"><span>Aircraft</span><strong>{mission.drone?.serialNumber || mission.droneId}</strong></div>
+                <div className="mission-card__detail"><span>Primary Pilot</span><strong>{mission.pilot?.name || 'Not assigned'}</strong></div>
+                <div className="mission-card__detail"><span>Copilot</span><strong>{mission.copilot?.name || 'Selection required'}</strong></div>
+                <div className="mission-card__detail"><span>LMV</span><strong>{mission.lmv?.label || mission.lmv?.registrationNo || 'Not assigned'}</strong></div>
               </div>
               <div className="mission-actions">
-                {status === 'SCHEDULED' && <button className="submit-btn" onClick={() => void sendOrQueue({ assignmentId: mission.id, url: `${API}/api/assignments/${mission.id}/accept`, kind: 'mission-state' }, 'PILOT_ACCEPTED')}>Accept mission</button>}
+                {status === 'SCHEDULED' && crewPending && isPrimaryPilot && <button className="submit-btn" type="button" onClick={() => void openCopilotSelection(mission)}>Select Copilot</button>}
+                {status === 'SCHEDULED' && crewPending && <span className="field-hint">Crew formation must be completed before acceptance.</span>}
+                {status === 'SCHEDULED' && !crewPending && <button className="submit-btn" onClick={() => void sendOrQueue({ assignmentId: mission.id, url: `${API}/api/assignments/${mission.id}/accept`, kind: 'mission-state' }, 'PILOT_ACCEPTED')}>Accept mission</button>}
                 {status === 'PILOT_ACCEPTED' && <button className="submit-btn" onClick={() => void sendOrQueue({ assignmentId: mission.id, url: `${API}/api/assignments/${mission.id}/start`, kind: 'mission-state' }, 'IN_PROGRESS')}>Start mission</button>}
                 {status === 'IN_PROGRESS' && <>
                   <div className="input-group"><label htmlFor={`actual-acreage-${mission.id}`}>Actual acreage</label><input id={`actual-acreage-${mission.id}`} type="number" min="0" step="0.01" placeholder="Actual acres" value={actualAcreage[mission.id] || ''} onChange={(event) => setActualAcreage((items) => ({ ...items, [mission.id]: event.target.value }))} /></div>
@@ -168,6 +219,20 @@ function PilotMissionPanel() {
           );
         })}
       </div>
+
+      {copilotDialog && <div className="modal-backdrop" role="presentation">
+        <section className="modal-card copilot-selection-dialog" role="dialog" aria-modal="true" aria-labelledby="copilot-selection-title">
+          <div className="modal-card__header"><div><p className="eyebrow">Crew formation</p><h2 id="copilot-selection-title">Select an eligible Copilot</h2></div><button type="button" className="icon-button" aria-label="Close Copilot selection" disabled={copilotDialog.submitting} onClick={() => setCopilotDialog(null)}>×</button></div>
+          <p className="muted">The server checks operating centre, availability, licence and schedule conflicts again when you confirm.</p>
+          {copilotDialog.error && <div className="notice notice--error" role="alert">{copilotDialog.error}</div>}
+          {copilotDialog.loading ? <p className="muted">Loading eligible Pilots…</p> : <form className="form-stack" onSubmit={confirmCopilotSelection}>
+            {!copilotDialog.candidates.length ? <div className="empty-state"><strong>No eligible Copilots</strong><span>Fleet or Admin must resolve the crew exception.</span></div> : <div className="copilot-candidate-list" role="radiogroup" aria-label="Eligible Copilots">
+              {copilotDialog.candidates.map((candidate) => <label key={candidate.id} className={`copilot-candidate ${copilotDialog.selectedId === candidate.id ? 'is-selected' : ''}`}><input type="radio" name="copilot" value={candidate.id} checked={copilotDialog.selectedId === candidate.id} onChange={() => setCopilotDialog((current) => ({ ...current, selectedId: candidate.id, error: '' }))} /><span><strong>{candidate.name}</strong><small>{candidate.employeeCode || 'Employee code not recorded'}</small></span></label>)}
+            </div>}
+            <div className="button-row button-row--end"><button type="button" className="action-btn" disabled={copilotDialog.submitting} onClick={() => setCopilotDialog(null)}>Cancel</button><button type="submit" className="submit-btn" disabled={!copilotDialog.selectedId || copilotDialog.submitting}>{copilotDialog.submitting ? 'Confirming…' : 'Confirm Copilot'}</button></div>
+          </form>}
+        </section>
+      </div>}
     </section>
   );
 }

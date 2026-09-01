@@ -122,7 +122,11 @@ function allowlistedLeadFields(input) {
     farmerAddress: optionalText(input.farmerAddress, 'farmerAddress', { maximum: 500 }),
     cropType: optionalText(input.cropType, 'cropType'),
     notes: optionalText(input.notes, 'notes', { maximum: 2000 }),
-    preferredLanguage: i18nService.normalizeLanguage(input.preferredLanguage || 'ta'),
+    // Historical imports deliberately retain `und` when the source did not
+    // record a language. Operational notifications still need a supported
+    // dictionary, so use the established Tamil default for that one sentinel.
+    // Other unsupported values continue to fail validation.
+    preferredLanguage: i18nService.normalizeOperationalLanguage(input.preferredLanguage),
     soilType: optionalText(input.soilType, 'soilType'),
     cropAgeWeeks: optionalInteger(input.cropAgeWeeks, 'cropAgeWeeks'),
     chemicalBrand: optionalText(input.chemicalBrand, 'chemicalBrand'),

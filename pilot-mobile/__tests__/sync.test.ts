@@ -75,6 +75,9 @@ describe("Sync Engine", () => {
       expectedAcreage: "10.0",
       actualAcreage: null,
       issue: null,
+      maintenanceRequest: null,
+      requestType: "B2C",
+      cashCollection: null,
       crew: [
         {
           id: "12345678-1234-4234-8234-123456789012",

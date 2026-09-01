@@ -23,6 +23,11 @@ This repository contains an internal drone-service operations platform for lead 
 
 ## Local development
 
+For the current Windows, physical-phone, Pilot-app, and role-by-role acceptance
+procedure, use
+[docs/plan/RELEASE_1_FUNCTIONAL_ACCEPTANCE_CHECKLIST.md](docs/plan/RELEASE_1_FUNCTIONAL_ACCEPTANCE_CHECKLIST.md).
+The short commands below are only a desktop development summary.
+
 Use a local PostgreSQL instance or disposable container, create local environment files from the tracked examples, and keep all credentials outside Git.
 
     cd backend

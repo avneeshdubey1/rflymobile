@@ -62,7 +62,7 @@ async function assertNoActiveAssignment(lmvId) {
 }
 
 exports.getAvailableLmvs = async (_req, res) => {
-  try { res.json({ success: true, lmvs: await lmvRepository.findAll({ status: 'AVAILABLE' }) }); }
+  try { res.json({ success: true, lmvs: await lmvRepository.findAll({ status: 'AVAILABLE', archivedAt: null }) }); }
   catch { res.status(500).json({ error: 'Failed to fetch LMVs' }); }
 };
 
@@ -91,10 +91,15 @@ exports.updateLmv = async (req, res) => {
   try {
     const before = await lmvRepository.findById(req.params.id || req.body.lmvId);
     if (!before) return res.status(404).json({ error: 'LMV not found' });
+    if (before.archivedAt) return res.status(409).json({ error: 'A retired LMV cannot be updated' });
     const data = serializeInput({ ...before, ...req.body });
     if (!data) return res.status(400).json({ error: 'Registration number, home center, and positive capacity are required' });
     await assertActiveCenter(data.homeCenterId);
-    const lmv = await lmvRepository.update(before.id, data, { actorId: req.auth.userId });
+    if (data.homeCenterId !== before.homeCenterId) await assertNoActiveAssignment(before.id);
+    const lmv = await lmvRepository.update(before.id, data, {
+      actorId: req.auth.userId,
+      clearIncompatiblePreferences: data.homeCenterId !== before.homeCenterId,
+    });
     await auditLogRepository.create({ entityType: 'LMV', entityId: lmv.id, action: 'UPDATED', actorId: req.auth.userId, beforeState: before, afterState: lmv });
     res.json({ success: true, lmv });
   } catch (error) {
@@ -111,15 +116,30 @@ exports.updateStatus = async (req, res) => {
     if (!validStatuses.has(req.body.status)) return res.status(400).json({ error: 'Invalid LMV status' });
     const before = await lmvRepository.findById(req.body.lmvId || req.params.id);
     if (!before) return res.status(404).json({ error: 'LMV not found' });
+    if (before.archivedAt) return res.status(409).json({ error: 'A retired LMV cannot change status' });
     if (req.body.status === 'ASSIGNED' && before.status !== 'ASSIGNED') {
       return res.status(409).json({ error: 'ASSIGNED status is controlled by mission scheduling' });
     }
     if (before.status === 'ASSIGNED' && req.body.status !== 'ASSIGNED') await assertNoActiveAssignment(before.id);
     if (['MAINTENANCE', 'OUT_OF_SERVICE'].includes(req.body.status)) await assertNoActiveAssignment(before.id);
+    const reason = String(req.body.reason || '').trim();
+    if (reason.length < 3 || reason.length > 500) return res.status(400).json({ error: 'A status-change reason of 3 to 500 characters is required' });
     const lmv = await lmvRepository.update(before.id, lifecycleForStatus[req.body.status], { actorId: req.auth.userId });
-    await auditLogRepository.create({ entityType: 'LMV', entityId: lmv.id, action: 'STATUS_CHANGE', actorId: req.auth.userId, beforeState: before, afterState: lmv, reason: req.body.reason || null });
+    await auditLogRepository.create({ entityType: 'LMV', entityId: lmv.id, action: 'STATUS_CHANGE', actorId: req.auth.userId, beforeState: before, afterState: lmv, reason });
     res.json({ success: true, lmv });
   } catch (error) {
     res.status(error.statusCode || 500).json({ error: error.message || 'Failed to update LMV status' });
+  }
+};
+
+exports.deleteLmv = async (req, res) => {
+  try {
+    const reason = String(req.body?.reason || '').trim();
+    if (reason.length < 3 || reason.length > 500) return res.status(400).json({ error: 'A retirement reason of 3 to 500 characters is required' });
+    const result = await lmvRepository.retire(req.params.id, req.auth.userId, reason);
+    if (!result) return res.status(404).json({ error: 'LMV not found' });
+    return res.json({ success: true, retired: true, alreadyRetired: !result.changed, lmv: result.lmv });
+  } catch (error) {
+    return res.status(error.statusCode || 500).json({ error: error.statusCode ? error.message : 'Failed to retire LMV' });
   }
 };

@@ -35,6 +35,14 @@ async function main() {
     validatePassword(demoPassword);
     await clearDatabase();
 
+    // The policy row is configuration, not demo operational data. A local
+    // reset must restore the required singleton if it was removed previously.
+    await prisma.autoAssignmentPolicy.upsert({
+        where: { singletonKey: 'COMPANY' },
+        create: { singletonKey: 'COMPANY' },
+        update: {},
+    });
+
     const vijayawada = await prisma.operatingCenter.create({
         data: { name: 'Vijayawada, Andhra Pradesh, India', latitude: 16.5062, longitude: 80.6480, radiusKm: 50 },
     });

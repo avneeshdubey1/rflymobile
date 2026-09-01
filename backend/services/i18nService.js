@@ -18,6 +18,11 @@ function normalizeLanguage(languageCode = 'ta') {
   return normalized;
 }
 
+function normalizeOperationalLanguage(languageCode = 'ta') {
+  const normalized = String(languageCode || 'ta').toLowerCase();
+  return normalized === 'und' ? 'ta' : normalizeLanguage(normalized);
+}
+
 function resolve(templateKey, languageCode = 'ta', variables = {}) {
   const dictionary = dictionaries[isSupportedLanguage(languageCode) ? languageCode : 'en'];
   const template = dictionary[templateKey] || dictionaries.en[templateKey];
@@ -25,4 +30,10 @@ function resolve(templateKey, languageCode = 'ta', variables = {}) {
   return template.replace(/{{(\w+)}}/g, (_match, key) => String(variables[key] ?? ''));
 }
 
-module.exports = { resolve, normalizeLanguage, isSupportedLanguage, languageLocales };
+module.exports = {
+  resolve,
+  normalizeLanguage,
+  normalizeOperationalLanguage,
+  isSupportedLanguage,
+  languageLocales,
+};

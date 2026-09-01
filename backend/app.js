@@ -53,6 +53,8 @@ function createApp({ config = loadEnvironment() } = {}) {
   app.use('/api/portal', require('./routes/portalRoutes'));
   app.use('/api/drones', require('./routes/droneRoutes'));
   app.use('/api/lmvs', require('./routes/lmvRoutes'));
+  app.use('/api/maintenance-requests', require('./routes/maintenanceRequestRoutes'));
+  app.use('/api/b2c-cash-collections', require('./routes/cashCollectionRoutes'));
   app.use('/api/system', require('./routes/systemRoutes'));
   app.use('/api/centers', require('./routes/centerRoutes'));
   app.use('/api/master-data', require('./routes/masterDataRoutes'));

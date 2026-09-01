@@ -54,6 +54,10 @@ export default function AssignmentDetailScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [offline, setOffline] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const goBack = () => {
+    if (router.canGoBack()) router.back();
+    else router.replace("/(tabs)");
+  };
 
   const load = useCallback(
     async (refreshServer = true) => {
@@ -105,7 +109,7 @@ export default function AssignmentDetailScreen() {
   if (!assignment) {
     return (
       <SafeAreaView style={styles.safeArea}>
-        <Header title="Assignment Details" onBack={() => router.back()} />
+        <Header title="Assignment Details" onBack={goBack} />
         <View style={styles.centered}>
           {error ? (
             <Banner
@@ -135,7 +139,7 @@ export default function AssignmentDetailScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <Header title="Assignment Details" onBack={() => router.back()} />
+      <Header title="Assignment Details" onBack={goBack} />
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.content}
@@ -218,6 +222,7 @@ export default function AssignmentDetailScreen() {
             label="SERVICE WINDOW"
             value={`${formattedDate(assignment.serviceWindowStart)} – ${formattedDate(assignment.serviceWindowEnd)}`}
           />
+          <Detail label="REQUEST TYPE" value={assignment.requestType || "Not recorded"} />
           {assignment.operationalNotes.map((note, index) => (
             <Detail
               key={`${index}-${note}`}
@@ -260,6 +265,24 @@ export default function AssignmentDetailScreen() {
             tone="error"
             title={assignment.issue.category.replaceAll("_", " ")}
             message={assignment.issue.note}
+          />
+        ) : null}
+
+        {assignment.maintenanceRequest ? (
+          <Banner
+            tone={assignment.maintenanceRequest.status === "RESOLVED" ? "info" : "error"}
+            title={`${assignment.maintenanceRequest.assetType} maintenance · ${assignment.maintenanceRequest.status}`}
+            message={assignment.maintenanceRequest.processedBy
+              ? `Latest decision recorded by ${assignment.maintenanceRequest.processedBy}.`
+              : "Waiting for Admin or Fleet review."}
+          />
+        ) : null}
+
+        {assignment.cashCollection ? (
+          <Banner
+            tone="success"
+            title={`Cash reported · ${assignment.cashCollection.currencyCode} ${assignment.cashCollection.amount}`}
+            message="Pending Admin reconciliation. This field report is not an invoice or final settlement approval."
           />
         ) : null}
 
@@ -325,6 +348,12 @@ export default function AssignmentDetailScreen() {
                   params: { id: assignment.id },
                 })
               }
+            />
+          ) : null}
+          {allowed.includes("COLLECT_PAYMENT") ? (
+            <Button
+              title="Collect Payment"
+              onPress={() => router.push({ pathname: "/collect-payment", params: { id: assignment.id } })}
             />
           ) : null}
         </View>

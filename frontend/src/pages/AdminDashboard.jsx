@@ -3,7 +3,7 @@ import { useAuth } from '../context/useAuth';
 import OperationsShell from '../components/OperationsShell';
 import OpsIcon from '../components/OpsIcon';
 import ChatPanel from '../components/ChatPanel';
-import PendingPaymentsPanel from '../components/PendingPaymentsPanel';
+import B2cCashCollectionsPanel from '../components/B2cCashCollectionsPanel';
 import LiveLocationPanel from '../components/LiveLocationPanel';
 import LogbookTimelinePanel from '../components/LogbookTimelinePanel';
 import { API_URL as API } from '../config';
@@ -22,6 +22,7 @@ import CustomerRegistration from '../components/CustomerRegistration';
 import ManagePilots from '../components/ManagePilots';
 import AssignmentDetails from '../components/AssignmentDetails';
 import AutoAssignmentPolicyPanel from '../components/AutoAssignmentPolicyPanel';
+import MaintenanceRequestsPanel from '../components/MaintenanceRequestsPanel';
 import MasterDataManagement from '../components/MasterDataManagement';
 import { useTranslation } from 'react-i18next';
 
@@ -406,13 +407,13 @@ function AdminDashboard() {
   const standbyDrones = useMemo(() => drones.filter((drone) => ['MAINTENANCE', 'OUT_OF_SERVICE'].includes(drone.status)), [drones]);
   const navItems = [
     { id: 'fleet', label: 'Fleet Overview', icon: 'overview' },
+    { id: 'cashCollections', label: 'B2C Cash Reports', icon: 'wallet' },
     { id: 'centers', label: 'Feasible Regions', icon: 'location' },
     { id: 'farmerRegistration', label: 'Customer Registration', icon: 'user-plus' },
     { id: 'manual', label: 'New Lead', icon: 'plus' },
     { id: 'drone', label: 'Drones', icon: 'drone' },
     { id: 'pilots', label: 'Pilots', icon: 'users' },
     // { id: 'chat', label: 'Pilot Support Chat', icon: 'chat' },
-    // { id: 'payments', label: 'Payment Collection', icon: 'wallet' },
     { id: 'location', label: 'Live Pilot GPS', icon: 'location' },
     { id: 'assignments', label: 'Assignments', icon: 'assignment' },
     { id: 'schedule', label: 'Schedule assignments', icon: 'calendar' },
@@ -420,6 +421,7 @@ function AdminDashboard() {
     { id: 'logbook', label: 'Lead Details', icon: 'book' },
     { id: 'users', label: 'My Team', icon: 'team' },
     { id: 'autoPolicy', label: t('auto_policy_title'), icon: 'calendar' },
+    { id: 'maintenance', label: 'Maintenance requests', icon: 'alert' },
     { id: 'masterData', label: 'Master Data', icon: 'overview' },
     // { id: 'trend', label: 'Acreage Trend', icon: 'trend' },
     { id: 'profile', label: 'Profile', icon: 'user' },
@@ -432,7 +434,7 @@ function AdminDashboard() {
     centers: ['Geo-fencing', 'Feasible Regions', 'Configure geographic areas of operation.'],
     logbook: ['Lead Records', 'Lead Details', 'Review each lead’s complete recorded lifecycle.'],
     // chat: ['Support desk', 'Pilot support chat', 'Coordinate directly with field teams and retain the conversation state.'],
-    // payments: ['Revenue operations', 'Payment collection', 'Resolve completed missions waiting for settlement.'],
+    cashCollections: ['Revenue operations', 'B2C cash reports', 'Review Pilot-reported field cash awaiting reconciliation.'],
     location: ['Live operations', 'Pilot GPS', 'View the latest position for accepted and active missions.'],
     assignments: [
       'Operations Planning',
@@ -446,6 +448,7 @@ function AdminDashboard() {
     registeredFarmers: ['Customer records', 'Registered Customers', 'View all registered Customers and their registration details.'],
     profile: ['Account', 'Administrator Profile', 'View and manage your profile, account information, and security settings.'],
     autoPolicy: [t('auto_policy_eyebrow'), t('auto_policy_title'), t('auto_policy_description')],
+    maintenance: ['Fleet safety', 'Maintenance requests', 'Review and resolve Pilot-reported Drone and LMV issues.'],
     masterData: ['Configuration', 'Master Data', 'Maintain approved dropdown values and cluster classifications.'],
     trend: ['Acreage Trend', 'Acreage Analysis', 'View and analyze total acreage trends and growth patterns'],
   };
@@ -507,6 +510,8 @@ function AdminDashboard() {
       )}
 
       {activeTab === 'autoPolicy' && <AutoAssignmentPolicyPanel editable />}
+      {activeTab === 'maintenance' && <MaintenanceRequestsPanel />}
+      {activeTab === 'cashCollections' && <B2cCashCollectionsPanel />}
       {activeTab === 'masterData' && <MasterDataManagement />}
 
       {activeTab === 'fleet' && (
@@ -715,7 +720,7 @@ function AdminDashboard() {
                       onClick={() => setNewUser({ ...newUser, active: !newUser.active })}
                       style={{
                         width: '44px', height: '24px', borderRadius: '999px', border: 'none', cursor: 'pointer',
-                        background: newUser.active ? 'var(--primary, #2e6b4d)' : '#d1d5db',
+                        background: newUser.active ? 'var(--primary, #04162e)' : '#d1d5db',
                         position: 'relative', transition: 'background 0.2s',
                       }}
                     >

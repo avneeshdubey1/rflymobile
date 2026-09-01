@@ -86,6 +86,7 @@ module.exports = {
     plugins: [
       "expo-router",
       "expo-status-bar",
+      "expo-font",
       "expo-secure-store",
       "expo-sqlite",
       [

@@ -12,8 +12,11 @@ import LiveLocationPanel from '../components/LiveLocationPanel';
 import { API_URL as API } from '../config';
 import MyDrones from '../components/MyDrones';
 import AutoAssignmentPolicyPanel from '../components/AutoAssignmentPolicyPanel';
+import MaintenanceRequestsPanel from '../components/MaintenanceRequestsPanel';
+import AssetLifecycleDialog from '../components/AssetLifecycleDialog';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { io } from 'socket.io-client';
 import { csrfHeaders } from '../utils/csrf';
 
 const localizer = dateFnsLocalizer({ format, parse, startOfWeek, getDay, locales: { 'en-US': enUS } });
@@ -25,13 +28,109 @@ const localDateTimeValue = (date) => {
   value.setMinutes(value.getMinutes() - value.getTimezoneOffset());
   return value.toISOString().slice(0, 16);
 };
+const nextSchedulableStart = (calendarDate, now = new Date()) => {
+  const selected = new Date(calendarDate);
+  selected.setHours(9, 0, 0, 0);
+  if (selected > now) return selected;
+  const future = new Date(now.getTime() + 15 * 60_000);
+  future.setSeconds(0, 0);
+  future.setMinutes(Math.ceil(future.getMinutes() / 15) * 15);
+  return future;
+};
 const calendarBounds = (date, view) => {
   if (view === 'day') return { from: startOfDay(date), to: endOfDay(date) };
   if (view === 'week') return { from: startOfWeek(date), to: endOfWeek(date) };
   return { from: startOfWeek(startOfMonth(date)), to: endOfWeek(endOfMonth(date)) };
 };
 
-function FleetManagerDashboard() {
+function SchedulingCalendarToolbar({ date, label, onNavigate, onView, view }) {
+  const dateValue = format(date, 'yyyy-MM-dd');
+  return (
+    <div className="calendar-toolbar-premium">
+      <div className="calendar-toolbar-premium__navigation">
+        <button type="button" onClick={() => onNavigate('TODAY')}>Today</button>
+        <button type="button" aria-label="Previous calendar period" onClick={() => onNavigate('PREV')}>‹</button>
+        <button type="button" aria-label="Next calendar period" onClick={() => onNavigate('NEXT')}>›</button>
+        <strong>{label}</strong>
+      </div>
+      <div className="calendar-toolbar-premium__tools">
+        <label>
+          <span>Jump to date</span>
+          <input type="date" value={dateValue} onChange={(event) => {
+            if (event.target.value) onNavigate('DATE', new Date(`${event.target.value}T12:00:00`));
+          }} />
+        </label>
+        <div className="segmented-control" aria-label="Calendar view">
+          {['month', 'week', 'day'].map((candidate) => (
+            <button type="button" key={candidate} className={view === candidate ? 'is-active' : ''} onClick={() => onView(candidate)}>
+              {candidate[0].toUpperCase() + candidate.slice(1)}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SchedulingCalendar({
+  events,
+  calendarDate,
+  calendarView,
+  setCalendarDate,
+  setCalendarView,
+  selectedLead,
+  setScheduleDraft,
+  openAssignment,
+  pilots,
+  handleEventDrop,
+  handleEventResize,
+}) {
+  return (
+    <div className="calendar-wrap">
+      <div className="calendar-stage calendar-stage--premium">
+        <DnDCalendar
+          localizer={localizer}
+          events={events}
+          date={calendarDate}
+          view={calendarView}
+          onNavigate={setCalendarDate}
+          onView={setCalendarView}
+          views={['month', 'week', 'day']}
+          components={{ toolbar: SchedulingCalendarToolbar }}
+          defaultView="month"
+          popup
+          selectable
+          resizable
+          step={5}
+          timeslots={6}
+          dayLayoutAlgorithm="no-overlap"
+          longPressThreshold={120}
+          onDrillDown={(date) => { setCalendarDate(date); setCalendarView('day'); }}
+          onSelectSlot={({ start, end }) => {
+            if (calendarView === 'month') {
+              setCalendarDate(start);
+              setCalendarView('day');
+            } else if (selectedLead) {
+              setScheduleDraft((draft) => ({ ...draft, serviceWindowStart: localDateTimeValue(start), serviceWindowEnd: localDateTimeValue(end) }));
+            }
+          }}
+          onSelectEvent={openAssignment}
+          resources={pilots}
+          resourceIdAccessor="id"
+          resourceTitleAccessor="name"
+          onEventDrop={handleEventDrop}
+          onEventResize={handleEventResize}
+          draggableAccessor={(event) => ['SCHEDULED', 'PILOT_ACCEPTED'].includes(event.assignment?.lead?.status)}
+          resizableAccessor={(event) => ['SCHEDULED', 'PILOT_ACCEPTED'].includes(event.assignment?.lead?.status)}
+          eventPropGetter={(event) => ({ className: event.assignment?.autoAssigned ? 'calendar-event--automatic' : 'calendar-event--manual', style: { border: 0 } })}
+          tooltipAccessor={(event) => `${event.title} (${readableStatus(event.assignment?.lead?.status || event.status)})`}
+        />
+      </div>
+    </div>
+  );
+}
+
+function FleetManagerDashboard({ calendarOnly = false }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const isAdmin = user?.role === 'admin' || user?.role === 'ADMIN';
@@ -57,6 +156,8 @@ function FleetManagerDashboard() {
   const emptyPilot = { name: '', email: '', phone: '', password: '', homeCenterId: '', idProof: '', licenseId: '', addressLine1: '', addressLine2: '', state: '', city: '', pincode: '' };
   const [newPilot, setNewPilot] = useState(emptyPilot);
   const [newLmv, setNewLmv] = useState({ registrationNo: '', label: '', homeCenterId: '', capacity: 1 });
+  const [lifecycleTarget, setLifecycleTarget] = useState(null);
+  const [lifecycleBusy, setLifecycleBusy] = useState(false);
 
   const showNotice = useCallback((kind, message) => setNotice({ kind, message }), []);
   const request = useCallback(async (url, options = {}) => {
@@ -96,6 +197,21 @@ function FleetManagerDashboard() {
     return () => window.clearTimeout(initialLoad);
   }, [fetchData]);
 
+  useEffect(() => {
+    const socket = io(API, { transports: ['websocket'], withCredentials: true });
+    const refresh = (event) => {
+      if (event?.resource === 'pilots') void fetchData();
+    };
+    const refreshOnFocus = () => void fetchData();
+    socket.on('operations:data-changed', refresh);
+    window.addEventListener('focus', refreshOnFocus);
+    return () => {
+      socket.off('operations:data-changed', refresh);
+      socket.disconnect();
+      window.removeEventListener('focus', refreshOnFocus);
+    };
+  }, [fetchData]);
+
   const manualQueue = useMemo(() => leads.filter((lead) => lead.status === 'NEEDS_MANUAL_SCHEDULING'), [leads]);
   const availableDrones = useMemo(() => drones.filter((drone) => drone.status === 'AVAILABLE'), [drones]);
   const events = useMemo(() => assignments.filter((assignment) => showTerminal || !['COMPLETED', 'CANCELLED', 'REJECTED'].includes(assignment.lead?.status)).map((assignment) => ({
@@ -131,7 +247,7 @@ function FleetManagerDashboard() {
     && !drone.archivedAt && drone.homeCenterId === selectedLead?.matchedCenterId), [drones, selectedLead]);
   const eligibleLmvs = useMemo(() => lmvs.filter((lmv) => lmv.status === 'AVAILABLE'
     && lmv.operationalState === 'IN_SERVICE' && lmv.availabilityState === 'AVAILABLE'
-    && lmv.homeCenterId === selectedLead?.matchedCenterId), [lmvs, selectedLead]);
+    && !lmv.archivedAt && lmv.homeCenterId === selectedLead?.matchedCenterId), [lmvs, selectedLead]);
 
   const selectPrimaryPilot = useCallback((pilotId) => {
     const pilot = eligiblePilots.find((candidate) => candidate.id === pilotId);
@@ -147,8 +263,7 @@ function FleetManagerDashboard() {
   }, [eligibleDrones, eligibleLmvs, eligiblePilots]);
 
   const selectLeadForScheduling = useCallback((lead) => {
-    const date = new Date(calendarDate);
-    date.setHours(9, 0, 0, 0);
+    const date = nextSchedulableStart(calendarDate);
     setSelectedLead(lead);
     setScheduleDraft({ pilotId: '', copilotId: '', droneId: '', lmvId: '', serviceWindowStart: localDateTimeValue(date), serviceWindowEnd: localDateTimeValue(addMinutes(date, 120)) });
   }, [calendarDate]);
@@ -157,6 +272,9 @@ function FleetManagerDashboard() {
     event.preventDefault();
     if (!selectedLead) return;
     try {
+      if (new Date(scheduleDraft.serviceWindowStart) <= new Date()) {
+        throw new Error('Choose a future service start. Copilot selection closes when the service window begins.');
+      }
       await request('/api/assignments/manual', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -219,8 +337,8 @@ function FleetManagerDashboard() {
       }
       setSelectedAssignment(null);
       setEditDraft(null);
-      showNotice('success', t('calendar_assignment_updated'));
       await fetchData();
+      showNotice('success', t('calendar_assignment_updated'));
     } catch (error) { showNotice('error', error.message); }
   }, [editDraft, fetchData, isAdmin, request, selectedAssignment, showNotice, t]);
 
@@ -261,10 +379,42 @@ function FleetManagerDashboard() {
     } catch (error) { showNotice('error', error.message); }
   };
 
-  const updateLmvStatus = async (lmvId, status) => {
+  const openLmvLifecycle = (lmv, targetStatus) => setLifecycleTarget({
+    assetType: 'LMV',
+    assetId: lmv.id,
+    label: lmv.label || lmv.registrationNo,
+    targetStatus,
+  });
+
+  const submitLmvLifecycle = async ({ assetId, targetStatus, reasonCode, reason }) => {
+    setLifecycleBusy(true);
     try {
-      await request('/api/lmvs/update-status', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lmvId, status }) });
-      showNotice('success', 'LMV status updated.');
+      if (targetStatus === 'MAINTENANCE') {
+        await request('/api/maintenance-requests', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ assetType: 'LMV', assetId, reasonCode, reason }),
+        });
+      } else if (targetStatus === 'RETIRED') {
+        await request(`/api/lmvs/${assetId}`, { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reason }) });
+      } else {
+        await request('/api/lmvs/update-status', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lmvId: assetId, status: targetStatus, reason }) });
+      }
+      setLifecycleTarget(null);
+      showNotice('success', 'LMV lifecycle updated and recorded.');
+      await fetchData();
+    } catch (error) { showNotice('error', error.message); }
+    finally { setLifecycleBusy(false); }
+  };
+
+  const updateLmvCenter = async (lmv, homeCenterId) => {
+    if (homeCenterId === lmv.homeCenterId) return;
+    if (!window.confirm(`Transfer ${lmv.registrationNo} to the selected operating center?`)) return;
+    try {
+      await request(`/api/lmvs/${lmv.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ homeCenterId }),
+      });
+      showNotice('success', `${lmv.registrationNo} was transferred. Incompatible Pilot preferences were cleared.`);
       await fetchData();
     } catch (error) { showNotice('error', error.message); }
   };
@@ -276,6 +426,7 @@ const pageCopy = {
   pilots: ['Fleet manager', 'Pilots', 'Manage registered pilots and their operating centers.'],
   drones: ['Fleet manager', 'Drones', 'Register and manage fleet aircraft.'],
   lmvs: ['Fleet manager', 'Light motor vehicles', 'Each scheduled crew reserves one LMV.'],
+  maintenance: ['Fleet manager', 'Maintenance requests', 'Review Pilot-reported Drone and LMV issues with accountable decisions.'],
   location: ['Fleet manager', 'Live Pilot GPS', 'Track pilot locations in real time.'],
 };
 
@@ -285,8 +436,36 @@ const [eyebrow, title, description] = pageCopy[activeSection] || pageCopy.schedu
     { id: 'pilots', label: 'Pilots', icon: 'users' },
     { id: 'drones', label: 'Drones', icon: 'drone' },
     { id: 'lmvs', label: 'LMVs', icon: 'truck' },
+    { id: 'maintenance', label: 'Maintenance requests', icon: 'alert' },
     { id: 'location', label: 'Live Pilot GPS', icon: 'location' },
   ];
+
+  const calendar = <SchedulingCalendar
+    events={events}
+    calendarDate={calendarDate}
+    calendarView={calendarView}
+    setCalendarDate={setCalendarDate}
+    setCalendarView={setCalendarView}
+    selectedLead={selectedLead}
+    setScheduleDraft={setScheduleDraft}
+    openAssignment={openAssignment}
+    pilots={pilots}
+    handleEventDrop={handleEventDrop}
+    handleEventResize={handleEventResize}
+  />;
+
+  if (calendarOnly) {
+    return (
+      <main className="calendar-popout-page">
+        <header className="calendar-popout-header">
+          <div><p className="eyebrow">Fleet operations</p><h1>Pilot calendar</h1><p>Five-minute movement, direct date navigation, and server-validated scheduling.</p></div>
+          <button type="button" className="action-btn" onClick={() => window.close()}>Close calendar</button>
+        </header>
+        {notice && <div role="alert" className={`notice notice--${notice.kind}`}>{notice.message}</div>}
+        <section className="panel panel--raised calendar-popout-panel">{calendar}</section>
+      </main>
+    );
+  }
 
   return (
     <OperationsShell roleLabel="Fleet operations" navItems={navItems} activeTab={activeSection} onTabChange={selectSection} user={user}  onLogout={logout}>
@@ -352,21 +531,21 @@ const [eyebrow, title, description] = pageCopy[activeSection] || pageCopy.schedu
         <AutoAssignmentPolicyPanel compact />
 
         <section className="fleet-layout">
-          <aside className="panel panel--raised">
+          <aside className="panel panel--raised crew-scheduling-panel">
             <div className="panel-header"><div className="panel-header__title"><div className="panel-title-row"><span className="panel-title-icon"><OpsIcon name="clipboard" /></span><h2>Crew scheduling</h2></div><p>Select a request, then assign its complete two-person operational unit.</p></div></div>
             <div className="panel-body form-stack">
-              {!selectedLead && <div className="section-gap">
+              {!selectedLead && <div className="section-gap manual-queue-scroll">
                 {loading && <div className="empty-state"><strong>Loading requests…</strong></div>}
                 {!loading && !manualQueue.length && <div className="empty-state"><strong>No scheduling exceptions</strong><span>All verified requests have an assignment path.</span></div>}
                 {manualQueue.map((lead) => <article key={lead.id} className="queue-card"><strong>{lead.farmerName}</strong><p className="caption">{lead.village || 'Location pending'} · {lead.acreage} acres</p><p className="caption">Center: {lead.matchedCenter?.name || 'Not matched'}</p><p className="queue-card__warning">{lead.notes || 'Manual crew assignment required.'}</p><button type="button" className="submit-btn button-wide" onClick={() => selectLeadForScheduling(lead)}>Choose crew and time</button></article>)}
               </div>}
-              {selectedLead && <form className="form-stack" onSubmit={submitCrewSchedule}>
+              {selectedLead && <form className="form-stack crew-schedule-form" onSubmit={submitCrewSchedule}>
                 <div className="button-row button-row--end"><button type="button" className="danger-btn" onClick={() => { setCancelTarget(selectedLead); setCancelReason(''); }}>Remove request</button></div>
                 <div className="panel-title-row"><div><strong>{selectedLead.farmerName}</strong><p className="caption">{selectedLead.acreage} acres · {selectedLead.matchedCenter?.name || 'No operating center'}</p></div><button type="button" className="action-btn" onClick={() => setSelectedLead(null)}>Change request</button></div>
                 {!eligiblePilots.length && <div className="notice notice--error" role="alert">An active Primary Pilot at this operating center is required.</div>}
                 {!eligibleDrones.length && <div className="notice notice--error" role="alert">No schedulable drone is registered at this operating center.</div>}
                 {!eligibleLmvs.length && <div className="notice notice--error" role="alert">No schedulable LMV is registered at this operating center. Add one from the LMVs tab.</div>}
-                <div className="input-group"><label htmlFor="crew-start">{t('calendar_service_start')}</label><input id="crew-start" type="datetime-local" value={scheduleDraft.serviceWindowStart} onChange={(event) => setScheduleDraft({ ...scheduleDraft, serviceWindowStart: event.target.value })} required /></div>
+                <div className="input-group"><label htmlFor="crew-start">{t('calendar_service_start')}</label><input id="crew-start" type="datetime-local" min={localDateTimeValue(new Date())} value={scheduleDraft.serviceWindowStart} onChange={(event) => setScheduleDraft({ ...scheduleDraft, serviceWindowStart: event.target.value })} required /><span className="field-hint">Must be in the future so the Primary Pilot can select a Copilot.</span></div>
                 <div className="input-group"><label htmlFor="crew-end">{t('calendar_service_end')}</label><input id="crew-end" type="datetime-local" value={scheduleDraft.serviceWindowEnd} onChange={(event) => setScheduleDraft({ ...scheduleDraft, serviceWindowEnd: event.target.value })} required /></div>
                 <div className="input-group"><label htmlFor="primary-pilot">Primary Pilot</label><select id="primary-pilot" value={scheduleDraft.pilotId} onChange={(event) => selectPrimaryPilot(event.target.value)} required><option value="">Select primary Pilot</option>{eligiblePilots.map((pilot) => <option key={pilot.id} value={pilot.id}>{pilot.name}</option>)}</select>{scheduleDraft.pilotId && <span className="field-hint">Preferred drone and vehicle are filled automatically when they are currently eligible. You may select another available asset.</span>}</div>
                 {isAdmin ? <div className="input-group"><label htmlFor="crew-copilot">Copilot <span className="field-hint">(optional Admin override)</span></label><select id="crew-copilot" value={scheduleDraft.copilotId} onChange={(event) => setScheduleDraft({ ...scheduleDraft, copilotId: event.target.value })}><option value="">Let the Primary Pilot choose</option>{eligiblePilots.filter((pilot) => pilot.id !== scheduleDraft.pilotId).map((pilot) => <option key={pilot.id} value={pilot.id}>{pilot.name}</option>)}</select></div> : <p className="caption">After Fleet reserves the Primary Pilot, drone and LMV, the Primary Pilot selects one eligible Copilot in the Pilot app.</p>}
@@ -379,7 +558,7 @@ const [eyebrow, title, description] = pageCopy[activeSection] || pageCopy.schedu
 
           <section className="panel panel--raised">
             <div className="panel-header"><div className="panel-header__title"><div className="panel-title-row"><span className="panel-title-icon"><OpsIcon name="calendar" /></span><h2>{t('calendar_title')}</h2></div><p>{t('calendar_help')}</p></div><label><input type="checkbox" checked={showTerminal} onChange={(event) => setShowTerminal(event.target.checked)} /> {t('calendar_show_terminal')}</label></div>
-            <div className="panel-body"><div className="calendar-wrap"><div className="calendar-stage"><DnDCalendar localizer={localizer} events={events} date={calendarDate} view={calendarView} onNavigate={setCalendarDate} onView={setCalendarView} views={['month', 'week', 'day']} defaultView="month" popup selectable resizable onDrillDown={(date) => { setCalendarDate(date); setCalendarView('day'); }} onSelectSlot={({ start, end }) => { if (calendarView === 'month') { setCalendarDate(start); setCalendarView('day'); } else if (selectedLead) { setScheduleDraft((draft) => ({ ...draft, serviceWindowStart: localDateTimeValue(start), serviceWindowEnd: localDateTimeValue(end) })); } }} onSelectEvent={openAssignment} resources={pilots} resourceIdAccessor="id" resourceTitleAccessor="name" onEventDrop={handleEventDrop} onEventResize={handleEventResize} draggableAccessor={(event) => ['SCHEDULED', 'PILOT_ACCEPTED'].includes(event.assignment?.lead?.status)} resizableAccessor={(event) => ['SCHEDULED', 'PILOT_ACCEPTED'].includes(event.assignment?.lead?.status)} eventPropGetter={(event) => ({ style: { backgroundColor: event.assignment?.autoAssigned ? '#2e6b4d' : '#9a6920', border: 0 } })} tooltipAccessor={(event) => `${event.title} (${readableStatus(event.assignment?.lead?.status || event.status)})`} /></div></div></div>
+            <div className="panel-body">{calendar}<div className="calendar-popout-action"><a className="action-btn" href="#/fleet-calendar" target="_blank" rel="noreferrer"><OpsIcon name="calendar" /> Open full calendar in a new tab</a></div></div>
           </section>
         </section>
 
@@ -431,12 +610,13 @@ const [eyebrow, title, description] = pageCopy[activeSection] || pageCopy.schedu
       )}
 
 {activeSection === 'drones' && <MyDrones/>}
+      {activeSection === 'maintenance' && <MaintenanceRequestsPanel />}
       {activeSection === 'lmvs' && (
         <section className="user-admin-grid">
           {notice && <div role="alert" className={`notice notice--${notice.kind}`}><span>{notice.message}</span><button type="button" className="notice__close" onClick={() => setNotice(null)} aria-label="Dismiss message">×</button></div>}
           <div className="panel panel--raised">
             <div className="panel-header"><div className="panel-header__title"><div className="panel-title-row"><span className="panel-title-icon"><OpsIcon name="truck" /></span><h2>Light motor vehicles</h2></div><p>Each scheduled crew reserves one LMV.</p></div></div>
-            <div className="data-stack">{lmvs.map((lmv) => <div className="data-row" key={lmv.id}><div className="data-row__main"><span className="data-row__title">{lmv.registrationNo}{lmv.label ? ` · ${lmv.label}` : ''}</span><span className="data-row__meta">Center: {lmv.homeCenter?.name || 'N/A'}</span><span className="status-badge">{readableStatus(lmv.status)}</span></div><div className="data-row__actions">{lmv.status === 'AVAILABLE' && <><button type="button" className="action-btn" onClick={() => void updateLmvStatus(lmv.id, 'MAINTENANCE')}>Maintenance</button><button type="button" className="danger-btn" onClick={() => void updateLmvStatus(lmv.id, 'OUT_OF_SERVICE')}>Out of service</button></>}{['MAINTENANCE', 'OUT_OF_SERVICE'].includes(lmv.status) && <button type="button" className="submit-btn" onClick={() => void updateLmvStatus(lmv.id, 'AVAILABLE')}>Return to service</button>}</div></div>)}</div>
+            <div className="data-stack fleet-scroll-region">{lmvs.map((lmv) => <div className={`data-row ${lmv.archivedAt ? 'data-row--retired' : ''}`} key={lmv.id}><div className="data-row__main"><span className="data-row__title">{lmv.registrationNo}{lmv.label ? ` · ${lmv.label}` : ''}</span><span className="data-row__meta">Center: {lmv.homeCenter?.name || 'N/A'}</span><span className={`status-badge status-badge--${lmv.archivedAt ? 'danger' : 'info'}`}>{lmv.archivedAt ? 'retired' : readableStatus(lmv.status)}</span></div><div className="data-row__actions">{!lmv.archivedAt && <label className="input-group asset-center-control"><span>Operating center</span><select value={lmv.homeCenterId || ''} onChange={(event) => void updateLmvCenter(lmv, event.target.value)}><option value="" disabled>Select center</option>{centers.filter((center) => center.active).map((center) => <option key={center.id} value={center.id}>{center.name}</option>)}</select></label>}{!lmv.archivedAt && lmv.status === 'AVAILABLE' && <><button type="button" className="action-btn" onClick={() => openLmvLifecycle(lmv, 'MAINTENANCE')}>Maintenance</button><button type="button" className="danger-btn" onClick={() => openLmvLifecycle(lmv, 'OUT_OF_SERVICE')}>Out of service</button></>}{!lmv.archivedAt && ['MAINTENANCE', 'OUT_OF_SERVICE'].includes(lmv.status) && <button type="button" className="submit-btn" onClick={() => openLmvLifecycle(lmv, 'AVAILABLE')}>Return to service</button>}{!lmv.archivedAt && <button type="button" className="danger-btn" onClick={() => openLmvLifecycle(lmv, 'RETIRED')}>Retire</button>}</div></div>)}</div>
           </div>
           <div className="panel panel--raised">
             <div className="panel-header"><div className="panel-header__title"><div className="panel-title-row"><span className="panel-title-icon"><OpsIcon name="plus" /></span><h2>Add LMV</h2></div><p>Keep registration and assigned operating center current.</p></div></div>
@@ -452,6 +632,7 @@ const [eyebrow, title, description] = pageCopy[activeSection] || pageCopy.schedu
 
       {activeSection === 'location' && <section id="location" className="section-gap"><LiveLocationPanel /></section>}
       {cancelTarget && <div className="modal-backdrop" role="presentation"><section className="modal-card" role="dialog" aria-modal="true" aria-labelledby="cancel-request-title"><div className="modal-card__header"><div><p className="eyebrow">Remove unscheduled request</p><h2 id="cancel-request-title">Remove {cancelTarget.farmerName}'s request?</h2></div><button type="button" className="icon-button" aria-label="Close removal dialog" onClick={() => setCancelTarget(null)}>×</button></div><p className="muted">This clears the obsolete request from the manual scheduling queue and preserves its audit history. Scheduled or started missions cannot be removed here.</p><form className="form-stack" onSubmit={cancelRequest}><div className="input-group"><label htmlFor="cancel-request-reason">Reason</label><textarea id="cancel-request-reason" value={cancelReason} onChange={(event) => setCancelReason(event.target.value)} minLength="3" maxLength="500" required /></div><div className="button-row button-row--end"><button type="button" className="action-btn" onClick={() => setCancelTarget(null)}>Keep request</button><button type="submit" className="danger-btn">Remove request</button></div></form></section></div>}
+      <AssetLifecycleDialog target={lifecycleTarget} busy={lifecycleBusy} onClose={() => setLifecycleTarget(null)} onSubmit={submitLmvLifecycle} />
     </OperationsShell>
   );
 }
