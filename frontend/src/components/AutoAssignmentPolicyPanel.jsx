@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { API_URL as API } from '../config';
+import { csrfHeaders } from '../utils/csrf';
 
 const editableFields = [
   ['searchHorizonDays', 'number', 1, 14],
@@ -28,7 +29,7 @@ export default function AutoAssignmentPolicyPanel({ editable = false, compact = 
   const [saving, setSaving] = useState(false);
 
   const load = useCallback(async () => {
-    const response = await fetch(`${API}/api/auto-assignment-policy`);
+    const response = await fetch(`${API}/api/auto-assignment-policy`, { credentials: 'include' });
     const data = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(data.error || t('auto_policy_load_failed'));
     setPolicy(data.policy);
@@ -58,7 +59,8 @@ export default function AutoAssignmentPolicyPanel({ editable = false, compact = 
     try {
       const response = await fetch(`${API}/api/auto-assignment-policy`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json', ...csrfHeaders() },
         body: JSON.stringify({ expectedRevision: policy.revision, ...changes }),
       });
       const data = await response.json().catch(() => ({}));
@@ -77,23 +79,22 @@ export default function AutoAssignmentPolicyPanel({ editable = false, compact = 
     }
   };
 
-  if (!editable || compact) {
-    return <section className="panel panel--raised">
-      <div className="panel-header"><div className="panel-header__title"><h2>{t('auto_policy_title')}</h2><p>{t('auto_policy_read_only')}</p></div></div>
-      <div className="panel-body"><span className={`status-badge status-badge--${draft.enabled ? 'success' : 'warning'}`}>{t(draft.enabled ? 'auto_policy_automatic' : 'auto_policy_paused')}</span><p>{t('auto_policy_revision', { revision: draft.revision })}</p><p>{t('auto_policy_last_updated', { value: new Date(draft.updatedAt).toLocaleString() })}</p></div>
-    </section>;
-  }
+  const readOnly = !editable || compact;
+  const controlsDisabled = readOnly || !draft.enabled;
 
   return <section className="panel panel--raised">
-    <div className="panel-header"><div className="panel-header__title"><h2>{t('auto_policy_title')}</h2><p>{t('auto_policy_future_only')}</p></div></div>
-    <form className="panel-body form-stack" onSubmit={save}>
+    <div className="panel-header"><div className="panel-header__title"><h2>{t('auto_policy_title')}</h2><p>{readOnly ? t('auto_policy_read_only') : t('auto_policy_future_only')}</p></div></div>
+    <form className={`panel-body form-stack policy-preview ${controlsDisabled ? 'policy-preview--disabled' : ''}`} onSubmit={save}>
       {notice && <div role="alert" className={`notice notice--${notice.kind}`}>{notice.message}</div>}
-      <label className="input-group"><span>{t('auto_policy_enabled')}</span><select value={draft.enabled ? 'enabled' : 'paused'} onChange={(event) => setDraft({ ...draft, enabled: event.target.value === 'enabled' })}><option value="enabled">{t('auto_policy_automatic')}</option><option value="paused">{t('auto_policy_paused')}</option></select></label>
-      {editableFields.map(([field, type, min, max]) => <label className="input-group" key={field}><span>{t(`auto_policy_${field}`)}</span><input type={type} min={min} max={max} step={field === 'maxAcreagePerUnitPerDay' ? '0.01' : '1'} value={draft[field]} onChange={(event) => setDraft({ ...draft, [field]: event.target.value })} /></label>)}
-      <label className="input-group"><span>{t('auto_policy_weatherUnavailableAction')}</span><select value={draft.weatherUnavailableAction} onChange={(event) => setDraft({ ...draft, weatherUnavailableAction: event.target.value })}><option value="SCHEDULE_WITH_WARNING">{t('auto_policy_weather_warning')}</option><option value="MANUAL_REVIEW">{t('auto_policy_weather_manual')}</option></select></label>
+      <div className="policy-preview__status"><span className={`status-badge status-badge--${draft.enabled ? 'success' : 'warning'}`}>{t(draft.enabled ? 'auto_policy_automatic' : 'auto_policy_paused')}</span>{!draft.enabled && <span>Configuration is preserved but automatic assignment is paused.</span>}</div>
+      <label className="input-group"><span>{t('auto_policy_enabled')}</span><select disabled={readOnly} value={draft.enabled ? 'enabled' : 'paused'} onChange={(event) => setDraft({ ...draft, enabled: event.target.value === 'enabled' })}><option value="enabled">{t('auto_policy_automatic')}</option><option value="paused">{t('auto_policy_paused')}</option></select></label>
+      <fieldset className="policy-fields" disabled={controlsDisabled}>
+        {editableFields.map(([field, type, min, max]) => <label className="input-group" key={field}><span>{t(`auto_policy_${field}`)}</span><input type={type} min={min} max={max} step={field === 'maxAcreagePerUnitPerDay' ? '0.01' : '1'} value={draft[field]} onChange={(event) => setDraft({ ...draft, [field]: event.target.value })} /></label>)}
+        <label className="input-group"><span>{t('auto_policy_weatherUnavailableAction')}</span><select value={draft.weatherUnavailableAction} onChange={(event) => setDraft({ ...draft, weatherUnavailableAction: event.target.value })}><option value="SCHEDULE_WITH_WARNING">{t('auto_policy_weather_warning')}</option><option value="MANUAL_REVIEW">{t('auto_policy_weather_manual')}</option></select></label>
+      </fieldset>
       <p>{t('auto_policy_revision', { revision: draft.revision })}</p>
       <p>{t('auto_policy_last_updated', { value: new Date(draft.updatedAt).toLocaleString() })}</p>
-      <button className="submit-btn" type="submit" disabled={saving}>{saving ? t('auto_policy_saving') : t('auto_policy_save')}</button>
+      {!readOnly && <button className="submit-btn" type="submit" disabled={saving}>{saving ? t('auto_policy_saving') : t('auto_policy_save')}</button>}
     </form>
   </section>;
 }

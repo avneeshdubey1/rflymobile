@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useCallback, useState, useEffect, useMemo } from 'react';
 import { Plus, Pencil, Trash2, Search } from 'lucide-react';
 import axios from "axios";
+import { io } from 'socket.io-client';
 import { API_URL } from '../config';
 import { csrfHeaders } from '../utils/csrf';
 
@@ -62,20 +63,18 @@ export default function ManagePilots() {
     const eligibleDrones = useMemo(() => drones.filter((drone) => (
         drone.id === form.assignedDroneId || (
             !drone.archivedAt &&
-            (!drone.assignedPilot || drone.assignedPilot.id === editingId) &&
             drone.homeCenterId === form.homeCenterId &&
             drone.status === 'AVAILABLE' &&
             drone.operationalState === 'IN_SERVICE' &&
             drone.availabilityState === 'AVAILABLE'
         )
-    )), [drones, editingId, form.assignedDroneId, form.homeCenterId]);
+    )), [drones, form.assignedDroneId, form.homeCenterId]);
     const eligibleLmvs = useMemo(() => lmvs.filter((lmv) => (
         lmv.id === form.assignedLmvId || (
-            (!lmv.assignedPilot || lmv.assignedPilot.id === editingId) &&
             lmv.homeCenterId === form.homeCenterId && lmv.status === 'AVAILABLE'
             && lmv.operationalState === 'IN_SERVICE' && lmv.availabilityState === 'AVAILABLE'
         )
-    )), [lmvs, editingId, form.assignedLmvId, form.homeCenterId]);
+    )), [lmvs, form.assignedLmvId, form.homeCenterId]);
 
     const handleChange = (e) => setForm((current) => ({
         ...current,
@@ -100,7 +99,7 @@ export default function ManagePilots() {
             .catch(console.error);
     }, []);
 
-    const fetchPilots = async () => {
+    const fetchPilots = useCallback(async () => {
         try {
             const response = await axios.get(`${API_URL}/api/users/pilots`, { withCredentials: true });
             setPilots(response.data.pilots || []);
@@ -109,9 +108,24 @@ export default function ManagePilots() {
         } finally {
             setLoadingPilots(false);
         }
-    };
+    }, []);
 
-    useEffect(() => { fetchPilots(); }, []);
+    useEffect(() => { void fetchPilots(); }, [fetchPilots]);
+
+    useEffect(() => {
+        const socket = io(API_URL, { transports: ['websocket'], withCredentials: true });
+        const refresh = (event) => {
+            if (event?.resource === 'pilots') void fetchPilots();
+        };
+        const refreshOnFocus = () => void fetchPilots();
+        socket.on('operations:data-changed', refresh);
+        window.addEventListener('focus', refreshOnFocus);
+        return () => {
+            socket.off('operations:data-changed', refresh);
+            socket.disconnect();
+            window.removeEventListener('focus', refreshOnFocus);
+        };
+    }, [fetchPilots]);
 
     useEffect(() => {
         const fetchCenters = async () => {

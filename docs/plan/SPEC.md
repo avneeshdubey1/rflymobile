@@ -9,7 +9,7 @@
 - Admin maintains active Cluster, Crop, Spray Purpose, B2B Sub-Category, B2C Classification and Lead Source masters. Cluster Type is owned by the Cluster (`CLUSTER`, `HUB`, `SPOKE`, or `MINIHUB`) and is derived in intake screens. `CLUSTER` is an honest transitional classification for client locations that have not yet been classified as a hub, spoke, or mini-hub.
 - Staff lead intake records `B2B` or `B2C`; B2B requires an active B2B Sub-Category while B2C forbids it. Intake also records one active Cluster, Reporting Admin, Lead Source, Crop, and at least one active Spray Purpose.
 - Seasonal crop, chemical brand/proof and manually selected drone fields are retired from the active staff lead form. Existing nullable legacy columns remain only for compatibility until a later removal migration is approved.
-- A Pilot may have a preferred Drone and LMV at the Pilot's operating centre. These are preferences only; centre, serviceability, availability, compliance and overlap rules take precedence.
+- A Pilot may have a preferred Drone and LMV at the Pilot's operating centre. These are non-exclusive preferences: multiple Pilots/Copilots may prefer the same office asset, and an asset may remain unpreferred as backup stock. An actual Assignment still reserves exactly one operational Drone and LMV exclusively for its service window; centre, serviceability, availability, compliance and overlap rules always take precedence.
 - Fleet scheduling reserves one Primary Pilot, Drone and LMV. The Primary Pilot selects exactly one eligible Copilot in the Pilot application; lead entry never selects crew. Admin may make an audited manual Copilot assignment or override when operationally necessary; Fleet cannot bypass the Primary-Pilot flow.
 - Before mission start, the assigned Primary Pilot may reject with a required reason. The rejection is retained, assets are released, and the lead moves to the visible Admin/Fleet manual-scheduling queue.
 
@@ -47,7 +47,7 @@ Every service must be stateless except for approved persistent stores. Compose i
 | Admin | Audited oversight, master-data control, correction, configuration, account administration, and billing correction. | Secrets, password hashes, raw SQL, audit-log rewrites. |
 | Sales | Phone intake, request processing, customer follow-up, final-acreage approval, invoice-draft release, cash/UPI follow-up. | Fleet-resource conflicts, provider configuration, unrestricted customer access. |
 | Fleet Manager | Pilot/drone/LMV availability, maintenance visibility, manual scheduling, operational exceptions. | Final billing approval unless granted a future explicit policy. |
-| Pilot | Accept/start/complete own assignment, current active-mission location, and evidence submission for own work. | Pricing approval, invoice release, another crew's work. |
+| Pilot | Accept/start/complete own assignment, current active-mission location, evidence submission, and an optional exact B2C cash-handover report after completion. | Pricing approval, invoice release, settlement reconciliation, another crew's work. |
 | Farmer | Optional verified-phone read-only view of matching requests, approved invoice drafts, and settlement state. | Creating a bypass around service-area checks or viewing other records. |
 | Business | Optional read-only view of explicitly linked farm-group/company work, invoices, and settlements. | Viewing unrelated farmer data or administering staff. |
 
@@ -109,7 +109,7 @@ Only the server can create, verify, replace, revoke, or consume a challenge. It 
 
 ### 4.3 LMV fleet
 
-- LMV: unique registration, optional label, centre, lightweight capacity placeholder, availability state, optional notes, and audit history. Insurance, permit, fitness, pollution, odometer, and detailed maintenance history are deferred until the company asks for those fields.
+- LMV: unique registration, optional label, centre, lightweight capacity placeholder, availability state, optional notes, append-only status/retirement activity, and accountable maintenance requests. Insurance, permit, fitness, pollution, odometer, repair work orders, and detailed service costs remain deferred until the company asks for those fields.
 - Assignment target: requires primary Pilot, Copilot, drone, and LMV references. Both crew members may perform driving and field-operation duties; do not create a separate fixed driver role.
 
 Required LMV states are AVAILABLE, ASSIGNED, MAINTENANCE, and OUT_OF_SERVICE. Scheduling reserves one two-person crew and one drone per LMV. For the first LMV release, MAINTENANCE and OUT_OF_SERVICE block scheduling; detailed compliance dates and warning windows remain future placeholders. The development branch has an additive nullable-Copilot migration for legacy rows and requires a Copilot for every new assignment; production migration evidence remains required.

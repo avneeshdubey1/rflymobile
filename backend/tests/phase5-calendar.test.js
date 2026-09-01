@@ -49,8 +49,8 @@ test('a fleet manager can turn a manual-scheduling lead into an assignment, then
   ids.leads.push(lead.id);
   ids.drones.push(drone.id);
   ids.lmvs.push(lmv.id);
-  const firstDate = new Date('2026-08-10T09:00:00.000Z');
-  const firstEnd = new Date('2026-08-10T11:00:00.000Z');
+  const firstDate = new Date(Date.now() + 24 * 60 * 60_000);
+  const firstEnd = new Date(firstDate.getTime() + 2 * 60 * 60_000);
   const createResponse = await fetch(`${baseUrl}/api/assignments/manual`, {
     method: 'POST', headers: auth(fleetManager), body: JSON.stringify({ leadId: lead.id, pilotId: pilot.id, droneId: drone.id, lmvId: lmv.id, serviceWindowStart: firstDate, serviceWindowEnd: firstEnd }),
   });
@@ -60,8 +60,8 @@ test('a fleet manager can turn a manual-scheduling lead into an assignment, then
   assert.equal(created.mission.lmvId, lmv.id);
   ids.assignments.push(created.mission.id);
 
-  const rescheduledDate = new Date('2026-08-11T09:00:00.000Z');
-  const rescheduledEnd = new Date('2026-08-11T12:00:00.000Z');
+  const rescheduledDate = new Date(firstDate.getTime() + 24 * 60 * 60_000);
+  const rescheduledEnd = new Date(rescheduledDate.getTime() + 3 * 60 * 60_000);
   const invalidPilotResponse = await fetch(`${baseUrl}/api/assignments/${created.mission.id}/reschedule`, {
     method: 'PUT',
     headers: auth(fleetManager),
@@ -76,7 +76,7 @@ test('a fleet manager can turn a manual-scheduling lead into an assignment, then
   const rescheduled = await rescheduleResponse.json();
   assert.equal(rescheduled.mission.serviceWindowStart, rescheduledDate.toISOString());
   assert.equal(rescheduled.mission.serviceWindowEnd, rescheduledEnd.toISOString());
-  const bounded = await fetch(`${baseUrl}/api/assignments/all?from=2026-08-11T00:00:00.000Z&to=2026-08-12T00:00:00.000Z`, { headers: auth(fleetManager) });
+  const bounded = await fetch(`${baseUrl}/api/assignments/all?from=${encodeURIComponent(new Date(rescheduledDate.getTime() - 60 * 60_000).toISOString())}&to=${encodeURIComponent(new Date(rescheduledEnd.getTime() + 60 * 60_000).toISOString())}`, { headers: auth(fleetManager) });
   const boundedData = await bounded.json();
   assert.equal(bounded.status, 200);
   assert.equal(boundedData.missions.some((mission) => mission.id === created.mission.id), true);

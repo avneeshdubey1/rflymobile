@@ -37,6 +37,12 @@ function semanticVersion(value, fallback, name) {
   return resolved;
 }
 
+function currencyCode(value, fallback, name) {
+  const resolved = String(value || fallback || '').trim().toUpperCase();
+  if (!/^[A-Z]{3}$/.test(resolved)) throw new ConfigurationError(`${name} must be a three-letter ISO currency code`);
+  return resolved;
+}
+
 function origins(value, nodeEnv, { name = 'CORS_ALLOWED_ORIGINS', developmentDefaults = LOCAL_DEVELOPMENT_ORIGINS, requiredInProduction = true } = {}) {
   const configured = String(value || '')
     .split(',')
@@ -119,6 +125,15 @@ function loadEnvironment(env = process.env) {
   } catch {
     throw new ConfigurationError('OPERATING_TIME_ZONE must be a valid IANA timezone');
   }
+  const b2cCashCollectionEnabled = boolean(
+    env.B2C_CASH_COLLECTION_ENABLED,
+    nodeEnv !== 'production',
+    'B2C_CASH_COLLECTION_ENABLED',
+  );
+  const configuredCashCurrency = String(env.B2C_CASH_CURRENCY_CODE || '').trim();
+  const b2cCashCurrencyCode = b2cCashCollectionEnabled
+    ? currencyCode(configuredCashCurrency, nodeEnv === 'production' ? '' : 'INR', 'B2C_CASH_CURRENCY_CODE')
+    : (configuredCashCurrency ? currencyCode(configuredCashCurrency, '', 'B2C_CASH_CURRENCY_CODE') : null);
 
   return Object.freeze({
     nodeEnv,
@@ -156,6 +171,10 @@ function loadEnvironment(env = process.env) {
       foregroundLocationEnabled: boolean(env.MOBILE_FOREGROUND_LOCATION_ENABLED, true, 'MOBILE_FOREGROUND_LOCATION_ENABLED'),
       locationIntervalSeconds: integer(env.MOBILE_LOCATION_INTERVAL_SECONDS, 60, 'MOBILE_LOCATION_INTERVAL_SECONDS', { min: 15, max: 900 }),
       locationAccuracyMetres: integer(env.MOBILE_LOCATION_ACCURACY_METRES, 100, 'MOBILE_LOCATION_ACCURACY_METRES', { min: 10, max: 1000 }),
+    }),
+    b2cCashCollection: Object.freeze({
+      enabled: b2cCashCollectionEnabled,
+      currencyCode: b2cCashCurrencyCode,
     }),
     recovery: Object.freeze({
       hashSecret: recoveryHashSecret,

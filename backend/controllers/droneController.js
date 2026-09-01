@@ -2,8 +2,6 @@ const droneRepository = require('../src/repositories/droneRepository');
 const assignmentRepository = require('../src/repositories/assignmentRepository');
 const auditLogRepository = require('../src/repositories/auditLogRepository');
 const operatingCenterRepository = require('../src/repositories/operatingCenterRepository');
-const { setHistoryActor } = require('../src/repositories/historyActorRepository');
-const prisma = require('../src/lib/prisma');
 const validStatuses = new Set(['AVAILABLE', 'ASSIGNED', 'MAINTENANCE', 'OUT_OF_SERVICE']);
 const lifecycleForStatus = {
     AVAILABLE: { status: 'AVAILABLE', operationalState: 'IN_SERVICE', availabilityState: 'AVAILABLE' },
@@ -124,6 +122,7 @@ exports.updateDrone = async(req, res) => {
         }
         if (hasOwn(req.body, 'homeCenterId')) {
             data.homeCenterId = await requireActiveCenter(req.body.homeCenterId);
+            if (data.homeCenterId !== before.homeCenterId) await assertNoActiveAssignment(before.id);
         }
         if (hasOwn(req.body, 'uin')) data.uin = optionalText(req.body.uin);
         if (hasOwn(req.body, 'type') || hasOwn(req.body, 'category')) {
@@ -150,7 +149,10 @@ exports.updateDrone = async(req, res) => {
         }
         if (hasOwn(req.body, 'certified')) data.certified = optionalCertification(req.body.certified);
         if (hasOwn(req.body, 'serviceType') || hasOwn(req.body, 'service')) data.serviceType = optionalText(req.body.serviceType ?? req.body.service);
-        const drone = await droneRepository.update(req.params.id, data, { actorId: req.auth.userId });
+        const drone = await droneRepository.update(req.params.id, data, {
+            actorId: req.auth.userId,
+            clearIncompatiblePreferences: data.homeCenterId && data.homeCenterId !== before.homeCenterId,
+        });
         await auditLogRepository.create({ entityType: 'Drone', entityId: drone.id, action: 'UPDATED', actorId: req.auth.userId, beforeState: before, afterState: drone });
         res.json({ success: true, drone });
     } catch (error) {
@@ -164,51 +166,9 @@ exports.updateDrone = async(req, res) => {
 
 exports.deleteDrone = async(req, res) => {
     try {
-        const result = await prisma.$transaction(async (tx) => {
-            await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${'AssignmentResource:drone:' + req.params.id}))`;
-            await setHistoryActor(tx, req.auth.userId);
-            const before = await tx.drone.findUnique({ where: { id: req.params.id }, include: { homeCenter: true } });
-            if (!before) return null;
-            if (before.archivedAt) return { drone: before, changed: false };
-            const activeAssignment = await tx.assignment.findFirst({
-                where: {
-                    droneId: before.id,
-                    completedAt: null,
-                    lead: { status: { notIn: ['COMPLETED', 'CANCELLED', 'REJECTED'] } },
-                },
-                select: { id: true },
-            });
-            if (activeAssignment) {
-                const error = new Error('An assigned drone cannot be retired while active missions exist');
-                error.statusCode = 409;
-                throw error;
-            }
-            const drone = await tx.drone.update({
-                where: { id: before.id },
-                data: {
-                    archivedAt: new Date(),
-                    status: 'OUT_OF_SERVICE',
-                    operationalState: 'OUT_OF_SERVICE',
-                    availabilityState: 'UNAVAILABLE',
-                },
-                include: { homeCenter: true },
-            });
-            await tx.user.updateMany({
-                where: { assignedDroneId: drone.id },
-                data: { assignedDroneId: null },
-            });
-            await tx.auditLog.create({
-                data: {
-                    entityType: 'Drone',
-                    entityId: drone.id,
-                    action: 'ARCHIVED',
-                    actorId: req.auth.userId,
-                    beforeState: auditLogRepository.sanitizeAuditState(before),
-                    afterState: auditLogRepository.sanitizeAuditState(drone),
-                },
-            });
-            return { drone, changed: true };
-        });
+        const reason = String(req.body?.reason || '').trim();
+        if (reason.length < 3 || reason.length > 500) return res.status(400).json({ error: 'A retirement reason of 3 to 500 characters is required' });
+        const result = await droneRepository.retire(req.params.id, req.auth.userId, reason);
         if (!result) return res.status(404).json({ error: 'Drone not found' });
         return res.json({ success: true, retired: true, alreadyRetired: !result.changed, drone: result.drone });
     } catch (error) {
@@ -227,6 +187,8 @@ exports.updateStatus = async(req, res) => {
         }
         if (before.status === 'ASSIGNED' && req.body.status !== 'ASSIGNED') await assertNoActiveAssignment(before.id);
         if (['MAINTENANCE', 'OUT_OF_SERVICE'].includes(req.body.status)) await assertNoActiveAssignment(before.id);
+        const reason = String(req.body.reason || '').trim();
+        if (reason.length < 3 || reason.length > 500) return res.status(400).json({ error: 'A status-change reason of 3 to 500 characters is required' });
         const drone = await droneRepository.update(before.id, lifecycleForStatus[req.body.status], { actorId: req.auth.userId });
         await auditLogRepository.create({
             entityType: 'Drone',
@@ -235,7 +197,7 @@ exports.updateStatus = async(req, res) => {
             actorId: req.auth.userId,
             beforeState: before,
             afterState: drone,
-            reason: req.body.reason || null,
+            reason,
         });
         return res.json({ success: true, drone });
     } catch (error) {

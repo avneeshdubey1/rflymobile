@@ -82,9 +82,32 @@ enum MobileAssignmentChangeKind {
 
 enum MissionIssueCategory {
   DRONE_MALFUNCTION
+  LMV_MALFUNCTION
   SAFETY_HAZARD
   WEATHER_BLOCKER
   CUSTOMER_BLOCKER
+  OTHER
+}
+
+enum AssetType {
+  DRONE
+  LMV
+}
+
+enum MaintenanceRequestStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  RESOLVED
+}
+
+enum MaintenanceReasonCode {
+  BATTERY_NOT_CHARGED
+  PROPELLER_DAMAGED
+  VEHICLE_BREAKDOWN
+  TYRE_ISSUE
+  ENGINE_ISSUE
+  ELECTRICAL_ISSUE
   OTHER
 }
 
@@ -119,6 +142,8 @@ enum NotificationType {
   NEEDS_MANUAL_SCHEDULING
   WEATHER_RISK
   PAYMENT_PENDING
+  MAINTENANCE_REQUEST
+  MAINTENANCE_REQUEST_UPDATED
 }
 
 enum PaymentMethod {
@@ -137,6 +162,12 @@ enum PhoneVerificationPurpose {
   FARMER_MOBILE_AUTH
   FARMER_PHONE_LINK
   BUSINESS_RECOVERY
+}
+
+enum CashCollectionReviewStatus {
+  PENDING_REVIEW
+  CONFIRMED
+  VOIDED
 }
 
 enum OtpDeliveryChannel {
@@ -293,9 +324,9 @@ model User {
   // Compatibility-only home-drone preference. A service assignment always
   // carries exactly one operational drone for both Pilot and Copilot.
   assignedDrone      Drone?           @relation("PilotAssignedDrone", fields: [assignedDroneId], references: [id])
-  assignedDroneId    String?          @unique
+  assignedDroneId    String?
   assignedLmv        LMV?             @relation("PilotAssignedLmv", fields: [assignedLmvId], references: [id])
-  assignedLmvId      String?          @unique
+  assignedLmvId      String?
   idProof            String?
   licenseId          String?
   addressLine1       String?
@@ -335,6 +366,10 @@ model User {
   mobileInstallations           MobileInstallation[]
   mobileSessions                MobileSession[]
   assignmentRejections          PilotAssignmentRejection[]   @relation("PilotAssignmentRejections")
+  maintenanceRequestsCreated    AssetMaintenanceRequest[]    @relation("MaintenanceRequestedBy")
+  maintenanceRequestsProcessed  AssetMaintenanceRequest[]    @relation("MaintenanceProcessedBy")
+  maintenanceRequestsResolved   AssetMaintenanceRequest[]    @relation("MaintenanceResolvedBy")
+  cashCollectionsRecorded       B2cCashCollection[]          @relation("CashCollectionRecordedBy")
 
   @@index([role, pilotAvailabilityState, homeCenterId, active, archivedAt])
 }
@@ -624,10 +659,11 @@ model Drone {
   archivedAt          DateTime?
   createdAt           DateTime               @default(now())
 
-  assignments        Assignment[]
-  copilotAssignments Assignment[]   @relation("CopilotDroneAssignments")
-  assignedPilot      User?          @relation("PilotAssignedDrone")
-  history            DroneHistory[]
+  assignments         Assignment[]
+  copilotAssignments  Assignment[]              @relation("CopilotDroneAssignments")
+  preferredByPilots   User[]                    @relation("PilotAssignedDrone")
+  history             DroneHistory[]
+  maintenanceRequests AssetMaintenanceRequest[]
 
   @@index([homeCenterId, archivedAt, operationalState, availabilityState])
 }
@@ -643,12 +679,14 @@ model LMV {
   homeCenterId      String
   capacity          Int                    @default(1)
   notes             String?
+  archivedAt        DateTime?
   createdAt         DateTime               @default(now())
   updatedAt         DateTime               @updatedAt
 
-  assignments   Assignment[]
-  history       LMVHistory[]
-  assignedPilot User?        @relation("PilotAssignedLmv")
+  assignments         Assignment[]
+  history             LMVHistory[]
+  preferredByPilots   User[]                    @relation("PilotAssignedLmv")
+  maintenanceRequests AssetMaintenanceRequest[]
 
   @@index([homeCenterId, status])
   @@index([homeCenterId, operationalState, availabilityState])
@@ -866,10 +904,12 @@ model Assignment {
 
   rescheduleHistory      ScheduleChangeLog[]
   payments               PaymentRecord[]
+  cashCollection         B2cCashCollection?
   notificationEscalation NotificationEscalation?
   mobileMutationReceipts MobileMutationReceipt[]
-  createdAt              DateTime                @default(now())
-  updatedAt              DateTime                @default(now()) @updatedAt
+  maintenanceRequests    AssetMaintenanceRequest[]
+  createdAt              DateTime                  @default(now())
+  updatedAt              DateTime                  @default(now()) @updatedAt
 
   @@index([scheduledDate, dailySequence])
   @@index([pilotId, scheduledDate])
@@ -883,6 +923,38 @@ model Assignment {
   @@index([crewFormationState, scheduledDate])
   @@index([issueCategory, issueReportedAt])
   @@index([updatedAt])
+}
+
+model AssetMaintenanceRequest {
+  id             String                   @id @default(uuid())
+  assetType      AssetType
+  status         MaintenanceRequestStatus @default(PENDING)
+  reasonCode     MaintenanceReasonCode
+  reason         String                   @db.VarChar(500)
+  assignment     Assignment?              @relation(fields: [assignmentId], references: [id], onDelete: SetNull)
+  assignmentId   String?
+  drone          Drone?                   @relation(fields: [droneId], references: [id], onDelete: Restrict)
+  droneId        String?
+  lmv            LMV?                     @relation(fields: [lmvId], references: [id], onDelete: Restrict)
+  lmvId          String?
+  requestedBy    User                     @relation("MaintenanceRequestedBy", fields: [requestedById], references: [id], onDelete: Restrict)
+  requestedById  String
+  processedBy    User?                    @relation("MaintenanceProcessedBy", fields: [processedById], references: [id], onDelete: SetNull)
+  processedById  String?
+  processedAt    DateTime?
+  processingNote String?                  @db.VarChar(500)
+  resolvedBy     User?                    @relation("MaintenanceResolvedBy", fields: [resolvedById], references: [id], onDelete: SetNull)
+  resolvedById   String?
+  resolvedAt     DateTime?
+  resolutionNote String?                  @db.VarChar(500)
+  createdAt      DateTime                 @default(now())
+  updatedAt      DateTime                 @updatedAt
+
+  @@index([status, createdAt])
+  @@index([droneId, status])
+  @@index([lmvId, status])
+  @@index([assignmentId])
+  @@index([requestedById, createdAt])
 }
 
 // Persists the notification-cascade clock so a server restart never loses a pilot follow-up.
@@ -962,6 +1034,25 @@ model PaymentRecord {
   markedCashBy     String? // userId if manually marked collected
   createdAt        DateTime      @default(now())
   resolvedAt       DateTime?
+}
+
+// A Pilot-reported B2C cash handover. This is deliberately separate from the
+// legacy PaymentRecord/invoice surface: it does not calculate a price or mark
+// an invoice settled. Admin must reconcile the immutable field report later.
+model B2cCashCollection {
+  id             String                     @id @default(uuid())
+  assignment     Assignment                 @relation(fields: [assignmentId], references: [id], onDelete: Restrict)
+  assignmentId   String                     @unique
+  amountMinor    BigInt
+  currencyCode   String                     @db.VarChar(3)
+  clientActionId String                     @unique @db.Uuid
+  reviewStatus   CashCollectionReviewStatus @default(PENDING_REVIEW)
+  recordedBy     User                       @relation("CashCollectionRecordedBy", fields: [recordedById], references: [id], onDelete: Restrict)
+  recordedById   String
+  createdAt      DateTime                   @default(now())
+
+  @@index([reviewStatus, createdAt])
+  @@index([recordedById, createdAt])
 }
 
 // Append-only. Never updated or deleted — this is the source for the

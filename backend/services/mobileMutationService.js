@@ -5,7 +5,8 @@ const prisma = require('../src/lib/prisma');
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const ACTIONS = Object.freeze({ ACCEPT: 'accept', START: 'start', COMPLETE: 'complete', REPORT_ISSUE: 'reportIssue', REJECT: 'reject' });
-const ISSUE_CATEGORIES = new Set(['DRONE_MALFUNCTION', 'SAFETY_HAZARD', 'WEATHER_BLOCKER', 'CUSTOMER_BLOCKER', 'OTHER']);
+const ISSUE_CATEGORIES = new Set(['DRONE_MALFUNCTION', 'LMV_MALFUNCTION', 'SAFETY_HAZARD', 'WEATHER_BLOCKER', 'CUSTOMER_BLOCKER', 'OTHER']);
+const MAINTENANCE_REASON_CODES = new Set(['BATTERY_NOT_CHARGED', 'PROPELLER_DAMAGED', 'VEHICLE_BREAKDOWN', 'TYRE_ISSUE', 'ENGINE_ISSUE', 'ELECTRICAL_ISSUE', 'OTHER']);
 
 class MobileMutationError extends Error {
   constructor(message, code = 'VALIDATION_FAILED', status = 400, details) {
@@ -24,6 +25,7 @@ function canonicalRequest(input) {
     expectedRevision: input.expectedRevision,
     issueCategory: input.issueCategory || null,
     issueNote: input.issueNote || null,
+    maintenanceReasonCode: input.maintenanceReasonCode || null,
   });
 }
 
@@ -57,7 +59,7 @@ async function currentRevision(assignmentId) {
   return (await prisma.assignment.findUnique({ where: { id: assignmentId }, select: { revision: true } }))?.revision || 1;
 }
 
-function validateMutation({ clientActionId, action, expectedRevision, actualAcreage, issueCategory, issueNote }) {
+function validateMutation({ clientActionId, action, expectedRevision, actualAcreage, issueCategory, issueNote, maintenanceReasonCode }) {
   if (!UUID_PATTERN.test(String(clientActionId || ''))) {
     throw new MobileMutationError('clientActionId must be a valid generated identifier');
   }
@@ -78,18 +80,25 @@ function validateMutation({ clientActionId, action, expectedRevision, actualAcre
     if (!ISSUE_CATEGORIES.has(issueCategory) || !normalizedNote || normalizedNote.length > 500 || resemblesExactLocation) {
       throw new MobileMutationError('Use an approved issue category and a coordinate-free note of 1 to 500 characters', 'ISSUE_REJECTED');
     }
+    const isAssetIssue = ['DRONE_MALFUNCTION', 'LMV_MALFUNCTION'].includes(issueCategory);
+    if (isAssetIssue && maintenanceReasonCode !== undefined && !MAINTENANCE_REASON_CODES.has(maintenanceReasonCode)) {
+      throw new MobileMutationError('Use an approved maintenance reason', 'ISSUE_REJECTED');
+    }
+    if (!isAssetIssue && maintenanceReasonCode !== undefined) {
+      throw new MobileMutationError('A maintenance reason is allowed only for Drone or LMV malfunction reports', 'ISSUE_REJECTED');
+    }
   } else if (action === 'REJECT') {
     const normalizedNote = String(issueNote || '').trim();
     if (normalizedNote.length < 3 || normalizedNote.length > 500) throw new MobileMutationError('Rejection reason must contain 3 to 500 characters');
     if (typeof issueCategory !== 'undefined') throw new MobileMutationError('issueCategory is not allowed for REJECT');
-  } else if (typeof issueCategory !== 'undefined' || typeof issueNote !== 'undefined') {
+  } else if (typeof issueCategory !== 'undefined' || typeof issueNote !== 'undefined' || typeof maintenanceReasonCode !== 'undefined') {
     throw new MobileMutationError('Issue fields are allowed only for REPORT_ISSUE');
   }
 }
 
-async function mutate({ installationId, actorId, assignmentId, clientActionId, action, expectedRevision, actualAcreage, issueCategory, issueNote }) {
-  validateMutation({ clientActionId, action, expectedRevision, actualAcreage, issueCategory, issueNote });
-  const input = { assignmentId, clientActionId, action, expectedRevision, actualAcreage, issueCategory, issueNote };
+async function mutate({ installationId, actorId, assignmentId, clientActionId, action, expectedRevision, actualAcreage, issueCategory, issueNote, maintenanceReasonCode }) {
+  validateMutation({ clientActionId, action, expectedRevision, actualAcreage, issueCategory, issueNote, maintenanceReasonCode });
+  const input = { assignmentId, clientActionId, action, expectedRevision, actualAcreage, issueCategory, issueNote, maintenanceReasonCode };
   const locked = await mobileMutationRepository.executeLocked({
     installationId,
     actionId: clientActionId,
@@ -105,6 +114,7 @@ async function mutate({ installationId, actorId, assignmentId, clientActionId, a
           expectedRevision,
           actualAcreage,
           issueCategory,
+          maintenanceReasonCode,
           reason: typeof issueNote === 'string' ? issueNote.trim() : undefined,
           });
         return {

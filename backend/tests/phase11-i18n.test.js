@@ -17,3 +17,9 @@ test('all supported languages resolve lifecycle templates and preserve variables
 test('unsupported language codes are rejected before a lead is stored', () => {
   assert.throws(() => i18nService.normalizeLanguage('xx'), /preferredLanguage/);
 });
+
+test('unknown imported language remains distinct from supported notification languages', () => {
+  assert.equal(i18nService.isSupportedLanguage('und'), false);
+  assert.equal(i18nService.normalizeOperationalLanguage('und'), 'ta');
+  assert.throws(() => i18nService.normalizeOperationalLanguage('xx'), /preferredLanguage/);
+});

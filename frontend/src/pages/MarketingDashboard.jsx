@@ -23,7 +23,6 @@ function MarketingDashboard() {
   const [alerts, setAlerts] = useState([]);
   const [appealFees, setAppealFees] = useState({});
   const [appealStatus, setAppealStatus] = useState('');
-  const [dataError, setDataError] = useState('');
   const [manualLead, setManualLead] = useState({ farmerName: '', phone: '', village: '', cropType: '', acres: '' });
   const [manualStatus, setManualStatus] = useState('');
   const [selectedLead, setSelectedLead] = useState(null);
@@ -46,32 +45,21 @@ function MarketingDashboard() {
 
   const fetchData = useCallback(async (signal) => {
     try {
-      const [leadResponse, alertResponse, policyResponse] = await Promise.all([
-        fetch(`${API}/api/leads/pending`, { signal }),
-        fetch(`${API}/api/assignments/sales-alerts`, { signal }),
-        fetch(`${API}/api/auto-assignment-policy/summary`, { signal }),
-      ]);
-      const [leadData, alertData, policyData] = await Promise.all([leadResponse.json(), alertResponse.json(), policyResponse.json()]);
-      if (leadData.success) setLeads(leadData.leads);
-      if (alertData.success) {
-        setAlerts(alertData.alerts || []);
-        if ((alertData.alerts || []).length && activeTab !== 'appeals') setShowToast('A mission needs Sales follow-up.');
-      }
-      if (policyResponse.ok) setSchedulingMode(policyData.policy?.mode);
-      if (!leadResponse.ok || !alertResponse.ok || !policyResponse.ok) throw new Error(leadData.error || alertData.error || policyData.error || 'Could not refresh Sales data.');
-      setDataError('');
+      const policyResponse = await fetch(`${API}/api/auto-assignment-policy/summary`, { signal });
+      const policyData = await policyResponse.json().catch(() => ({}));
+      if (!policyResponse.ok) throw new Error(policyData.error || 'Scheduling policy is unavailable.');
+      setSchedulingMode(policyData.policy?.mode || null);
     } catch (error) {
-      if (error.name !== 'AbortError' && !signal?.aborted) setDataError('Could not refresh Sales data. Check the connection and try again.');
+      if (error.name !== 'AbortError' && !signal?.aborted) setSchedulingMode(null);
     }
-  }, [activeTab]);
+  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
     const initialLoad = window.setTimeout(() => void fetchData(controller.signal), 0);
-    const interval = window.setInterval(() => void fetchData(controller.signal), 5000);
     const socket = io(API, { transports: ['websocket'] });
     socket.on('assignment_rescheduled', (mission) => setShowToast(`Assignment rescheduled for ${mission.farmerName}. New time: ${mission.expectedSpraying}. Please inform customer.`));
-    return () => { window.clearTimeout(initialLoad); window.clearInterval(interval); controller.abort(); socket.disconnect(); };
+    return () => { window.clearTimeout(initialLoad); controller.abort(); socket.disconnect(); };
   }, [fetchData]);
 
   const handleProcess = async (event) => {
@@ -259,12 +247,11 @@ function MarketingDashboard() {
     //   'View all registered Customers and their registration details.'
     // ],
   };
-  const [eyebrow, title, description] = pageCopy[activeTab];
-  const toastIsSchedule = typeof showToast === 'string' && showToast.includes('rescheduled');
+  const [eyebrow, title, description] = pageCopy[activeTab] || pageCopy.farmerRegistration;
 
   return (
     <OperationsShell roleLabel="Sales Dashboard" navItems={navItems} activeTab={activeTab} onTabChange={setActiveTab} >
-      {showToast && <div className={`toast ${toastIsSchedule ? '' : 'toast--alert'}`} onClick={() => { if (toastIsSchedule) setShowToast(false); else { setActiveTab('appeals'); setShowToast(false); } }}><strong>{toastIsSchedule ? 'Schedule updated' : 'Operational follow-up'}</strong><span>{showToast}</span></div>}
+      {showToast && <div className="toast" role="status"><strong>Schedule updated</strong><span>{showToast}</span><button type="button" aria-label="Dismiss schedule update" onClick={() => setShowToast(false)}>×</button></div>}
 
       <header className="page-header">
         <div className="page-header__copy"><p className="eyebrow">{eyebrow}</p><h1>{title}</h1><p>{description}</p></div>
@@ -313,8 +300,7 @@ function MarketingDashboard() {
 
         </div>
       </header>
-      <div className="notice notice--info" role="status">{t('auto_policy_title')}: {t(schedulingMode === 'automatic' ? 'auto_policy_automatic' : 'auto_policy_paused')}</div>
-      {dataError && <div role="alert" className="notice notice--error"><span>{dataError}</span></div>}
+      {schedulingMode && <div className="notice notice--info" role="status">{t('auto_policy_title')}: {t(schedulingMode === 'automatic' ? 'auto_policy_automatic' : 'auto_policy_paused')}</div>}
 
       {/* {activeTab === 'appeals' && (
         <>

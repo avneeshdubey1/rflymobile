@@ -36,6 +36,7 @@ const assignmentSelect = {
       cropType: true,
       notes: true,
       status: true,
+      requestType: true,
       farmLocation: {
         select: { addressText: true, plusCode: true, latitude: true, longitude: true },
       },
@@ -47,6 +48,28 @@ const assignmentSelect = {
   copilot: { select: { id: true, name: true } },
   drone: { select: { id: true, name: true, model: true, serialNumber: true } },
   lmv: { select: { id: true, registrationNo: true, label: true } },
+  maintenanceRequests: {
+    select: {
+      id: true,
+      assetType: true,
+      reasonCode: true,
+      status: true,
+      processedBy: { select: { name: true } },
+      resolvedBy: { select: { name: true } },
+      updatedAt: true,
+    },
+    orderBy: { createdAt: 'desc' },
+    take: 1,
+  },
+  cashCollection: {
+    select: {
+      id: true,
+      amountMinor: true,
+      currencyCode: true,
+      reviewStatus: true,
+      createdAt: true,
+    },
+  },
 };
 
 function mobileAssignmentError(message, code = 'VALIDATION_FAILED', status = 400) {
@@ -102,7 +125,25 @@ function allowedActions(assignment, actorId) {
     if (assignment.lead.status === 'PILOT_ACCEPTED') return ['START', 'REPORT_ISSUE', 'SEND_LOCATION'];
     if (assignment.lead.status === 'IN_PROGRESS') return ['COMPLETE', 'REPORT_ISSUE', 'SEND_LOCATION'];
   }
+  if (assignment.lead.status === 'COMPLETED'
+    && assignment.lead.requestType === 'B2C'
+    && !assignment.cashCollection
+    && [assignment.pilotId, assignment.copilotId].includes(actorId)) {
+    return ['COLLECT_PAYMENT'];
+  }
   return [];
+}
+
+function collectionProjection(collection) {
+  if (!collection) return null;
+  return {
+    id: collection.id,
+    amount: `${collection.amountMinor / 100n}.${String(collection.amountMinor % 100n).padStart(2, '0')}`,
+    currencyCode: collection.currencyCode,
+    method: 'CASH',
+    reviewStatus: collection.reviewStatus,
+    recordedAt: collection.createdAt.toISOString(),
+  };
 }
 
 function project(assignment, actorId) {
@@ -125,6 +166,7 @@ function project(assignment, actorId) {
     leadId: assignment.leadId,
     revision: assignment.revision,
     status: assignment.lead.status,
+    requestType: assignment.lead.requestType,
     crewFormationState: assignment.crewFormationState,
     dailySequence: assignment.dailySequence,
     serviceWindowStart: window.start.toISOString(),
@@ -147,6 +189,15 @@ function project(assignment, actorId) {
       note: assignment.issueNote,
       reportedAt: assignment.issueReportedAt.toISOString(),
     } : null,
+    maintenanceRequest: assignment.maintenanceRequests[0] ? {
+      id: assignment.maintenanceRequests[0].id,
+      assetType: assignment.maintenanceRequests[0].assetType,
+      reasonCode: assignment.maintenanceRequests[0].reasonCode,
+      status: assignment.maintenanceRequests[0].status,
+      processedBy: assignment.maintenanceRequests[0].processedBy?.name || assignment.maintenanceRequests[0].resolvedBy?.name || null,
+      updatedAt: assignment.maintenanceRequests[0].updatedAt.toISOString(),
+    } : null,
+    cashCollection: collectionProjection(assignment.cashCollection),
     crew,
     drone: {
       id: assignment.drone.id,

@@ -3,6 +3,7 @@
   "leadId": "00000000-0000-4000-8000-000000000031",
   "revision": 3,
   "status": "PILOT_ACCEPTED",
+  "requestType": "B2C",
   "crewFormationState": "READY",
   "dailySequence": 1,
   "serviceWindowStart": "2026-08-12T09:00:00.000Z",
@@ -21,6 +22,8 @@
   "expectedAcreage": "4.50",
   "actualAcreage": null,
   "issue": null,
+  "maintenanceRequest": null,
+  "cashCollection": null,
   "crew": [
     {
       "id": "00000000-0000-4000-8000-000000000001",

@@ -24,6 +24,10 @@ async function wipeOperationalData() {
   await prisma.verificationDeliveryAttempt.deleteMany();
   await prisma.phoneVerificationChallenge.deleteMany();
   await prisma.passwordRecoveryChallenge.deleteMany();
+  await prisma.mobileMutationReceipt.deleteMany();
+  await prisma.mobileAssignmentChange.deleteMany();
+  await prisma.mobileSession.deleteMany();
+  await prisma.mobileInstallation.deleteMany();
   await prisma.authSession.deleteMany();
   await prisma.declinedEnquiry.deleteMany();
   await prisma.leadSprayPurpose.deleteMany();
@@ -33,26 +37,39 @@ async function wipeOperationalData() {
   await prisma.chatSession.deleteMany();
   await prisma.scheduleChangeLog.deleteMany();
   await prisma.notificationEscalation.deleteMany();
+  await prisma.pilotAssignmentRejection.deleteMany();
   await prisma.assignment.deleteMany();
+  await prisma.leadHistory.deleteMany();
   await prisma.auditLog.deleteMany();
   await prisma.lead.deleteMany();
   await prisma.historicalServiceRecord.deleteMany();
   await prisma.villageVisit.deleteMany();
   await prisma.sourceRecord.deleteMany();
+  await prisma.customerHistory.deleteMany();
   await prisma.customerLanguagePreference.deleteMany();
   await prisma.customerSeasonalCrop.deleteMany();
   await prisma.customerSubscription.deleteMany();
   await prisma.farmLocation.deleteMany();
   await prisma.businessMembership.deleteMany();
-  await prisma.businessOrganization.deleteMany();
   await prisma.customer.deleteMany();
+  await prisma.businessOrganization.deleteMany();
+  await prisma.importBatch.updateMany({ data: { supersedesBatchId: null } });
   await prisma.importBatch.deleteMany();
+  await prisma.droneHistory.deleteMany();
+  await prisma.lMVHistory.deleteMany();
+  await prisma.autoAssignmentPolicy.deleteMany();
+  await prisma.user.updateMany({ data: { assignedDroneId: null, assignedLmvId: null } });
+  await prisma.user.deleteMany();
   await prisma.drone.deleteMany();
   await prisma.lMV.deleteMany();
-  await prisma.user.deleteMany();
   await prisma.pricingConfig.deleteMany();
   await prisma.operatingCenter.deleteMany();
-  await prisma.language.deleteMany();
+  await prisma.cluster.deleteMany();
+  await prisma.masterDataValue.deleteMany();
+  // Language rows are application reference data installed by migrations.
+  // Customer preferences are removed above, but the supported-language
+  // catalogue must survive an Admin-only bootstrap so new customers can be
+  // created immediately afterwards.
   await prisma.crop.deleteMany();
   await prisma.location.deleteMany();
 }

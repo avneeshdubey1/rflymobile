@@ -64,9 +64,11 @@ test('one two-person operational unit performs several ordered non-overlapping j
     },
   })));
   ids.leads.push(...leads.map((lead) => lead.id));
+  const firstStart = new Date(Date.now() + 24 * 60 * 60_000);
+  firstStart.setUTCHours(9, 0, 0, 0);
   const windows = [
-    ['2026-08-15T09:00:00.000Z', '2026-08-15T11:00:00.000Z'],
-    ['2026-08-15T11:30:00.000Z', '2026-08-15T13:30:00.000Z'],
+    [firstStart.toISOString(), new Date(firstStart.getTime() + 2 * 60 * 60_000).toISOString()],
+    [new Date(firstStart.getTime() + 2.5 * 60 * 60_000).toISOString(), new Date(firstStart.getTime() + 4.5 * 60 * 60_000).toISOString()],
   ];
 
   for (const [index, lead] of leads.entries()) {
@@ -139,7 +141,9 @@ test('Fleet cannot choose a Copilot, while Admin may schedule the complete crew'
   ids.drones.push(drone.id);
   ids.lmvs.push(lmv.id);
   ids.leads.push(lead.id);
-  const body = { leadId: lead.id, pilotId: primary.id, copilotId: copilot.id, droneId: drone.id, lmvId: lmv.id, serviceWindowStart: '2026-08-16T09:00:00.000Z', serviceWindowEnd: '2026-08-16T11:00:00.000Z' };
+  const serviceWindowStart = new Date(Date.now() + 48 * 60 * 60_000);
+  const serviceWindowEnd = new Date(serviceWindowStart.getTime() + 2 * 60 * 60_000);
+  const body = { leadId: lead.id, pilotId: primary.id, copilotId: copilot.id, droneId: drone.id, lmvId: lmv.id, serviceWindowStart: serviceWindowStart.toISOString(), serviceWindowEnd: serviceWindowEnd.toISOString() };
   const denied = await request('/api/assignments/manual', fleet, { method: 'POST', body });
   assert.equal(denied.response.status, 403, JSON.stringify(denied.data));
   const created = await request('/api/assignments/manual', admin, { method: 'POST', body });

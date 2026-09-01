@@ -31,6 +31,11 @@ export default function SelectCopilotScreen() {
   const [candidates, setCandidates] = useState<CopilotCandidate[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const goBack = () => {
+    if (router.canGoBack()) router.back();
+    else if (id) router.replace({ pathname: "/assignment/[id]", params: { id } });
+    else router.replace("/(tabs)");
+  };
 
   useEffect(() => {
     if (!id) return;
@@ -61,7 +66,7 @@ export default function SelectCopilotScreen() {
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.headerButton}
-          onPress={() => router.back()}
+          onPress={goBack}
         >
           <MaterialIcons name="arrow-back" size={28} color={colors.primary} />
         </TouchableOpacity>

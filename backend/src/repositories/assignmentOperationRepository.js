@@ -2,6 +2,7 @@ const { Prisma } = require('@prisma/client');
 const prisma = require('../lib/prisma');
 const { sanitizeAuditReason, sanitizeAuditState } = require('./auditLogRepository');
 const { setHistoryActor } = require('./historyActorRepository');
+const maintenanceRequestRepository = require('./maintenanceRequestRepository');
 
 const activeLeadStatuses = ['SCHEDULED', 'PILOT_ACCEPTED', 'IN_PROGRESS'];
 const pilotSelect = {
@@ -181,7 +182,7 @@ function sameUnit(assignment, unit) {
     && assignment.lmvId === unit.lmvId;
 }
 
-function validateServiceWindow(startValue, endValue) {
+function validateServiceWindow(startValue, endValue, { requireFutureStart = false, now = new Date() } = {}) {
   const start = new Date(startValue);
   const end = new Date(endValue);
   if (Number.isNaN(start.valueOf()) || Number.isNaN(end.valueOf()) || end <= start) {
@@ -189,6 +190,12 @@ function validateServiceWindow(startValue, endValue) {
   }
   if (end.getTime() - start.getTime() > 12 * 60 * 60_000) {
     throw operationError('A service window cannot exceed 12 hours', 'INVALID_SERVICE_WINDOW');
+  }
+  if (requireFutureStart && start <= now) {
+    throw operationError(
+      'Choose a future service-window start so the Primary Pilot has time to select a Copilot',
+      'COPILOT_SELECTION_WINDOW_CLOSED',
+    );
   }
   return { start, end };
 }
@@ -318,7 +325,7 @@ async function startPendingCrewNotification(transaction, assignment, actorId = n
   });
 }
 
-async function syncResourceAvailability(transaction, assignment, { droneStatusOverride = null } = {}) {
+async function syncResourceAvailability(transaction, assignment, { droneStatusOverride = null, lmvStatusOverride = null } = {}) {
   const [otherDroneJob, otherLmvJob] = await Promise.all([
     transaction.assignment.findFirst({
       where: { id: { not: assignment.id }, droneId: assignment.droneId, lead: { status: { in: activeLeadStatuses } } },
@@ -336,7 +343,7 @@ async function syncResourceAvailability(transaction, assignment, { droneStatusOv
   if (assignment.lmvId) {
     await transaction.lMV.update({
       where: { id: assignment.lmvId },
-      data: { status: otherLmvJob ? 'ASSIGNED' : 'AVAILABLE' },
+      data: { status: lmvStatusOverride || (otherLmvJob ? 'ASSIGNED' : 'AVAILABLE') },
     });
   }
 }
@@ -358,6 +365,7 @@ async function manualAssign({ leadId, pilotId, copilotId = null, adminCopilotOve
     if (!lead) throw operationError('A valid lead is required');
     if (!['PROCESSED', 'NEEDS_MANUAL_SCHEDULING'].includes(lead.status)) throw operationError('Only processed or manual-scheduling leads can be assigned', 'CONFLICT');
     lead = await revalidateLead(transaction, lead, actorId);
+    validateServiceWindow(window.start, window.end, { requireFutureStart: true });
     const [pilot, copilot, drone, lmv] = await Promise.all([
       transaction.user.findUnique({ where: { id: pilotId } }),
       effectiveCopilotId ? transaction.user.findUnique({ where: { id: effectiveCopilotId } }) : null,
@@ -646,6 +654,7 @@ async function reschedule({ assignmentId, serviceWindowStart, serviceWindowEnd, 
     const { start: dayStart } = dayBounds(window.start);
     await lockKeys(transaction, [`schedule:${dayStart.toISOString()}`]);
     const lead = await revalidateLead(transaction, before.lead, actorId);
+    validateServiceWindow(window.start, window.end, { requireFutureStart: true });
     const unit = { pilotId: pilotId || before.pilotId, copilotId: copilotId || before.copilotId, droneId: droneId || before.droneId, lmvId: lmvId || before.lmvId };
     await lockKeys(transaction, [unit.pilotId, unit.copilotId, unit.droneId, unit.lmvId]);
     const [pilot, copilot, drone, lmv] = await Promise.all([
@@ -744,7 +753,7 @@ async function resequence({ assignmentId, dailySequence, actorId }) {
   });
 }
 
-async function transitionMission({ assignmentId, actorId, action, actualAcreage, reason, issueCategory, expectedRevision }) {
+async function transitionMission({ assignmentId, actorId, action, actualAcreage, reason, issueCategory, maintenanceReasonCode, expectedRevision }) {
   return serializable(async (transaction) => {
     await setHistoryActor(transaction, actorId);
     await lockKeys(transaction, [`assignment:${assignmentId}`]);
@@ -828,7 +837,7 @@ async function transitionMission({ assignmentId, actorId, action, actualAcreage,
       if (!['PILOT_ACCEPTED', 'IN_PROGRESS'].includes(before.lead.status)) {
         throw operationError('Only an accepted or in-progress mission can report an issue');
       }
-      const approvedCategories = new Set(['DRONE_MALFUNCTION', 'SAFETY_HAZARD', 'WEATHER_BLOCKER', 'CUSTOMER_BLOCKER', 'OTHER']);
+      const approvedCategories = new Set(['DRONE_MALFUNCTION', 'LMV_MALFUNCTION', 'SAFETY_HAZARD', 'WEATHER_BLOCKER', 'CUSTOMER_BLOCKER', 'OTHER']);
       const normalizedReason = String(reason || '').trim();
       if (!approvedCategories.has(issueCategory)) throw operationError('An approved issue category is required', 'ISSUE_REJECTED');
       if (!normalizedReason || normalizedReason.length > 500) throw operationError('Issue note must contain 1 to 500 characters', 'ISSUE_REJECTED');
@@ -859,16 +868,27 @@ async function transitionMission({ assignmentId, actorId, action, actualAcreage,
     }
     if (action === 'complete') await syncResourceAvailability(transaction, before);
     if (action === 'reportIssue') {
+      const assetType = issueCategory === 'DRONE_MALFUNCTION'
+        ? 'DRONE'
+        : issueCategory === 'LMV_MALFUNCTION' ? 'LMV' : null;
+      if (assetType) {
+        await maintenanceRequestRepository.createFromMission(transaction, {
+          assignment: before,
+          requestedById: actorId,
+          assetType,
+          reasonCode: maintenanceReasonCode || 'OTHER',
+          reason: String(reason).trim(),
+        });
+      }
       await syncResourceAvailability(transaction, before, {
         ...(issueCategory === 'DRONE_MALFUNCTION' ? { droneStatusOverride: 'MAINTENANCE' } : {}),
+        ...(issueCategory === 'LMV_MALFUNCTION' ? { lmvStatusOverride: 'MAINTENANCE' } : {}),
       });
-      await createRoleNotifications(
-        transaction,
-        'FLEET_MANAGER',
-        'MISSION_FLAGGED',
-        before.leadId,
-        `Assignment ${before.id} reported ${issueCategory}: ${String(reason).trim()}`,
-      );
+      await Promise.all([
+        createRoleNotifications(transaction, 'ADMIN', assetType ? 'MAINTENANCE_REQUEST' : 'MISSION_FLAGGED', before.leadId, `Assignment ${before.id} reported ${issueCategory}: ${String(reason).trim()}`),
+        createRoleNotifications(transaction, 'FLEET_MANAGER', assetType ? 'MAINTENANCE_REQUEST' : 'MISSION_FLAGGED', before.leadId, `Assignment ${before.id} reported ${issueCategory}: ${String(reason).trim()}`),
+        ...(assetType ? [createRoleNotifications(transaction, 'FLEET_MANAGER', 'MISSION_FLAGGED', before.leadId, `Assignment ${before.id} was safety-flagged after an asset issue.`)] : []),
+      ]);
     }
     if (action === 'decommission') {
       await syncResourceAvailability(transaction, before, { droneStatusOverride: 'MAINTENANCE' });

@@ -6,6 +6,9 @@ const logger = require('../services/loggerService');
 const locationService = require('../services/locationService');
 const autoAssignmentService = require('../services/autoAssignmentService');
 const autoAssignmentPolicyService = require('../services/autoAssignmentPolicyService');
+const crewFormationRepository = require('../src/repositories/crewFormationRepository');
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 async function deliverAfterCommit(deliver, context) {
     try {
@@ -21,6 +24,64 @@ exports.getPilotMissions = async(req, res) => {
         if (!pilotId) return res.status(400).json({ error: 'pilotId is required' });
         res.json({ success: true, missions: await assignmentRepository.findAll({ OR: [{ pilotId }, { copilotId: pilotId }] }) });
     } catch { res.status(500).json({ error: 'Failed to fetch missions' }); }
+};
+
+function crewFormationError(res, error) {
+    const statusByCode = {
+        ASSIGNMENT_NOT_FOUND: 404,
+        PRIMARY_PILOT_REQUIRED: 403,
+        ASSIGNMENT_REVISION_REQUIRED: 400,
+        CREW_FORMATION_RETRY_EXHAUSTED: 503,
+    };
+    const status = statusByCode[error.code]
+        || (String(error.code || '').startsWith('COPILOT_')
+            || ['ASSIGNMENT_REVISION_CONFLICT', 'CREW_FORMATION_NOT_PENDING', 'LEGACY_CREW_REVIEW_REQUIRED'].includes(error.code)
+            ? 409
+            : 400);
+    return res.status(status).json({
+        success: false,
+        code: error.code || 'CREW_FORMATION_FAILED',
+        error: status >= 500 ? 'Unable to complete the crew request' : (error.message || 'Crew request failed'),
+        ...(error.details ? { details: error.details } : {}),
+    });
+}
+
+exports.getEligibleCopilots = async(req, res) => {
+    try {
+        if (!UUID_PATTERN.test(String(req.params.id || ''))) {
+            return res.status(400).json({ success: false, code: 'VALIDATION_FAILED', error: 'Assignment identifier is invalid' });
+        }
+        const candidates = await crewFormationRepository.listEligibleCopilots({
+            assignmentId: req.params.id,
+            actorId: req.auth.userId,
+        });
+        return res.json({ success: true, assignmentId: req.params.id, candidates });
+    } catch (error) {
+        return crewFormationError(res, error);
+    }
+};
+
+exports.selectCopilot = async(req, res) => {
+    try {
+        const allowedFields = new Set(['candidateId', 'expectedRevision']);
+        if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)
+            || Object.keys(req.body).some((field) => !allowedFields.has(field))
+            || !UUID_PATTERN.test(String(req.params.id || ''))
+            || !UUID_PATTERN.test(String(req.body.candidateId || ''))
+            || !Number.isInteger(req.body.expectedRevision)
+            || req.body.expectedRevision < 1) {
+            return res.status(400).json({ success: false, code: 'VALIDATION_FAILED', error: 'Candidate and current assignment revision are required' });
+        }
+        const mission = await crewFormationRepository.selectCopilot({
+            assignmentId: req.params.id,
+            candidateId: req.body.candidateId,
+            actorId: req.auth.userId,
+            expectedRevision: req.body.expectedRevision,
+        });
+        return res.json({ success: true, mission });
+    } catch (error) {
+        return crewFormationError(res, error);
+    }
 };
 exports.getAllAssignments = async(req, res) => {
     try {
@@ -82,7 +143,7 @@ exports.createManualAssignment = async(req, res) => {
         res.status(201).json({ success: true, mission: result.assignment });
     } catch (error) {
         if (String(error.code || '').startsWith('SERVICE_AREA_')) return res.status(409).json({ code: error.code });
-        return res.status(['CONFLICT', 'SCHEDULING_RETRY_EXHAUSTED'].includes(error.code) ? 409 : 400).json({
+        return res.status(['CONFLICT', 'SCHEDULING_RETRY_EXHAUSTED', 'COPILOT_SELECTION_WINDOW_CLOSED'].includes(error.code) ? 409 : 400).json({
             error: error.message || 'Failed to create assignment', code: error.code, conflictCategories: error.conflictCategories,
         });
     }
@@ -152,7 +213,7 @@ exports.rescheduleAssignment = async(req, res) => {
         res.json({ success: true, mission: result.assignment, lead: result.lead });
     } catch (error) {
         if (String(error.code || '').startsWith('SERVICE_AREA_')) return res.status(409).json({ code: error.code });
-        return res.status(error.code === 'NOT_FOUND' ? 404 : ['CONFLICT', 'SCHEDULING_RETRY_EXHAUSTED'].includes(error.code) ? 409 : 400).json({
+        return res.status(error.code === 'NOT_FOUND' ? 404 : ['CONFLICT', 'SCHEDULING_RETRY_EXHAUSTED', 'COPILOT_SELECTION_WINDOW_CLOSED'].includes(error.code) ? 409 : 400).json({
             error: error.message || 'Failed to reschedule assignment', code: error.code, conflictCategories: error.conflictCategories,
         });
     }

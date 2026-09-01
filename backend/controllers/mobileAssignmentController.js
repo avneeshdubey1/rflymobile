@@ -2,6 +2,7 @@ const crewFormationRepository = require('../src/repositories/crewFormationReposi
 const mobileAssignmentRepository = require('../src/repositories/mobileAssignmentRepository');
 const mobileMutationService = require('../services/mobileMutationService');
 const locationService = require('../services/locationService');
+const cashCollectionRepository = require('../src/repositories/cashCollectionRepository');
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -26,6 +27,9 @@ function mobileError(res, req, error) {
     LOCATION_INVALID: 400,
     RATE_LIMITED: 429,
     ACTIVE_ASSIGNMENT_BLOCKS_OFFLINE: 409,
+    COLLECTION_NOT_ALLOWED: 409,
+    COLLECTION_ALREADY_RECORDED: 409,
+    ACTION_ID_REUSED: 409,
   };
   const status = error.status || knownStatus[error.code] || 500;
   const publicCode = {
@@ -105,6 +109,19 @@ async function eligibleCopilots(req, res) {
   }
 }
 
+function parseAmountMinor(value) {
+  const normalized = String(value || '').trim();
+  const match = /^(0|[1-9]\d{0,8})(?:\.(\d{1,2}))?$/.exec(normalized);
+  if (!match) {
+    throw mobileAssignmentRepository.mobileAssignmentError('Enter a positive cash amount with no more than two decimal places');
+  }
+  const amountMinor = BigInt(match[1]) * 100n + BigInt((match[2] || '').padEnd(2, '0') || '0');
+  if (amountMinor <= 0n) {
+    throw mobileAssignmentRepository.mobileAssignmentError('Cash amount must be greater than zero');
+  }
+  return amountMinor;
+}
+
 async function eligibleCopilotsForOperations(req, res) {
   try {
     const assignmentId = requireUuid(req.params.assignmentId, 'assignmentId');
@@ -169,7 +186,7 @@ async function overrideCopilot(req, res) {
 
 async function mutate(req, res) {
   try {
-    requireBody(req.body, ['clientActionId', 'action', 'expectedRevision', 'actualAcreage', 'issueCategory', 'issueNote']);
+    requireBody(req.body, ['clientActionId', 'action', 'expectedRevision', 'actualAcreage', 'issueCategory', 'issueNote', 'maintenanceReasonCode']);
     const assignmentId = requireUuid(req.params.assignmentId, 'assignmentId');
     await mobileAssignmentRepository.findForPilot({ assignmentId, pilotId: req.auth.userId });
     const receipt = await mobileMutationService.mutate({
@@ -182,6 +199,7 @@ async function mutate(req, res) {
       actualAcreage: req.body.actualAcreage,
       issueCategory: req.body.issueCategory,
       issueNote: req.body.issueNote,
+      maintenanceReasonCode: req.body.maintenanceReasonCode,
     });
     return res.json({ success: true, receipt });
   } catch (error) {
@@ -221,6 +239,33 @@ async function recordLocation(req, res) {
   }
 }
 
+async function collectCash(req, res) {
+  try {
+    requireBody(req.body, ['clientActionId', 'amount']);
+    const assignmentId = requireUuid(req.params.assignmentId, 'assignmentId');
+    const clientActionId = requireUuid(req.body.clientActionId, 'clientActionId');
+    const config = req.app.get('config');
+    if (!config.b2cCashCollection.enabled) {
+      const error = mobileAssignmentRepository.mobileAssignmentError(
+        'B2C cash collection is not enabled for this deployment',
+        'COLLECTION_NOT_ALLOWED',
+        409,
+      );
+      throw error;
+    }
+    const result = await cashCollectionRepository.recordForPilot({
+      assignmentId,
+      actorId: req.auth.userId,
+      clientActionId,
+      amountMinor: parseAmountMinor(req.body.amount),
+      currencyCode: config.b2cCashCollection.currencyCode,
+    });
+    return res.status(result.outcome === 'RECORDED' ? 201 : 200).json({ success: true, ...result });
+  } catch (error) {
+    return mobileError(res, req, error);
+  }
+}
+
 async function changes(req, res) {
   try {
     const allowedQuery = new Set(['cursor', 'limit']);
@@ -247,7 +292,7 @@ async function sync(req, res) {
     }
     const actionIds = new Set();
     for (const mutation of req.body.mutations) {
-      requireBody(mutation, ['assignmentId', 'clientActionId', 'action', 'expectedRevision', 'actualAcreage', 'issueCategory', 'issueNote']);
+      requireBody(mutation, ['assignmentId', 'clientActionId', 'action', 'expectedRevision', 'actualAcreage', 'issueCategory', 'issueNote', 'maintenanceReasonCode']);
       requireUuid(mutation.assignmentId, 'assignmentId');
       requireUuid(mutation.clientActionId, 'clientActionId');
       mobileMutationService.validateMutation(mutation);
@@ -269,6 +314,7 @@ async function sync(req, res) {
         actualAcreage: mutation.actualAcreage,
         issueCategory: mutation.issueCategory,
         issueNote: mutation.issueNote,
+        maintenanceReasonCode: mutation.maintenanceReasonCode,
       }));
     }
     const changesResult = await mobileAssignmentRepository.changesForPilot({
@@ -286,4 +332,4 @@ async function sync(req, res) {
   }
 }
 
-module.exports = { changes, detail, eligibleCopilots, eligibleCopilotsForOperations, list, mobileError, mutate, overrideCopilot, recordLocation, selectCopilot, sync };
+module.exports = { changes, collectCash, detail, eligibleCopilots, eligibleCopilotsForOperations, list, mobileError, mutate, overrideCopilot, recordLocation, selectCopilot, sync };

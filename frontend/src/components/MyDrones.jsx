@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Archive, Plus, Pencil, Search } from 'lucide-react';
+import { Archive, Plus, Pencil, Search, Wrench } from 'lucide-react';
 import axios from "axios";
 import { SkeletonRow } from '../components/Skeleton';
 import { API_URL } from '../config';
 import { csrfHeaders } from '../utils/csrf';
+import AssetLifecycleDialog from './AssetLifecycleDialog';
 
 const CERTIFIED_OPTIONS = ['Yes', 'No'];
 const PAGE_SIZE = 15;
@@ -73,6 +74,8 @@ export default function MyDrones() {
   const [currentPage, setCurrentPage] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const [loadingDrones, setLoadingDrones] = useState(true);
+  const [lifecycleTarget, setLifecycleTarget] = useState(null);
+  const [lifecycleBusy, setLifecycleBusy] = useState(false);
 
   const handleChange = (e) => setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
   const closeModal = () => { setShowAdd(false); setEditingId(null); setForm(emptyForm); };
@@ -173,25 +176,44 @@ export default function MyDrones() {
     setShowAdd(true);
   };
 
-  const retireDrone = async (id) => {
-    if (!window.confirm('Retire this drone? It will remain in fleet history and cannot be scheduled.')) return;
+  const openLifecycle = (drone, targetStatus) => setLifecycleTarget({
+    assetType: 'DRONE',
+    assetId: drone.id,
+    label: drone.name || drone.model || drone.serialNumber,
+    targetStatus,
+  });
+
+  const submitLifecycle = async ({ assetId, targetStatus, reasonCode, reason }) => {
+    setLifecycleBusy(true);
     try {
-      const response = await axios.delete(
-        `${API_URL}/api/drones/${id}`,
-        { withCredentials: true, headers: csrfHeaders() }
-      );
-      setDrones((prev) => prev.map((drone) => {
-        if (drone.id !== id) return drone;
-        return {
-          ...drone,
-          ...(response.data?.drone || {}),
-          status: response.data?.drone?.status || 'OUT_OF_SERVICE',
-          archivedAt: response.data?.drone?.archivedAt || new Date().toISOString(),
-        };
-      }));
+      let updatedDrone;
+      if (targetStatus === 'MAINTENANCE') {
+        await axios.post(`${API_URL}/api/maintenance-requests`, {
+          assetType: 'DRONE', assetId, reasonCode, reason,
+        }, { withCredentials: true, headers: csrfHeaders() });
+        updatedDrone = { id: assetId, status: 'MAINTENANCE', operationalState: 'MAINTENANCE', availabilityState: 'UNAVAILABLE' };
+      } else if (targetStatus === 'RETIRED') {
+        const response = await axios.delete(`${API_URL}/api/drones/${assetId}`, {
+          withCredentials: true,
+          headers: csrfHeaders(),
+          data: { reason },
+        });
+        updatedDrone = response.data?.drone;
+      } else {
+        const response = await axios.post(`${API_URL}/api/drones/update-status`, {
+          droneId: assetId, status: targetStatus, reason,
+        }, { withCredentials: true, headers: csrfHeaders() });
+        updatedDrone = response.data?.drone;
+      }
+      setDrones((current) => current.map((item) => (
+        item.id === assetId ? { ...item, ...(updatedDrone || {}) } : item
+      )));
+      setLifecycleTarget(null);
     } catch (error) {
       console.error(error);
-      alert(error.response?.data?.error || 'Failed to retire drone');
+      window.alert(error.response?.data?.error || 'Failed to update drone lifecycle');
+    } finally {
+      setLifecycleBusy(false);
     }
   };
 
@@ -265,12 +287,13 @@ export default function MyDrones() {
                 <th className="px-4 py-3 text-left text-base font-bold text-gray-700">Battery Capacity</th>
                 <th className="px-4 py-3 text-left text-base font-bold text-gray-700">Endurance</th>
                 <th className="px-4 py-3 text-left text-base font-bold text-gray-700">Certified</th>
+                <th className="px-4 py-3 text-left text-base font-bold text-gray-700">Status</th>
                 <th className="px-4 py-3 text-left text-base font-bold text-gray-700">Services</th>
                 <th className="px-4 py-3 text-right text-base font-bold text-gray-700">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              <SkeletonRow rows={8} columns={12} />
+              <SkeletonRow rows={8} columns={13} />
             </tbody>
           </table>
         </div>
@@ -299,6 +322,7 @@ export default function MyDrones() {
                 <th className="px-4 py-3 text-left text-base font-bold text-gray-700">Battery Capacity</th>
                 <th className="px-4 py-3 text-left text-base font-bold text-gray-700">Endurance</th>
                 <th className="px-4 py-3 text-left text-base font-bold text-gray-700">Certified</th>
+                <th className="px-4 py-3 text-left text-base font-bold text-gray-700">Status</th>
                 <th className="px-4 py-3 text-left text-base font-bold text-gray-700">Services</th>
                 <th className="px-4 py-3 text-right text-base font-bold text-gray-700">Actions</th>
               </tr>
@@ -326,14 +350,28 @@ export default function MyDrones() {
                       {drone.certified ? 'Certified' : 'Not certified'}
                     </span>
                   </td>
+                  <td className="px-4 py-3 text-gray-700">{String(drone.status || 'AVAILABLE').replaceAll('_', ' ').toLowerCase()}</td>
                   <td className="px-4 py-3 text-gray-700">{drone.serviceType || '—'}</td>
                   <td className="px-4 py-3">
                     <div className="flex justify-end gap-2">
                       <button onClick={() => startEdit(drone)} disabled={Boolean(drone.archivedAt)} className="rounded p-1.5 text-gray-500 hover:bg-gray-100 hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-40" title={drone.archivedAt ? 'Retired drones cannot be edited' : 'Edit'}>
                         <Pencil size={16} />
                       </button>
+                      {!drone.archivedAt && drone.status === 'AVAILABLE' && (
+                        <button onClick={() => openLifecycle(drone, 'MAINTENANCE')} className="rounded p-1.5 text-gray-500 hover:bg-orange-50 hover:text-orange-700" title="Send to maintenance">
+                          <Wrench size={16} />
+                        </button>
+                      )}
+                      {!drone.archivedAt && drone.status === 'AVAILABLE' && (
+                        <button onClick={() => openLifecycle(drone, 'OUT_OF_SERVICE')} className="rounded px-2 py-1 text-xs font-semibold text-gray-600 hover:bg-red-50 hover:text-red-700" title="Mark out of service">Out</button>
+                      )}
+                      {!drone.archivedAt && ['MAINTENANCE', 'OUT_OF_SERVICE'].includes(drone.status) && (
+                        <button onClick={() => openLifecycle(drone, 'AVAILABLE')} className="rounded px-2 py-1 text-xs font-semibold text-gray-600 hover:bg-blue-50 hover:text-blue-800" title="Return to service">
+                          Return
+                        </button>
+                      )}
                       {!drone.archivedAt && (
-                        <button onClick={() => retireDrone(drone.id)} className="rounded p-1.5 text-gray-500 hover:bg-amber-50 hover:text-amber-700" title="Retire">
+                        <button onClick={() => openLifecycle(drone, 'RETIRED')} className="rounded p-1.5 text-gray-500 hover:bg-amber-50 hover:text-amber-700" title="Retire">
                           <Archive size={16} />
                         </button>
                       )}
@@ -431,6 +469,7 @@ export default function MyDrones() {
           </div>
         </div>
       )}
+      <AssetLifecycleDialog target={lifecycleTarget} busy={lifecycleBusy} onClose={() => setLifecycleTarget(null)} onSubmit={submitLifecycle} />
     </div>
   );
 }

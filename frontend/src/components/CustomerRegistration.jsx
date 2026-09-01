@@ -26,6 +26,7 @@ const initialFarmerData = {
     summerOtherCrop: "",
     summerAcres: "",
     summerTanks: "",
+    summerSprayings: "",
     subscriptionCardNumber: "",
     subscriptionYear: "2026-27",
     remarks: "",
@@ -98,6 +99,7 @@ function CustomerRegistration({ API, user, confirmModal, setConfirmModal }) {
                 ...farmerData,
                 displayName: farmerData.name,
                 ownership: farmerData.ownership.toUpperCase(),
+                confirmed,
             };
             delete payload.clusterType;
             const response = await fetch(`${API}/api/customers/sales`, {
@@ -106,7 +108,7 @@ function CustomerRegistration({ API, user, confirmModal, setConfirmModal }) {
                 credentials: 'include',
                 body: JSON.stringify(payload),
             });
-            const data = await response.json();
+            const data = await response.json().catch(() => ({}));
 
             if (!response.ok) {
                 if (data.needsConfirmation) {
@@ -138,7 +140,7 @@ function CustomerRegistration({ API, user, confirmModal, setConfirmModal }) {
             }
         } catch (error) {
             console.error(error);
-            setFarmerNotice({ type: "error", message: "An unexpected error occurred. Please try again." });
+            setFarmerNotice({ type: "error", message: "The customer could not be registered because the server is unreachable. Please check the connection and try again." });
         } finally {
             setSubmitting(false);
         }

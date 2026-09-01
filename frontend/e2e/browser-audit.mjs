@@ -107,10 +107,16 @@ const prisma = new PrismaClient();
     for (let lmv = 0; lmv < 2; lmv += 1) await prisma.lMV.create({ data: { registrationNo: 'E2E-LMV-' + index + '-' + lmv + '-' + process.env.E2E_UNIQUE, status: 'AVAILABLE', homeCenterId: center.id } });
   }
   const center = centers[0];
+  await prisma.cluster.upsert({
+    where: { code: 'BROWSER_AUDIT_CLUSTER' },
+    update: { displayName: 'Browser Audit Cluster', type: 'CLUSTER', active: true },
+    create: { code: 'BROWSER_AUDIT_CLUSTER', displayName: 'Browser Audit Cluster', type: 'CLUSTER', active: true },
+  });
   const pilots = await prisma.user.findMany({ where: { role: 'PILOT', homeCenterId: center.id, name: { startsWith: 'Browser Audit Pilot' } }, orderBy: { email: 'asc' }, take: 4 });
   const drones = await prisma.drone.findMany({ where: { homeCenterId: center.id, serialNumber: { startsWith: 'E2E-' } }, orderBy: { serialNumber: 'asc' }, take: 2 });
   const lmvs = await prisma.lMV.findMany({ where: { homeCenterId: center.id, registrationNo: { startsWith: 'E2E-LMV-' } }, orderBy: { registrationNo: 'asc' }, take: 2 });
   const start = new Date(); start.setHours(9, 0, 0, 0);
+  if (start.getTime() <= Date.now() + 15 * 60_000) start.setDate(start.getDate() + 1);
   const end = new Date(start.getTime() + 120 * 60_000);
   const scheduledLead = await prisma.lead.create({ data: { farmerName: 'AA Browser Scheduled', farmerPhone: '+919000012346', acreage: 3, intakeChannel: 'MANUAL_SALES', status: 'SCHEDULED', latitude: center.latitude, longitude: center.longitude, matchedCenterId: center.id } });
   await prisma.assignment.create({ data: { leadId: scheduledLead.id, pilotId: pilots[0].id, copilotId: pilots[1].id, droneId: drones[0].id, lmvId: lmvs[0].id, scheduledDate: start, serviceWindowStart: start, serviceWindowEnd: end, dailySequence: 1, expectedAcreage: 3, autoAssigned: false } });
@@ -126,6 +132,15 @@ const prisma = new PrismaClient();
   const terminalEnd = new Date(terminalStart.getTime() + 60 * 60_000);
   const terminalLead = await prisma.lead.create({ data: { farmerName: 'AA Browser Completed', farmerPhone: '+919000012349', acreage: 1, intakeChannel: 'MANUAL_SALES', status: 'COMPLETED', latitude: center.latitude, longitude: center.longitude, matchedCenterId: center.id } });
   await prisma.assignment.create({ data: { leadId: terminalLead.id, pilotId: pilots[0].id, copilotId: pilots[1].id, droneId: drones[0].id, lmvId: lmvs[0].id, scheduledDate: terminalStart, serviceWindowStart: terminalStart, serviceWindowEnd: terminalEnd, dailySequence: 99, expectedAcreage: 1, actualAcreage: 1, autoAssigned: false, startedAt: terminalStart, completedAt: terminalEnd } });
+  const browserPrimary = await prisma.user.findUnique({ where: { email: 'pilot1@fieldops.example' } });
+  const browserPrimaryCenter = centers.find((item) => item.id === browserPrimary.homeCenterId);
+  const crewCandidate = await prisma.user.create({ data: { name: 'Browser Crew Candidate', email: 'browser-crew-candidate-' + process.env.E2E_UNIQUE + '@example.invalid', passwordHash, role: 'PILOT', homeCenterId: browserPrimary.homeCenterId, pilotLicenseExpiry: future } });
+  const crewDrone = await prisma.drone.findFirst({ where: { homeCenterId: browserPrimary.homeCenterId, serialNumber: { startsWith: 'E2E-' } }, orderBy: { serialNumber: 'asc' } });
+  const crewLmv = await prisma.lMV.findFirst({ where: { homeCenterId: browserPrimary.homeCenterId, registrationNo: { startsWith: 'E2E-LMV-' } }, orderBy: { registrationNo: 'asc' } });
+  const crewStart = new Date(start.getTime() + 4 * 24 * 60 * 60_000);
+  const crewEnd = new Date(crewStart.getTime() + 2 * 60 * 60_000);
+  const crewLead = await prisma.lead.create({ data: { farmerName: 'Browser Pilot Crew', farmerPhone: '+919000012350', acreage: 2, intakeChannel: 'MANUAL_SALES', status: 'SCHEDULED', latitude: browserPrimaryCenter.latitude, longitude: browserPrimaryCenter.longitude, matchedCenterId: browserPrimaryCenter.id } });
+  await prisma.assignment.create({ data: { leadId: crewLead.id, pilotId: browserPrimary.id, copilotId: null, droneId: crewDrone.id, lmvId: crewLmv.id, scheduledDate: crewStart, serviceWindowStart: crewStart, serviceWindowEnd: crewEnd, dailySequence: 1, expectedAcreage: 2, crewFormationState: 'PENDING_COPILOT_SELECTION', revision: 1, autoAssigned: false } });
   const users = await prisma.user.findMany({ select: { id: true, email: true, name: true, role: true, homeCenterId: true }, orderBy: { createdAt: 'asc' } });
   console.log(JSON.stringify(users));
 })().catch((error) => { console.error(error); process.exitCode = 1; }).finally(() => prisma.$disconnect());
@@ -269,7 +284,7 @@ try {
     return { before, after };
   });
 
-  await runCase('AA-UI-02', 'Fleet calendar uses bounded requests and persists window and unit edits', async (page) => {
+  await runCase('AA-UI-02', 'Fleet calendar uses bounded requests, persists unit edits, and normalizes sequence', async (page) => {
     const assignmentRequests = [];
     page.on('request', (request) => { if (request.url().includes('/api/assignments/all')) assignmentRequests.push(request.url()); });
     await login(page, roleUsers.FLEET_MANAGER, '/fleet-manager');
@@ -285,41 +300,46 @@ try {
     updatedEndDate.setMinutes(updatedEndDate.getMinutes() + 30);
     const updatedEnd = localDateTimeValue(updatedEndDate);
     await inputs.nth(1).fill(updatedEnd);
-    const pilotOptions = editor.locator('select').nth(0).locator('option');
-    const droneOptions = editor.locator('select').nth(2).locator('option');
+    const pilotSelect = editor.getByLabel('Primary Pilot');
+    const droneSelect = editor.getByLabel('Drone');
+    const lmvSelect = editor.getByLabel('LMV');
+    const pilotOptions = pilotSelect.locator('option');
+    const droneOptions = droneSelect.locator('option');
     assert.ok(await pilotOptions.count() >= 3);
     assert.ok(await droneOptions.count() >= 2);
     const replacementPilot = users.find((user) => user.name === 'Browser Audit Pilot 1-3')?.id;
     assert.ok(replacementPilot, 'No distinct replacement Pilot was available');
     const replacementDrone = await droneOptions.filter({ hasText: 'E2E-0-1' }).getAttribute('value');
     assert.ok(replacementDrone, 'No replacement drone was available');
-    const replacementCopilot = users.find((user) => user.name === 'Browser Audit Pilot 1-4')?.id;
-    assert.ok(replacementCopilot, 'No replacement Copilot was available');
-    const replacementLmv = await editor.locator('select').nth(3).locator('option').filter({ hasText: 'E2E-LMV-0-1-' }).getAttribute('value');
+    const replacementLmv = await lmvSelect.locator('option').filter({ hasText: 'E2E-LMV-0-1-' }).getAttribute('value');
     assert.ok(replacementLmv, 'No replacement LMV was available');
-    await editor.locator('select').nth(0).selectOption(replacementPilot);
-    await editor.locator('select').nth(1).selectOption(replacementCopilot);
-    await editor.locator('select').nth(2).selectOption(replacementDrone);
-    await editor.locator('select').nth(3).selectOption(replacementLmv);
+    await pilotSelect.selectOption(replacementPilot);
+    await droneSelect.selectOption(replacementDrone);
+    await lmvSelect.selectOption(replacementLmv);
     await editor.locator('input[type="number"]').fill('3');
     await editor.locator('textarea').fill('Browser acceptance scheduling adjustment');
     const saveResponse = page.waitForResponse((response) => response.url().includes('/api/assignments/') && response.url().endsWith('/reschedule') && response.request().method() === 'PUT');
-    const sequenceResponse = page.waitForResponse((response) => response.url().includes('/api/assignments/') && response.url().endsWith('/sequence') && response.request().method() === 'PATCH');
-    const refreshResponse = page.waitForResponse((response) => response.url().includes('/api/assignments/all?') && response.request().method() === 'GET');
+    const sequenceResponse = page.waitForResponse((response) => response.url().includes('/api/assignments/') && response.url().endsWith('/sequence') && response.request().method() === 'PATCH').catch(() => null);
     await editor.getByRole('button', { name: 'Validate and save changes' }).click();
     const saved = await saveResponse;
     const savedBody = await saved.json().catch(() => ({}));
     assert.equal(saved.status(), 200, JSON.stringify(savedBody));
     const sequenced = await sequenceResponse;
+    assert.ok(sequenced, 'The daily-sequence normalization response was not received');
     const sequencedBody = await sequenced.json().catch(() => ({}));
     assert.equal(sequenced.status(), 200, JSON.stringify(sequencedBody));
-    await refreshResponse;
     await page.getByRole('alert').getByText(/window and operational unit were updated/i).waitFor();
     await page.getByText('AA Browser Scheduled', { exact: false }).first().click();
-    const persistedEnd = await page.getByLabel('Assignment editor').locator('input[type="datetime-local"]').nth(1).inputValue();
-    const persistedSequence = await page.getByLabel('Assignment editor').locator('input[type="number"]').inputValue();
+    const persistedEditor = page.getByLabel('Assignment editor');
+    const persistedEnd = await persistedEditor.locator('input[type="datetime-local"]').nth(1).inputValue();
+    const persistedSequence = await persistedEditor.locator('input[type="number"]').inputValue();
     assert.equal(persistedEnd, updatedEnd);
-    assert.equal(persistedSequence, '3', JSON.stringify({ saved: savedBody.mission || savedBody.assignment || savedBody, sequenced: sequencedBody.mission || sequencedBody.assignment || sequencedBody }));
+    assert.equal(await persistedEditor.getByLabel('Primary Pilot').inputValue(), replacementPilot);
+    assert.equal(await persistedEditor.getByLabel('Drone').inputValue(), replacementDrone);
+    assert.equal(await persistedEditor.getByLabel('LMV').inputValue(), replacementLmv);
+    const persistedMission = sequencedBody.mission || sequencedBody.assignment || sequencedBody;
+    assert.equal(persistedSequence, String(persistedMission.dailySequence), JSON.stringify({ saved: savedBody.mission || savedBody.assignment || savedBody, sequenced: persistedMission }));
+    assert.equal(persistedSequence, '1', 'A lone operational unit must be normalized to the first daily sequence position');
     assert.ok(assignmentRequests.some((url) => url.includes('from=') && url.includes('to=')), `Calendar requests were not bounded: ${assignmentRequests.join(', ')}`);
     return { originalStart, originalEnd, persistedEnd, persistedSequence, boundedRequests: assignmentRequests.length };
   });
@@ -337,6 +357,13 @@ try {
     const conflictEnd = localDateTimeValue(new Date(conflictDate.getTime() + 120 * 60_000));
     await inputs.nth(0).fill(conflictStart);
     await inputs.nth(1).fill(conflictEnd);
+    const conflictingPilot = users.find((user) => user.name === 'Browser Audit Pilot 1-3')?.id;
+    const conflictingDrone = await editor.getByLabel('Drone').locator('option').filter({ hasText: 'E2E-0-1' }).getAttribute('value');
+    const conflictingLmv = await editor.getByLabel('LMV').locator('option').filter({ hasText: 'E2E-LMV-0-1-' }).getAttribute('value');
+    assert.ok(conflictingPilot && conflictingDrone && conflictingLmv, 'Conflict fixture resources were unavailable');
+    await editor.getByLabel('Primary Pilot').selectOption(conflictingPilot);
+    await editor.getByLabel('Drone').selectOption(conflictingDrone);
+    await editor.getByLabel('LMV').selectOption(conflictingLmv);
     await editor.locator('textarea').fill('Browser overlap rejection proof');
     const rejectedResponse = page.waitForResponse((response) => response.url().includes('/api/assignments/') && response.url().endsWith('/reschedule') && response.request().method() === 'PUT');
     await editor.getByRole('button', { name: 'Validate and save changes' }).click();
@@ -354,19 +381,27 @@ try {
 
   await runCase('AA-UI-04', 'Manual queue remains keyboard-operable without calendar drag', async (page) => {
     await login(page, roleUsers.FLEET_MANAGER, '/fleet-manager');
+    const crewPanel = page.locator('.crew-scheduling-panel');
+    const calendarPanel = page.locator('section.panel').filter({ has: page.getByRole('heading', { name: 'Pilot calendar' }) });
+    const [crewBox, calendarBox] = await Promise.all([crewPanel.boundingBox(), calendarPanel.boundingBox()]);
+    assert.ok(crewBox && calendarBox, 'Scheduling panels must be visible');
+    assert.ok(crewBox.y < calendarBox.y, 'Crew scheduling must be above the calendar');
+    assert.ok(crewBox.width >= calendarBox.width * 0.95, 'Crew scheduling must use the full scheduling width');
     const card = page.locator('.queue-card').filter({ hasText: 'Sample NEEDS_MANUAL_SCHEDULING' });
     await card.getByRole('button', { name: 'Choose crew and time' }).focus();
     await page.keyboard.press('Enter');
-    const form = page.getByRole('button', { name: 'Add to daily schedule' }).locator('xpath=ancestor::form');
+    const submitButton = page.getByRole('button', { name: 'Reserve and request Copilot' });
+    const form = submitButton.locator('xpath=ancestor::form');
     await form.waitFor();
     const selects = form.locator('select');
-    for (let index = 0; index < 4; index += 1) await selects.nth(index).selectOption({ index: 1 });
+    assert.equal(await selects.count(), 3, 'Fleet scheduling must select a Primary Pilot, Drone, and LMV only');
+    for (let index = 0; index < 3; index += 1) await selects.nth(index).selectOption({ index: 1 });
     const dateInputs = form.locator('input[type="datetime-local"]');
     const day = new Date(); day.setHours(16, 0, 0, 0);
     await dateInputs.nth(0).fill(localDateTimeValue(day));
     await dateInputs.nth(1).fill(localDateTimeValue(new Date(day.getTime() + 120 * 60_000)));
     const response = page.waitForResponse((item) => item.url().endsWith('/api/assignments/manual') && item.request().method() === 'POST');
-    await form.getByRole('button', { name: 'Add to daily schedule' }).focus();
+    await submitButton.focus();
     await page.keyboard.press('Enter');
     assert.equal((await response).status(), 201);
     await page.getByRole('alert').getByText(/added to the crew's daily schedule/i).waitFor();
@@ -611,6 +646,49 @@ try {
     await page.getByText(/Appeal approved and sent to scheduling/i).waitFor();
   });
 
+  await runCase('SALES-04', 'Sales and Admin can register customers from the shared form', async (salesPage) => {
+    const registerCustomer = async (page, displayName, phone) => {
+      const form = page.locator('form').filter({ has: page.getByRole('button', { name: 'Register Customer' }) }).first();
+      const field = (label) => form.locator('.input-group').filter({ has: page.getByText(label, { exact: true }) }).first();
+      await form.locator('input[placeholder="Enter full name"]').fill(displayName);
+      await form.locator('input[placeholder="Enter mobile number"]').fill(phone);
+      await field('Farmer Ownership').locator('select').selectOption('Owner');
+      await form.locator('input[placeholder="Enter total acres"]').fill('4.5');
+      await field('Cluster Type').locator('select').selectOption('CLUSTER');
+      await field('Cluster').locator('select').selectOption({ label: 'Browser Audit Cluster' });
+      await form.locator('input[placeholder="Enter village"]').fill('Browser Village');
+      await form.locator('input[placeholder="Enter mandal"]').fill('Browser Mandal');
+      await form.locator('input[placeholder="Enter district"]').fill('Browser District');
+      await form.locator('input[placeholder="Enter state"]').fill('Tamil Nadu');
+      assert.equal(await form.evaluate((element) => element.checkValidity()), true, 'Customer form is invalid before submission');
+      const responsePromise = page.waitForResponse((response) => response.url().endsWith('/api/customers/sales') && response.request().method() === 'POST');
+      await form.getByRole('button', { name: 'Register Customer' }).click();
+      const response = await responsePromise;
+      const data = await response.json();
+      assert.equal(response.status(), 201, JSON.stringify(data));
+      assert.equal(data.created, true);
+      await page.getByText('Customer registered successfully!', { exact: true }).waitFor();
+      return data.customer.id;
+    };
+
+    await login(salesPage, roleUsers.SALES, '/marketing');
+    await salesPage.getByRole('heading', { name: 'Customer Registration', exact: true }).first().waitFor();
+    assert.equal(await salesPage.getByText(/Could not refresh Sales data/i).count(), 0);
+    assert.equal(await salesPage.getByText(/A mission needs Sales follow-up/i).count(), 0);
+    const salesCustomerId = await registerCustomer(salesPage, 'Browser Sales Customer', `98${unique.slice(-8)}`);
+
+    const adminContext = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+    const adminPage = await adminContext.newPage();
+    try {
+      await login(adminPage, roleUsers.ADMIN, '/admin');
+      await adminPage.getByRole('button', { name: 'Customer Registration' }).click();
+      const adminCustomerId = await registerCustomer(adminPage, 'Browser Admin Customer', `97${unique.slice(-8)}`);
+      return { salesCustomerId, adminCustomerId };
+    } finally {
+      await adminContext.close();
+    }
+  });
+
   await runCase('FLEET-01', 'Fleet Manager manually schedules an exception lead', async (page) => {
     await login(page, roleUsers.FLEET_MANAGER, '/fleet-manager');
     const card = page.locator('article').filter({ hasText: 'Sample NEEDS_MANUAL_SCHEDULING' });
@@ -802,7 +880,7 @@ try {
 
   await runCase('UI-01', 'Admin workspace remains usable without page overflow on mobile', async (page) => {
     await login(page, roleUsers.ADMIN, '/admin');
-    const tabs = ['Fleet Overview', 'User Management', 'CRM Logbook', 'Pilot Support Chat', 'Payment Collection', 'Live Pilot GPS'];
+    const tabs = ['Fleet Overview', 'My Team', 'Lead Details', 'Live Pilot GPS', 'Maintenance requests', 'Master Data'];
     const dimensions = {};
     for (const tab of tabs) {
       await page.getByRole('button', { name: new RegExp(tab, 'i') }).click();
@@ -833,6 +911,26 @@ try {
     const location = await assertNoPageOverflow(page, 'Fleet live GPS');
     return { calendar, location };
   }, { viewport: { width: 768, height: 1024 } });
+
+  await runCase('PILOT-CREW-01', 'Browser Primary Pilot selects an eligible Copilot before accepting', async (page) => {
+    await login(page, roleUsers.PILOT, '/pilot');
+    const card = page.locator('article').filter({ hasText: 'Browser Pilot Crew' });
+    await card.waitFor();
+    assert.equal(await card.getByRole('button', { name: 'Accept mission' }).count(), 0);
+    await card.getByRole('button', { name: 'Select Copilot' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Select an eligible Copilot' });
+    await dialog.waitFor();
+    const candidate = dialog.getByText('Browser Crew Candidate', { exact: true });
+    await candidate.waitFor();
+    await candidate.click();
+    const selectionResponse = page.waitForResponse((response) => response.url().includes('/api/assignments/') && response.url().endsWith('/copilot') && response.request().method() === 'POST');
+    await dialog.getByRole('button', { name: 'Confirm Copilot' }).click();
+    const selected = await selectionResponse;
+    assert.equal(selected.status(), 200, await selected.text());
+    await card.getByText('Browser Crew Candidate', { exact: true }).waitFor();
+    await card.getByRole('button', { name: 'Accept mission' }).waitFor();
+    return { copilot: 'Browser Crew Candidate', acceptanceUnlocked: true };
+  }, { viewport: { width: 390, height: 844 } });
 
   await runCase('UI-04', 'Pilot mission and support workspaces remain contained on mobile', async (page) => {
     await login(page, roleUsers.PILOT, '/pilot');

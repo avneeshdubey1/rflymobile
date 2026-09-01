@@ -7,6 +7,7 @@ const lmvRepository = require('../src/repositories/lmvRepository');
 const { hashPassword, validatePassword } = require('../services/passwordService');
 const { normalizePhone } = require('../services/identityService');
 const { disconnectUserSockets } = require('../middleware/auth');
+const { publishOperationsChange } = require('../services/operationsChangeService');
 const roles = new Set(['ADMIN', 'SALES', 'FLEET_MANAGER', 'PILOT']);
 
 function normalizeRole(role) {
@@ -119,14 +120,11 @@ exports.addUser = async(req, res) => {
             emailVerifiedAt: new Date(),
         });
         await auditLogRepository.create({ entityType: 'User', entityId: user.id, action: 'CREATED', actorId: req.auth.userId, afterState: user });
+        if (user.role === 'PILOT') publishOperationsChange(req, 'pilots');
         res.status(201).json({ success: true, user });
     } catch (error) {
         const validationError = /required|between|valid/i.test(error.message || '');
-        const conflictTarget = Array.isArray(error.meta?.target) ? error.meta.target : [];
-        const conflictMessage = conflictTarget.includes('assignedDroneId')
-            ? 'That drone is already assigned to another pilot'
-            : conflictTarget.includes('assignedLmvId') ? 'That vehicle is already assigned to another pilot'
-            : 'That work email or mobile is already registered';
+        const conflictMessage = 'That work email or mobile is already registered';
         const message = error.code === 'P2002' ? conflictMessage : validationError ? error.message : 'Failed to add user';
         res.status(error.code === 'P2002' ? 409 : validationError ? 400 : 500).json({ error: message });
     }
@@ -158,6 +156,7 @@ exports.updatePilotOperatingCenter = async(req, res) => {
             beforeState: { role: pilot.role, homeCenterId: pilot.homeCenterId, assignedDroneId: pilot.assignedDroneId, assignedLmvId: pilot.assignedLmvId },
             afterState: { role: updated.role, homeCenterId: updated.homeCenterId, assignedDroneId: updated.assignedDroneId, assignedLmvId: updated.assignedLmvId },
         });
+        publishOperationsChange(req, 'pilots');
         return res.json({ success: true, user: updated });
     } catch {
         return res.status(500).json({ error: 'Failed to update the pilot operating center' });
@@ -172,6 +171,7 @@ exports.deleteUser = async(req, res) => {
         const user = await userRepository.hardDelete(req.params.id);
         disconnectUserSockets(req.app.get('io'), user.id);
         await auditLogRepository.create({ entityType: 'User', entityId: user.id, action: 'DELETED', actorId: req.auth.userId, beforeState: user });
+        publishOperationsChange(req, 'pilots');
         res.json({ success: true });
     } catch (error) {
         res.status(error.code === 'P2003' ? 409 : 404).json({ error: error.code === 'P2003' ? 'This user is linked to operational records and cannot be deleted' : 'User not found' });
@@ -198,6 +198,7 @@ exports.toggleActive = async(req, res) => {
         const updatedUser = await userRepository.setActive(user.id, !user.active);
         disconnectUserSockets(req.app.get('io'), user.id);
         await auditLogRepository.create({ entityType: 'User', entityId: user.id, action: 'TOGGLE_ACTIVE', actorId: req.auth.userId, beforeState: user, afterState: updatedUser });
+        publishOperationsChange(req, 'pilots');
         res.json({ success: true, user: updatedUser });
     } catch (error) {
         res.status(500).json({ error: 'Failed to toggle user active status' });
@@ -351,6 +352,7 @@ exports.updateUser = async(req, res) => {
 
         const updated = await userRepository.update(existing.id, updateData);
         await auditLogRepository.create({ entityType: 'User', entityId: updated.id, action: 'UPDATED', actorId: req.auth.userId, beforeState: existing, afterState: updated });
+        if (updated.role === 'PILOT') publishOperationsChange(req, 'pilots');
         res.json({ success: true, user: updated });
     } catch (error) {
         if (error.code === 'P2002') {
@@ -358,8 +360,6 @@ exports.updateUser = async(req, res) => {
             let message = 'A unique field conflict occurred.';
             if (target.includes('email')) message = 'That work email is already registered';
             else if (target.includes('phone')) message = 'That mobile number is already registered';
-            else if (target.includes('assignedDroneId')) message = 'That drone is already assigned to another pilot';
-            else if (target.includes('assignedLmvId')) message = 'That vehicle is already assigned to another pilot';
             return res.status(409).json({ error: message });
         }
         const validationError = /required|between|valid|only Pilots|operating center|activation control/i.test(error.message || '');

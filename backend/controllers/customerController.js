@@ -19,9 +19,11 @@ exports.create = async (req, res) => {
     const result = await customerService.createForSales(req.body, req.auth.userId);
     return res.status(result.created ? 201 : 200).json({ success: true, ...result });
   } catch (error) {
-    const validationError = /required|between|valid|must/i.test(error.message || '');
-    return res.status(error.code === 'P2002' ? 409 : validationError ? 400 : 500).json({
-      error: error.code === 'P2002' ? 'That customer phone is already registered' : validationError ? error.message : 'Failed to create customer',
+    const validationError = /required|between|valid|must|available|assigned/i.test(error.message || '');
+    const status = error.code === 'P2002' ? 409 : error.status || (validationError ? 400 : 500);
+    return res.status(status).json({
+      error: error.code === 'P2002' ? 'That customer phone is already registered' : status < 500 ? error.message : 'Failed to create customer',
+      ...(error.code && error.code !== 'P2002' ? { code: error.code } : {}),
     });
   }
 };
